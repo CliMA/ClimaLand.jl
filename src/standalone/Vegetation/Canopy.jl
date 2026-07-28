@@ -558,6 +558,10 @@ function BeerLambertModel{FT}(
     }(
         radiation_parameters,
     )
+    radiation_parameters.G_Function.χl .= 0 # Spherical distribution
+    radiation_parameters.α_PAR_leaf .= 0.07 # 0.10 is mean
+    radiation_parameters.α_NIR_leaf .= 0.3 # 0.42 is mean
+    radiation_parameters.Ω .= 1
     parameters = BeerLambertParameters(
         toml_dict;
         ϵ_canopy,
@@ -783,7 +787,7 @@ end
         toml_dict::CP.ParamDict;
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
-        radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+        radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
         photosynthesis = PModel{FT}(domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
@@ -824,7 +828,7 @@ function CanopyModel{FT}(
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
-    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
@@ -923,7 +927,7 @@ function CanopyModel{FT}(
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
-    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),

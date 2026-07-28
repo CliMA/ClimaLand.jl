@@ -41,6 +41,10 @@ using Dates
 
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
+
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
@@ -64,7 +68,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
+root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)_bl3_snow"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -92,6 +96,19 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    density =NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt) 
+
+α_snow =NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
+    snow  = ClimaLand.Snow.SnowModel(
+    FT,
+    domain,
+    forcing,
+    toml_dict,
+    Δt;
+    density,
+    α_snow,
+    prognostic_land_components
+)
     if prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.
@@ -101,6 +118,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            snow,
         )
     else
         # Prescribed LAI (default): read LAI from MODIS data.
@@ -116,6 +134,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            snow
         )
     end
     return land
@@ -163,7 +182,7 @@ LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,
-    leaderboard_data_sources = ["ERA5", "ILAMB", "FlagshipCarbonMetrics"],
+    leaderboard_data_sources = ["ERA5","FlagshipCarbonMetrics"],
 )
 
 if LONGER_RUN
