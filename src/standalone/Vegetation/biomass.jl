@@ -396,6 +396,7 @@ struct ZhouOptimalLAIModel{
     FS <: Union{FT, ClimaCore.Fields.Field},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
+    T
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
@@ -409,6 +410,8 @@ struct ZhouOptimalLAIModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
+    "Time integrated prognostic vars"
+    time_integrated_vars::T
 end
 
 Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
@@ -433,6 +436,19 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
+
+Declares the prognostic time integrated variables:
+the 1-day potential-GPP total `A0_daily`,
+the smoothed 1-year totals `A0_annual`m
+the smoothed `precip_annual` as `RunningMean`s of the
+*annualized* instantaneous rate (`year · rate`), and `LAI` as a `RunningMean`
+relaxing toward the instantaneous steady-state target `L_opt`:
+
+    dA0_daily/dt      = (day* A0_inst - A0_daily) / τ_day,              τ_day  = few days,
+    dA0_annual/dt     = (year·A0_inst - A0_annual) / τ_long,     τ_long = tau_long_term,
+    dprecip_annual/dt = (year·P_inst  - precip_annual) / τ_long,
+    dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
+
 """
 function ZhouOptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT},
@@ -442,6 +458,26 @@ function ZhouOptimalLAIModel{FT}(
     rooting_depth,
     height,
 ) where {FT <: AbstractFloat}
+    seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    tau_long_term = parameters.tau_long_term
+    tiv = (
+        ClimaLand.TimeIntegratedVariable(;
+            name = :A0_daily,
+            reduction = ClimaLand.RunningSum(seconds_per_day, seconds_per_day*3),
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :A0_annual,
+                                         reduction = ClimaLand.RunningSum(365*seconds_per_day, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :precip_annual,
+            reduction = ClimaLand.RunningSum(365*seconds_per_day, tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :LAI,
+            reduction = ClimaLand.RunningMean(seconds_per_day / component.parameters.alpha),
+        ),
+    )
     return ZhouOptimalLAIModel{
         FT,
         typeof(parameters),
@@ -449,6 +485,7 @@ function ZhouOptimalLAIModel{FT}(
         typeof(SAI),
         typeof(rooting_depth),
         typeof(height),
+        typeof(tiv)
     }(
         parameters,
         optimal_lai_inputs,
@@ -456,6 +493,7 @@ function ZhouOptimalLAIModel{FT}(
         RAI,
         rooting_depth,
         height,
+        tiv
     )
 end
 
@@ -474,52 +512,12 @@ ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} =
     (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},NamedTuple{(:A0, :χ,), Tuple{FT, FT}},FT)
 ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface, :surface,)
 
-# The optimal-LAI model's prognostic state is four time-integrated variables in `Y`,
-# all advanced smoothly by the time-stepper (no callback, checkpoint/restart-safe):
-#   `A0_daily`      1-day potential-GPP total (RunningSum, τ = 1 day),
-#   `A0_annual`     smoothed 1-year potential-GPP total (RunningMean, τ = `tau_long_term`),
-#   `precip_annual` smoothed 1-year precipitation total (RunningMean, τ = `tau_long_term`),
-#   `LAI`           the Zhou et al. (2025) Eq. 16 acclimation lag (RunningMean, τ = 1 day / α),
-#                   relaxing toward the instantaneous optimal target `L_opt`.
-# The annual totals are a RunningMean of the *annualized* instantaneous rate
-# (`year_ref × rate`), so `tau_long_term` sets only the smoothing — the magnitude is a
-# one-year total for any `tau_long_term`, as the LAI_max/steady-state formulas require.
-# `A0_daily`/`A0_annual`/`precip_annual` set `LAI_max` and the steady-state LAI; the
-# cache `area_index.leaf` mirrors the prognostic `LAI` for the rest of the canopy.
-function optimal_lai_tivs(component::ZhouOptimalLAIModel{FT}) where {FT}
-    seconds_per_day = IP.day(IP.InsolationParameters(FT))
-    tau_long_term = component.parameters.tau_long_term
-    return (
-        ClimaLand.TimeIntegratedVariable(;
-            name = :A0_daily,
-            reduction = ClimaLand.RunningSum(),
-            timescale = seconds_per_day,
-        ),
-        ClimaLand.TimeIntegratedVariable(;
-            name = :A0_annual,
-            reduction = ClimaLand.RunningMean(),
-            timescale = tau_long_term,
-        ),
-        ClimaLand.TimeIntegratedVariable(;
-            name = :precip_annual,
-            reduction = ClimaLand.RunningMean(),
-            timescale = tau_long_term,
-        ),
-        ClimaLand.TimeIntegratedVariable(;
-            name = :LAI,
-            reduction = ClimaLand.RunningMean(),
-            timescale = seconds_per_day / component.parameters.alpha,
-        ),
-    )
-end
-# `prognostic_vars` (and the matching `_types` / `_domain_names`) are derived from the
-# spec metadata in `optimal_lai_tivs`, so the declaration lives in one place.
 ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
-    ClimaLand.time_integrated_prognostic_vars(optimal_lai_tivs(m))
+    ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
 ClimaLand.prognostic_types(m::ZhouOptimalLAIModel) =
-    ClimaLand.time_integrated_prognostic_types(optimal_lai_tivs(m))
+    ClimaLand.time_integrated_prognostic_types(m.time_integrated_vars)
 ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
-    ClimaLand.time_integrated_prognostic_domain_names(optimal_lai_tivs(m))
+    ClimaLand.time_integrated_prognostic_domain_names(m.time_integrated_vars)
 
 """
     update_biomass!(
@@ -545,8 +543,6 @@ function update_biomass!(
     (; SAI, RAI) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
-    # Mirror the prognostic LAI (a RunningMean relaxing toward the instantaneous
-    # optimal target) into the cache area index read by the rest of the canopy.
     @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
@@ -557,43 +553,14 @@ end
 """
     ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
 
-Advances the optimal-LAI model's four time-integrated variables (declared by
-`optimal_lai_tivs`): the 1-day potential-GPP total `A0_daily` as a `RunningSum`, the
-smoothed 1-year totals `A0_annual` and `precip_annual` as `RunningMean`s of the
-*annualized* instantaneous rate (`year · rate`), and `LAI` as a `RunningMean`
-relaxing toward the instantaneous steady-state target `L_opt`:
-
-    dA0_daily/dt      = A0_inst - A0_daily / τ_day,              τ_day  = 1 day,
-    dA0_annual/dt     = (year·A0_inst - A0_annual) / τ_long,     τ_long = tau_long_term,
-    dprecip_annual/dt = (year·P_inst  - precip_annual) / τ_long,
-    dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
-
-`A0_inst` (mol CO2 m^-2 s^-1) is computed once per cache update in `update_biomass!`
-and shared by both A0 variables; `P_inst` is the instantaneous precipitation
-(mol H2O m^-2 s^-1). Because the annual totals take the mean of the annualized rate,
-their steady state is `year · mean(rate)` — a one-year total for any `tau_long_term`,
-which sets only the smoothing (a longer value filters the seasonal cycle). Everything
-evolves smoothly every timestep with no callback or year-boundary jump.
+Advances the optimal-LAI model's four time-integrated variables.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}
-    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
-    # Fixed 365-day reference year (s) that annualizes an instantaneous rate, so the
-    # `A0_annual`/`precip_annual` running means hold a one-year total for any `τ`.
-    year = FT(365) * IP.day(IP.InsolationParameters(FT))
-    specs = optimal_lai_tivs(component)
-    computes = (;
-        A0_daily = (Y, p, t) -> p.canopy.biomass.OptVars.A0,
-        A0_annual = (Y, p, t) -> (@. lazy(year * p.canopy.biomass.OptVars.A0)),
-        # P_liq/P_snow are negative-downward volume fluxes (m/s); negate for a positive total.
-        precip_annual = (Y, p, t) -> (@. lazy(
-            year * -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
-        )),
-        LAI = (Y, p, t) -> p.canopy.biomass.L_opt,
-    )
     function compute_exp_tendency!(dY, Y, p, t)
+        ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
         zhou_model = component
         parameters = zhou_model.parameters
         static_inputs = zhou_mode.optimal_lai_inputs
@@ -634,15 +601,11 @@ function ClimaLand.make_compute_exp_tendency(
             p.canopy.biomass.OptVars.χ,
             static_inputs.vpd_gs,
         )
-        ClimaLand.time_integrated_tendency!(
-            dY.canopy.biomass,
-            Y.canopy.biomass,
-            Y,
-            p,
-            t,
-            specs,
-            computes,
-        )
+
+        @. apply_time_reduction!(dY.canopy.biomass.A0_daily, p.canopy.biomass.OptVars.A0, Y.canopy.biomass.A0_daily, component.time_integrated_vars.A0_daily)
+        @. apply_time_reduction!(dY.canopy.biomass.A0_annual, p.canopy.biomass.OptVars.A0, Y.canopy.biomass.A0_annual, component.time_integrated_vars.A0_annual)
+        @. apply_time_reduction!(dY.canopy.biomass.precip_annual,  -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq, Y.canopy.biomass.precip_annual, component.time_integrated_vars.precip_annual)
+        @. apply_time_reduction!(dY.canopy.biomass.LAI, p.canopy.biomass.L_opt, Y.canopy.biomass.LAI, component.time_integrated_vars.LAI)
     end
     return compute_exp_tendency!
 end

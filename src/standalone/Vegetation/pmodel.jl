@@ -222,6 +222,7 @@ struct PModel{
     OPFT <: PModelParameters{FT},
     OPCT <: PModelConstants{FT},
     F <: Union{FT, ClimaCore.Fields.Field},
+    T
 } <: AbstractPhotosynthesisModel{FT}
     "Required parameters for the P-model of Stocker et al. (2020)"
     parameters::OPFT
@@ -229,9 +230,11 @@ struct PModel{
     constants::OPCT
     "Photosynthesis mechanism - 1 indicates C3, 0 indicates C4"
     fractional_c3::F
+    "Time integrated prognostic vars"
+    time_integrated_vars::T
 end
 
-Base.eltype(::PModel{FT, OPFT, OPCT, F}) where {FT, OPFT, OPCT, F} = FT
+Base.eltype(::PModel{FT, OPFT, OPCT, F, T}) where {FT, OPFT, OPCT, F, T} = FT
 
 """
     PModel{FT}(
@@ -261,68 +264,39 @@ function PModel{FT}(
         fractional_c3 = round.(fractional_c3)
     end
     F = typeof(fractional_c3)
-    return PModel{FT, typeof(parameters), typeof(constants), F}(
+    tiv = (ClimaLand.TimeIntegratedVariable(;
+                                            name = :instantaneous,
+                                            reduction = ClimaLand.RunningMean(IP.day(IP.InsolationParameters(FT)) /
+                                            component.parameters.α),
+                                            component.parameters.α,
+                                            element_type = NamedTuple{
+                                                (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
+                                                NTuple{6, FT},
+                                            },
+                                            ),)
+    return PModel{FT, typeof(parameters), typeof(constants), F, typeof(tiv)}(
         parameters,
         constants,
         fractional_c3,
+        tiv
     )
 end
 
-"""
-    ClimaLand.auxiliary_vars(model::PModel)
-    ClimaLand.auxiliary_types(model::PModel)
-    ClimaLand.auxiliary_domain_names(model::PModel)
-
-Defines the auxiliary vars of the Pmode: canopy level net photosynthesis,
- canopy-level gross photosynthesis (`GPP`),
-and dark respiration at the canopy level (`Rd`), and
-
-- `AccVars`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
-    `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4` containing the
-    acclimated values of ξ, Vcmax25 (c3 and c4 variant), and Jmax25 (c3
-    and c4 variant). This is a cache mirror of the prognostic `AccVars`, which is
-    a `RunningMean` time-integrated variable in `Y` (see `prognostic_vars`).
-- `AccVars_inst`: the same NamedTuple, holding the instantaneous optimal
-    capacities (recomputed every step) — the target the acclimation relaxes toward,
-    weighted onto local solar noon (see `make_compute_exp_tendency`).
-"""
-# Element type of the acclimated / instantaneous optimal-capacity variables.
-_pmodel_accvars_type(::Type{FT}) where {FT} = NamedTuple{
-    (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
-    NTuple{6, FT},
-}
-
-ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars, :AccVars_inst)
+ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous,:optimal)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
-    _pmodel_accvars_type(FT),
-    _pmodel_accvars_type(FT),
+    NamedTuple{(:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
+               NTuple{6, FT},
+               }
 )
-ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
+ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface,)
 
-# The P-model's prognostic variable is the acclimated optimal capacities `AccVars`,
-# a `RunningMean` time-integrated variable held in `Y` and advanced smoothly by the
-# time-stepper. `p.canopy.photosynthesis.AccVars` mirrors it for the photosynthesis
-# calculation; `AccVars_inst` is the instantaneous optimum (recomputed every step)
-# that the `RunningMean` relaxes toward, weighted onto local solar noon so the
-# acclimation samples midday conditions (see `make_compute_exp_tendency`).
-pmodel_tivs(component::PModel{FT}) where {FT} = (
-    ClimaLand.TimeIntegratedVariable(;
-        name = :AccVars,
-        reduction = ClimaLand.RunningMean(),
-        timescale = IP.day(IP.InsolationParameters(FT)) /
-                    component.parameters.α,
-        element_type = _pmodel_accvars_type(FT),
-    ),
-)
-# `prognostic_vars` (and `_types` / `_domain_names`) derive from the `pmodel_tivs`
-# declaration, keeping it in one place.
 ClimaLand.prognostic_vars(m::PModel) =
-    ClimaLand.time_integrated_prognostic_vars(pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
 ClimaLand.prognostic_types(m::PModel) =
-    ClimaLand.time_integrated_prognostic_types(pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_types(m.time_integrated_vars)
 ClimaLand.prognostic_domain_names(m::PModel) =
-    ClimaLand.time_integrated_prognostic_domain_names(pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_domain_names(m.time_integrated_vars)
 
 
 """
@@ -540,7 +514,7 @@ end
         constants::PModelConstants{FT},
         T_canopy::FT,
         P_air::FT,
-        VPD::FT,
+        q_air::FT,
         ca::FT,
         βm::FT,
         APAR_canopy_moles::FT,
@@ -574,9 +548,10 @@ Journal of Advances in Modeling Earth Systems, 14, e2021MS002767. https://doi.or
 function compute_optimal_capacities(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
+    thermo_params,
     T_canopy::FT,
     P_air::FT,
-    VPD::FT,
+    q_air::FT,
     ca::FT,
     βm::FT,
     APAR_canopy_moles::FT,
@@ -618,6 +593,12 @@ function compute_optimal_capacities(
 
     ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    VPD =         Thermodynamics.vapor_pressure_deficit(
+        thermo_params,
+        T_air,
+        P_air,
+        q_air,
+    )
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -741,44 +722,32 @@ function ClimaLand.make_compute_exp_tendency(
     component::PModel{FT},
     canopy,
 ) where {FT}
-    specs = pmodel_tivs(component)
-    seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-    # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
-    # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
-    longitude = get_long(canopy.domain.space.surface)
-    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
-    # Gaussian-equivalent half-width of the midday window (s). At 1 h the acclimation
-    # target tracks the exact solar-noon optimum to ~0.95 (vs the daylength-diluted
-    # ~0.2-0.4 of an unweighted diurnal mean), while the ~16 min error from neglecting
-    # the equation of time shifts it by <0.3%. κ matches exp(-κ θ²/2) near noon to a
-    # Gaussian of this width.
-    noon_window_seconds = FT(3600)
-    κ = (seconds_in_a_day / FT(2π))^2 / noon_window_seconds^2
-    inv_norm = 1 / _noon_window_norm(κ)
-    start_date = try
-        canopy.boundary_conditions.atmos.start_date
-    catch
-        nothing
-    end
-    ω = FT(2π) / seconds_in_a_day
-    computes = (; AccVars = (Y, p, t) -> p.canopy.photosynthesis.AccVars_inst)
-    weights = (;
-        AccVars = (Y, p, t) -> begin
-            tod = _seconds_of_day_utc(t, start_date, FT)
-            @. lazy(exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
-        end
-    )
     function compute_exp_tendency!(dY, Y, p, t)
-        ClimaLand.time_integrated_tendency!(
-            dY.canopy.photosynthesis,
-            Y.canopy.photosynthesis,
-            Y,
-            p,
-            t,
-            specs,
-            computes;
-            weights,
-        )
+        @. apply_time_reduction!(dY.canopy.photosynthesis.instantaneous, p.canopy.photosynthesis.optimal, Y.canopy.photosynthesis.instantaneous, component.time_integrated_vars.instantaneous)
+        # Compute weight
+        seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
+        # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
+        # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
+        longitude = get_long(canopy.domain.space.surface)
+        local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
+        # Gaussian-equivalent half-width of the midday window (s). At 1 h the acclimation
+        # target tracks the exact solar-noon optimum to ~0.95 (vs the daylength-diluted
+        # ~0.2-0.4 of an unweighted diurnal mean), while the ~16 min error from neglecting
+        # the equation of time shifts it by <0.3%. κ matches exp(-κ θ²/2) near noon to a
+        # Gaussian of this width.
+        noon_window_seconds = FT(3600)
+        κ = (seconds_in_a_day / FT(2π))^2 / noon_window_seconds^2
+        inv_norm = 1 / _noon_window_norm(κ)
+        start_date = try
+            canopy.boundary_conditions.atmos.start_date
+        catch
+            nothing
+        end
+        
+        ω = FT(2π) / seconds_in_a_day
+        tod = _seconds_of_day_utc(t, start_date, FT)
+        dY.canopy.photosynthesis.instantaneous .*= exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm
+
     end
     return compute_exp_tendency!
 end
@@ -805,23 +774,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     λ_γ_PAR = canopy.radiative_transfer.parameters.λ_γ_PAR
     fAPAR = p.canopy.radiative_transfer.par.abs
     PAR = p.canopy.radiative_transfer.par_d
-
-    # Recompute the instantaneous optimal capacities from the current environment;
-    # the acclimated `AccVars` (a RunningMean in Y) relaxes toward these in the
-    # tendency, and is mirrored into the cache just below for the photosynthesis
-    # calculation. The P-model divides by sqrt(VPD); clip to avoid numerical issues.
     βm = p.canopy.soil_moisture_stress.βm
-    VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                thermo_params,
-                T_air,
-                P_air,
-                q_air,
-            ),
-            sqrt(eps(FT)),
-        ),
-    )
     APAR_canopy_moles = @. lazy(
         compute_APAR_canopy_moles(
             fAPAR,
@@ -832,24 +785,20 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.N_a,
         ),
     )
-    @. p.canopy.photosynthesis.AccVars_inst = compute_optimal_capacities(
+    @. p.canopy.photosynthesis.optimal = compute_optimal_capacities(
         parameters,
         constants,
+        thermo_params
         T_canopy,
         P_air,
-        VPD,
+        q_air,
         c_co2_air,
         βm,
         APAR_canopy_moles,
     )
 
-    # Mirror the prognostic acclimated optimal capacities into the cache, so the
-    # photosynthesis calculation (and diagnostics) read the current state.
-    @. p.canopy.photosynthesis.AccVars = Y.canopy.photosynthesis.AccVars
-    InstVars = p.canopy.photosynthesis.InstVars
-    AccVars = p.canopy.photosynthesis.AccVars
-    @. InstVars = compute_blended_pmodel_photosynthesis(
-        AccVars,
+    @. p.canopy.photosynthesis.instantaneous = compute_blended_pmodel_photosynthesis(
+        Y.canopy.photosynthesis.instaneous,
         model.fractional_c3,
         P_air,
         T_air,

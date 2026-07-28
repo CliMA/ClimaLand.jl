@@ -13,7 +13,7 @@ a memory timescale `τ`.
 abstract type AbstractTimeReduction end
 
 """
-    RunningMean <: AbstractTimeReduction
+    RunningMean{FT <: AbstractFloat} <: AbstractTimeReduction
 
 Exponentially-weighted running mean: `dX/dt = (f - X) / τ`. `X` carries the units
 of `f` and relaxes toward `f` with e-folding memory `τ` — the smooth analog of
@@ -24,38 +24,40 @@ exponential moving average used by the P-model acclimation. The two are identica
 for constant `f`; for time-varying `f` they agree to `O((Δt/τ)²)` when `Δt/τ` is
 small (the EMA uses `f` at the end of the step, the ODE its value during it).
 """
-struct RunningMean <: AbstractTimeReduction end
+struct RunningMean{FT <: AbstractFloat} <: AbstractTimeReduction
+    τ::FT
+end
 
 """
-    RunningSum <: AbstractTimeReduction
+    RunningSum{FT <: AbstractFloat} <: AbstractTimeReduction
 
-Exponentially-weighted running sum over ~`τ`: `dX/dt = f - X / τ`. At steady state
+Exponentially-weighted running sum over ~`τ`: `dX/dt = (fτ - X) / τ_long`. At steady state
 `X = τ f̄`, so for a flux `f` and `τ = 1 yr`, `X` is a trailing annual total (the
 smooth analog of "the accumulation of `f` over the past `τ`"). Equal to `τ ×`
-[`RunningMean`](@ref). The trailing window (the decay term `X/τ`) is what makes it
-"running"; contrast [`TimeIntegral`](@ref), which has none.
+[`RunningMean`](@ref). The use of `τ_long > τ` is meant to reduce the aliasing of seasonality.
 """
-struct RunningSum <: AbstractTimeReduction end
+struct RunningSum{FT <: AbstractFloat} <: AbstractTimeReduction
+    τ::FT
+    τ_long::FT
+end
 
 """
-    TimeIntegral <: AbstractTimeReduction
+    TimeIntegral{FT <: AbstractFloat} <: AbstractTimeReduction
 
-Pure time integral with no memory decay: `dX/dt = f` (`τ` is ignored). Unlike the
+Pure time integral: `dX/dt = f`. Unlike the
 running reductions there is no trailing window — `X` accumulates `f` over all of
 time.
 """
-struct TimeIntegral <: AbstractTimeReduction end
+struct TimeIntegral <: AbstractTimeReduction
 
 """
     TimeIntegratedVariable
 
 Declaration of a prognostic variable that stores a running reduction
-(`reduction`) of an instantaneous quantity `f` over a memory timescale
-`timescale`.
+(`reduction`) of an instantaneous quantity `f`.
 
 Because the variable lives in the prognostic state `Y`, it is advanced by the
-model's time-stepper on every stage — smoothly, with no periodic callback and no
-year-boundary discontinuity — and it is serialized with checkpoints/restarts. A
+model's time-stepper. A
 model that owns such variables derives its `prognostic_vars` (and the matching
 `_types` / `_domain_names`) from a tuple of specs via
 [`time_integrated_prognostic_vars`](@ref) and companions, and adds their
@@ -78,11 +80,10 @@ $(DocStringExtensions.FIELDS)
 
 # Example
 ```julia
-# trailing ~1-year precipitation total
+# trailing ~1-year precipitation mean
 TimeIntegratedVariable(;
-    name = :precip_annual,
-    reduction = RunningSum(),
-    timescale = FT(365 * 86400),
+    name = :precip_mean,
+    reduction = RunningMean(365*24*3600),
 )
 ```
 """
@@ -91,25 +92,21 @@ struct TimeIntegratedVariable{FT <: AbstractFloat, R <: AbstractTimeReduction}
     name::Symbol
     "Reduction kernel: `RunningMean`, `RunningSum`, or `TimeIntegral`."
     reduction::R
-    "Memory timescale `τ` in seconds (ignored by `TimeIntegral`)."
-    timescale::FT
     "Domain the variable lives on (`:surface` or `:subsurface`)."
     domain_name::Symbol
     "Element type of the stored field (defaults to `typeof(timescale)`; set explicitly for structured, e.g. `NamedTuple`-valued, variables)."
     element_type::DataType
 end
 
-function TimeIntegratedVariable(;
+function TimeIntegratedVariable{FT}(;
     name::Symbol,
     reduction::AbstractTimeReduction,
-    timescale::FT,
     domain_name::Symbol = :surface,
-    element_type::DataType = typeof(timescale),
+    element_type::DataType = FT,
 ) where {FT <: AbstractFloat}
     return TimeIntegratedVariable{FT, typeof(reduction)}(
         name,
         reduction,
-        timescale,
         domain_name,
         element_type,
     )
@@ -136,54 +133,8 @@ time_integrated_prognostic_domain_names(specs) =
 # or have a structured element type (e.g. a NamedTuple-valued field, as for the P-model
 # capacities); for scalar `FT` these reduce to the ordinary `(f - X)/τ` and `f - X/τ`.
 # `f` may be a `lazy` broadcast, which fuses into the assignment with no allocation.
-@inline apply_time_reduction!(dst, f, X, τ, ::RunningMean) =
-    (@. dst = rdiv(f ⊟ X, τ))
-@inline apply_time_reduction!(dst, f, X, τ, ::RunningSum) =
-    (@. dst = f ⊟ rdiv(X, τ))
-@inline apply_time_reduction!(dst, f, X, τ, ::TimeIntegral) = (@. dst = f)
-
-# Multiply the just-computed tendency `dst` by an optional weight `w` (a scalar field).
-# Dispatch on `nothing` keeps the common unweighted path branch-free. Written with `⊠`
-# so `dst` may be scalar- or structured-valued.
-@inline apply_tendency_weight!(dst, ::Nothing, Y, p, t) = nothing
-@inline function apply_tendency_weight!(dst, weight, Y, p, t)
-    w = weight(Y, p, t)
-    @. dst = dst ⊠ w
-    return nothing
-end
-
-"""
-    time_integrated_tendency!(dY_component, Y_component, Y, p, t, specs, computes; weights = (;))
-
-Add the tendencies of a collection of [`TimeIntegratedVariable`](@ref)s to
-`dY_component`, the sub-FieldVector of `dY` owned by the calling model (e.g.
-`dY.canopy.biomass`). `Y_component` is the matching sub-FieldVector of `Y`.
-
-`computes` is a NamedTuple keyed by the specs' `name`s: `computes.name(Y, p, t)`
-returns the instantaneous quantity `f` whose running reduction is stored, as a field
-or a `lazy` broadcast (so no field is allocated). The full `Y` and cache `p` are
-forwarded to it, so `f` may depend on drivers or other state. `weights` is an
-optional NamedTuple of the same form; where a name is present, `weights.name(Y, p, t)`
-returns a scalar field that rescales that variable's tendency (e.g. a solar-noon
-window whose daily mean is 1, so it reshapes the sub-daily forcing without changing
-`τ`).
-"""
-function time_integrated_tendency!(
-    dY_c,
-    Y_c,
-    Y,
-    p,
-    t,
-    specs,
-    computes;
-    weights = (;),
-)
-    foreach(specs) do s
-        dst = getproperty(dY_c, s.name)
-        X = getproperty(Y_c, s.name)
-        f = getproperty(computes, s.name)(Y, p, t)
-        apply_time_reduction!(dst, f, X, s.timescale, s.reduction)
-        apply_tendency_weight!(dst, get(weights, s.name, nothing), Y, p, t)
-    end
-    return nothing
-end
+@inline apply_time_reduction!(dst, f, X, r::RunningMean) =
+    (dst = rdiv(f ⊟ X, r.τ))
+@inline apply_time_reduction!(dst, f, X, r::RunningSum) =
+    (dst = rmul(f,r.τ) ⊟ rdiv(X, r.τ_long))
+@inline apply_time_reduction!(dst, f, X, ::TimeIntegral) = (dst = f)
