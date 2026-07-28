@@ -23,12 +23,34 @@ using ClimaCore
             @test params.tau_long_term isa FT
 
             # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI in #1794)
+            # against MODIS LAI in #1794; headline config promoted in #1815)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(21.4)
+            @test params.z ≈ FT(15.0)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
+            # C3/C4 two-PFT leaf-cost/shape params (#1815); default equals the C3
+            # value so pft_blend is a no-op until tuned.
+            @test params.z_c4 isa FT
+            @test params.sigma_c4 isa FT
+            @test params.z_c4 ≈ FT(15.0)
+            @test params.sigma_c4 ≈ FT(0.939)
+            @test params.beta_in_A0 ≈ FT(0)  # β-free potential GPP is the default
+
+            # Headline optimal-LAI defaults (MODIS-validated global config, #1815):
+            # online aridity f0 on, band-pass reduction, and the calibratable
+            # trapezoid precip vertices (ordered a <= b <= c <= d).
+            @test params.online_f0 ≈ FT(1)
+            @test params.f0_scale ≈ FT(0.8)
+            @test params.z_a0 ≈ FT(0)
+            @test params.f0_precip_a ≈ FT(28000)
+            @test params.f0_precip_b ≈ FT(33000)
+            @test params.f0_precip_c ≈ FT(58000)
+            @test params.f0_precip_d ≈ FT(68000)
+            @test params.f0_precip_a <=
+                  params.f0_precip_b <=
+                  params.f0_precip_c <=
+                  params.f0_precip_d
 
             @test eltype(params) == FT
         end
@@ -73,13 +95,26 @@ using ClimaCore
             @test :A0_annual ∉ aux_vars
             @test :precip_annual ∉ aux_vars
 
-            # A0_daily, A0_annual, precip_annual, and LAI are time-integrated
-            # prognostic variables in Y (running sums and a running mean).
-            @test Canopy.prognostic_vars(model) ==
-                  (:A0_daily, :A0_annual, :precip_annual, :LAI)
-            @test Canopy.prognostic_types(model) == (FT, FT, FT, FT)
+            # The optimal-LAI model carries the running-mean/running-sum climate
+            # inputs (A0, precip, PET, VPD·A0, growing-days, per-pathway A0) plus the
+            # prognostic LAI as time-integrated prognostic variables in Y. These back
+            # the online, climate-tracking f0 / vpd_gs / GSL / C3-C4 inputs.
+            optlai_prog = (
+                :A0_daily,
+                :A0_annual,
+                :precip_annual,
+                :PET_annual,
+                :VPDA0_annual,
+                :growing_days,
+                :A0c3_annual,
+                :A0c4_annual,
+                :LAI,
+            )
+            @test Canopy.prognostic_vars(model) == optlai_prog
+            @test Canopy.prognostic_types(model) ==
+                  ntuple(_ -> FT, length(optlai_prog))
             @test Canopy.prognostic_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface)
+                  ntuple(_ -> :surface, length(optlai_prog))
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -211,6 +246,54 @@ using ClimaCore
             @test PPFD isa FT
             @test PPFD > FT(0.0)
             @test isfinite(PPFD)
+        end
+
+        @testset "c3_fraction_from_competition for FT = $FT" begin
+            # Regression test for the dynamic C3/C4 competition (two bugs fixed in #1815).
+            # The tree-cover proxy must use REALIZED GPP (a0c3·Mc·fapar), not potential
+            # (fapar=1): potential GPP saturates the proxy and wrongly suppresses C4 in
+            # sparse grasslands. So a sparser canopy (lower realized fapar) → less tree
+            # suppression → MORE C4 → LOWER C3 fraction; using fapar=1 would invert this.
+            Mc = FT(0.012)  # kg C per mol
+            f = Canopy.c3_fraction_from_competition
+            c3_sparse = f(FT(100), FT(130), Mc, FT(0.5))
+            c3_dense = f(FT(100), FT(130), Mc, FT(1.0))
+            @test c3_sparse < c3_dense
+            # strong C3 GPP advantage → almost all C3
+            @test f(FT(120), FT(40), Mc, FT(0.8)) > FT(0.9)
+            # strong C4 advantage in a sparse canopy → almost all C4
+            @test f(FT(40), FT(120), Mc, FT(0.3)) < FT(0.1)
+            # fraction always in [0, 1]
+            for args in (
+                (FT(100), FT(130), Mc, FT(0.5)),
+                (FT(120), FT(40), Mc, FT(0.8)),
+                (FT(40), FT(120), Mc, FT(0.3)),
+            )
+                v = f(args...)
+                @test FT(0) <= v <= FT(1)
+            end
+        end
+
+        @testset "aridity_scaled_f0 band-pass for FT = $FT" begin
+            # The f0_scale reduction applies only in the semi-arid precip BAND
+            # [P_a..P_d] (trapezoid); f0_scale=1 is a no-op, and deserts (below P_a)
+            # and the humid tropics (above P_d) are left unchanged.
+            asf = Canopy.aridity_scaled_f0
+            f0 = FT(0.65)
+            Pa, Pb, Pc, Pd = FT(28000), FT(33000), FT(58000), FT(68000)
+            # f0_scale = 1 is a no-op, in or out of the band
+            @test asf(f0, FT(45000), FT(1), Pa, Pb, Pc, Pd) ≈ f0
+            @test asf(f0, FT(20000), FT(1), Pa, Pb, Pc, Pd) ≈ f0
+            # flat middle of the band → full reduction by f0_scale
+            @test asf(f0, FT(45000), FT(0.8), Pa, Pb, Pc, Pd) ≈ f0 * FT(0.8)
+            # desert (below P_a) and humid (above P_d) → unchanged
+            @test asf(f0, FT(20000), FT(0.8), Pa, Pb, Pc, Pd) ≈ f0
+            @test asf(f0, FT(75000), FT(0.8), Pa, Pb, Pc, Pd) ≈ f0
+            # anywhere, the result stays within [f0*f0_scale, f0]
+            for P in (FT(25000), FT(35000), FT(50000), FT(65000), FT(70000))
+                v = asf(f0, P, FT(0.5), Pa, Pb, Pc, Pd)
+                @test f0 * FT(0.5) - sqrt(eps(FT)) <= v <= f0 + sqrt(eps(FT))
+            end
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
