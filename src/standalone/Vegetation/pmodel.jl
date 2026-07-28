@@ -2,8 +2,6 @@ export PModelParameters,
     PModelConstants,
     PModel,
     compute_full_pmodel_outputs,
-    set_historical_cache!,
-    set_acclimated_state!,
     compute_optimal_capacities,
     compute_A0_daily
 
@@ -684,82 +682,6 @@ function compute_optimal_capacities(
         Jmax25_c3 = Jmax25_opt_c3,
         Jmax25_c4 = Jmax25_opt_c4,
     )
-end
-
-"""
-    function set_historical_cache!(p, Y0, model::PModel, canopy)
-
-Computes the instantaneous optimal Vcmax25, Jmax25, and ξ of the initial environment,
-storing them in `p.canopy.photosynthesis.AccVars_inst`. These are the target the
-prognostic acclimated capacities relax toward, and are also what
-[`set_acclimated_state!`](@ref) warm-starts those capacities from.
-"""
-function set_historical_cache!(p, Y0, model::PModel, canopy)
-    parameters = model.parameters
-    constants = model.constants
-
-    # drivers
-    FT = eltype(parameters)
-    earth_param_set = canopy.earth_param_set
-    βm = p.canopy.soil_moisture_stress.βm
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
-    VPD = @. lazy(
-        Thermodynamics.vapor_pressure_deficit(
-            LP.thermodynamic_parameters(canopy.earth_param_set),
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-        ),
-    )
-    APAR_canopy_moles = @. lazy(
-        compute_APAR_canopy_moles(
-            p.canopy.radiative_transfer.par.abs,
-            p.canopy.radiative_transfer.par_d,
-            canopy.radiative_transfer.parameters.λ_γ_PAR,
-            constants.lightspeed,
-            constants.planck_h,
-            constants.N_a,
-        ),
-    )
-
-    # instantaneous optimal capacities at t0
-    @. p.canopy.photosynthesis.AccVars_inst = compute_optimal_capacities(
-        parameters,
-        constants,
-        T_canopy,
-        p.drivers.P,
-        VPD,
-        p.drivers.c_co2,
-        βm,
-        APAR_canopy_moles,
-    )
-    return nothing
-end
-
-"""
-    set_acclimated_state!(Y0, p, model::PModel, canopy)
-
-Warm-starts the prognostic acclimated capacities `Y.canopy.photosynthesis.AccVars`
-(and their cache mirror) at the initial optimum computed by `set_historical_cache!`,
-i.e. assumes the canopy is acclimated to the initial environment.
-
-Unlike the rest of the state this cannot be set in `set_ic!`: the optimum depends on
-the absorbed PAR and the soil moisture stress, so it is only known once the initial
-cache has been computed. Without it the capacities would start at zero, and with a
-two-week acclimation timescale it would take ~1 month to reach a physically
-meaningful state — as it also does when the simulation starts at night, when the
-optimum itself is zero.
-
-A checkpoint/restart, whose `set_ic!` loads `Y` from file, is left untouched: the
-restored capacities are non-zero, and `update_cache!` has already mirrored them
-into `p`.
-"""
-function set_acclimated_state!(Y0, p, model::PModel, canopy)
-    if all(iszero, parent(Y0.canopy.photosynthesis.AccVars))
-        Y0.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
-        p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
-    end
-    return nothing
 end
 
 # Normalization for the solar-noon acclimation window `exp(κ (cosθ - 1))`: its daily

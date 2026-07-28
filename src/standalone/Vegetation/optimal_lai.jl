@@ -434,7 +434,9 @@ biomass `compute_exp_tendency!`, applying the Eq. 16 acclimation lag continuousl
 through the time-stepper.
 """
 function compute_LAI_target(Y, p, canopy)
-    parameters = canopy.biomass.parameters
+    zhou_model = canopy.biomass
+    parameters = zhou_model.parameters
+    static_inputs = zhou_mode.optimal_lai_inputs
     pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
     fractional_c3 = canopy.photosynthesis.fractional_c3
@@ -458,13 +460,13 @@ function compute_LAI_target(Y, p, canopy)
             parameters.k,
             Y.canopy.biomass.A0_annual,
             parameters.z,
-            p.canopy.biomass.GSL,
+            static_inputs.GSL,
             parameters.sigma,
             Y.canopy.biomass.precip_annual,
-            p.canopy.biomass.f0,
+            static_inputs.f0,
             ca * P_air,  # ca_pa: CO2 partial pressure (Pa)
             chi,
-            p.canopy.biomass.vpd_gs,
+            static_inputs.vpd_gs,
         ),
     )
 end

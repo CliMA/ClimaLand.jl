@@ -379,7 +379,7 @@ function clm_canopy_height(
 end
 
 """
-    optimal_lai_initial_conditions(
+    optimal_lai_static_inputs(
         surface_space,
         data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
         regridder_type = :InterpolationsRegridder,
@@ -393,11 +393,6 @@ end
 Reads the spatially varying optimal LAI data from a NetCDF file, and regrids it to the
 grid defined by the `surface_space` of the Clima simulation. Returns a NamedTuple of
 ClimaCore Fields suitable for passing to `ZhouOptimalLAIModel`.
-
-The model reads `GSL`, `vpd_gs` and `f0` every step; the remaining fields are the
-climatology from which `ClimaLand.Simulations.set_canopy_biomass_initial_conditions!`
-sets the prognostic state (it reads them from the same file, so they need not be
-passed to the model).
 
 This function returns fields for:
 - `GSL`: Growing season length (days)
@@ -421,7 +416,7 @@ The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `v
 
 # Example
 ```julia
-ic_data = optimal_lai_initial_conditions(surface_space)
+ic_data = optimal_lai_static_inputs(surface_space)
 biomass = ZhouOptimalLAIModel{FT}(parameters, ic_data; SAI, RAI, rooting_depth, height)
 ```
 
@@ -431,7 +426,7 @@ biomass = ZhouOptimalLAIModel{FT}(parameters, ic_data; SAI, RAI, rooting_depth, 
 - lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
 - f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
 """
-function optimal_lai_initial_conditions(
+function optimal_lai_static_inputs(
     surface_space,
     data_path::AbstractString = Artifacts.optimal_lai_initial_conditions_path(;
         context = ClimaComms.context(surface_space),

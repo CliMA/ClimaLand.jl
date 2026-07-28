@@ -174,20 +174,20 @@ function set_fluxnet_ic!(
     data,
     columns,
     Δ_date,
-    model::ClimaLand.Canopy.CanopyModel;
+    model::ClimaLand.Canopy.CanopyModel{FT};
     val = -9999,
-)
-    # Determine which column index corresponds to air temperature
-    idx = findfirst(columns[:] .== "TA_F")
-    T_air_0 = get_data_at_start_date(
-        data[:, idx],
-        Δ_date;
-        preprocess_func = x -> x + 273.15,
-        val,
-    )
+) where {FT}
+    if model.energy isa Canopy.BigLeafEnergyModel
+        idx = findfirst(columns[:] .== "TA_F")
+        T_air_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x + 273.15,
+            val,
+        )
+        Y.canopy.energy.T .= T_air_0
+    end
 
-    Y.canopy.energy.T .= T_air_0
-    FT = eltype(Y.canopy.energy.T)
     ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics
     S_l_ini =
@@ -202,10 +202,56 @@ function set_fluxnet_ic!(
             hydraulics.parameters.ν,
             S_l_ini,
         )
-    ClimaLand.Simulations.set_canopy_biomass_initial_conditions!(
+    ClimaLand.Simulations.set_canopy_component_initial_conditions!(
         Y,
+        nothing,
         model.biomass,
+        model,
     )
+    if model.photosynthesis isa Canopy.PModel
+        idx = findfirst(columns[:] .== "VPD_F")
+        VPD_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x * 100, # hPa to Pa
+            val,
+        )
+        idx = findfirst(columns[:] .== "PA_F")
+        P_air_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x * 1000,# kPa to Pa
+            val,
+        )
+        idx = findfirst(columns[:] .== "CO2_F_MDS")
+        c_co2_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x * 1e-6, # convert from μmol/mol to mol/mol
+            val,
+        )
+        idx = findfirst(columns[:] .== "TA_F")
+        T_air_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x + 273.15,# C to K
+            val,
+        )
+        thermo_params = LP.thermodynamic_parameters(model.earth_param_set)
+        βm = FT(1)
+        APAR_canopy_moles = FT(1e-3) # mol/m^2/s, from 1000 μmol/m^2/s
+        @. Y.canopy.photosynthesis.AccVars = compute_optimal_capacities(
+            model.photosynthesis.parameters,
+            model.photosynthesis.constants,
+            T_air_0,
+            P_air_0,
+            VPD_0,
+            c_co2_air_0,
+            βm,
+            APAR_canopy_moles,
+        )
+    end
+
 end
 
 """

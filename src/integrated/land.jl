@@ -1086,9 +1086,6 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
         update_drivers!(p, t0)
         set_lake_fraction!(p, model)
         update_cache!(p, Y0, t0)
-        Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
-        Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
-        Canopy.set_acclimated_state!(Y0, p, canopy.photosynthesis, canopy)
     end
     return set_initial_cache!
 end

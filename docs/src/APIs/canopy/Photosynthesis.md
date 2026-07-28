@@ -41,8 +41,6 @@ ClimaLand.Canopy.compute_Vcmax_farquhar
 
 ```@docs
 ClimaLand.Canopy.compute_full_pmodel_outputs
-ClimaLand.Canopy.set_historical_cache!
-ClimaLand.Canopy.set_acclimated_state!
 ClimaLand.Canopy.compute_optimal_capacities
 ClimaLand.Canopy.intrinsic_quantum_yield
 ClimaLand.Canopy.compute_viscosity_ratio

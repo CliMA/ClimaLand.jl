@@ -30,7 +30,6 @@ import ClimaLand:
     make_update_implicit_aux,
     make_update_implicit_boundary_fluxes,
     make_update_aux,
-    make_set_initial_cache,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
     make_compute_jacobian,
@@ -413,7 +412,7 @@ end
     ZhouOptimalLAIModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+        optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -433,7 +432,7 @@ mirrored into `p.canopy.biomass.area_index.leaf`.
 
 # Keyword Arguments
 - `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI formulas
-  (GSL, vpd_gs, f0). Default loads from `optimal_lai_initial_conditions`.
+  (GSL, vpd_gs, f0). Default loads from `optimal_lai_static_inputs`.
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
@@ -452,7 +451,7 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 function ZhouOptimalLAIModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+    optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -1403,66 +1402,6 @@ function ClimaLand.total_liq_water_vol_per_area!(
         p,
         t,
     )
-end
-
-"""
-    ClimaLand.make_set_initial_cache(model::CanopyModel)
-
-Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
-is the P-model, then `set_initial_cache!` will also run `set_historical_cache!`, which
-computes the optimal Vcmax25, Jmax25 and ξ of the initial environment, and
-`set_acclimated_state!`, which warm-starts the prognostic acclimated capacities at
-that optimum — the one piece of state that cannot be set in `set_ic!`, since it
-depends on the cache.
-
-For ZhouOptimalLAIModel, this also copies the model's static spatially-varying inputs
-(GSL, vpd_gs, f0) into the cache.
-"""
-function ClimaLand.make_set_initial_cache(model::CanopyModel)
-    drivers = get_drivers(model)
-    update_drivers! = make_update_drivers(drivers)
-    update_cache! = make_update_cache(model)
-    function set_initial_cache!(p, Y0, t0)
-        update_drivers!(p, t0)
-        update_cache!(p, Y0, t0)
-        set_historical_cache!(p, Y0, model.photosynthesis, model)
-        set_historical_cache!(p, Y0, model.biomass, model)
-        set_acclimated_state!(Y0, p, model.photosynthesis, model)
-    end
-    return set_initial_cache!
-end
-
-"""
-    set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
-
-For most biomass models, no historical cache initialization is needed. This is the default
-fallback that does nothing.
-"""
-function set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
-    return nothing
-end
-
-"""
-    set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
-
-For some canopy components (namely the P-model), we need values at t-1 to compute new
-values, so this function sets the historical cache values for the photosynthesis model.
-However, for other photosynthesis models this is not needed, so do nothing by default.
-"""
-function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
-    return nothing
-end
-
-"""
-    set_acclimated_state!(Y0, p, m::AbstractPhotosynthesisModel, canopy)
-
-Sets the part of the initial state which acclimates to the initial environment, and
-so can only be set once the initial cache is known (namely the P-model's optimal
-capacities). All of the state that does not depend on the cache is set in `set_ic!`
-instead; photosynthesis models without acclimated state do nothing here.
-"""
-function set_acclimated_state!(Y0, p, m::AbstractPhotosynthesisModel, canopy)
-    return nothing
 end
 
 """

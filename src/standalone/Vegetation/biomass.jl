@@ -372,15 +372,14 @@ An implementation of the optimal LAI model from Zhou et al. (2025) as a biomass 
 This model computes LAI dynamically based on optimality principles, balancing energy and
 water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored into
 `p.canopy.biomass.area_index.leaf` for the rest of the canopy, consistent with
-`PrescribedBiomassModel`. Its initial state, and that of the trailing totals it depends
-on, is set by `ClimaLand.Simulations.set_canopy_biomass_initial_conditions!`.
+`PrescribedBiomassModel`.
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
 - `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI_max and
   steady-state-LAI formulas: GSL (growing season length in days), vpd_gs (growing-season
   mean VPD in Pa), and f0 (fraction of precip for transpiration). Typically created using
-  `optimal_lai_initial_conditions`, which reads them alongside the initial conditions.
+  `optimal_lai_inputs`, which reads them alongside the initial conditions.
 - `SAI`: Prescribed stem area index (m^2 m^-2)
 - `RAI`: Prescribed root area index (m^2 m^-2)
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
@@ -429,7 +428,7 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 # Arguments
 - `parameters`: OptimalLAIParameters for the model
 - `optimal_lai_inputs`: NamedTuple with the spatially varying GSL, vpd_gs and f0 fields,
-  typically created using `optimal_lai_initial_conditions`.
+  typically created using `optimal_lai_inputs`.
 - `SAI`: Prescribed stem area index (m^2 m^-2); scalar or spatially-varying Field
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
@@ -468,16 +467,11 @@ end
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
 - `A0_inst`: instantaneous potential GPP (mol CO2 m^-2 s^-1), computed once per tendency evaluation and shared by the daily and annual A0 running sums
-- `GSL`: growing season length (days), spatially varying
-- `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
-- `f0`: spatially varying fraction of precipitation for transpiration (dimensionless), from Zhou et al.
 """
-ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :A0_inst, :GSL, :vpd_gs, :f0)
+ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (:area_index, :A0_inst)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} =
-    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}, FT, FT, FT, FT)
-ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},)
+ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface)
 
 # The optimal-LAI model's prognostic state is four time-integrated variables in `Y`,
 # all advanced smoothly by the time-stepper (no callback, checkpoint/restart-safe):
@@ -617,27 +611,4 @@ function ClimaLand.make_compute_exp_tendency(
         )
     end
     return compute_exp_tendency!
-end
-
-"""
-    set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
-
-Copies the optimal-LAI model's static spatially-varying inputs into the cache, where
-the `LAI_max` and steady-state-LAI formulas read them: the growing season length
-`GSL` (days), the growing-season mean VPD `vpd_gs` (Pa) used in the water-limitation
-WUE factor, and the fraction of precipitation available for transpiration `f0`. They
-are taken from `model.optimal_lai_inputs`, typically built by
-`optimal_lai_initial_conditions`, and are rebuilt at every setup, including on
-restart.
-
-The model's prognostic state (`LAI`, `A0_daily`, `A0_annual`, `precip_annual`) is not
-touched here; it is initialized with the rest of `Y` by
-`ClimaLand.Simulations.set_canopy_biomass_initial_conditions!` in `set_ic!`.
-"""
-function set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
-    optimal_lai_inputs = model.optimal_lai_inputs
-    p.canopy.biomass.GSL .= optimal_lai_inputs.GSL
-    p.canopy.biomass.vpd_gs .= optimal_lai_inputs.vpd_gs
-    p.canopy.biomass.f0 .= optimal_lai_inputs.f0
-    return nothing
 end
