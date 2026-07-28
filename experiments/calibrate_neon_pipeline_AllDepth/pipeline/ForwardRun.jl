@@ -475,6 +475,35 @@ used_in = ["Land"]
                 isempty(daily_ranges) ? NaN : mean(daily_ranges))
     end
 
+    # ── Forcing daily series for the per-depth CSV export ────────────────────
+    # precipitation, air temperature and VPD are depth-independent (atmospheric
+    # forcing), so build their post-spinup DAILY series ONCE here and join them
+    # into each depth's optimized_vs_sensors CSV below. Obs come from the model-
+    # forcing columns (P_F accumulated precip mm → SUMMED per day; TA_F air temp
+    # °C → mean, converted to K to match the model; VPD_F hPa → mean). Model air
+    # T is the `tair` driver (K), daily-averaged via get_diag_layer.
+    function _obs_daily_agg(col, reducer)
+        col in names(obs_df) || return DataFrame(date = Date[], daily_mean = Float64[])
+        sub = DataFrame(date = obs_df.date, value = obs_df[!, col])
+        sub = filter(r -> r.date >= Date(spinup_date), sub)
+        daily = combine(groupby(sub, :date), :value => (x -> begin
+            v = Float64[]
+            for e in x
+                (ismissing(e) || isnan(Float64(e))) && continue
+                push!(v, Float64(e))
+            end
+            isempty(v) ? NaN : reducer(v)
+        end) => :daily_mean)
+        daily = filter(r -> !isnan(r.daily_mean), daily)
+        sort!(daily, :date)
+        return daily
+    end
+    precip_daily = _obs_daily_agg("P_F", sum)          # mm/day (summed accumulated P_F)
+    vpd_daily = _obs_daily_agg("VPD_F", mean)          # hPa (daily mean)
+    obs_tair_daily = _obs_daily_agg("TA_F", mean)      # °C → K below
+    nrow(obs_tair_daily) > 0 && (obs_tair_daily.daily_mean .+= 273.15)
+    model_tair_daily = get_diag_layer(simulation, "tair_30m_average", 1)  # K, surface air T
+
     # ── Per-depth loop ───────────────────────────────────────────────────────
     # One iteration per calibrated depth code. Builds that depth's obs+model daily
     # series, writes the 3 per-depth figures (forward_mean, optimized_vs_sensors,
@@ -656,6 +685,34 @@ used_in = ["Land"]
         xlims!(ax_co2, xl...); xlims!(ax_swc, xl...); xlims!(ax_t, xl...)
     end
     CairoMakie.save(joinpath(output_dir, "optimized_vs_sensors_$(site_id)_$(code).png"), fig_opt)
+
+    # ── CSV export of the optimized_vs_sensors data (this depth) ─────────────
+    # One row per date; the daily-mean series shown in the figure, joined on date
+    # (outerjoin → keep every date any series has). Obs CO₂/SWC/Tsoil are the
+    # sensor-averaged daily means (obs_daily / obs_swc_daily / obs_tsoil_daily,
+    # matching the figure's aggregated obs). precip/tair/vpd are the depth-
+    # independent forcing series built once above.
+    _sel(df, newcol) = nrow(df) == 0 ?
+        DataFrame(date = Date[], (newcol => Float64[])...) :
+        rename(df[:, [:date, :daily_mean]], :daily_mean => newcol)
+    csv_df = _sel(sco2_daily, :sco2_model_ppm)
+    for (df, name) in [
+        (obs_daily,          :sco2_obs_ppm),
+        (swc_daily,          :swc_model_m3m3),
+        (obs_swc_daily,      :swc_obs_m3m3),
+        (tsoil_daily,        :tsoil_model_K),
+        (obs_tsoil_daily,    :tsoil_obs_K),
+        (precip_daily,       :precip_obs_mm),
+        (obs_tair_daily,     :tair_obs_K),
+        (model_tair_daily,   :tair_model_K),
+        (vpd_daily,          :vpd_obs_hPa),
+    ]
+        csv_df = outerjoin(csv_df, _sel(df, name), on = :date)
+    end
+    sort!(csv_df, :date)
+    csv_out = joinpath(output_dir, "optimized_vs_sensors_$(site_id)_$(code).csv")
+    CSV.write(csv_out, csv_df)
+    println("Saved: $csv_out")
 
     # ── All-layer profile / O₂ figures: depth-code-independent, write ONCE ────
     if code == depth_codes[1]
