@@ -9,16 +9,16 @@ spinup_days  = 364
 preroll_days = 364
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260706_wLab_flagS_Gup_3d_364d_siteSoilP"
+settingsdesc = "NeonExp_main20260706_wLab_flagS_Gup_3d_364d_ObsMedian_siteSoilP"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260722_1400"       # stable id so restart_from can reference it
+run_identifier = "20260728_1100"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
-calibrate             = true
-plot_eki_diagnostics  = true
+calibrate             = false
+plot_eki_diagnostics  = false
 run_prior_mean        = true
 
 [priors.soilCO2_reference_rate]
@@ -57,33 +57,40 @@ upper = 10.0
 site  = "NEON-ster"
 start = 2018-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-wood"
 start = 2018-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-wref"
 start = 2020-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-yell"
 start = 2020-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-scbi"
 start = 2018-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-serc"
 start = 2018-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"
 
 [[runs]]
 site  = "NEON-soap"
 start = 2019-01-01
 stop  = 2024-12-31
+restart_from = "20260721_1900"

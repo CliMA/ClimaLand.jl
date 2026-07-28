@@ -22,10 +22,10 @@ import TOML
 # Include the layers once into Main, in dependency order.
 include(joinpath(@__DIR__, "Config.jl"))
 include(joinpath(@__DIR__, "ResultsTable.jl"))
-include(joinpath(@__DIR__, "Observation_flag.jl"))
+include(joinpath(@__DIR__, "Observation_flag_median.jl"))
 include(joinpath(@__DIR__, "Calibration.jl"))
 include(joinpath(@__DIR__, "Diagnostics.jl"))
-include(joinpath(@__DIR__, "ForwardRun.jl"))
+include(joinpath(@__DIR__, "ForwardRun_median.jl"))
 
 using .Config
 using .ResultsTable

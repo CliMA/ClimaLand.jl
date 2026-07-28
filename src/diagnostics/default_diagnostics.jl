@@ -472,6 +472,12 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "precip",
         "tair",
         "sdr",
+        # Soil-surface energy fluxes. Their compute! methods already accept
+        # EnergyHydrology (and propagate to SoilCanopyModel/LandModel via
+        # get_component_diagnostics) reading p.soil.R_n / p.soil.turbulent_fluxes.
+        "soilrn",
+        "soillhf",
+        "soilshf",
     ]
 
     # Add diagnostics based on the top boundary condition type and runoff model
