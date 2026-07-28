@@ -466,12 +466,13 @@ end
 
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
-- `A0_inst`: instantaneous potential GPP (mol CO2 m^-2 s^-1), computed once per tendency evaluation and shared by the daily and annual A0 running sums
+- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel
+- `L_opt`: Optimal LAI predicted by Zhou et al.
 """
-ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (:area_index, :A0_inst)
+ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (:area_index, :OptVars, :L_opt)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} =
-    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},)
-ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface)
+    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},NamedTuple{(:A0, :χ,), Tuple{FT, FT}},FT)
+ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface, :surface,)
 
 # The optimal-LAI model's prognostic state is four time-integrated variables in `Y`,
 # all advanced smoothly by the time-stepper (no callback, checkpoint/restart-safe):
@@ -583,23 +584,56 @@ function ClimaLand.make_compute_exp_tendency(
     # `A0_annual`/`precip_annual` running means hold a one-year total for any `τ`.
     year = FT(365) * IP.day(IP.InsolationParameters(FT))
     specs = optimal_lai_tivs(component)
-    # Instantaneous quantity `f` for each variable declared in `optimal_lai_tivs`
-    # (a field or `lazy` broadcast). These close over the parent `canopy`, which is
-    # only in scope here, so they are supplied to the tendency rather than declared
-    # with the variables.
     computes = (;
-        A0_daily = (Y, p, t) -> p.canopy.biomass.A0_inst,
-        A0_annual = (Y, p, t) -> (@. lazy(year * p.canopy.biomass.A0_inst)),
+        A0_daily = (Y, p, t) -> p.canopy.biomass.OptVars.A0,
+        A0_annual = (Y, p, t) -> (@. lazy(year * p.canopy.biomass.OptVars.A0)),
         # P_liq/P_snow are negative-downward volume fluxes (m/s); negate for a positive total.
         precip_annual = (Y, p, t) -> (@. lazy(
             year * -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
         )),
-        LAI = (Y, p, t) -> compute_LAI_target(Y, p, canopy),
+        LAI = (Y, p, t) -> p.canopy.biomass.L_opt,
     )
     function compute_exp_tendency!(dY, Y, p, t)
-        # Compute the instantaneous potential GPP once (drivers, `par_d`, `βm` fresh
-        # after `update_aux`); both A0 reductions read it.
-        compute_A0_inst!(p.canopy.biomass.A0_inst, p, canopy)
+        zhou_model = component
+        parameters = zhou_model.parameters
+        static_inputs = zhou_mode.optimal_lai_inputs
+        pmodel_parameters = canopy.photosynthesis.parameters
+        pmodel_constants = canopy.photosynthesis.constants
+        fractional_c3 = canopy.photosynthesis.fractional_c3
+        earth_param_set = canopy.earth_param_set
+
+        @. p.canopy.biomass.OptVars = compute_A0_and_χ(
+            fractional_c3,
+            pmodel_parameters,
+            pmodel_constants,
+            earth_param_set,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            p.drivers.c_co2,
+            compute_PPFD(
+                p.canopy.radiative_transfer.par_d,
+                canopy.radiative_transfer.parameters.λ_γ_PAR,
+                pmodel_constants.lightspeed,
+                pmodel_constants.planck_h,
+                pmodel_constants.N_a,
+            ),
+            p.canopy.soil_moisture_stress.βm,
+        ) / pmodel_constants.Mc
+        
+        @. p.canopy.biomass.L_opt = compute_L_steady_target(
+            Y.canopy.biomass.A0_daily,
+            parameters.k,
+            Y.canopy.biomass.A0_annual,
+            parameters.z,
+            static_inputs.GSL,
+            parameters.sigma,
+            Y.canopy.biomass.precip_annual,
+            static_inputs.f0,
+            p.drivers.c_co2 * p.drivers.P_air,  # ca_pa: CO2 partial pressure (Pa)
+            p.canopy.biomass.OptVars.χ,
+            static_inputs.vpd_gs,
+        )
         ClimaLand.time_integrated_tendency!(
             dY.canopy.biomass,
             Y.canopy.biomass,

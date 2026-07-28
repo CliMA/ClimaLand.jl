@@ -3,7 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     compute_optimal_capacities,
-    compute_A0_daily
+    compute_A0
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -1463,7 +1463,7 @@ function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
 end
 
 """
-    compute_A0_daily(
+    compute_A0_and_χ(
         fractional_c3::FT,
         parameters::PModelParameters{FT},
         constants::PModelConstants{FT},
@@ -1475,7 +1475,7 @@ end
         βm::FT,
     ) where {FT}
 
-Compute daily potential GPP (A0) used in the optimal LAI model (Zhou et al. 2025).
+Compute potential GPP (A0) and ci/ca ratio used in the optimal LAI model (Zhou et al. 2025).
 
 This function computes the potential GPP assuming fAPAR = 1 (full light absorption),
 which represents the maximum carbon assimilation possible under given environmental
@@ -1485,29 +1485,25 @@ conditions. The result is in units of kg C m^-2 s^-1.
 - `fractional_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
 - `parameters`: PModelParameters containing cstar, beta, etc.
 - `constants`: PModelConstants containing physical constants
+- `earth_param_set`: Additional physical constants
 - `T_air::FT`: Air temperature (K)
 - `P_air::FT`: Atmospheric pressure (Pa)
-- `VPD::FT`: Vapor pressure deficit (Pa)
+- `q_air::FT`: Atmospheric specific humidity (Pa)
 - `ca::FT`: Ambient CO2 concentration (mol/mol)
-- `PPFD::FT`: Photosynthetic photon flux density (mol photons m^-2 s^-1)
+- `PPFD::FT`: Downwelling radiative flux in PAR band at the surface (moles photons/m^2/s)
 - `βm::FT`: Soil moisture stress factor (dimensionless, 0-1)
 
 # Returns
-- `A0_daily::FT`: Potential GPP with fAPAR=1 (kg C m^-2 s^-1)
-
-# Notes
-Used by the optimal LAI model to drive LAI dynamics. The moisture stress factor βm
-is included to capture water limitation effects on photosynthetic capacity.
-Air temperature is used (rather than canopy temperature) because A0 represents
-potential GPP under reference conditions, independent of energy balance feedbacks.
+- `A0::FT`: Potential GPP with fAPAR=1 (kg C m^-2 s^-1), χ = ci/ca (unitless)
 """
-function compute_A0_daily(
+function compute_A0_and_χ(
     fractional_c3::FT,
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
+    earth_param_set,
     T_air::FT,
     P_air::FT,
-    VPD::FT,
+    q_air::FT,
     ca::FT,
     PPFD::FT,
     βm::FT,
@@ -1532,7 +1528,13 @@ function compute_A0_daily(
 
     # Convert ca from mol/mol to partial pressure (Pa)
     ca_pp = ca * P_air
-
+    # Compute VPD
+    VPD = Thermodynamics.vapor_pressure_deficit(
+                LP.thermodynamic_parameters(earth_param_set),
+                T_air,
+                P_air,
+                q_air
+    )
     # Compute P-model intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
     Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
@@ -1569,7 +1571,7 @@ function compute_A0_daily(
     LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mprime_c4, Mc)
 
     # Daily potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD)
-    return PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3)
+    return PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3), blend(ci_c3, ci_c4, fractional_c3)
 end
 
 """
