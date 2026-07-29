@@ -35,8 +35,9 @@ export AbstractAtmosphericDrivers,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
     default_cos_zenith_angle,
-    prescribed_forcing_crujra
-
+    prescribed_forcing_crujra,
+    energy_flux_falling_snow,
+    energy_flux_falling_rain
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
 
@@ -1895,4 +1896,56 @@ function prescribed_forcing_crujra(
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
+end
+
+
+"""
+Equation 1 in "Two Simple and Accurate Approximations for Wet-Bulb Temperature in Moist Conditions, with Forecasting Applications" byt Knox, Nevius, and Knox.
+"""
+function wet_bulb_temperature(P::FT,T::FT,q::FT, thermo_params) where {FT}
+    RH = Thermodynamics.relative_humidity(thermo_params, T, P, q)*100 # in percent
+    T_C = T - 273.15
+    Twet = T_C*atan(FT(0.151977)*(RH+FT(8.313659))^FT(0.5))+atan(T_C+RH)-atan(RH-FT(1.676331))+FT(0.00391838)*RH^(1.5)*atan(FT(0.023101)*RH)-FT(4.686035)
+    return Twet + 273.15
+end
+
+"""
+    energy_flux_falling_snow(atmos, p, earth_param_set)
+
+Returns the energy flux of falling snow for a PrescribedAtmosphere,
+approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq.
+This is a negative internal energy, due the to negative contribution of
+the latent heat of melting to the energy of the snow,
+ and it neglects the sensible heat portion of the snow. The energy
+ is per unit volume of liquid water, and P_snow is expressed as
+the volume flux of liquid water resulting from the snow.
+
+This method can be extended to coupled simulations, where atmos is of type
+CoupledAtmosphere, and the energy flux of the falling snow is passed in the
+cache `p`. In that case, this should specify `atmos::PrescribedAtmosphere`.
+"""
+function energy_flux_falling_snow(atmos, p, earth_param_set)
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    ρe_snow = -_LH_f0 * _ρ_liq
+    return @. lazy(ρe_snow * p.drivers.P_snow)
+end
+
+"""
+    energy_flux_falling_rain(atmos, p, earth_param_set)
+
+Returns the energy flux of falling rain for a PrescribedAtmosphere,
+approximated as ρ_l e_l(T_atmos) * P_liq. The energy is per unit volume of liquid water,
+and P_liq is expressed as the volume flux of liquid water resulting from the rain.
+
+This method can be extended to coupled simulations, where atmos is of type
+CoupledAtmosphere, and the energy flux of the falling rain is passed in the
+cache `p`.  In that case, this should specify `atmos::PrescribedAtmosphere`.
+"""
+function energy_flux_falling_rain(atmos, p, earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    return @. lazy(
+        volumetric_internal_energy_liq(wet_bulb_temperature(p.drivers.P, p.drivers.T, p.drivers.q, thermo_params), earth_param_set) *
+        p.drivers.P_liq,
+    )
 end

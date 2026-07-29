@@ -402,12 +402,12 @@ NVTX.@annotate function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    e_flux_falling_snow = Snow.energy_flux_falling_snow(
+    e_flux_falling_snow = energy_flux_falling_snow(
         bc.atmos,
         p,
         model.parameters.earth_param_set,
     )
-    e_flux_falling_rain = Snow.energy_flux_falling_rain(
+    e_flux_falling_rain = energy_flux_falling_rain(
         bc.atmos,
         p,
         model.parameters.earth_param_set,
@@ -548,14 +548,12 @@ NVTX.@annotate function Soil.compute_infiltration_energy_flux(
 )
     FT = eltype(Y.soil.ϑ_l)
     earth_param_set = model.parameters.earth_param_set
-    infiltration_fraction = @. lazy(
-        Soil.compute_infiltration_fraction(p.soil.infiltration, liquid_influx),
-    )
+    e_flux_falling_rain =  energy_flux_falling_rain(atmos, p, earth_param_set)
     return @. lazy(
-        infiltration_fraction * (
+        Soil.compute_infiltration_fraction(p.soil.infiltration, liquid_influx) * (
             p.drivers.P_liq *
             p.bare_soil_fraction *
-            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
+            e_flux_falling_rain +
             p.snow.energy_runoff * p.snow.snow_cover_fraction
         ),
     )

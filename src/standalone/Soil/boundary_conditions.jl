@@ -996,10 +996,7 @@ function compute_infiltration_energy_flux(
     t,
 )
     earth_param_set = model.parameters.earth_param_set
-    return @. lazy(
-        p.soil.infiltration *
-        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set),
-    )
+    return energy_flux_falling_rain(atmos, p, earth_param_set)
 end
 
 """

@@ -1004,12 +1004,12 @@ NVTX.@annotate function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    e_flux_falling_snow = Snow.energy_flux_falling_snow(
+    e_flux_falling_snow = energy_flux_falling_snow(
         bc.atmos,
         p,
         model.parameters.earth_param_set,
     )
-    e_flux_falling_rain = Snow.energy_flux_falling_rain(
+    e_flux_falling_rain = energy_flux_falling_rain(
         bc.atmos,
         p,
         model.parameters.earth_param_set,
