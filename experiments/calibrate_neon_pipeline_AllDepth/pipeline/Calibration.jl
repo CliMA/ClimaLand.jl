@@ -63,6 +63,7 @@ global OBS_FILEPATH = ""
 global DT = 900.0
 global Caldepthnum = "0.00"
 global LABILE_ON = false
+global SOIL_SOURCE = "site"
 
 # ── Prior construction (variable-length) ─────────────────────────────────────
 "Build a combined prior distribution from an ordered Vector{Pair{name,Prior}}."
@@ -194,6 +195,7 @@ function run_calibration(run; obs_filepath, output_dir)
         global Caldepthnum = $caldepth_str
         global LABILE_ON = $labile_on
         global THETA_R = $(run.theta_r)
+        global SOIL_SOURCE = $(run.soil_source)
         ENV["NEON_START_DATE"] = $start_str
         ENV["NEON_STOP_DATE"] = $stop_str
         nothing

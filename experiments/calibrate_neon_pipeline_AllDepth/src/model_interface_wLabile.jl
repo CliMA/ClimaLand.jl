@@ -182,39 +182,44 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
-    retention_parameters = Soil.soil_vangenuchten_parameters(#rosetta_soil_vangenuchten_parameters(
-        land_domain.space.subsurface,
-        FT,
-    )
+    # Base map is Gupta ("site"/"gupta") or Rosetta ("rosetta"). SOIL_SOURCE is a
+    # worker global broadcast from Calibration.jl (defaults to "site").
+    retention_parameters = SOIL_SOURCE == "rosetta" ?
+        Soil.rosetta_soil_vangenuchten_parameters(land_domain.space.subsurface, FT) :
+        Soil.soil_vangenuchten_parameters(land_domain.space.subsurface, FT)
 
     # ── Override retention params with NEON per-site profiles ─────────────────
+    # Only when SOIL_SOURCE == "site"; "gupta"/"rosetta" keep the global map as-is.
     # Mutate the fields of the SAME object in place so the shared reference used
     # by the soil model, the canopy soil-moisture-stress model, and LandModel's
     # check_land_equality (θ_high == ν, exact ==) all stay consistent. Do NOT
     # build a second object here.
-    neon_dir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data"
-    sp = land_domain.space.subsurface
+    if SOIL_SOURCE == "site"
+        neon_dir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data"
+        sp = land_domain.space.subsurface
 
-    α_field = read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_alpha_1_m_2cm_mean.csv"),
-        "$(SITE_ID)_alpha_[1/m]", sp, FT)
-    n_field = read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_n_-_2cm_mean.csv"),
-        "$(SITE_ID)_n_[-]", sp, FT)
+        α_field = read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_alpha_1_m_2cm_mean.csv"),
+            "$(SITE_ID)_alpha_[1/m]", sp, FT)
+        n_field = read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_n_-_2cm_mean.csv"),
+            "$(SITE_ID)_n_[-]", sp, FT)
 
-    # hydrology_cm is a field of vanGenuchten structs → rebuild from α, n
-    retention_parameters.hydrology_cm .=
-        ((α, n) -> ClimaLand.Soil.vanGenuchten{FT}(; α, n)).(α_field, n_field)
+        # hydrology_cm is a field of vanGenuchten structs → rebuild from α, n
+        retention_parameters.hydrology_cm .=
+            ((α, n) -> ClimaLand.Soil.vanGenuchten{FT}(; α, n)).(α_field, n_field)
 
-    retention_parameters.K_sat .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_Ksat_m_s_2cm_mean.csv"),
-        "$(SITE_ID)_Ksat_[m/s]", sp, FT)
-    retention_parameters.ν .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_nu_m3_m3_2cm_mean.csv"),
-        "$(SITE_ID)_nu_[m3/m3]", sp, FT)
-    retention_parameters.θ_r .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_theta_r_m3_m3_2cm_mean.csv"),
-        "$(SITE_ID)_theta_r_[m3/m3]", sp, FT)
+        retention_parameters.K_sat .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_Ksat_m_s_2cm_mean.csv"),
+            "$(SITE_ID)_Ksat_[m/s]", sp, FT)
+        retention_parameters.ν .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_nu_m3_m3_2cm_mean.csv"),
+            "$(SITE_ID)_nu_[m3/m3]", sp, FT)
+        retention_parameters.θ_r .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_theta_r_m3_m3_2cm_mean.csv"),
+            "$(SITE_ID)_theta_r_[m3/m3]", sp, FT)
+    end
+    println("Soil parameter source: $(SOIL_SOURCE)")
 
     # Canopy with PModel (uses base TOML, not calibrated TOML)
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)

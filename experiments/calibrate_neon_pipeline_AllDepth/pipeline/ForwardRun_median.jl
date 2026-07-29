@@ -218,43 +218,47 @@ used_in = ["Land"]
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
-    # Build the Rosetta van Genuchten retention parameters ONCE and share the
-    # same object between the soil model (ν) and the canopy soil moisture stress
-    # model (θ_high). LandModel's check_land_equality asserts θ_high == ν with
-    # exact ==, so they must be the identical field, not two separate regrids.
-    retention_parameters = Soil.soil_vangenuchten_parameters(#rosetta_soil_vangenuchten_parameters(
-        land_domain.space.subsurface,
-        FT,
-    )
+    # Build the van Genuchten retention parameters ONCE and share the same object
+    # between the soil model (ν) and the canopy soil moisture stress model
+    # (θ_high). LandModel's check_land_equality asserts θ_high == ν with exact ==,
+    # so they must be the identical field, not two separate regrids.
+    # Base map is Gupta ("site"/"gupta") or Rosetta ("rosetta") — see run.soil_source.
+    retention_parameters = run.soil_source == "rosetta" ?
+        Soil.rosetta_soil_vangenuchten_parameters(land_domain.space.subsurface, FT) :
+        Soil.soil_vangenuchten_parameters(land_domain.space.subsurface, FT)
 
     # ── Override retention params with NEON per-site profiles ─────────────────
+    # Only when soil_source == "site"; "gupta"/"rosetta" keep the global map as-is.
     # Mutate the fields of the SAME object in place so the shared reference used
     # by the soil model, the canopy soil-moisture-stress model, and LandModel's
     # check_land_equality (θ_high == ν, exact ==) all stay consistent. Do NOT
     # build a second object here.
-    neon_dir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data"
-    sp = land_domain.space.subsurface
+    if run.soil_source == "site"
+        neon_dir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data"
+        sp = land_domain.space.subsurface
 
-    α_field = read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_alpha_1_m_2cm_mean.csv"),
-        "$(site_id)_alpha_[1/m]", sp, FT)
-    n_field = read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_n_-_2cm_mean.csv"),
-        "$(site_id)_n_[-]", sp, FT)
+        α_field = read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_alpha_1_m_2cm_mean.csv"),
+            "$(site_id)_alpha_[1/m]", sp, FT)
+        n_field = read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_n_-_2cm_mean.csv"),
+            "$(site_id)_n_[-]", sp, FT)
 
-    # hydrology_cm is a field of vanGenuchten structs → rebuild from α, n
-    retention_parameters.hydrology_cm .=
-        ((α, n) -> ClimaLand.Soil.vanGenuchten{FT}(; α, n)).(α_field, n_field)
+        # hydrology_cm is a field of vanGenuchten structs → rebuild from α, n
+        retention_parameters.hydrology_cm .=
+            ((α, n) -> ClimaLand.Soil.vanGenuchten{FT}(; α, n)).(α_field, n_field)
 
-    retention_parameters.K_sat .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_Ksat_m_s_2cm_mean.csv"),
-        "$(site_id)_Ksat_[m/s]", sp, FT)
-    retention_parameters.ν .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_nu_m3_m3_2cm_mean.csv"),
-        "$(site_id)_nu_[m3/m3]", sp, FT)
-    retention_parameters.θ_r .= read_neon_profile(
-        joinpath(neon_dir, "NEON_all_sites_theta_r_m3_m3_2cm_mean.csv"),
-        "$(site_id)_theta_r_[m3/m3]", sp, FT)
+        retention_parameters.K_sat .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_Ksat_m_s_2cm_mean.csv"),
+            "$(site_id)_Ksat_[m/s]", sp, FT)
+        retention_parameters.ν .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_nu_m3_m3_2cm_mean.csv"),
+            "$(site_id)_nu_[m3/m3]", sp, FT)
+        retention_parameters.θ_r .= read_neon_profile(
+            joinpath(neon_dir, "NEON_all_sites_theta_r_m3_m3_2cm_mean.csv"),
+            "$(site_id)_theta_r_[m3/m3]", sp, FT)
+    end
+    println("Soil parameter source: $(run.soil_source)")
 
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)
     conductance = PModelConductance{FT}(toml_dict_base)

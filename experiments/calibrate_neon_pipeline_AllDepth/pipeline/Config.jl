@@ -92,7 +92,20 @@ struct RunConfig
     # `nothing` => use the model's default θ_r. When set, it is also appended to
     # the run_identifier (see load_config) so its output dir is distinct.
     theta_r::Union{Float64, Nothing}
+    # source of the soil van Genuchten retention parameters:
+    #   "site"    => Gupta base map, then overridden with NEON per-site profiles
+    #                (current default behaviour),
+    #   "gupta"   => Soil.soil_vangenuchten_parameters (Gupta), no override,
+    #   "rosetta" => Soil.rosetta_soil_vangenuchten_parameters (Rosetta), no override.
+    # Read in ForwardRun[_median].jl and broadcast to the calibration workers via
+    # Calibration.jl → model_interface_wLabile.jl (global SOIL_SOURCE). NOTE: not
+    # appended to the output dir, so use `settingsdesc` to keep sources' outputs
+    # from overwriting one another.
+    soil_source::String
 end
+
+# Valid values for RunConfig.soil_source.
+const VALID_SOIL_SOURCES = ("site", "gupta", "rosetta")
 
 # ── Pipeline config ──────────────────────────────────────────────────────────
 struct PipelineConfig
@@ -336,6 +349,12 @@ function load_config(path::AbstractString; run_identifier = nothing)
         # distinct, as with the labile runs.
         theta_r = haskey(entry, "theta_r") ? Float64(entry["theta_r"]) : nothing
 
+        # Soil parameter source: per-run entry overrides [settings], default "site".
+        soil_source =
+            String(get(entry, "soil_source", get(settings, "soil_source", "site")))
+        soil_source in VALID_SOIL_SOURCES || error(
+            "Invalid soil_source \"$soil_source\"; must be one of $(VALID_SOIL_SOURCES)")
+
         for (start_date, stop_date) in _date_ranges(entry)
             # Pre-roll: move the SIMULATION start back so the model burns in over
             # real prior-year forcing. stop_date and spinup_days are untouched, so
@@ -344,7 +363,7 @@ function load_config(path::AbstractString; run_identifier = nothing)
             push!(runs, RunConfig(
                 site, start_date, stop_date, spinup, n_iter, cal_depth,
                 cal_depth_codes, settingsdesc, dt, output_root, id, restart_from,
-                priors, theta_r,
+                priors, theta_r, soil_source,
             ))
         end
     end
@@ -391,7 +410,7 @@ function run_from_env()
     return RunConfig(
         site, start_date, stop_date, spinup, n_iter, cal_depth,
         cal_depth_codes, settingsdesc, dt, output_root, id, nothing, priors,
-        nothing,
+        nothing, "site",
     )
 end
 

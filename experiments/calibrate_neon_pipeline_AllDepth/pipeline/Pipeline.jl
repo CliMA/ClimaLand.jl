@@ -22,10 +22,10 @@ import TOML
 # Include the layers once into Main, in dependency order.
 include(joinpath(@__DIR__, "Config.jl"))
 include(joinpath(@__DIR__, "ResultsTable.jl"))
-include(joinpath(@__DIR__, "Observation_flag_median.jl"))
+include(joinpath(@__DIR__, "Observation_flag.jl"))
 include(joinpath(@__DIR__, "Calibration.jl"))
 include(joinpath(@__DIR__, "Diagnostics.jl"))
-include(joinpath(@__DIR__, "ForwardRun_median.jl"))
+include(joinpath(@__DIR__, "ForwardRun.jl"))
 
 using .Config
 using .ResultsTable
@@ -70,7 +70,7 @@ function seed_from_restart(run, csv_path, output_root)
         run.site, run.start_date, run.stop_date, run.spinup_days,
         run.n_iterations, run.cal_depth, run.cal_depth_codes, run.settingsdesc,
         run.dt, run.output_root, run.run_identifier, run.restart_from, new_priors,
-        run.theta_r)
+        run.theta_r, run.soil_source)
 end
 
 """
@@ -92,7 +92,7 @@ function dedup_run_identifier(run)
             run.site, run.start_date, run.stop_date, run.spinup_days,
             run.n_iterations, run.cal_depth, run.cal_depth_codes, run.settingsdesc,
             run.dt, run.output_root, "$(base_id)_$(n)", run.restart_from,
-            run.priors, run.theta_r)
+            run.priors, run.theta_r, run.soil_source)
         ispath(Config.output_dir_for(new_run)) || break
         n += 1
     end
