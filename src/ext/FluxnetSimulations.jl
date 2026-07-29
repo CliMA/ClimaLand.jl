@@ -4,6 +4,12 @@ function prescribed_forcing_fluxnet end
 
 function prescribed_LAI_fluxnet end
 
+function prescribed_forcing_netcdf end
+
+function prescribed_LAI_netcdf end
+
+function get_location_netcdf end
+
 function make_set_fluxnet_initial_conditions end
 
 function get_data_dt end

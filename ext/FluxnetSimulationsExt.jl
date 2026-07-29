@@ -3,6 +3,8 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.TimeManager: ITime, date
+import ClimaUtilities.DataHandling
+import ClimaUtilities.FileReaders: DataSource
 using Thermodynamics
 using Dates
 using DelimitedFiles
@@ -12,6 +14,9 @@ import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Canopy
 export prescribed_forcing_fluxnet,
+    prescribed_forcing_netcdf,
+    prescribed_LAI_netcdf,
+    get_location_netcdf,
     make_set_fluxnet_initial_conditions,
     get_comparison_data,
     get_data_dates,

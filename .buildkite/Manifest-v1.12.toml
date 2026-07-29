@@ -511,9 +511,7 @@ weakdeps = ["CUDA", "MPI"]
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BandedMatrices", "BlockArrays", "ClimaComms", "ClimaInterpolations", "CubedSphere", "DataStructures", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "KrylovKit", "LLVM", "LazyBroadcast", "LinearAlgebra", "MultiBroadcastFusion", "NVTX", "PkgVersion", "Random", "RecursiveArrayTools", "RootSolvers", "SparseArrays", "StaticArrays", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "2e9334a72dc6af2a9fb04efd6945176a0410b143"
-repo-rev = "kp/multiple-columns"
-repo-url = "https://github.com/CliMA/ClimaCore.jl.git"
+path = "/home/kphan2/worktree/ClimaCore.jl/multiple-columns"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
 version = "0.14.55"
 weakdeps = ["CUDA", "GPUCompiler", "Krylov"]
@@ -574,12 +572,13 @@ weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables"]
     ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "PrettyTables"]
 
 [[deps.ClimaUtilities]]
-deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "ddf8d1ec6a0880eb1b31cf2180040769d3a1d9e3"
+deps = ["Artifacts", "ClimaComms", "ClimaCore", "Dates"]
+path = "/home/kphan2/worktree/ClimaUtilities.jl/multi-col-intp"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.30"
 
     [deps.ClimaUtilities.extensions]
+    ClimaUtilitiesClimaCoreClimaInterpolationsExt = ["ClimaCore", "ClimaInterpolations"]
     ClimaUtilitiesClimaCoreExt = "ClimaCore"
     ClimaUtilitiesClimaCoreInterpolationsExt = ["ClimaCore", "Interpolations"]
     ClimaUtilitiesClimaCoreNCDatasetsExt = ["ClimaCore", "NCDatasets"]
@@ -589,8 +588,8 @@ version = "0.1.30"
     [deps.ClimaUtilities.weakdeps]
     Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
     CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-    ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
     ClimaCoreTempestRemap = "d934ef94-cdd4-4710-83d6-720549644b70"
+    ClimaInterpolations = "dd0f122e-fa3b-47f3-bcf0-93bbc60d885e"
     Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
     NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 
