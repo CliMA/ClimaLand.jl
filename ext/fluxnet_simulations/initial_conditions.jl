@@ -242,10 +242,10 @@ function set_fluxnet_ic!(
         @. Y.canopy.photosynthesis.acclimated = compute_optimal_capacities(
             model.photosynthesis.parameters,
             model.photosynthesis.constants,
-            T_air_0,
-            P_air_0,
-            VPD_0,
-            c_co2_0,
+            FT(T_air_0),
+            FT(P_air_0),
+            FT(VPD_0),
+            FT(c_co2_0),
             βm,
             APAR_canopy_moles,
         )
