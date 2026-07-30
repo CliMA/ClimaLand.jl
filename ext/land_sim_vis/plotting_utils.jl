@@ -552,7 +552,7 @@ end
         start_date,
         stop_date,
         longlat;
-        data_source = "ERA",
+        data_source = "ERA5",
         plot_stem_name = "ERA5",
         spinup_date = start_date,
         short_names = ["lwu", "swu", "shf", "lhf"]
