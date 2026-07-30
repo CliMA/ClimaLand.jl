@@ -3,7 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     compute_optimal_capacities,
-    compute_A0
+    compute_A0_and_χ
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -222,7 +222,7 @@ struct PModel{
     OPFT <: PModelParameters{FT},
     OPCT <: PModelConstants{FT},
     F <: Union{FT, ClimaCore.Fields.Field},
-    T
+    T,
 } <: AbstractPhotosynthesisModel{FT}
     "Required parameters for the P-model of Stocker et al. (2020)"
     parameters::OPFT
@@ -264,32 +264,55 @@ function PModel{FT}(
         fractional_c3 = round.(fractional_c3)
     end
     F = typeof(fractional_c3)
-    tiv = (ClimaLand.TimeIntegratedVariable(;
-                                            name = :instantaneous,
-                                            reduction = ClimaLand.RunningMean(IP.day(IP.InsolationParameters(FT)) /
-                                            component.parameters.α),
-                                            component.parameters.α,
-                                            element_type = NamedTuple{
-                                                (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
-                                                NTuple{6, FT},
-                                            },
-                                            ),)
+    tiv = ClimaLand.time_integrated_variables(
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :acclimated,
+            reduction = ClimaLand.RunningMean(
+                IP.day(IP.InsolationParameters(FT)) / parameters.α,
+            ),
+            element_type = _pmodel_capacities_type(FT),
+        ),
+    )
     return PModel{FT, typeof(parameters), typeof(constants), F, typeof(tiv)}(
         parameters,
         constants,
         fractional_c3,
-        tiv
+        tiv,
     )
 end
 
-ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous,:optimal)
+"""
+    ClimaLand.auxiliary_vars(model::PModel)
+    ClimaLand.auxiliary_types(model::PModel)
+    ClimaLand.auxiliary_domain_names(model::PModel)
+
+Defines the auxiliary vars of the P-model:
+
+- `instantaneous`: a NamedTuple with the canopy-level net photosynthesis (`An`),
+    gross photosynthesis (`GPP`), dark respiration (`Rd`) and stomatal conductance
+    to CO2 (`gs_co2`), computed each step from the acclimated capacities.
+- `optimal`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
+    `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4`, holding the instantaneous optimal
+    capacities — the target that the prognostic acclimated capacities
+    `Y.canopy.photosynthesis.acclimated` relax toward (see `prognostic_vars`).
+"""
+# Element type of the optimal / acclimated capacity variables.
+_pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
+    (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
+    NTuple{6, FT},
+}
+
+ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous, :optimal)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
-    NamedTuple{(:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
-               NTuple{6, FT},
-               }
+    _pmodel_capacities_type(FT),
 )
-ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface,)
+ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface)
+
+# The P-model's prognostic variable is the acclimated optimal capacities, a
+# `RunningMean` time-integrated variable held in `Y` and advanced smoothly by the
+# time-stepper, relaxing toward the instantaneous optimum `p.canopy.photosynthesis.optimal`
+# weighted onto local solar noon (see `make_compute_exp_tendency`).
 
 ClimaLand.prognostic_vars(m::PModel) =
     ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
@@ -514,6 +537,19 @@ end
         constants::PModelConstants{FT},
         T_canopy::FT,
         P_air::FT,
+        VPD::FT,
+        ca::FT,
+        βm::FT,
+        APAR_canopy_moles::FT,
+    ) where {FT}
+
+    compute_optimal_capacities(
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        thermo_params,
+        T_canopy::FT,
+        T_air::FT,
+        P_air::FT,
         q_air::FT,
         ca::FT,
         βm::FT,
@@ -523,16 +559,22 @@ end
 Compute the instantaneous optimal photosynthetic capacities — the sensitivity of
 stomatal conductance to dryness `ξ`, `Vcmax25`, and `Jmax25` (C3 and C4 variants) —
 from the current environment, following Mengoli et al. (2022). These are the target
-the acclimated `AccVars` relaxes toward: the P-model `compute_exp_tendency!` advances
-`AccVars` as a `RunningMean` of this instantaneous optimum, applying the acclimation
-lag continuously through the time-stepper.
+the acclimated capacities relax toward: the P-model `compute_exp_tendency!` advances
+`Y.canopy.photosynthesis.acclimated` as a `RunningMean` of this instantaneous optimum,
+applying the acclimation lag continuously through the time-stepper.
+
+The second method computes the vapor pressure deficit from the atmospheric state,
+clipped away from zero since the P-model divides by `sqrt(VPD)`.
 
 Args:
 - `parameters`: PModelParameters object containing the model parameters.
 - `constants`: PModelConstants object containing the model constants.
+- `thermo_params`: Thermodynamic parameters, used to compute the VPD.
 - `T_canopy`: Canopy temperature (K).
+- `T_air`: Air temperature (K), used for the VPD.
 - `P_air`: Ambient air pressure (Pa).
 - `VPD`: Vapor pressure deficit (Pa).
+- `q_air`: Specific humidity of the air (kg/kg).
 - `ca`: Ambient CO2 concentration (mol/mol).
 - `βm`: Soil moisture stress factor (unitless).
 - `APAR_canopy_moles`: Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
@@ -550,8 +592,40 @@ function compute_optimal_capacities(
     constants::PModelConstants{FT},
     thermo_params,
     T_canopy::FT,
+    T_air::FT,
     P_air::FT,
     q_air::FT,
+    ca::FT,
+    βm::FT,
+    APAR_canopy_moles::FT,
+) where {FT}
+    VPD = max(
+        Thermodynamics.vapor_pressure_deficit(
+            thermo_params,
+            T_air,
+            P_air,
+            q_air,
+        ),
+        sqrt(eps(FT)),
+    )
+    return compute_optimal_capacities(
+        parameters,
+        constants,
+        T_canopy,
+        P_air,
+        VPD,
+        ca,
+        βm,
+        APAR_canopy_moles,
+    )
+end
+
+function compute_optimal_capacities(
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
     ca::FT,
     βm::FT,
     APAR_canopy_moles::FT,
@@ -593,12 +667,6 @@ function compute_optimal_capacities(
 
     ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    VPD =         Thermodynamics.vapor_pressure_deficit(
-        thermo_params,
-        T_air,
-        P_air,
-        q_air,
-    )
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -698,56 +766,59 @@ end
 """
     ClimaLand.make_compute_exp_tendency(component::PModel, canopy)
 
-Advances the acclimated optimal capacities `AccVars` as a `RunningMean`
-time-integrated variable, relaxing toward the instantaneous optimal capacities
-`AccVars_inst` (recomputed every step from the current environment) but with the
-relaxation rate weighted by a smooth window centered on local solar noon:
+Advances the acclimated optimal capacities `Y.canopy.photosynthesis.acclimated` as a
+`RunningMean` time-integrated variable, relaxing toward the instantaneous optimal
+capacities `p.canopy.photosynthesis.optimal` (recomputed every step from the current
+environment) but with the relaxation rate weighted by a smooth window centered on
+local solar noon:
 
-    dAccVars/dt = w(t) (AccVars_inst - AccVars) / τ,     τ = 1 day / α,
+    dacclimated/dt = w(t) (optimal - acclimated) / τ,    τ = 1 day / α,
 
     w(t) = exp(κ (cos θ - 1)) / ⟨exp(κ (cos θ - 1))⟩,    θ = 2π (t_UTC - noon) / day.
 
 `w` is the von Mises "midday window": it peaks at solar noon (computed per column
 from longitude, neglecting the equation of time) and is ≈ 0 at night, so the
 acclimation samples midday conditions as the P-model of Mengoli et al. (2022) and
-`main` intended. Since `AccVars_inst ∝ APAR` vanishes at night, an unweighted
+`main` intended. Since `optimal ∝ APAR` vanishes at night, an unweighted
 relaxation would instead average the optimum over the whole diurnal cycle and bias
-`AccVars` low in a daylength-dependent way. `w` is normalized to unit daily mean, so
-weighting reshapes the sub-daily forcing without changing the acclimation timescale
-`τ`: `α = 1` (τ = 1 day) gives fast acclimation and `α → 0` (τ → ∞) freezes `AccVars`.
-Because `AccVars` lives in `Y`, the acclimation is advanced smoothly by the
-time-stepper and is checkpoint/restart-safe.
+the acclimated capacities low in a daylength-dependent way. `w` is normalized to unit
+daily mean, so weighting reshapes the sub-daily forcing without changing the
+acclimation timescale `τ`: `α = 1` (τ = 1 day) gives fast acclimation and `α → 0`
+(τ → ∞) freezes the acclimated capacities. Because they live in `Y`, the acclimation
+is advanced smoothly by the time-stepper and is checkpoint/restart-safe.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::PModel{FT},
     canopy,
 ) where {FT}
+    reduction = component.time_integrated_vars.acclimated.reduction
+    seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
+    # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
+    # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
+    longitude = get_long(canopy.domain.space.surface)
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
+    # Gaussian-equivalent half-width of the midday window (s). At 1 h the acclimation
+    # target tracks the exact solar-noon optimum to ~0.95 (vs the daylength-diluted
+    # ~0.2-0.4 of an unweighted diurnal mean), while the ~16 min error from neglecting
+    # the equation of time shifts it by <0.3%. κ matches exp(-κ θ²/2) near noon to a
+    # Gaussian of this width.
+    noon_window_seconds = FT(3600)
+    κ = (seconds_in_a_day / FT(2π))^2 / noon_window_seconds^2
+    inv_norm = 1 / _noon_window_norm(κ)
+    start_date = try
+        canopy.boundary_conditions.atmos.start_date
+    catch
+        nothing
+    end
+    ω = FT(2π) / seconds_in_a_day
     function compute_exp_tendency!(dY, Y, p, t)
-        @. apply_time_reduction!(dY.canopy.photosynthesis.instantaneous, p.canopy.photosynthesis.optimal, Y.canopy.photosynthesis.instantaneous, component.time_integrated_vars.instantaneous)
-        # Compute weight
-        seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-        # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
-        # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
-        longitude = get_long(canopy.domain.space.surface)
-        local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
-        # Gaussian-equivalent half-width of the midday window (s). At 1 h the acclimation
-        # target tracks the exact solar-noon optimum to ~0.95 (vs the daylength-diluted
-        # ~0.2-0.4 of an unweighted diurnal mean), while the ~16 min error from neglecting
-        # the equation of time shifts it by <0.3%. κ matches exp(-κ θ²/2) near noon to a
-        # Gaussian of this width.
-        noon_window_seconds = FT(3600)
-        κ = (seconds_in_a_day / FT(2π))^2 / noon_window_seconds^2
-        inv_norm = 1 / _noon_window_norm(κ)
-        start_date = try
-            canopy.boundary_conditions.atmos.start_date
-        catch
-            nothing
-        end
-        
-        ω = FT(2π) / seconds_in_a_day
         tod = _seconds_of_day_utc(t, start_date, FT)
-        dY.canopy.photosynthesis.instantaneous .*= exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm
-
+        @. dY.canopy.photosynthesis.acclimated =
+            apply_time_reduction(
+                p.canopy.photosynthesis.optimal,
+                Y.canopy.photosynthesis.acclimated,
+                reduction,
+            ) ⊠ (exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
     end
     return compute_exp_tendency!
 end
@@ -788,8 +859,9 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     @. p.canopy.photosynthesis.optimal = compute_optimal_capacities(
         parameters,
         constants,
-        thermo_params
+        thermo_params,
         T_canopy,
+        T_air,
         P_air,
         q_air,
         c_co2_air,
@@ -797,26 +869,27 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         APAR_canopy_moles,
     )
 
-    @. p.canopy.photosynthesis.instantaneous = compute_blended_pmodel_photosynthesis(
-        Y.canopy.photosynthesis.instaneous,
-        model.fractional_c3,
-        P_air,
-        T_air,
-        q_air,
-        c_co2_air,
-        T_canopy,
-        fAPAR,
-        PAR,
-        λ_γ_PAR,
-        parameters,
-        constants,
-        thermo_params,
-        FT,
-    )
+    @. p.canopy.photosynthesis.instantaneous =
+        compute_blended_pmodel_photosynthesis(
+            Y.canopy.photosynthesis.acclimated,
+            model.fractional_c3,
+            P_air,
+            T_air,
+            q_air,
+            c_co2_air,
+            T_canopy,
+            fAPAR,
+            PAR,
+            λ_γ_PAR,
+            parameters,
+            constants,
+            thermo_params,
+            FT,
+        )
 end
 
 function compute_blended_pmodel_photosynthesis(
-    AccVars,
+    acclimated,
     fractional_c3,
     P_air,
     T_air,
@@ -831,7 +904,7 @@ function compute_blended_pmodel_photosynthesis(
     thermo_params,
     FT,
 )
-    (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = AccVars
+    (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = acclimated
     ca_pp = c_co2_air * P_air # partial pressure of co2
     VPD = Thermodynamics.vapor_pressure_deficit(
         thermo_params,
@@ -882,7 +955,8 @@ function compute_blended_pmodel_photosynthesis(
         constants.R,
         constants.oi,
     )
-    # compute instantaneous max photosynthetic rates and assimilation rates
+    # Fast responses: scale the acclimated capacities to the current canopy
+    # temperature to get the instantaneous Vcmax and Jmax, and the assimilation rates
     inst_temp_scaling_Jmax_factor = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -893,18 +967,18 @@ function compute_blended_pmodel_photosynthesis(
         constants.bS_Jmax,
         constants.R,
     )
-    Jmax_opt_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
-    Jmax_opt_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
+    Jmax_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
+    Jmax_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
 
     J_c3 = electron_transport_pmodel(
         c3_intrinsic_quantum_yield(T_canopy, parameters),
         APAR_canopy_moles,
-        Jmax_opt_c3,
+        Jmax_c3,
     )
     J_c4 = electron_transport_pmodel(
         c4_intrinsic_quantum_yield(T_canopy, parameters),
         APAR_canopy_moles,
-        Jmax_opt_c4,
+        Jmax_c4,
     )
 
     inst_temp_scaling_Vcmax_factor = inst_temp_scaling(
@@ -917,11 +991,11 @@ function compute_blended_pmodel_photosynthesis(
         constants.bS_Vcmax,
         constants.R,
     )
-    Vcmax_opt_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
-    Vcmax_opt_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
+    Vcmax_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
+    Vcmax_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
 
-    Ac_c3 = Vcmax_opt_c3 * c3_compute_mc(Γstar, ci_c3, Kmm)
-    Ac_c4 = Vcmax_opt_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
+    Ac_c3 = Vcmax_c3 * c3_compute_mc(Γstar, ci_c3, Kmm)
+    Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
 
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
@@ -929,7 +1003,7 @@ function compute_blended_pmodel_photosynthesis(
     Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ci_c4)
 
     # dark respiration
-    # Here we make an assumption about how to relate Rd25 to Vcmax25_opt
+    # Here we make an assumption about how to relate Rd25 to the acclimated Vcmax25
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
     # This function below would become c3_dark_respiration_pmodel
     Rd = blend(
@@ -971,34 +1045,34 @@ function compute_blended_pmodel_photosynthesis(
     return (; Rd, GPP, An, gs_co2)
 end
 
-get_Vcmax25_canopy(p, m::PModel) = @. lazy(
+get_Vcmax25_canopy(Y, p, m::PModel) = @. lazy(
     blend(
-        p.canopy.photosynthesis.AccVars.Vcmax25_c3,
-        p.canopy.photosynthesis.AccVars.Vcmax25_c4,
+        Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
+        Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
         m.fractional_c3,
     ),
 )
 
-get_Vcmax25_leaf(p, m::PModel) = @. lazy(
+get_Vcmax25_leaf(Y, p, m::PModel) = @. lazy(
     blend(
-        p.canopy.photosynthesis.AccVars.Vcmax25_c3,
-        p.canopy.photosynthesis.AccVars.Vcmax25_c4,
+        Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
+        Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
         m.fractional_c3,
     ) /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
-get_Rd_canopy(p, m::PModel) = p.canopy.photosynthesis.InstVars.Rd
+get_Rd_canopy(p, m::PModel) = p.canopy.photosynthesis.instantaneous.Rd
 get_Rd_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.InstVars.Rd /
+    p.canopy.photosynthesis.instantaneous.Rd /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
-get_An_canopy(p, m::PModel) = p.canopy.photosynthesis.InstVars.An
+get_An_canopy(p, m::PModel) = p.canopy.photosynthesis.instantaneous.An
 get_An_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.InstVars.An /
+    p.canopy.photosynthesis.instantaneous.An /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 
-get_GPP(p, m::PModel) = p.canopy.photosynthesis.InstVars.GPP
+get_GPP(p, m::PModel) = p.canopy.photosynthesis.instantaneous.GPP
 
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
     Jmax_c3, Jmax_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
@@ -1030,11 +1104,11 @@ function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmode
     )
     return @. (
         lazy(
-            p.canopy.photosynthesis.AccVars.Jmax25_c3 *
+            Y.canopy.photosynthesis.acclimated.Jmax25_c3 *
             inst_temp_scaling_factor,
         ),
         lazy(
-            p.canopy.photosynthesis.AccVars.Jmax25_c4 *
+            Y.canopy.photosynthesis.acclimated.Jmax25_c4 *
             inst_temp_scaling_factor,
         ),
     )
@@ -1422,13 +1496,19 @@ end
         ca::FT,
         PPFD::FT,
         βm::FT,
+        vpd_gs::FT,
     ) where {FT}
 
 Compute potential GPP (A0) and ci/ca ratio used in the optimal LAI model (Zhou et al. 2025).
 
 This function computes the potential GPP assuming fAPAR = 1 (full light absorption),
 which represents the maximum carbon assimilation possible under given environmental
-conditions. The result is in units of kg C m^-2 s^-1.
+conditions.
+
+`A0` responds to the instantaneous vapor pressure deficit, while `χ` is the
+growing-season value the water-limitation term of `LAI_max` calls for, and so is
+evaluated at the growing-season mean VPD `vpd_gs`. Both share the same optimal `ξ`,
+which depends on temperature and pressure only.
 
 # Arguments
 - `fractional_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
@@ -1437,13 +1517,15 @@ conditions. The result is in units of kg C m^-2 s^-1.
 - `earth_param_set`: Additional physical constants
 - `T_air::FT`: Air temperature (K)
 - `P_air::FT`: Atmospheric pressure (Pa)
-- `q_air::FT`: Atmospheric specific humidity (Pa)
+- `q_air::FT`: Atmospheric specific humidity (kg/kg)
 - `ca::FT`: Ambient CO2 concentration (mol/mol)
 - `PPFD::FT`: Downwelling radiative flux in PAR band at the surface (moles photons/m^2/s)
 - `βm::FT`: Soil moisture stress factor (dimensionless, 0-1)
+- `vpd_gs::FT`: Growing-season mean vapor pressure deficit (Pa)
 
 # Returns
-- `A0::FT`: Potential GPP with fAPAR=1 (kg C m^-2 s^-1), χ = ci/ca (unitless)
+- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), and
+  `χ = ci/ca` at the growing-season VPD (unitless)
 """
 function compute_A0_and_χ(
     fractional_c3::FT,
@@ -1456,6 +1538,7 @@ function compute_A0_and_χ(
     ca::FT,
     PPFD::FT,
     βm::FT,
+    vpd_gs::FT,
 ) where {FT}
     (; cstar, β_c3, β_c4) = parameters
     (;
@@ -1477,12 +1560,15 @@ function compute_A0_and_χ(
 
     # Convert ca from mol/mol to partial pressure (Pa)
     ca_pp = ca * P_air
-    # Compute VPD
-    VPD = Thermodynamics.vapor_pressure_deficit(
-                LP.thermodynamic_parameters(earth_param_set),
-                T_air,
-                P_air,
-                q_air
+    # VPD clipped away from zero (the P-model divides by sqrt(VPD)).
+    VPD = max(
+        Thermodynamics.vapor_pressure_deficit(
+            LP.thermodynamic_parameters(earth_param_set),
+            T_air,
+            P_air,
+            q_air,
+        ),
+        sqrt(eps(FT)),
     )
     # Compute P-model intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
@@ -1519,90 +1605,30 @@ function compute_A0_and_χ(
     LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mprime_c3, Mc)
     LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mprime_c4, Mc)
 
-    # Daily potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD)
-    return PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3), blend(ci_c3, ci_c4, fractional_c3)
-end
-
-"""
-    compute_chi(
-        pmodel_parameters,
-        pmodel_constants,
-        T::FT,
-        P_air::FT,
-        VPD::FT,
-        ca::FT,
-        fractional_c3::FT = FT(1),
-    ) where {FT}
-
-Compute the optimal ratio of intercellular to ambient CO2 (chi = ci/ca) using P-model.
-
-# Arguments
-- `pmodel_parameters`: P-model parameters (including β_c3 and β_c4)
-- `pmodel_constants`: P-model constants (including Gamma_star25, Kc25, Ko25, etc.)
-- `T::FT`: Temperature (K)
-- `P_air::FT`: Atmospheric pressure (Pa)
-- `VPD::FT`: Vapor pressure deficit (Pa)
-- `ca::FT`: Ambient CO2 mixing ratio (mol/mol)
-- `is_c3::FT`: C3 (1) or C4 (0) flag (default: C3)
-
-# Returns
-- `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85
-"""
-function compute_chi(
-    pmodel_parameters,
-    pmodel_constants,
-    T::FT,
-    P_air::FT,
-    VPD::FT,
-    ca::FT,
-    fractional_c3::FT = FT(1),
-) where {FT}
-    (; β_c3, β_c4) = pmodel_parameters
-    (;
-        R,
-        Kc25,
-        Ko25,
-        To,
-        ΔHkc,
-        ΔHko,
-        Drel,
-        ΔHΓstar,
-        Γstar25,
-        oi,
-        ρ_water,
-        vpd_ratio_min,
-        Γ_ratio_max,
-    ) = pmodel_constants
-
-    ca_pp = ca * P_air
-
-    # Compute P-model intermediates
-    Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T, To, ρ_water)
-    Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-
-    # Compute xi (sensitivity to dryness)
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-
-    # Compute ci and chi
-    ci_c3 = intercellular_co2_pmodel(
+    # χ = ci/ca at the growing-season VPD, as the LAI_max water limitation requires
+    ci_gs_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
         Γstar,
-        VPD,
+        max(vpd_gs, sqrt(eps(FT))),
         vpd_ratio_min,
         Γ_ratio_max,
     )
-    ci_c4 = intercellular_co2_pmodel(
+    ci_gs_c4 = intercellular_co2_pmodel(
         ξ_opt_c4,
         ca_pp,
         Γstar,
-        VPD,
+        max(vpd_gs, sqrt(eps(FT))),
         vpd_ratio_min,
         Γ_ratio_max,
     )
-    return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
+
+    # Potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD); LUE is
+    # in kg C per mol photon, so dividing by Mc returns it in mol C m^-2 s^-1.
+    return (;
+        A0 = PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3) / Mc,
+        χ = blend(ci_gs_c3, ci_gs_c4, fractional_c3) / ca_pp,
+    )
 end
 
 """

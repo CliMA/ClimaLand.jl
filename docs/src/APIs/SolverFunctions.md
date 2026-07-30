@@ -21,8 +21,8 @@ ClimaLand.AbstractTimeReduction
 ClimaLand.RunningMean
 ClimaLand.RunningSum
 ClimaLand.TimeIntegral
+ClimaLand.time_integrated_variables
 ClimaLand.time_integrated_prognostic_vars
-ClimaLand.time_integrated_tendency!
 ```
 
 ## Sources

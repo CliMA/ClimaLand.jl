@@ -397,10 +397,10 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
-get_Vcmax25_leaf(p, m::FarquharModel) = m.parameters.Vcmax25
+get_Vcmax25_leaf(Y, p, m::FarquharModel) = m.parameters.Vcmax25
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_Vcmax25_canopy(p, m::FarquharModel) =
+get_Vcmax25_canopy(Y, p, m::FarquharModel) =
     @. lazy(m.parameters.Vcmax25 * p.canopy.biomass.area_index.leaf)
 get_Rd_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.Rd * p.canopy.biomass.area_index.leaf)

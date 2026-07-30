@@ -203,7 +203,7 @@ function compute_stomatal_conductance!(
     conductance_model::PModelConductance,
 )
     (; Drel) = conductance_model.parameters
-    gs_co2 = p.canopy.photosynthesis.InstVars.gs_co2
+    gs_co2 = p.canopy.photosynthesis.instantaneous.gs_co2
     # Divide by LAI to get leaf level, approximately, and multiple by Drel to get for water instead of co2
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
@@ -329,6 +329,7 @@ end
     LandModel,
 } get_Rd_canopy(p, get_canopy(land_model).photosynthesis)
 @diagnostic_compute "vcmax25" Union{CanopyModel, SoilCanopyModel, LandModel} get_Vcmax25_canopy(
+    Y,
     p,
     get_canopy(land_model).photosynthesis,
 )

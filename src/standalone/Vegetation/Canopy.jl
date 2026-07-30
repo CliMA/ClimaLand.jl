@@ -8,6 +8,7 @@ using ClimaCore
 using ClimaCore.MatrixFields
 using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
+import ClimaCore.RecursiveApply: ⊠
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
@@ -32,6 +33,7 @@ import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
+    apply_time_reduction,
     make_compute_jacobian,
     get_drivers,
     get_model_callbacks,

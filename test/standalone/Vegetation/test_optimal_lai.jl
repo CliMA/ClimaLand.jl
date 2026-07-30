@@ -59,17 +59,19 @@ using ClimaCore
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
 
-            # Test auxiliary variables
+            # Test auxiliary variables: the instantaneous potential GPP and χ, and
+            # the steady-state LAI target. The static spatially varying inputs (GSL,
+            # vpd_gs, f0) are read from the model, not the cache.
             aux_vars = Canopy.auxiliary_vars(model)
             @test :area_index in aux_vars
-            @test :A0_inst in aux_vars
-            @test :GSL in aux_vars
-            @test :vpd_gs in aux_vars
-            @test :f0 in aux_vars
-            # the daily/annual accumulators and the noon-sampled target are not cache
-            # variables; A0_daily, A0_annual, and precip_annual are prognostic in Y
+            @test :OptVars in aux_vars
+            @test :L_opt in aux_vars
+            @test :GSL ∉ aux_vars
+            @test :vpd_gs ∉ aux_vars
+            @test :f0 ∉ aux_vars
+            # the daily/annual accumulators are not cache variables; A0_daily,
+            # A0_annual, and precip_annual are prognostic in Y
             @test :A0_daily_acc ∉ aux_vars
-            @test :L_steady ∉ aux_vars
             @test :A0_annual ∉ aux_vars
             @test :precip_annual ∉ aux_vars
 
@@ -213,8 +215,8 @@ using ClimaCore
             @test isfinite(PPFD)
         end
 
-        @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
-            # Test that optimal_lai_initial_conditions returns reasonable values
+        @testset "optimal_lai_static_inputs for single-point domains for FT = $FT" begin
+            # Test that optimal_lai_static_inputs returns reasonable values
             # for single-point domains at various locations (Fluxnet sites)
 
             test_sites = [
@@ -234,7 +236,7 @@ using ClimaCore
 
                 # Load initial conditions from global data file
                 optimal_lai_inputs =
-                    Canopy.optimal_lai_initial_conditions(surface_space)
+                    Canopy.optimal_lai_static_inputs(surface_space)
 
                 # Extract scalar values from Fields
                 GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
@@ -281,7 +283,7 @@ using ClimaCore
             end
         end
 
-        @testset "set_canopy_biomass_initial_conditions! for FT = $FT" begin
+        @testset "set_canopy_component_initial_conditions! for FT = $FT" begin
             # The prognostic state is set from the netCDF climatology at `set_ic!`
             # time, i.e. from a file rather than from the model.
             domain =
@@ -302,9 +304,11 @@ using ClimaCore
             Y = ClimaCore.Fields.FieldVector(;
                 canopy = (; biomass = biomass_state),
             )
-            ClimaLand.Simulations.set_canopy_biomass_initial_conditions!(
+            ClimaLand.Simulations.set_canopy_component_initial_conditions!(
                 Y,
+                nothing,
                 model,
+                nothing,
             )
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]

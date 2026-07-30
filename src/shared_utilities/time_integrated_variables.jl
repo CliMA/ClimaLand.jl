@@ -1,5 +1,4 @@
-export TimeIntegratedVariable,
-    RunningMean, RunningSum, TimeIntegral, time_integrated_tendency!
+export TimeIntegratedVariable, RunningMean, RunningSum, TimeIntegral
 
 import ClimaCore.RecursiveApply: ⊟, ⊠, rdiv
 
@@ -11,6 +10,9 @@ obeyed by the stored running statistic `X` given an instantaneous quantity `f` a
 a memory timescale `τ`.
 """
 abstract type AbstractTimeReduction end
+
+# Reductions are passed to `apply_time_reduction` inside `@.` expressions over fields.
+Base.broadcastable(r::AbstractTimeReduction) = tuple(r)
 
 """
     RunningMean{FT <: AbstractFloat} <: AbstractTimeReduction
@@ -42,13 +44,13 @@ struct RunningSum{FT <: AbstractFloat} <: AbstractTimeReduction
 end
 
 """
-    TimeIntegral{FT <: AbstractFloat} <: AbstractTimeReduction
+    TimeIntegral <: AbstractTimeReduction
 
 Pure time integral: `dX/dt = f`. Unlike the
 running reductions there is no trailing window — `X` accumulates `f` over all of
 time.
 """
-struct TimeIntegral <: AbstractTimeReduction
+struct TimeIntegral <: AbstractTimeReduction end
 
 """
     TimeIntegratedVariable
@@ -57,23 +59,22 @@ Declaration of a prognostic variable that stores a running reduction
 (`reduction`) of an instantaneous quantity `f`.
 
 Because the variable lives in the prognostic state `Y`, it is advanced by the
-model's time-stepper. A
-model that owns such variables derives its `prognostic_vars` (and the matching
-`_types` / `_domain_names`) from a tuple of specs via
-[`time_integrated_prognostic_vars`](@ref) and companions, and adds their
-tendencies with [`time_integrated_tendency!`](@ref).
+model's time-stepper. A model that owns such variables stores them (see
+[`time_integrated_variables`](@ref)) and derives its `prognostic_vars` (and the
+matching `_types` / `_domain_names`) from them via
+[`time_integrated_prognostic_vars`](@ref) and companions. Its
+`make_compute_exp_tendency` writes each tendency with `apply_time_reduction`.
 
 `f` (and hence `X`) may be scalar-valued or have a structured element type, e.g. a
 `NamedTuple`-valued field like the P-model acclimated capacities. `element_type`
-records that element type for the prognostic-state allocation; it defaults to the
-type of `timescale` (i.e. `FT`) for the common scalar case.
+records that element type for the prognostic-state allocation; it defaults to `FT`
+for the common scalar case.
 
 A spec holds only the declaration, so it is built once by the model that owns it
-(from its parameters) and used both to declare the prognostic variables and to add
-their tendencies. How `f` is computed is supplied separately, to
-[`time_integrated_tendency!`](@ref), since it generally closes over the parent
-model — the cache, grid and drivers are not in scope where a component declares
-its variables.
+(from its parameters) and stored in it. How `f` is computed is not part of the
+declaration: it is written where the tendency is, since it generally needs the
+cache, grid and drivers, which are not in scope where a component declares its
+variables.
 
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -81,9 +82,9 @@ $(DocStringExtensions.FIELDS)
 # Example
 ```julia
 # trailing ~1-year precipitation mean
-TimeIntegratedVariable(;
+TimeIntegratedVariable{FT}(;
     name = :precip_mean,
-    reduction = RunningMean(365*24*3600),
+    reduction = RunningMean(FT(365 * 24 * 3600)),
 )
 ```
 """
@@ -94,7 +95,7 @@ struct TimeIntegratedVariable{FT <: AbstractFloat, R <: AbstractTimeReduction}
     reduction::R
     "Domain the variable lives on (`:surface` or `:subsurface`)."
     domain_name::Symbol
-    "Element type of the stored field (defaults to `typeof(timescale)`; set explicitly for structured, e.g. `NamedTuple`-valued, variables)."
+    "Element type of the stored field (defaults to `FT`; set explicitly for structured, e.g. `NamedTuple`-valued, variables)."
     element_type::DataType
 end
 
@@ -113,6 +114,17 @@ function TimeIntegratedVariable{FT}(;
 end
 
 """
+    time_integrated_variables(specs::TimeIntegratedVariable...)
+
+Collect the [`TimeIntegratedVariable`](@ref)s a model owns into a NamedTuple keyed
+by their `name`s, the form a model stores them in: the declaration helpers below
+expand it into the prognostic-variable tuples, and the model's tendency reaches a
+single spec as `model.time_integrated_vars.<name>`.
+"""
+time_integrated_variables(specs::TimeIntegratedVariable...) =
+    NamedTuple{map(s -> s.name, specs)}(specs)
+
+"""
     time_integrated_prognostic_vars(specs)
     time_integrated_prognostic_types(specs)
     time_integrated_prognostic_domain_names(specs)
@@ -127,14 +139,13 @@ time_integrated_prognostic_types(specs) = map(s -> s.element_type, Tuple(specs))
 time_integrated_prognostic_domain_names(specs) =
     map(s -> s.domain_name, Tuple(specs))
 
-# Write the tendency dX/dt for the chosen reduction into the destination `dY` field
-# `dst`, given the instantaneous quantity `f` and current state `X`. Written with
-# ClimaCore.RecursiveApply operators (`⊟`, `rdiv`) so `f` and `X` may be scalar-valued
-# or have a structured element type (e.g. a NamedTuple-valued field, as for the P-model
-# capacities); for scalar `FT` these reduce to the ordinary `(f - X)/τ` and `f - X/τ`.
-# `f` may be a `lazy` broadcast, which fuses into the assignment with no allocation.
-@inline apply_time_reduction!(dst, f, X, r::RunningMean) =
-    (dst = rdiv(f ⊟ X, r.τ))
-@inline apply_time_reduction!(dst, f, X, r::RunningSum) =
-    (dst = rmul(f,r.τ) ⊟ rdiv(X, r.τ_long))
-@inline apply_time_reduction!(dst, f, X, ::TimeIntegral) = (dst = f)
+# Return the tendency dX/dt of the chosen reduction, given the instantaneous quantity
+# `f` and the current state `X`. Meant to be broadcast into the destination `dY` field:
+#     @. dY.component.name = apply_time_reduction(f, Y.component.name, r)
+# Written with ClimaCore.RecursiveApply operators (`⊟`, `⊠`, `rdiv`) so `f` and `X` may be
+# scalar-valued or have a structured element type (e.g. a NamedTuple-valued field, as for
+# the P-model capacities); for scalar `FT` these are the ordinary `(f - X)/τ` and
+# `(f τ - X)/τ_long`.
+@inline apply_time_reduction(f, X, r::RunningMean) = rdiv(f ⊟ X, r.τ)
+@inline apply_time_reduction(f, X, r::RunningSum) = rdiv(f ⊠ r.τ ⊟ X, r.τ_long)
+@inline apply_time_reduction(f, X, ::TimeIntegral) = f

@@ -237,16 +237,15 @@ function set_fluxnet_ic!(
             preprocess_func = x -> x + 273.15,# C to K
             val,
         )
-        thermo_params = LP.thermodynamic_parameters(model.earth_param_set)
         βm = FT(1)
         APAR_canopy_moles = FT(1e-3) # mol/m^2/s, from 1000 μmol/m^2/s
-        @. Y.canopy.photosynthesis.AccVars = compute_optimal_capacities(
+        @. Y.canopy.photosynthesis.acclimated = compute_optimal_capacities(
             model.photosynthesis.parameters,
             model.photosynthesis.constants,
             T_air_0,
             P_air_0,
             VPD_0,
-            c_co2_air_0,
+            c_co2_0,
             βm,
             APAR_canopy_moles,
         )

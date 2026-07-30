@@ -398,10 +398,10 @@ function setup_and_initialize_model(
 
     Y, p, _ = ClimaLand.initialize(land)
 
-    parent(p.canopy.photosynthesis.InstVars.An) .= NaN
-    parent(p.canopy.photosynthesis.InstVars.GPP) .= NaN
-    parent(p.canopy.photosynthesis.InstVars.Rd) .= NaN
-    parent(p.canopy.photosynthesis.InstVars.gs_co2) .= NaN
+    parent(p.canopy.photosynthesis.instantaneous.An) .= NaN
+    parent(p.canopy.photosynthesis.instantaneous.GPP) .= NaN
+    parent(p.canopy.photosynthesis.instantaneous.Rd) .= NaN
+    parent(p.canopy.photosynthesis.instantaneous.gs_co2) .= NaN
 
     set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
         ClimaLand.Artifacts.saturated_land_ic_path(;
@@ -462,13 +462,13 @@ end
     )
 
     # These quantities are weighted averages of c3
-    GPP1 = p_ones.canopy.photosynthesis.InstVars.GPP
-    Rd1 = p_ones.canopy.photosynthesis.InstVars.Rd
-    gs1 = p_ones.canopy.photosynthesis.InstVars.gs_co2
+    GPP1 = p_ones.canopy.photosynthesis.instantaneous.GPP
+    Rd1 = p_ones.canopy.photosynthesis.instantaneous.Rd
+    gs1 = p_ones.canopy.photosynthesis.instantaneous.gs_co2
 
-    GPP2 = p_ones2.canopy.photosynthesis.InstVars.GPP
-    Rd2 = p_ones2.canopy.photosynthesis.InstVars.Rd
-    gs2 = p_ones2.canopy.photosynthesis.InstVars.gs_co2
+    GPP2 = p_ones2.canopy.photosynthesis.instantaneous.GPP
+    Rd2 = p_ones2.canopy.photosynthesis.instantaneous.Rd
+    gs2 = p_ones2.canopy.photosynthesis.instantaneous.gs_co2
 
     @test isequal(parent(GPP1), parent(GPP2))
     @test isequal(parent(Rd1), parent(Rd2))
@@ -505,13 +505,13 @@ end
         land_half.canopy,
     )
 
-    GPP0 = p_zeros.canopy.photosynthesis.InstVars.GPP
-    Rd0 = p_zeros.canopy.photosynthesis.InstVars.Rd
-    gs0 = p_zeros.canopy.photosynthesis.InstVars.gs_co2
+    GPP0 = p_zeros.canopy.photosynthesis.instantaneous.GPP
+    Rd0 = p_zeros.canopy.photosynthesis.instantaneous.Rd
+    gs0 = p_zeros.canopy.photosynthesis.instantaneous.gs_co2
 
-    GPP_half = p_half.canopy.photosynthesis.InstVars.GPP
-    Rd_half = p_half.canopy.photosynthesis.InstVars.Rd
-    gs_half = p_half.canopy.photosynthesis.InstVars.gs_co2
+    GPP_half = p_half.canopy.photosynthesis.instantaneous.GPP
+    Rd_half = p_half.canopy.photosynthesis.instantaneous.Rd
+    gs_half = p_half.canopy.photosynthesis.instantaneous.gs_co2
 
     GPP_weighted = similar(GPP0)
     Rd_weighted = similar(Rd0)

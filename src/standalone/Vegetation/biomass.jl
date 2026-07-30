@@ -396,7 +396,7 @@ struct ZhouOptimalLAIModel{
     FS <: Union{FT, ClimaCore.Fields.Field},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
-    T
+    T,
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
@@ -437,18 +437,19 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
 
-Declares the prognostic time integrated variables:
-the 1-day potential-GPP total `A0_daily`,
-the smoothed 1-year totals `A0_annual`m
-the smoothed `precip_annual` as `RunningMean`s of the
-*annualized* instantaneous rate (`year · rate`), and `LAI` as a `RunningMean`
-relaxing toward the instantaneous steady-state target `L_opt`:
+Declares the prognostic time integrated variables: the 1-day potential-GPP total
+`A0_daily` and the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
+the instantaneous rate, and `LAI` as a `RunningMean` relaxing toward the
+instantaneous steady-state target `L_opt`:
 
-    dA0_daily/dt      = (day* A0_inst - A0_daily) / τ_day,              τ_day  = few days,
+    dA0_daily/dt      = (day·A0_inst - A0_daily) / τ_day,        τ_day  = 3 days,
     dA0_annual/dt     = (year·A0_inst - A0_annual) / τ_long,     τ_long = tau_long_term,
     dprecip_annual/dt = (year·P_inst  - precip_annual) / τ_long,
     dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
 
+Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
+smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
+as the LAI_max/steady-state formulas require.
 """
 function ZhouOptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT},
@@ -460,22 +461,33 @@ function ZhouOptimalLAIModel{FT}(
 ) where {FT <: AbstractFloat}
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
     tau_long_term = parameters.tau_long_term
-    tiv = (
-        ClimaLand.TimeIntegratedVariable(;
+    tiv = ClimaLand.time_integrated_variables(
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :A0_daily,
-            reduction = ClimaLand.RunningSum(seconds_per_day, seconds_per_day*3),
+            reduction = ClimaLand.RunningSum(
+                seconds_per_day,
+                3 * seconds_per_day,
+            ),
         ),
-        ClimaLand.TimeIntegratedVariable(;
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :A0_annual,
-                                         reduction = ClimaLand.RunningSum(365*seconds_per_day, tau_long_term),
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
         ),
-        ClimaLand.TimeIntegratedVariable(;
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :precip_annual,
-            reduction = ClimaLand.RunningSum(365*seconds_per_day, tau_long_term,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
         ),
-        ClimaLand.TimeIntegratedVariable(;
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :LAI,
-            reduction = ClimaLand.RunningMean(seconds_per_day / component.parameters.alpha),
+            reduction = ClimaLand.RunningMean(
+                seconds_per_day / parameters.alpha,
+            ),
         ),
     )
     return ZhouOptimalLAIModel{
@@ -485,7 +497,7 @@ function ZhouOptimalLAIModel{FT}(
         typeof(SAI),
         typeof(rooting_depth),
         typeof(height),
-        typeof(tiv)
+        typeof(tiv),
     }(
         parameters,
         optimal_lai_inputs,
@@ -493,7 +505,7 @@ function ZhouOptimalLAIModel{FT}(
         RAI,
         rooting_depth,
         height,
-        tiv
+        tiv,
     )
 end
 
@@ -507,10 +519,15 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel
 - `L_opt`: Optimal LAI predicted by Zhou et al.
 """
-ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (:area_index, :OptVars, :L_opt)
-ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} =
-    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},NamedTuple{(:A0, :χ,), Tuple{FT, FT}},FT)
-ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface, :surface,)
+ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
+    (:area_index, :OptVars, :L_opt)
+ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
+    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+    NamedTuple{(:A0, :χ), Tuple{FT, FT}},
+    FT,
+)
+ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
+    (:surface, :surface, :surface)
 
 ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
     ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
@@ -559,11 +576,12 @@ function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}
+    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
+    tivs = component.time_integrated_vars
     function compute_exp_tendency!(dY, Y, p, t)
-        ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
         zhou_model = component
         parameters = zhou_model.parameters
-        static_inputs = zhou_mode.optimal_lai_inputs
+        static_inputs = zhou_model.optimal_lai_inputs
         pmodel_parameters = canopy.photosynthesis.parameters
         pmodel_constants = canopy.photosynthesis.constants
         fractional_c3 = canopy.photosynthesis.fractional_c3
@@ -586,8 +604,9 @@ function ClimaLand.make_compute_exp_tendency(
                 pmodel_constants.N_a,
             ),
             p.canopy.soil_moisture_stress.βm,
-        ) / pmodel_constants.Mc
-        
+            static_inputs.vpd_gs,
+        )
+
         @. p.canopy.biomass.L_opt = compute_L_steady_target(
             Y.canopy.biomass.A0_daily,
             parameters.k,
@@ -597,15 +616,32 @@ function ClimaLand.make_compute_exp_tendency(
             parameters.sigma,
             Y.canopy.biomass.precip_annual,
             static_inputs.f0,
-            p.drivers.c_co2 * p.drivers.P_air,  # ca_pa: CO2 partial pressure (Pa)
+            p.drivers.c_co2 * p.drivers.P,  # ca_pa: CO2 partial pressure (Pa)
             p.canopy.biomass.OptVars.χ,
             static_inputs.vpd_gs,
         )
 
-        @. apply_time_reduction!(dY.canopy.biomass.A0_daily, p.canopy.biomass.OptVars.A0, Y.canopy.biomass.A0_daily, component.time_integrated_vars.A0_daily)
-        @. apply_time_reduction!(dY.canopy.biomass.A0_annual, p.canopy.biomass.OptVars.A0, Y.canopy.biomass.A0_annual, component.time_integrated_vars.A0_annual)
-        @. apply_time_reduction!(dY.canopy.biomass.precip_annual,  -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq, Y.canopy.biomass.precip_annual, component.time_integrated_vars.precip_annual)
-        @. apply_time_reduction!(dY.canopy.biomass.LAI, p.canopy.biomass.L_opt, Y.canopy.biomass.LAI, component.time_integrated_vars.LAI)
+        @. dY.canopy.biomass.A0_daily = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0,
+            Y.canopy.biomass.A0_daily,
+            tivs.A0_daily.reduction,
+        )
+        @. dY.canopy.biomass.A0_annual = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0,
+            Y.canopy.biomass.A0_annual,
+            tivs.A0_annual.reduction,
+        )
+        # P_liq/P_snow are negative-downward volume fluxes (m/s); negate for a positive total.
+        @. dY.canopy.biomass.precip_annual = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
+            Y.canopy.biomass.precip_annual,
+            tivs.precip_annual.reduction,
+        )
+        @. dY.canopy.biomass.LAI = apply_time_reduction(
+            p.canopy.biomass.L_opt,
+            Y.canopy.biomass.LAI,
+            tivs.LAI.reduction,
+        )
     end
     return compute_exp_tendency!
 end

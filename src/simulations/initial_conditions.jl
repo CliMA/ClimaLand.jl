@@ -414,12 +414,16 @@ end
         canopy,
     ) where {FT}
 
-Sets the PModel initial conditions. 
+Sets the PModel initial conditions: the acclimated capacities are those optimal for
+the initial atmospheric state under a nominal midday light level, rather than under
+the instantaneous one, so that a simulation starting at night does not begin with
+zero capacities and spend ~1 month (two e-folding timescales of α) climbing out of
+them.
 
-This method assumes that the acclimation is to the initial conditions of the simulation. Note that
-if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are
-zero, so it will take ~1 month (two e-folding timescales for α corresponding to 2 week acclimation
-timescale) for the model to reach a physically meaningful state.
+The capacities are canopy-level and linear in absorbed light, so the nominal light
+level is scaled by the vegetated fraction of the column: over an inland water cell,
+where the canopy area indices are masked to zero, the acclimated capacities start at
+zero as well, and no phantom canopy respiration is carried into the run.
 
 An alternative to this approach is to initialize the initial optimal values to some reasonable values
 based on a spun-up simulation.
@@ -432,7 +436,6 @@ function set_canopy_component_initial_conditions!(
 ) where {FT}
     parameters = model.parameters
     constants = model.constants
-    FT = eltype(parameters)
     # drivers
     P_air = p.drivers.P
     T_air = p.drivers.T
@@ -441,24 +444,24 @@ function set_canopy_component_initial_conditions!(
     T_canopy = T_air
     thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
     βm = FT(1)
-    VPD =
-        Thermodynamics.vapor_pressure_deficit.(
+    # nominal midday light (mol/m^2/s, from 1000 μmol/m^2/s) over the vegetated
+    # fraction of the column. This allocates, but only on initialization.
+    APAR_canopy_moles =
+        hasproperty(p, :lake_fraction) ? FT(1e-3) .* (1 .- p.lake_fraction) :
+        FT(1e-3)
+    @. Y.canopy.photosynthesis.acclimated =
+        ClimaLand.Canopy.compute_optimal_capacities(
+            parameters,
+            constants,
             thermo_params,
+            T_canopy,
             T_air,
             P_air,
             q_air,
-        ) # This allocates, but only on initialization.
-    APAR_canopy_moles = FT(1e-3) # mol/m^2/s, from 1000 μmol/m^2/s
-    @. Y.canopy.photosynthesis.AccVars = compute_optimal_capacities(
-        parameters,
-        constants,
-        T_canopy,
-        P_air,
-        VPD,
-        c_co2_air,
-        βm,
-        APAR_canopy_moles,
-    )
+            c_co2_air,
+            βm,
+            APAR_canopy_moles,
+        )
 
     return nothing
 end
@@ -550,6 +553,10 @@ function make_set_initial_state_from_file(
         )
 
         # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
         ds = NCDataset(ic_path, "r")
@@ -607,7 +614,7 @@ function make_set_initial_state_from_file(
             Y,
             p,
             land.canopy.photosynthesis,
-            canopy,
+            land.canopy,
         )
 
         # Lake IC
@@ -720,6 +727,10 @@ function make_set_initial_state_from_file(
             end
         end
         # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
         set_canopy_component_initial_conditions!(
             Y,
             p,
@@ -736,7 +747,7 @@ function make_set_initial_state_from_file(
             Y,
             p,
             land.canopy.photosynthesis,
-            canopy,
+            land.canopy,
         )
     end
     return set_ic!
@@ -1105,6 +1116,10 @@ function make_set_initial_state_from_atmos_and_parameters(
         Y.snow.U .= FT(0)
 
         # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
         set_canopy_component_initial_conditions!(
             Y,
@@ -1122,7 +1137,7 @@ function make_set_initial_state_from_atmos_and_parameters(
             Y,
             p,
             land.canopy.photosynthesis,
-            canopy,
+            land.canopy,
         )
 
         # Lake IC
