@@ -806,7 +806,7 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             _grav,
             _LH_f0,
         )
-        
+
         total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
         total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
@@ -1018,16 +1018,14 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
             T_sfc,
         ),
     )
-    q_sfc = @. lazy(
-        soil_specific_humidity(
-            T_sfc,
-            ρ_sfc,
-            ψ_sfc,
-            Tf_depressed_sfc,
-            earth_param_set,
-        ),
+    @. p.soil.sfc_scratch2 = soil_specific_humidity(
+        T_sfc,
+        ρ_sfc,
+        ψ_sfc,
+        Tf_depressed_sfc,
+        earth_param_set,
     )
-    return q_sfc
+    return p.soil.sfc_scratch2
 end
 
 function soil_specific_humidity(
@@ -1133,8 +1131,13 @@ function ClimaLand.get_update_surface_humidity_function(
         soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
     # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
     update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
-        (args...) ->
-            update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, Tf_depressed, qsat_sfc)
+        (args...) -> update_q_vap_sfc_at_a_point(
+            args...,
+            g_liq,
+            β_ice,
+            Tf_depressed,
+            qsat_sfc,
+        )
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,

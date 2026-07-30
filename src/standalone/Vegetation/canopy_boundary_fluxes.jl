@@ -321,8 +321,7 @@ function ClimaLand.get_update_surface_humidity_function(
     end
     # Closure
     update_q_vap_sfc_field(Cd, LAI, r, qc) =
-        (args...) ->
-            update_q_vap_sfc_at_a_point(args..., Cd, LAI, r, qc)
+        (args...) -> update_q_vap_sfc_at_a_point(args..., Cd, LAI, r, qc)
     return @. lazy(update_q_vap_sfc_field(Cd, LAI, r_stomata_canopy, q_canopy))
 end
 

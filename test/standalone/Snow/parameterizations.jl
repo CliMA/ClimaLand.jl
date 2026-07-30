@@ -54,7 +54,7 @@ for FT in (Float32, Float64)
             Δt,
             density = densitymodel,
             α_snow = α_snow,
-            surf_temp =Snow.EquilibriumGradientTemperatureModel{FT}(),
+            surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}(),
         )
         @test parameters.density.ρ_min == ρ_min
         @test typeof(parameters.density.ρ_min) == FT
@@ -193,16 +193,17 @@ for FT in (Float32, Float64)
             displ,
             P_atmos,
             T_atmos,
-            q_atmos, 
+            q_atmos,
             u_atmos,
             roughness_model,
             atmos_h,
             gustiness, #gustiness
             param_set,
-            Snow.EquilibriumGradientTemperatureModel{FT}())
-        @test result ==  T_bulk_test
+            Snow.EquilibriumGradientTemperatureModel{FT}(),
+        )
+        @test result == T_bulk_test
         #nonzero depth
-         result = Snow.solve_for_surface_temp_at_a_point(
+        result = Snow.solve_for_surface_temp_at_a_point(
             T_sfc_test,
             T_bulk_test,
             FT(1),
@@ -216,16 +217,17 @@ for FT in (Float32, Float64)
             displ,
             P_atmos,
             T_atmos,
-            q_atmos, 
+            q_atmos,
             u_atmos,
             roughness_model,
             atmos_h,
             gustiness, #gustiness
             param_set,
-             Snow.EquilibriumGradientTemperatureModel{FT}())
+            Snow.EquilibriumGradientTemperatureModel{FT}(),
+        )
         surface_flux_params = LP.surface_fluxes_parameters(param_set)
-        
-        T_sfc= result
+
+        T_sfc = result
         q_sfc = Snow.snow_surface_specific_humidity(
             T_sfc,
             q_l,
@@ -234,32 +236,39 @@ for FT in (Float32, Float64)
             q_atmos,
             atmos_h - h_sfc,
             surface_flux_params,
-            thermo_params
+            thermo_params,
         )
         _σ = LP.Stefan(param_set)
-        turb_fluxes = ClimaLand.compute_turbulent_fluxes_at_a_point(P_atmos,
-                                                                    T_atmos,
-                                                                    q_atmos,
-                                                                    u_atmos,
-                                                                    atmos_h,
-                                                                    T_sfc,
-                                                                    q_sfc,
-                                                                    roughness_model,
-                                                                    nothing,
-                                                                    nothing,
-                                                                    h_sfc,
-                                                                    displ,
-                                                                    (args...) -> FT(1),
-                                                                    (args...) -> FT(1),
-                                                                    gustiness,
-                                                                    param_set)
+        turb_fluxes = ClimaLand.compute_turbulent_fluxes_at_a_point(
+            P_atmos,
+            T_atmos,
+            q_atmos,
+            u_atmos,
+            atmos_h,
+            T_sfc,
+            q_sfc,
+            roughness_model,
+            nothing,
+            nothing,
+            h_sfc,
+            displ,
+            (args...) -> FT(1),
+            (args...) -> FT(1),
+            gustiness,
+            param_set,
+        )
         LW_n = -ϵ_snow * (LW_d - _σ * T_sfc^4)
-        d = Snow.surface_temp_scaling_length(κ_surf_test, ρ_surf_test, FT(1), param_set)
+        d = Snow.surface_temp_scaling_length(
+            κ_surf_test,
+            ρ_surf_test,
+            FT(1),
+            param_set,
+        )
         sfc_flux = (SW_net + LW_n + turb_fluxes[1] + turb_fluxes[2])
-        residual = (sfc_flux + κ_surf_test * (T_sfc - T_bulk_test)/d)
-        @test abs(residual)/abs(sfc_flux) < 0.01
+        residual = (sfc_flux + κ_surf_test * (T_sfc - T_bulk_test) / d)
+        @test abs(residual) / abs(sfc_flux) < 0.01
     end
-    
+
     @testset "Alternative parameterizations, FT = $FT" begin
         param_set = LP.LandParameters(toml_dict)
         m = Snow.WuWuSnowCoverFractionModel(

@@ -285,8 +285,8 @@ to satisfy Fourier's Law - that the sum of energy fluxes at the surface should e
 snow surface, i.e. Σ(F(T_sfc)) = -κ ∂T/∂x|ₓ₌ₛᵤᵣ, except for once the surface temperature reaches T_freeze, at which point
 leftover energy flux serves to warm up the bulk snow temperature.
 """
-struct EquilibriumGradientTemperatureModel{FT} <: AbstractSnowSurfaceTemperatureModel{FT}
-end
+struct EquilibriumGradientTemperatureModel{FT} <:
+       AbstractSnowSurfaceTemperatureModel{FT} end
 
 """
     AbstractSnowConductivityModel{FT}

@@ -150,8 +150,10 @@ This uses the atmospheric T, P, q from p.drivers.
 function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
     h_air = model.boundary_conditions.atmos.h
-    surface_flux_params = LP.surface_fluxes_parameters(model.parameters.earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    surface_flux_params =
+        LP.surface_fluxes_parameters(model.parameters.earth_param_set)
+    thermo_params =
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
 
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
@@ -161,7 +163,7 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
         p.drivers.q,
         h_air - h_sfc,
         surface_flux_params,
-        thermo_params
+        thermo_params,
     )
 
     return p.snow.q_sfc
@@ -200,7 +202,7 @@ function snow_surface_specific_humidity(
     q_air::FT,
     Δz::FT,
     surface_flux_params,
-    thermo_params
+    thermo_params,
 ) where {FT}
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
@@ -696,17 +698,18 @@ function update_q_vap_sfc_scheme(
     ρ_atmos = inputs.ρ_int
     Δz = inputs.Δz
     T_atmos = inputs.T_int
-    P_atmos = Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
+    P_atmos =
+        Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
 
-     q_sfc = snow_surface_specific_humidity(
-         T_sfc,
-         q_l,
-         T_atmos,
-         P_atmos,
-         q_atmos,
-         Δz,
-         param_set,
-         thermo_params
+    q_sfc = snow_surface_specific_humidity(
+        T_sfc,
+        q_l,
+        T_atmos,
+        P_atmos,
+        q_atmos,
+        Δz,
+        param_set,
+        thermo_params,
     )
     return q_sfc
 end
@@ -929,8 +932,17 @@ function solve_for_surface_temp_at_a_point(
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
     update_q(args...) = update_q_vap_sfc_scheme(args..., q_l)
-    update_T(args...) =
-        update_T_sfc_scheme(args..., q_l, T_bulk, κ_snow, d, _σ, ϵ_snow, SW_net, LW_d)
+    update_T(args...) = update_T_sfc_scheme(
+        args...,
+        q_l,
+        T_bulk,
+        κ_snow,
+        d,
+        _σ,
+        ϵ_snow,
+        SW_net,
+        LW_d,
+    )
     q_sfc = snow_surface_specific_humidity(
         T_initial_guess,
         q_l,
@@ -939,7 +951,7 @@ function solve_for_surface_temp_at_a_point(
         q_atmos,
         atmos_h - h_sfc,
         surface_flux_params,
-        thermo_params
+        thermo_params,
     )
 
     output = SurfaceFluxes.surface_fluxes(
