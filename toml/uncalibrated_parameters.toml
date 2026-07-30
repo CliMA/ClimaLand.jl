@@ -109,13 +109,25 @@ tag = "OptimalLAIModel"
 ["optimal_lai_z"]
 value = 12.227
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z_c4"]
+value = 12.227
+type = "float"
+description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation; effective z = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
 value = 1.1
 type = "float"
-description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
+description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma_c4"]
+value = 1.1
+type = "float"
+description = "Departure-from-square-wave sigma for C4 vegetation; effective sigma = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
@@ -134,6 +146,12 @@ tag = "OptimalLAIModel"
 value = 6.3072e7
 type = "float"
 description = "Long-term memory timescale (s) of the A0 and precipitation running-mean annual totals that set LAI_max and the steady-state LAI. Default 2 years (6.3072e7 s); a longer value filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle into the smoothed totals."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_c3c4"]
+value = 1.0
+type = "float"
+description = "Whether the C3 fraction (fractional_c3) is computed from the C3/C4 competition on the running-mean per-pathway potential GPP (1.0, default) or held fixed at the photosynthesis model's static value (0.0). The C4 GPP advantage (A0c4-A0c3)/A0c3 goes through a logistic to a C4 fraction, penalized by C3 tree-canopy shading (pyrealm/Lavergne, GPP-derived, no PFT)."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters
@@ -725,3 +743,10 @@ value = 0.0001
 type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
+
+["optimal_lai_z_a0"]
+value = 0.0
+type = "float"
+description = "Slope (mol^-1 m^2 yr) mapping the leaf cost z down where annual potential GPP A0 is high, raising the energy-limited cap 1-z/(k*A0) in the most-productive forests while leaving temperate/boreal (A0 below ~220) unchanged. Default 0.0 = uniform z. Targets the wet-tropical LAI deficit vs MODIS without over-shooting other biomes; derived from A0, no PFT."
+tag = "OptimalLAIModel"
+

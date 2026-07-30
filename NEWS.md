@@ -13,6 +13,24 @@ main
   custom initial-condition function must call `set_canopy_biomass_initial_conditions!`.
   Adds the `pra` diagnostic and the `optimal_lai_tau_long_term` parameter.
   PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] The optimal-LAI climate inputs now respond to the simulated
+  climate instead of being read from a frozen map: the transpiration fraction `f0` comes
+  from the aridity index, the growing-season VPD from an A0-weighted running mean, the
+  growing-season length from a trailing-year count of growing days, and the C3 fraction from
+  a C3/C4 competition on the per-pathway potential GPP (switchable off with
+  `optimal_lai_online_c3c4 = 0`). Adds five time-integrated variables to `Y`, seeded so each
+  starts at the artifact value it replaces. Also splits the leaf cost `z` and the
+  square-wave departure `sigma` by photosynthetic pathway, drops soil-moisture stress from
+  the potential GPP (water limitation now enters once, through `f0·P/A0`), sets
+  `optimal_lai_z` to 15.0 (was 21.4), and adds the `a0c3_annual`, `a0c4_annual` and
+  `fractional_c3` diagnostics. Only affects runs using prognostic LAI
+  (`ZhouOptimalLAIModel`). PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` no longer takes the `optimal_lai_inputs`
+  NamedTuple: its growing-season length, VPD and `f0` are derived from the simulated
+  climate, so the constructor is now `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI,
+  rooting_depth, height)` and the `domain`/`toml_dict` constructor has no
+  `optimal_lai_inputs` keyword. The artifact is still read, by `set_ic!`, to seed the
+  trailing totals. PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 
 v1.10.3
 -----

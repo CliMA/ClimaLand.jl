@@ -23,30 +23,30 @@ using ClimaCore
             @test params.tau_long_term isa FT
 
             # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI in #1794)
+            # against MODIS LAI in #1794; headline config promoted in #1815)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(21.4)
+            @test params.z ≈ FT(15.0)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
+            # C3/C4 two-PFT leaf-cost/shape params (#1815); default equals the C3
+            # value so pft_blend is a no-op until tuned.
+            @test params.z_c4 isa FT
+            @test params.sigma_c4 isa FT
+            @test params.z_c4 ≈ FT(15.0)
+            @test params.sigma_c4 ≈ FT(0.939)
+
+            # C3/C4 competition is on by default; z is uniform in A0 by default.
+            @test params.online_c3c4 ≈ FT(1)
+            @test params.z_a0 ≈ FT(0)
 
             @test eltype(params) == FT
         end
 
         @testset "ZhouOptimalLAIModel construction for FT = $FT" begin
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
-            # For unit tests, use scalar values for initial conditions
-            optimal_lai_inputs = (;
-                GSL = FT(240.0),
-                A0_annual = FT(258.0),
-                precip_annual = FT(1000.0),
-                vpd_gs = FT(1000.0),
-                lai_init = FT(2.0),
-                f0 = FT(0.65),
-            )
             model = Canopy.ZhouOptimalLAIModel{FT}(
-                params,
-                optimal_lai_inputs;
+                params;
                 SAI = FT(0.0),
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
@@ -54,34 +54,46 @@ using ClimaCore
             )
 
             @test model.parameters === params
-            @test model.optimal_lai_inputs === optimal_lai_inputs
             @test eltype(model) == FT
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
 
-            # Test auxiliary variables: the instantaneous potential GPP and χ, and
-            # the steady-state LAI target. The static spatially varying inputs (GSL,
-            # vpd_gs, f0) are read from the model, not the cache.
+            # Test auxiliary variables: the instantaneous potential GPP and χ, the
+            # steady-state LAI target, and the growing-season inputs (GSL, vpd_gs,
+            # f0), which are derived from the trailing climate totals in Y each step.
             aux_vars = Canopy.auxiliary_vars(model)
             @test :area_index in aux_vars
             @test :OptVars in aux_vars
             @test :L_opt in aux_vars
-            @test :GSL ∉ aux_vars
-            @test :vpd_gs ∉ aux_vars
-            @test :f0 ∉ aux_vars
+            @test :GSL in aux_vars
+            @test :vpd_gs in aux_vars
+            @test :f0 in aux_vars
             # the daily/annual accumulators are not cache variables; A0_daily,
             # A0_annual, and precip_annual are prognostic in Y
             @test :A0_daily_acc ∉ aux_vars
             @test :A0_annual ∉ aux_vars
             @test :precip_annual ∉ aux_vars
 
-            # A0_daily, A0_annual, precip_annual, and LAI are time-integrated
-            # prognostic variables in Y (running sums and a running mean).
-            @test Canopy.prognostic_vars(model) ==
-                  (:A0_daily, :A0_annual, :precip_annual, :LAI)
-            @test Canopy.prognostic_types(model) == (FT, FT, FT, FT)
+            # The optimal-LAI model carries the running-mean/running-sum climate
+            # inputs (A0, precip, PET, VPD·A0, growing-days, per-pathway A0) plus the
+            # prognostic LAI as time-integrated prognostic variables in Y. These are
+            # what the climate-tracking f0 / vpd_gs / GSL / C3-C4 inputs derive from.
+            optlai_prog = (
+                :A0_daily,
+                :A0_annual,
+                :precip_annual,
+                :PET_annual,
+                :VPDA0_annual,
+                :growing_days,
+                :A0c3_annual,
+                :A0c4_annual,
+                :LAI,
+            )
+            @test Canopy.prognostic_vars(model) == optlai_prog
+            @test Canopy.prognostic_types(model) ==
+                  ntuple(_ -> FT, length(optlai_prog))
             @test Canopy.prognostic_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface)
+                  ntuple(_ -> :surface, length(optlai_prog))
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -215,8 +227,34 @@ using ClimaCore
             @test isfinite(PPFD)
         end
 
-        @testset "optimal_lai_static_inputs for single-point domains for FT = $FT" begin
-            # Test that optimal_lai_static_inputs returns reasonable values
+        @testset "c3_fraction_from_competition for FT = $FT" begin
+            # Regression test for the dynamic C3/C4 competition (two bugs fixed in #1815).
+            # The tree-cover proxy must use REALIZED GPP (a0c3·Mc·fapar), not potential
+            # (fapar=1): potential GPP saturates the proxy and wrongly suppresses C4 in
+            # sparse grasslands. So a sparser canopy (lower realized fapar) → less tree
+            # suppression → MORE C4 → LOWER C3 fraction; using fapar=1 would invert this.
+            Mc = FT(0.012)  # kg C per mol
+            f = Canopy.c3_fraction_from_competition
+            c3_sparse = f(FT(100), FT(130), Mc, FT(0.5))
+            c3_dense = f(FT(100), FT(130), Mc, FT(1.0))
+            @test c3_sparse < c3_dense
+            # strong C3 GPP advantage → almost all C3
+            @test f(FT(120), FT(40), Mc, FT(0.8)) > FT(0.9)
+            # strong C4 advantage in a sparse canopy → almost all C4
+            @test f(FT(40), FT(120), Mc, FT(0.3)) < FT(0.1)
+            # fraction always in [0, 1]
+            for args in (
+                (FT(100), FT(130), Mc, FT(0.5)),
+                (FT(120), FT(40), Mc, FT(0.8)),
+                (FT(40), FT(120), Mc, FT(0.3)),
+            )
+                v = f(args...)
+                @test FT(0) <= v <= FT(1)
+            end
+        end
+
+        @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
+            # Test that optimal_lai_initial_conditions returns reasonable values
             # for single-point domains at various locations (Fluxnet sites)
 
             test_sites = [
@@ -236,7 +274,7 @@ using ClimaCore
 
                 # Load initial conditions from global data file
                 optimal_lai_inputs =
-                    Canopy.optimal_lai_static_inputs(surface_space)
+                    Canopy.optimal_lai_initial_conditions(surface_space)
 
                 # Extract scalar values from Fields
                 GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
@@ -310,20 +348,20 @@ using ClimaCore
                 model,
                 nothing,
             )
+            # the same climatology the IC reads, for the expected values
+            ic = Canopy.optimal_lai_initial_conditions(surface_space)
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
             A0_daily = Array(parent(Y.canopy.biomass.A0_daily))[1]
             precip_annual = Array(parent(Y.canopy.biomass.precip_annual))[1]
             # LAI starts at the MODIS observation in the same file
-            @test LAI ≈ Array(parent(model.optimal_lai_inputs.lai_init))[1]
+            @test LAI ≈ Array(parent(ic.lai_init))[1]
             @test FT(0) < LAI < FT(15)
             # the annual totals start at their (steady-state) climatology, and the
             # one-day total at the corresponding daily share
-            @test A0_annual ≈
-                  Array(parent(model.optimal_lai_inputs.A0_annual))[1]
+            @test A0_annual ≈ Array(parent(ic.A0_annual))[1]
             @test A0_daily ≈ A0_annual / FT(365)
-            @test precip_annual ≈
-                  Array(parent(model.optimal_lai_inputs.precip_annual))[1]
+            @test precip_annual ≈ Array(parent(ic.precip_annual))[1]
         end
     end
 end

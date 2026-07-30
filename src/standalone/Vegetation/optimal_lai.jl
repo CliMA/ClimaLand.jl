@@ -18,10 +18,16 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Light extinction coefficient (dimensionless), typically 0.5"""
     k::FT
-    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1), globally fitted as 12.227 mol m^-2 yr^-1"""
+    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation, globally fitted as 12.227 mol m^-2 yr^-1"""
     z::FT
-    """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
+    """Leaf cost `z` for C4 vegetation. The effective cost is blended by the dynamic
+    C3 fraction, `z_eff = fc3·z + (1-fc3)·z_c4` (see `pft_blend`); default equals `z`."""
+    z_c4::FT
+    """Dimensionless parameter representing departure from square-wave LAI dynamics for C3 vegetation, globally fitted as 0.771"""
     sigma::FT
+    """Departure-from-square-wave `sigma` for C4 vegetation. Blended by the dynamic C3
+    fraction, `sigma_eff = fc3·sigma + (1-fc3)·sigma_c4` (see `pft_blend`); default equals `sigma`."""
+    sigma_c4::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
     """Fraction of annual precipitation available for transpiration (dimensionless, 0-1).
@@ -33,6 +39,15 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
     filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
     tau_long_term::FT
+    """Whether the C3 fraction is computed from the C3/C4 competition on the
+    running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
+    photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
+    online_c3c4::FT
+    """Slope (mol^-1 m^2 yr) mapping the leaf-cost `z` down where potential GPP `A0` is
+    high, so the energy cap `1-z/(k*A0)` rises in the most-productive (tropical-forest)
+    regions without changing temperate/boreal. Default 0.0 = uniform `z`. See
+    `a0_mapped_z`."""
+    z_a0::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -49,12 +64,45 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     return OptimalLAIParameters{FT}(
         k = FT(toml_dict["optimal_lai_k"]),
         z = FT(toml_dict["optimal_lai_z"]),
+        z_c4 = FT(toml_dict["optimal_lai_z_c4"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
+        sigma_c4 = FT(toml_dict["optimal_lai_sigma_c4"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
         f0 = FT(toml_dict["optimal_lai_f0"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
+        online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
+        z_a0 = FT(toml_dict["optimal_lai_z_a0"]),
     )
 end
+
+"""
+    a0_mapped_z(z, A0_annual, z_a0)
+
+Map the leaf-cost parameter `z` down where the annual potential GPP `A0_annual` is high,
+so the energy-limited cap `1 - z/(k*A0)` rises in the most-productive forests. Diagnosis
+(PR #1815): the wet-tropical (Amazon/Congo) LAI deficit is capped by BOTH the water term
+AND the energy term sitting just below MODIS, and a uniform `z` low enough to lift the
+tropical cap over-shoots temperate/savanna. This makes `z` productivity-aware instead —
+`z_eff = max(z - z_a0·max(A0 - A0_ref, 0), 1)` — leaving temperate/boreal (A0 ≲ A0_ref)
+unchanged. `z_a0 = 0` is a no-op. Derived from A0 the model already tracks; no PFTs.
+"""
+function a0_mapped_z(z::FT, A0_annual::FT, z_a0::FT) where {FT}
+    A0_ref = FT(220)   # mol CO2 m^-2 yr^-1 — ~temperate A0; below this, z unchanged
+    excess = max(A0_annual - A0_ref, zero(FT))
+    return max(z - z_a0 * excess, one(FT))
+end
+
+"""
+    pft_blend(fractional_c3, v_c3, v_c4)
+
+Linearly blend a C3 and a C4 parameter value by the (dynamic) C3 fraction:
+`fractional_c3·v_c3 + (1-fractional_c3)·v_c4`. Used to give the optimal-LAI leaf cost
+`z` and square-wave departure `sigma` distinct C3/C4 values (a "two-PFT" C3/C4 split)
+without an external PFT map — `fractional_c3` is the model's own C3/C4 competition
+field. Branchless/GPU-safe; a no-op when `v_c3 == v_c4`.
+"""
+pft_blend(fractional_c3::FT, v_c3::FT, v_c4::FT) where {FT} =
+    fractional_c3 * v_c3 + (one(FT) - fractional_c3) * v_c4
 
 """
     compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
@@ -366,4 +414,73 @@ function compute_L_steady_target(
         compute_L_max(A0_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
     m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
     return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
+end
+
+"""
+    f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+
+Climate-responsive fraction of precipitation available for transpiration
+(Zhou et al. 2025): `f0 = 0.65·exp(−0.604·ln²(AI/1.9))` with aridity index
+`AI = PET_annual/precip_annual`. Peaks at 0.65 at the energy–water transition
+(AI = 1.9) and declines toward both the arid and humid extremes.
+"""
+function f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+    AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
+    return FT(0.65) * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
+end
+
+"""
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, Mc, fapar)
+
+Online C3 fraction from the pyrealm-style C3/C4 competition (GPP-derived, no PFT),
+using the running-mean per-pathway potential GPP `A0c3_annual`/`A0c4_annual`
+(mol CO2 m^-2 yr^-1) and the molar mass `Mc` (kg mol^-1). Steps (Lavergne/pyrealm):
+the proportional C4 GPP advantage `A4 = (A0c4 − A0c3)/A0c3` is passed through a
+logistic to an expected C4 fraction, which is then penalised by the proportion of
+C3-tree canopy (estimated from `A0c3`), so C4 is suppressed where C3 trees would
+shade it. Returns `fractional_c3 = 1 − frac_c4`.
+"""
+function c3_fraction_from_competition(
+    A0c3_annual::FT,
+    A0c4_annual::FT,
+    Mc::FT,
+    fapar::FT,
+) where {FT}
+    a0c3 = max(A0c3_annual, eps(FT))
+    # C4 GPP advantage is a ratio, so it is invariant to the potential→actual GPP
+    # scaling (fapar cancels); use the potential per-pathway means directly.
+    adv = (A0c4_annual - a0c3) / a0c3
+    frac_c4 = 1 / (1 + exp(-FT(6.63) * (adv / FT(ℯ) - FT(0.16))))
+    # C3-tree proportion from annual C3 GPP in kg m^-2 yr^-1 (tc(g)=a·g^b+c). The
+    # tc() relation (pyrealm/Lavergne) is fit to REALIZED GPP, so scale the potential
+    # a0c3 by the realized fAPAR — using potential GPP here saturates prop_trees and
+    # wrongly suppresses C4 in productive grasslands.
+    gppc3 = a0c3 * Mc * fapar
+    tc(g) = FT(15.60) * g^FT(1.41) - FT(7.72)
+    prop_trees = clamp(tc(gppc3) / tc(FT(2.8)), FT(0), FT(1))
+    frac_c4 *= (1 - prop_trees)
+    return 1 - frac_c4
+end
+
+"""
+    potential_evaporation(SW_d, LW_d, T_air, σ, λv, M_w)
+
+Net-radiation potential evaporation (mol H2O m^-2 s^-1) over a reference vegetated
+surface, the numerator of the aridity index `AI = PET_annual/precip_annual` that sets
+the climate-responsive `f0`. Uses the net-radiation option of Zhou et al.'s aridity
+input, `Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4)` (W m^-2), clipped at zero so
+night-time negative `Rn` does not draw down the running total.
+"""
+function potential_evaporation(
+    SW_d::FT,
+    LW_d::FT,
+    T_air::FT,
+    σ::FT,
+    λv::FT,
+    M_w::FT,
+) where {FT}
+    α_ref = FT(0.23)   # reference vegetated-surface albedo
+    ϵ_sfc = FT(0.97)   # reference surface emissivity
+    Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
+    return max(Rn, zero(FT)) / (λv * M_w)
 end

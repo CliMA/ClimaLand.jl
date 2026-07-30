@@ -114,7 +114,6 @@ function prescribed_lai_modis(
     )
 end
 
-
 """
      prescribed_climatological_lai_modis(surface_space,
                                          time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -148,7 +147,6 @@ function prescribed_climatological_lai_modis(
         method = time_interpolation_method,
     )
 end
-
 
 """
      modis_max_lai(surface_space,
@@ -376,10 +374,6 @@ water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
-- `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI_max and
-  steady-state-LAI formulas: GSL (growing season length in days), vpd_gs (growing-season
-  mean VPD in Pa), and f0 (fraction of precip for transpiration). Typically created using
-  `optimal_lai_inputs`, which reads them alongside the initial conditions.
 - `SAI`: Prescribed stem area index (m^2 m^-2)
 - `RAI`: Prescribed root area index (m^2 m^-2)
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
@@ -392,7 +386,6 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 struct ZhouOptimalLAIModel{
     FT,
     OLPT <: OptimalLAIParameters{FT},
-    GD,
     FS <: Union{FT, ClimaCore.Fields.Field},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
@@ -400,8 +393,6 @@ struct ZhouOptimalLAIModel{
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
-    "Spatially varying inputs of the LAI formulas (GSL, vpd_gs, f0)"
-    optimal_lai_inputs::GD
     "Prescribed stem area index (m^2 m^-2), scalar or Field"
     SAI::FS
     "Prescribed root area index (m^2 m^-2), scalar or Field"
@@ -418,8 +409,7 @@ Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
 
 """
     ZhouOptimalLAIModel{FT}(
-        parameters::OptimalLAIParameters{FT},
-        optimal_lai_inputs;
+        parameters::OptimalLAIParameters{FT};
         SAI,
         RAI,
         rooting_depth,
@@ -430,30 +420,33 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 
 # Arguments
 - `parameters`: OptimalLAIParameters for the model
-- `optimal_lai_inputs`: NamedTuple with the spatially varying GSL, vpd_gs and f0 fields,
-  typically created using `optimal_lai_inputs`.
 - `SAI`: Prescribed stem area index (m^2 m^-2); scalar or spatially-varying Field
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
 
 Declares the prognostic time integrated variables: the 1-day potential-GPP total
-`A0_daily` and the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
+`A0_daily`, the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
 the instantaneous rate, and `LAI` as a `RunningMean` relaxing toward the
 instantaneous steady-state target `L_opt`:
 
-    dA0_daily/dt      = (day·A0_inst - A0_daily) / τ_day,        τ_day  = 3 days,
-    dA0_annual/dt     = (year·A0_inst - A0_annual) / τ_long,     τ_long = tau_long_term,
+    dA0_daily/dt      = (day·A0 - A0_daily) / τ_day,             τ_day  = 3 days,
+    dA0_annual/dt     = (year·A0 - A0_annual) / τ_long,          τ_long = tau_long_term,
     dprecip_annual/dt = (year·P_inst  - precip_annual) / τ_long,
     dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
+
+Five further 1-year `RunningSum`s carry the climate the LAI formulas respond to,
+replacing what were static maps: `PET_annual` (over `precip_annual`, the aridity
+index behind `f0`), `VPDA0_annual` (over `A0_annual`, the A0-weighted growing-season
+VPD `vpd_gs`), `growing_days` (the growing-season length `GSL`), and the per-pathway
+pair `A0c3_annual`/`A0c4_annual` driving the C3/C4 competition.
 
 Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
 smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
 as the LAI_max/steady-state formulas require.
 """
 function ZhouOptimalLAIModel{FT}(
-    parameters::OptimalLAIParameters{FT},
-    optimal_lai_inputs;
+    parameters::OptimalLAIParameters{FT};
     SAI,
     RAI,
     rooting_depth,
@@ -484,6 +477,41 @@ function ZhouOptimalLAIModel{FT}(
             ),
         ),
         ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :PET_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :VPDA0_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :growing_days,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :A0c3_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :A0c4_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :LAI,
             reduction = ClimaLand.RunningMean(
                 seconds_per_day / parameters.alpha,
@@ -493,14 +521,12 @@ function ZhouOptimalLAIModel{FT}(
     return ZhouOptimalLAIModel{
         FT,
         typeof(parameters),
-        typeof(optimal_lai_inputs),
         typeof(SAI),
         typeof(rooting_depth),
         typeof(height),
         typeof(tiv),
     }(
         parameters,
-        optimal_lai_inputs,
         SAI,
         RAI,
         rooting_depth,
@@ -517,17 +543,27 @@ end
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
 - `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel
+- `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
 - `L_opt`: Optimal LAI predicted by Zhou et al.
+- `GSL`: growing season length (days), the trailing-year count of growing days
+- `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
+- `f0`: fraction of precipitation available for transpiration (dimensionless), from the aridity index
+
+`GSL`, `vpd_gs` and `f0` are recomputed each step in `update_biomass!` from the
+trailing climate totals in `Y`.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :OptVars, :L_opt)
+    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    NamedTuple{(:A0, :χ), Tuple{FT, FT}},
+    NamedTuple{(:A0, :A0_c3, :A0_c4, :χ), NTuple{4, FT}},
+    FT,
+    FT,
+    FT,
     FT,
 )
 ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface)
 
 ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
     ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
@@ -546,9 +582,10 @@ ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
     ) where {FT}
 
 Updates the optimal-LAI cache: sets SAI and RAI to their prescribed constant
-values and mirrors the prognostic `LAI` into the cache area index read by the rest
-of the canopy. LAI must be updated here first in `update_aux`, before radiative
-transfer reads the area index.
+values, derives the growing-season inputs of the LAI formulas (`f0`, `vpd_gs`,
+`GSL`) from the trailing climate totals in `Y`, and mirrors the prognostic `LAI`
+into the cache area index read by the rest of the canopy. LAI must be updated here
+first in `update_aux`, before radiative transfer reads the area index.
 """
 function update_biomass!(
     p,
@@ -560,6 +597,16 @@ function update_biomass!(
     (; SAI, RAI) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
+    # The water-limitation inputs track the simulated climate through the trailing
+    # totals in `Y`, so they are recomputed here in update_aux, before the tendency
+    # reads them for `L_opt`.
+    @. p.canopy.biomass.f0 = f0_from_aridity(
+        Y.canopy.biomass.PET_annual,
+        Y.canopy.biomass.precip_annual,
+    )
+    @. p.canopy.biomass.vpd_gs =
+        Y.canopy.biomass.VPDA0_annual / max(Y.canopy.biomass.A0_annual, eps(FT))
+    @. p.canopy.biomass.GSL = Y.canopy.biomass.growing_days
     @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
@@ -568,9 +615,36 @@ function update_biomass!(
 end
 
 """
+    update_fractional_c3!(p, Y, biomass::ZhouOptimalLAIModel, canopy)
+
+Resolves the C3 fraction from the C3/C4 competition on the trailing per-pathway
+potential GPP (`A0c3_annual`, `A0c4_annual`), rather than taking the P-model's
+static value. Setting `optimal_lai_online_c3c4 = 0` recovers that static value.
+"""
+function update_fractional_c3!(
+    p,
+    Y,
+    biomass::ZhouOptimalLAIModel{FT},
+    canopy,
+) where {FT}
+    online_c3c4 = biomass.parameters.online_c3c4
+    k = biomass.parameters.k
+    Mc = canopy.photosynthesis.constants.Mc
+    static_c3 = canopy.photosynthesis.fractional_c3
+    @. p.canopy.photosynthesis.fractional_c3 =
+        online_c3c4 * c3_fraction_from_competition(
+            Y.canopy.biomass.A0c3_annual,
+            Y.canopy.biomass.A0c4_annual,
+            Mc,
+            1 - exp(-k * Y.canopy.biomass.LAI),  # realized fAPAR
+        ) + (1 - online_c3c4) * static_c3
+    return nothing
+end
+
+"""
     ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
 
-Advances the optimal-LAI model's four time-integrated variables.
+Advances the optimal-LAI model's nine time-integrated variables.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
@@ -578,15 +652,32 @@ function ClimaLand.make_compute_exp_tendency(
 ) where {FT}
     ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
     tivs = component.time_integrated_vars
+    seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    earth_param_set = canopy.earth_param_set
+    σ = LP.Stefan(earth_param_set)
+    λv = LP.LH_v0(earth_param_set)              # J kg^-1
+    M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
+    parameters = component.parameters
+    pmodel_parameters = canopy.photosynthesis.parameters
+    pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
-        zhou_model = component
-        parameters = zhou_model.parameters
-        static_inputs = zhou_model.optimal_lai_inputs
-        pmodel_parameters = canopy.photosynthesis.parameters
-        pmodel_constants = canopy.photosynthesis.constants
-        fractional_c3 = canopy.photosynthesis.fractional_c3
-        earth_param_set = canopy.earth_param_set
+        # The C3 fraction resolved by the competition in `update_fractional_c3!`, so
+        # the potential GPP, chi and the C3/C4 parameter blends all track it.
+        fractional_c3 = p.canopy.photosynthesis.fractional_c3
+        VPD = @. lazy(
+            max(
+                Thermodynamics.vapor_pressure_deficit(
+                    LP.thermodynamic_parameters(earth_param_set),
+                    p.drivers.T,
+                    p.drivers.P,
+                    p.drivers.q,
+                ),
+                sqrt(eps(FT)),
+            ),
+        )
 
+        # A0 is a *potential* GPP, so it carries no soil-moisture stress (βm = 1);
+        # water limitation enters once, through the f0·P/A0 term of LAI_max.
         @. p.canopy.biomass.OptVars = compute_A0_and_χ(
             fractional_c3,
             pmodel_parameters,
@@ -603,22 +694,26 @@ function ClimaLand.make_compute_exp_tendency(
                 pmodel_constants.planck_h,
                 pmodel_constants.N_a,
             ),
-            p.canopy.soil_moisture_stress.βm,
-            static_inputs.vpd_gs,
+            one(FT),
+            p.canopy.biomass.vpd_gs,
         )
 
         @. p.canopy.biomass.L_opt = compute_L_steady_target(
             Y.canopy.biomass.A0_daily,
             parameters.k,
             Y.canopy.biomass.A0_annual,
-            parameters.z,
-            static_inputs.GSL,
-            parameters.sigma,
+            a0_mapped_z(
+                pft_blend(fractional_c3, parameters.z, parameters.z_c4),
+                Y.canopy.biomass.A0_annual,
+                parameters.z_a0,
+            ),
+            p.canopy.biomass.GSL,
+            pft_blend(fractional_c3, parameters.sigma, parameters.sigma_c4),
             Y.canopy.biomass.precip_annual,
-            static_inputs.f0,
+            p.canopy.biomass.f0,
             p.drivers.c_co2 * p.drivers.P,  # ca_pa: CO2 partial pressure (Pa)
             p.canopy.biomass.OptVars.χ,
-            static_inputs.vpd_gs,
+            p.canopy.biomass.vpd_gs,
         )
 
         @. dY.canopy.biomass.A0_daily = apply_time_reduction(
@@ -636,6 +731,44 @@ function ClimaLand.make_compute_exp_tendency(
             -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
             Y.canopy.biomass.precip_annual,
             tivs.precip_annual.reduction,
+        )
+        # Over `precip_annual` this is the aridity index behind `f0`.
+        @. dY.canopy.biomass.PET_annual = apply_time_reduction(
+            potential_evaporation(
+                p.drivers.SW_d,
+                p.drivers.LW_d,
+                p.drivers.T,
+                σ,
+                λv,
+                M_w,
+            ),
+            Y.canopy.biomass.PET_annual,
+            tivs.PET_annual.reduction,
+        )
+        # Over `A0_annual` this is `vpd_gs`, a VPD mean weighted toward the
+        # productive period rather than diluted by the dormant season.
+        @. dY.canopy.biomass.VPDA0_annual = apply_time_reduction(
+            VPD * p.canopy.biomass.OptVars.A0,
+            Y.canopy.biomass.VPDA0_annual,
+            tivs.VPDA0_annual.reduction,
+        )
+        # One growing-day per day with air T > 0 C, so the trailing-year total is the
+        # growing-season length in days.
+        @. dY.canopy.biomass.growing_days = apply_time_reduction(
+            ifelse(p.drivers.T > FT(273.15), 1 / seconds_per_day, zero(FT)),
+            Y.canopy.biomass.growing_days,
+            tivs.growing_days.reduction,
+        )
+        # The pure-C3/C4 pair drives the competition through (A0c4 - A0c3)/A0c3.
+        @. dY.canopy.biomass.A0c3_annual = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0_c3,
+            Y.canopy.biomass.A0c3_annual,
+            tivs.A0c3_annual.reduction,
+        )
+        @. dY.canopy.biomass.A0c4_annual = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0_c4,
+            Y.canopy.biomass.A0c4_annual,
+            tivs.A0c4_annual.reduction,
         )
         @. dY.canopy.biomass.LAI = apply_time_reduction(
             p.canopy.biomass.L_opt,
