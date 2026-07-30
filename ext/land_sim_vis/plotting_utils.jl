@@ -615,7 +615,7 @@ function compare_monthly_fluxes_with_data(
             dn;
         )
         model_dates = time_to_date.(model_time, start_date)
-        model_dt = model_dates[2] - model_dates[1]
+        model_dt = Month(model_dates[2]) - Month(model_dates[1])
         @assert(model_dt == Month(1)) || @error(
             "Diagnostic reduction period must be one month to plot partitioning diagnostics."
         )
