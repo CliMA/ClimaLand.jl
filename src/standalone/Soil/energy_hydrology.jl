@@ -1018,14 +1018,14 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
             T_sfc,
         ),
     )
-    @. p.soil.sfc_scratch2 = soil_specific_humidity(
+    @. p.soil.q_sfc = soil_specific_humidity(
         T_sfc,
         ρ_sfc,
         ψ_sfc,
         Tf_depressed_sfc,
         earth_param_set,
     )
-    return p.soil.sfc_scratch2
+    return p.soil.q_sfc
 end
 
 function soil_specific_humidity(
