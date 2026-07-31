@@ -473,7 +473,26 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 
 ## Stage 2 — pool-based autotrophic respiration
 
-- **status:** not_started
+- **status:** not_started — **unblocked, this is the next work**
+- **what it must do:** a new `AbstractAutotrophicRespirationModel` subtype that
+  reads `Rm` and `Rg` from the carbon pools instead of respiring prescribed area
+  indices, wired into `p.canopy.autotrophic_respiration.Ra`. Keep the JULES
+  model as the default constructor; select the new one explicitly.
+- **also owned by stage 2:** the decision on `autotrophic_respiration_Q10`,
+  which ships at **1.0** (temperature-insensitive). See the Q10 finding below
+  and MODEL.md §2.1.
+- **acceptance:** annual NPP/GPP in 0.3–0.6 at the forest and grassland sites,
+  and Ra neither collapsing to zero nor exceeding GPP in the annual mean at any
+  site.
+- **the current model already fails that criterion** at 4 of 20 sites (stage-0
+  baseline): Ra > GPP at `mojave_sw_us` and `alaska_north_slope`, Ra > 0 with
+  GPP = 0 at both true deserts.
+- **encouraging early sign:** with the pool-based `Rm` (computed but not yet
+  wired), sugar stays positive at `alaska_north_slope` and `mojave_sw_us`, and
+  both true deserts hold every pool at exactly zero. The pathology does not
+  reproduce. Wiring it is what makes that count.
+- **falsifiable prediction to check:** once Ra comes from the pools, Sahara Ra
+  must fall to ≈ 0, because the pools there are exactly zero.
 - **annual NPP/GPP by site:** —
 - **PBS job ids:** —
 - **notes:** —
