@@ -59,6 +59,10 @@ stop_date = DateTime(get(ENV, "STOP", "2002-09-01"))
 lai_mode = get(ENV, "LAI_MODE", "prescribed")
 lai_mode in ("prescribed", "prognostic") ||
     error("LAI_MODE must be \"prescribed\" or \"prognostic\", got $(lai_mode)")
+# CARBON=1 wraps the LAI model in the prognostic carbon pools. Under rule 1 this
+# must leave GPP and LAI untouched, which is exactly what the battery checks by
+# diffing against the CARBON=0 baselines.
+carbon_on = get(ENV, "CARBON", "0") == "1"
 
 root_path = get(ENV, "SITE_OUTDIR", "prognostic_carbon_$(site_name)")
 mkpath(root_path)
@@ -99,6 +103,7 @@ function setup_model(
     domain,
     toml_dict,
     lai_mode,
+    carbon_on,
 ) where {FT}
     surface_space = domain.space.surface
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
@@ -116,12 +121,23 @@ function setup_model(
 
     # Passing LAI selects PrescribedBiomassModel; omitting it makes the
     # constructor build the prognostic ZhouOptimalLAIModel instead.
-    land = if lai_mode == "prescribed"
-        LAI = ClimaLand.Canopy.prescribed_lai_modis(
+    LAI =
+        lai_mode == "prescribed" ?
+        ClimaLand.Canopy.prescribed_lai_modis(
             surface_space,
             start_date,
             stop_date,
-        )
+        ) : nothing
+    build(; kwargs...) =
+        isnothing(LAI) ?
+        LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            kwargs...,
+        ) :
         LandModel{FT}(
             forcing,
             LAI,
@@ -129,11 +145,42 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            kwargs...,
         )
-    else
-        LandModel{FT}(forcing, toml_dict, domain, Δt; prognostic_land_components)
-    end
-    return land
+
+    land = build()
+    carbon_on || return land
+
+    # Rebuild only the canopy, wrapping its own biomass model and reusing every
+    # other component object unchanged. Reconstructing the components instead
+    # would risk quietly diverging from the LandModel defaults - the integrated
+    # model, for instance, swaps in a different soil-moisture stress model than
+    # the standalone canopy default - and any such difference would show up as
+    # an apparent rule-1 violation that is really a harness bug.
+    c = land.canopy
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(;
+        autotrophic_respiration = c.autotrophic_respiration,
+        radiative_transfer = c.radiative_transfer,
+        photosynthesis = c.photosynthesis,
+        conductance = c.conductance,
+        soil_moisture_stress = c.soil_moisture_stress,
+        hydraulics = c.hydraulics,
+        energy = c.energy,
+        sif = c.sif,
+        biomass = ClimaLand.Canopy.PrognosticCarbonModel{FT}(
+            c.biomass,
+            toml_dict,
+        ),
+        boundary_conditions = c.boundary_conditions,
+        earth_param_set = c.earth_param_set,
+        domain = c.domain,
+    )
+    return build(;
+        soil = land.soil,
+        soilco2 = land.soilco2,
+        snow = land.snow,
+        canopy,
+    )
 end
 
 longlat = (site_lon, site_lat)
@@ -144,7 +191,16 @@ domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple);
 surface_space = domain.space.surface
 toml_dict = LP.create_toml_dict(FT; override_files)
 
-model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, lai_mode);
+model = setup_model(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    toml_dict,
+    lai_mode,
+    carbon_on,
+);
 
 # In-memory diagnostics so the baseline metrics can be pulled straight out of
 # the writer without a NetCDF round-trip.
@@ -159,7 +215,7 @@ diagnostics = ClimaLand.default_diagnostics(
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
 @info "Prognostic-carbon single-column battery site"
-@info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode"
+@info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode  carbon: $carbon_on"
 @info "Timestep: $Δt s   Window: $start_date -> $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation);
@@ -183,6 +239,7 @@ open(joinpath(root_path, "carbon_metrics.txt"), "w") do io
     println(io, "lon $site_lon")
     println(io, "lat $site_lat")
     println(io, "lai_mode $lai_mode")
+    println(io, "carbon $(carbon_on ? 1 : 0)")
     println(io, "start $start_date")
     println(io, "stop $stop_date")
     println(io, "dt $Δt")
@@ -207,6 +264,31 @@ open(joinpath(root_path, "carbon_metrics.txt"), "w") do io
         any(keep) || (keep = dates .>= start_date + Day(20))
         println(io, "$label $(conv(mean(values[keep])))")
         println(io, "$(label)_n $(count(keep))")
+    end
+end
+
+# Final pool state. There is no registered ClimaDiagnostic for the pools yet, so
+# these are read straight off the integrator rather than through the writer.
+# End-of-run values, not means: the pools are still filling (stem turnover is
+# decades), so a mean over the run would understate them and mean nothing.
+if carbon_on
+    Yf = simulation._integrator.u
+    pf = simulation._integrator.p
+    scalar(field) = first(Array(parent(field)))
+    open(joinpath(root_path, "carbon_metrics.txt"), "a") do io
+        for (label, field) in (
+            ("C_sugar_kgC_m2", Yf.canopy.biomass.C_sugar),
+            ("C_leaf_kgC_m2", Yf.canopy.biomass.C_leaf),
+            ("C_stem_kgC_m2", Yf.canopy.biomass.C_stem),
+            ("C_root_kgC_m2", Yf.canopy.biomass.C_root),
+            ("cVeg_kgC_m2", pf.canopy.biomass.cVeg),
+            ("sigma_l_implied_kgC_m2leaf", pf.canopy.biomass.σl_implied),
+            ("Rm_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Rm),
+            ("Ra_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Ra),
+            ("S_alloc_kgC_m2_s", pf.canopy.biomass.carbon.S),
+        )
+            println(io, "$label $(scalar(field))")
+        end
     end
 end
 

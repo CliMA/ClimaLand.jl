@@ -422,6 +422,41 @@ end
     set_canopy_component_initial_conditions!(
         Y,
         p,
+        model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+        canopy,
+    ) where {FT}
+
+Sets the initial live carbon pools, and - importantly - forwards to the wrapped
+LAI model's own initial conditions first. Without that forwarding a carbon model
+wrapping `ZhouOptimalLAIModel` would fall through to the generic no-op method,
+leaving all nine of the optimal-LAI time-integrated variables at zero and
+changing the simulated LAI.
+
+The pools themselves start empty. They cannot be seeded from LAI here because
+the area-index cache has not been filled at this point in initialization, and a
+seed read from it would silently be zero anyway. Starting empty is also honest:
+the pools bootstrap from GPP, and the stem pool's turnover time of decades means
+no short run reaches equilibrium regardless. Filling them properly is what the
+offline spinup exists to do.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    set_canopy_component_initial_conditions!(Y, p, model.lai_model, canopy)
+    Y.canopy.biomass.C_sugar .= FT(0)
+    Y.canopy.biomass.C_leaf .= FT(0)
+    Y.canopy.biomass.C_stem .= FT(0)
+    Y.canopy.biomass.C_root .= FT(0)
+    return nothing
+end
+
+"""
+    set_canopy_component_initial_conditions!(
+        Y,
+        p,
         model::ClimaLand.Canopy.PModel{FT},
         canopy,
     ) where {FT}

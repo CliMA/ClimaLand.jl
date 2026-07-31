@@ -45,6 +45,7 @@ SUBSET="${SUBSET:-}"
 LAI_MODE="${LAI_MODE:-prescribed}"   # prescribed MODIS LAI for stages 1-3; prognostic Zhou from stage 4
 SPINUP_YEARS="${SPINUP_YEARS:-1}"    # years excluded from the reported means
 DT="${DT:-450.0}"
+CARBON="${CARBON:-0}"           # 1 = wrap the LAI model in the prognostic carbon pools
 # Parameter overrides; empty = branch default (see site_driver.jl).
 OPT_Z="${OPT_Z:-}"; OPT_Z_C4="${OPT_Z_C4:-}"
 OPT_SIGMA="${OPT_SIGMA:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
@@ -55,7 +56,7 @@ ONLINE_C3C4="${ONLINE_C3C4:-}"
 # can report the node's physical cores from inside a cpuset). Keep the PBS
 # select mem >= NPAR*3 GB.
 NPAR="${NPAR:-8}"
-echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE spinup_years=$SPINUP_YEARS npar=$NPAR runroot=$RUNROOT"
+echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE carbon=$CARBON spinup_years=$SPINUP_YEARS npar=$NPAR runroot=$RUNROOT"
 
 # Precompile once up front so the concurrent workers hit a warm cache.
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
@@ -67,6 +68,7 @@ run_site() {
     mkdir -p "$SITEDIR"
     if START="$START" STOP="$STOP" DT="$DT" SITE_LON="$lon" SITE_LAT="$lat" \
         SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" LAI_MODE="$LAI_MODE" \
+        CARBON="$CARBON" \
         SPINUP_YEARS="$SPINUP_YEARS" \
         OPT_Z="$OPT_Z" OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA="$OPT_SIGMA" \
         OPT_SIGMA_C4="$OPT_SIGMA_C4" OPT_ALPHA="$OPT_ALPHA" F0="$F0" \
@@ -97,15 +99,17 @@ nfail=$(grep -rl '^FAIL$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
 # Baseline table: one row per site, tab-separated, for pasting into STATE.md.
 SUMMARY="$RUNROOT/baseline_summary.tsv"
 {
-    printf 'site\tbiome\tGPP_gC_m2_day\tRa_gC_m2_day\tRh_gC_m2_day\tLAI\tTair_K\tSWC\n'
+    printf 'site\tbiome\tGPP_gC_m2_day\tRa_gC_m2_day\tRh_gC_m2_day\tLAI\tTair_K\tSWC\tC_sugar\tC_leaf\tC_stem\tC_root\tcVeg\tsigma_l_implied\n'
     while IFS=, read -r lon lat biome name; do
         [[ "$lon" =~ ^# || "$lon" == "lon" || -z "$lon" ]] && continue
         m="$RUNROOT/$name/out/carbon_metrics.txt"
         [[ -f "$m" ]] || continue
         get() { awk -v k="$1" '$1==k{print $2}' "$m"; }
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$biome" \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$biome" \
             "$(get GPP_gC_m2_day)" "$(get Ra_gC_m2_day)" "$(get Rh_gC_m2_day)" \
-            "$(get LAI_m2_m2)" "$(get Tair_K)" "$(get SWC_m3_m3)"
+            "$(get LAI_m2_m2)" "$(get Tair_K)" "$(get SWC_m3_m3)" \
+            "$(get C_sugar_kgC_m2)" "$(get C_leaf_kgC_m2)" "$(get C_stem_kgC_m2)" \
+            "$(get C_root_kgC_m2)" "$(get cVeg_kgC_m2)" "$(get sigma_l_implied_kgC_m2leaf)"
     done <"$CSV"
 } >"$SUMMARY"
 echo "--- baseline_summary.tsv ---"; cat "$SUMMARY"
