@@ -95,6 +95,22 @@ f_T(T) = Q10^((T − T_ref)/10)
   respiring itself to death: living wood does not scale linearly with total wood.
 - The root term uses soil temperature, not canopy temperature.
 
+**`Q10` ships as 1.0, not 2.0 — stage 2 must set it deliberately.**
+`autotrophic_respiration_Q10` in `toml/default_parameters.toml` is `1.0`, whose
+description states it is "fixed at 1.0 (not calibrated), keeping the maintenance
+baseline seasonally flat". So `f_T = 1^x ≡ 1`: the existing maintenance
+respiration has *no* temperature response at all. Measured in the stage-0
+baseline (job 6967717): across `alaska_north_slope` (262 K), `mojave_sw_us`
+(281 K) and `sahel` (300 K) — a 38 K span over which `Q10 = 2` would give a 14×
+range — Ra is 1.068, 1.066 and 1.094 g C m⁻² day⁻¹, i.e. constant to ±3%. At the
+two zero-LAI deserts Ra equals `Rd_ref` to five decimal places.
+
+Since `Rm` above reuses this same `Q10`, writing §2.1 while assuming the
+temperature response is "already there" would produce a temperature-insensitive
+`Rm` that looks correct in the code and is inert in practice. Setting `Q10` to
+2.0 is a change to respiration behaviour, so it belongs to stage 2 and must be
+reported as such, not slipped in.
+
 ### 2.2 Growth respiration `Rg`
 
 `Rg = (1−a)·S`, and `Ra = Rm + Rg` — the same
@@ -294,7 +310,7 @@ model error.
 | `c_nsc` | target sugar as fraction of live biomass | 0.1 |
 | `τ_alloc` | allocation timescale | ~10 d |
 | `n` | allocation ramp sharpness | 3 |
-| `Q10`, `T_ref` | temperature sensitivity | 2.0, 298.15 K (existing) |
+| `Q10`, `T_ref` | temperature sensitivity | **2.0** (must be set), 298.15 K |
 
 Realistically 4–6 of these set global biomass: `τ_stem`, `f_stem`, `f_root`,
 `r_stem`, and `a`. Those are the calibration targets; the rest should be fixed

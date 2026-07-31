@@ -119,3 +119,58 @@ first year excluded from the means, running concurrently:
 
 Both baselines matter: stage 1's tests must cover both LAI models, so rule 1
 needs a reference table under each.
+
+## 2026-07-31 — iteration 3: prescribed baseline recorded; Q10 is 1.0, not 2.0
+
+Job 6967717 finished **20/20 PASS**. The prescribed-LAI stage-0 baseline is
+recorded in STATE.md and committed as `harness/baseline_prescribed_lai.tsv`.
+6967718 (prognostic LAI) is slower and still running at 33 minutes.
+
+GPP looks right: 8.7 / 8.2 / 7.4 g C m⁻² day⁻¹ at congo / amazon / borneo
+(≈3.0–3.2 kg C m⁻² yr⁻¹, correct for tropical rainforest), falling to 0 at the
+true deserts. LAI tracks MODIS as it should, since it *is* MODIS here.
+
+**Ra is where the model is wrong, and the baseline says so quantitatively.**
+Sorting the 20 sites by NPP/GPP = 1 − Ra/GPP:
+
+- Ra **exceeds** GPP at `mojave_sw_us` (NPP/GPP = −0.024) and
+  `alaska_north_slope` (−0.093) — negative annual NPP.
+- Ra is positive with GPP = 0 at both true deserts (0.81 g C m⁻² day⁻¹).
+- Three cold forest sites fall well below the 0.3–0.6 target band:
+  `canada_boreal` 0.13, `ne_china` 0.17, `central_siberia` 0.21.
+- The 12 warmer/wetter sites land inside 0.3–0.6 and look healthy.
+
+So the **current model already fails stage 2's acceptance criterion** ("Ra
+neither collapses to zero nor exceeds GPP in the annual mean at any site") at
+four of twenty sites, all of them cold or arid. Useful to know now: stage 2 is
+not a refinement, it is fixing something measurably broken.
+
+**Root cause found, and it changes what stage 2 must do.** Chasing why Ra was so
+insensitive: across `alaska_north_slope` (262 K), `mojave_sw_us` (281 K) and
+`sahel` (300 K) — a 38 K span — Ra is 1.068, 1.066, 1.094, constant to ±3%,
+where `Q10 = 2` predicts a 14× range. The two zero-LAI deserts agree to 4.5e-8
+relative despite a 3.45 K difference.
+
+`autotrophic_respiration_Q10` in `toml/default_parameters.toml` is **1.0**, not
+2.0. Its own description says it is "fixed at 1.0 (not calibrated), keeping the
+maintenance baseline seasonally flat". So `f_T = 1^x ≡ 1` and the temperature
+term is disabled. Confirming the arithmetic: at the deserts
+Ra = `Rd_ref` × 1.0000085, exactly `Rd_ref` with `f_T = 1` and `RAI + μs·SAI = 1`.
+
+This matters because MODEL.md §2.1's new `Rm` reuses the same `Q10`, and §8
+listed it as "2.0, 298.15 K (existing)" — wrong about the existing value. Had
+stage 2 been written against that, it would have shipped a `Rm` with
+`f_T(T_canopy)` and `f_T(T_soil)` terms that read correctly and do nothing.
+Corrected MODEL.md §8 and added a note to §2.1 recording the measurement.
+Setting `Q10 = 2.0` is a deliberate change to respiration behaviour, so it
+belongs to stage 2 and gets reported, not slipped in.
+
+**A monitor gave a false alarm, and the reason is worth recording.** The
+monitor watching 6967718 tested liveness with `! qstat <jid>` and fired
+`JOB_GONE`; a bare `qstat` showed the job Running at 33 minutes. `qstat` is in
+the sandbox's excludedCommands, so wrapping it in a script forces it back into
+the sandbox, where it fails — and a failed `qstat` is indistinguishable from a
+finished job. Monitors now key only on files the job writes; bare `qstat`
+liveness checks happen at the start of an iteration, where they work. This is
+the second monitor bug in three iterations, both of the same family: the
+monitor's own failure looking like a result.

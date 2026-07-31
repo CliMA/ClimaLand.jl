@@ -39,8 +39,44 @@ f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaA
 - **PBS job ids:** 6967513 (4-site smoke test, PASSED 4/4, Exit_status=0, 7 min);
   6967717 (20-site, prescribed LAI) and 6967718 (20-site, prognostic Zhou LAI),
   both running
-- **baseline recorded (GPP / LAI / Ra / Rh per site):** partial — 4 sites from
-  the smoke test (below); full 20-site table pending 6967717 / 6967718
+- **baseline recorded (GPP / LAI / Ra / Rh per site):** **prescribed LAI: yes**
+  (20/20, job 6967717, committed as `harness/baseline_prescribed_lai.tsv`);
+  prognostic LAI pending 6967718
+
+### Stage-0 baseline, PRESCRIBED MODIS LAI (job 6967717, 20/20 PASS)
+
+2000-09-01 → 2002-09-01, first year excluded. Fluxes g C m⁻² day⁻¹.
+Committed in full at `harness/baseline_prescribed_lai.tsv`. NPP/GPP = 1 − Ra/GPP.
+
+| site | biome | GPP | Ra | Rh | LAI | NPP/GPP |
+|---|---|---|---|---|---|---|
+| congo_basin | tropical rainforest | 8.71 | 4.01 | 1.69 | 5.16 | 0.540 |
+| amazon_central | tropical rainforest | 8.16 | 3.81 | 1.87 | 4.79 | 0.534 |
+| borneo | tropical rainforest | 7.44 | 3.58 | 0.92 | 4.09 | 0.519 |
+| central_europe | temperate deciduous | 4.94 | 2.38 | 0.57 | 1.83 | 0.519 |
+| n_australia_savanna | tropical savanna C4 | 4.42 | 2.20 | 1.12 | 1.17 | 0.502 |
+| california_vaira | mediterranean | 3.83 | 2.00 | 0.58 | 1.74 | 0.478 |
+| cerrado_brazil | tropical savanna C4 | 3.77 | 2.08 | 1.76 | 1.60 | 0.447 |
+| ozark_us | temperate deciduous | 3.25 | 1.84 | 0.56 | 1.12 | 0.433 |
+| pampas_argentina | temperate grassland | 3.10 | 1.80 | 0.97 | 1.03 | 0.419 |
+| fennoscandia | boreal forest | 2.83 | 1.66 | 0.60 | 1.32 | 0.413 |
+| iberia | mediterranean | 2.58 | 1.58 | 0.76 | 0.74 | 0.386 |
+| us_great_plains | temperate grassland C4 | 2.08 | 1.45 | 0.52 | 0.66 | 0.306 |
+| central_siberia | boreal forest | 1.61 | 1.27 | 0.32 | 1.28 | 0.207 |
+| ne_china | temperate deciduous | 1.53 | 1.26 | 0.53 | 0.66 | 0.174 |
+| canada_boreal | boreal forest | 1.37 | 1.20 | 0.62 | 0.71 | 0.126 |
+| sahel | tropical savanna C4 | 1.20 | 1.09 | 0.55 | 0.37 | 0.089 |
+| mojave_sw_us | desert | 1.04 | 1.07 | 0.17 | 0.16 | **−0.024** |
+| alaska_north_slope | tundra | 0.98 | 1.07 | 0.00 | 0.40 | **−0.093** |
+| sahara | desert | 0.00 | 0.81 | 0.07 | 0.00 | n/a |
+| arabian | desert | 0.00 | 0.81 | 0.11 | 0.00 | n/a |
+
+**The current model already fails the stage-2 acceptance criterion.** That
+criterion is "Ra neither collapses to zero nor exceeds GPP in the annual mean at
+any site": Ra exceeds GPP at `mojave_sw_us` and `alaska_north_slope`, and is
+positive with GPP = 0 at both true deserts. Four of 20 sites, all cold or arid.
+Of the forest/grassland sites stage 2 must land in 0.3–0.6, three boreal/cold
+ones miss low (`central_siberia` 0.21, `ne_china` 0.17, `canada_boreal` 0.13).
 
 ### Smoke-test baseline (job 6967513, 1 yr from 2000-09-01, no spinup excluded)
 
@@ -113,8 +149,8 @@ not wildly off where there is vegetation. The desert is the problem (below).
 | job_id | stage | purpose | submitted | status | result | output path |
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
-| 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | running | pending | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | running | pending | `.../battery_pc_base_prog_6967718.desched1/` |
+| 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
+| 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | running (33 min at last check) | pending | `.../battery_pc_base_prog_6967718.desched1/` |
 
 Jobs seen in `qstat -u arenchon` that are NOT `pc_*` belong to the other loop —
 never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
@@ -139,6 +175,28 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
   function; piping it into anything runs it in a subshell and the `PATH` update
   is lost, which presents exactly as "gh: command not found". Run bare, `gh` is
   present (2.74.2) and authenticated as AlexisRenchon.
+- **2026-07-31, ROOT CAUSE: `autotrophic_respiration_Q10 = 1.0`, so maintenance
+  respiration has no temperature response at all.** `Rpm = f_T·(R_leaf +
+  Rd_ref·RAI + Rd_ref·μs·SAI)` with `f_T = Q10^((T−T_ref)/10)`, and the shipped
+  default `Q10` is **1.0** — its own toml description says "fixed at 1.0 (not
+  calibrated), keeping the maintenance baseline seasonally flat". So `f_T ≡ 1`.
+  Measured: across `alaska_north_slope` (262 K), `mojave_sw_us` (281 K) and
+  `sahel` (300 K), a 38 K span over which `Q10 = 2` would give a 14× range, Ra
+  is 1.068 / 1.066 / 1.094 g C m⁻² day⁻¹ — constant to ±3%. At the two zero-LAI
+  deserts Ra = `Rd_ref` × 1.0000085, i.e. exactly `Rd_ref` with `f_T = 1` and
+  `RAI + μs·SAI = 1`.
+  **Consequence for stage 2:** MODEL.md §2.1's `Rm` reuses this same `Q10`.
+  Written assuming the temperature response is "already there", stage 2 would
+  ship a temperature-insensitive `Rm` that reads correctly and is inert in
+  practice. MODEL.md §8 claimed "2.0 (existing)" and has been corrected;
+  setting `Q10 = 2.0` is a deliberate stage-2 change to report, not a silent fix.
+- **2026-07-31, never call `qstat` inside a monitor or any wrapping script.**
+  A monitor that tested `! qstat <jid>` for liveness reported `JOB_GONE` for
+  6967718 while a bare `qstat` showed it Running at 33 min. `qstat` is in the
+  sandbox's excludedCommands; wrapping it forces it back into the sandbox where
+  it fails, and a failed `qstat` is indistinguishable from a finished job.
+  Monitors must key on files the job writes; do liveness checks with bare
+  `qstat` at the start of an iteration.
 - **2026-07-31, the desert respires carbon it never fixed — quantified.** At
   `sahara`, GPP = 0.00 and LAI = 0.00, yet **Ra = 1.00 g C m⁻² day⁻¹**
   (≈ 365 g C m⁻² yr⁻¹). This is the JULES-style `AutotrophicRespirationModel`
