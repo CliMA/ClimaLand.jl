@@ -6,6 +6,25 @@ stage means and how it is gated, and `../MODEL.md` for the physics.
 
 Status values: `not_started` | `in_progress` | `done` | `failed` | `blocked`
 
+## Fixed configuration
+
+- branch `ar/prognostic_carbon`, PR #1834, base `ar/climate_responsive_lai_inputs`
+- PBS: account UCIT0011, queue `develop`, job names prefixed `pc_`
+- scratch: `/glade/derecho/scratch/arenchon/claude/prognostic_carbon`
+- LAI: prescribed MODIS for stages 1–3, prognostic Zhou from stage 4
+- spinup: recycle ERA5 1979–1989 with CO₂ held at ~340 ppm
+- `gh` requires `module load gh`
+
+## `~/.julia/artifacts/Overrides.toml` — last observed (2026-07-31)
+
+Shared with the other loop; this loop must never write it. Re-read and compare
+every iteration.
+
+```
+2ce5e5e05e4f17c86b07eadff1f9dd551e779524 = "/glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs"
+f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaArtifacts2/artifacts/forty_yrs_era5_land_forcing_data/forty_yrs_era5_land_forcing_data_artifact"
+```
+
 ---
 
 ## Stage 0 — test harness (single-pixel ERA5 battery)

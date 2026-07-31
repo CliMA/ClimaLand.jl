@@ -32,8 +32,57 @@ THE THREE RULES THAT DEFINE THIS MODEL
    demonstrably fail may they vary — and then with mean annual temperature and
    mean annual precipitation (MODEL.md §3), never with a plant functional type.
    This is a hard user constraint.
-3. HEAVY OUTPUT GOES TO SCRATCH: /glade/derecho/scratch/arenchon/claude/...
+3. HEAVY OUTPUT GOES TO SCRATCH:
+   /glade/derecho/scratch/arenchon/claude/prognostic_carbon/...
    Never into the repo. Commit figures and small summary tables only.
+
+--------------------------------------------------------------------------------
+SETTLED CONFIGURATION (user, 2026-07-31) — do not re-litigate these
+--------------------------------------------------------------------------------
+  - Branch `ar/prognostic_carbon`, PR #1834, based on
+    `ar/climate_responsive_lai_inputs` (NOT main) so the diff is only the carbon
+    work. Never retarget or merge it.
+  - PBS: account UCIT0011, queue `develop` for the CPU site battery. Job names
+    prefixed `pc_` (see the concurrent-loop section below for why that matters).
+  - LAI: use PRESCRIBED MODIS LAI for stages 1–3. It isolates carbon-model error
+    from LAI-model error while the pools are being debugged. Switch to the
+    prognostic `ZhouOptimalLAIModel` from stage 4 on — the carbon model must work
+    under BOTH, and stage 1's tests must cover both.
+  - Spinup CO₂: HELD FIXED at the recycled decade's value (~340 ppm for
+    1979–1989), not present-day. Otherwise the "steady state" bakes in modern CO₂
+    fertilisation.
+  - `gh` needs `module load gh` first — it is not on the default PATH. It is
+    already authenticated via ~/.config/gh/hosts.yml; no GH_TOKEN needed.
+
+--------------------------------------------------------------------------------
+A SECOND UNSUPERVISED LOOP MAY BE RUNNING CONCURRENTLY
+--------------------------------------------------------------------------------
+Another agent may be working in a DIFFERENT checkout (~/GitHub/ClimaLand.jl) at
+the same time. Separate git trees, so no source conflict — but four things are
+shared, and one of them can silently corrupt your results:
+
+  1. `~/.julia/artifacts/Overrides.toml` IS GLOBAL AND SHARED. It already
+     redirects `optimal_lai_inputs` to a scratch path. If the other loop
+     rewrites it, YOUR runs silently pick up the change.
+     RULE: you MUST NOT write `~/.julia/artifacts/Overrides.toml`. When stage 4
+     produces a carbon initial-condition file, pass its path explicitly by ENV
+     var to the driver — do not register it as an artifact override.
+     RULE: `cat ~/.julia/artifacts/Overrides.toml` at STEP 0 of every iteration
+     and record its contents in STATE.md. A change you did not make is a
+     finding: note it, and consider whether it invalidates recent results.
+  2. `qstat -u arenchon` shows BOTH loops' jobs. Only reconcile job ids that are
+     in YOUR job table. NEVER `qdel` a job you did not submit. Name your jobs
+     `#PBS -N pc_<something>` so ownership is visible at a glance.
+  3. Scratch: stay inside
+     /glade/derecho/scratch/arenchon/claude/prognostic_carbon. Do not read,
+     write or delete under any other loop's scratch tree.
+  4. The UCIT0011 allocation and queue priority are shared, so expect slower
+     turnaround than if you were alone. That is not a failure; do not resubmit.
+
+The shared `~/.julia` depot is otherwise fine — Pkg's own locking handles
+concurrent precompilation. Depot isolation was considered and rejected: a second
+depot costs tens of GB and a full recompile, and the only genuinely dangerous
+piece of shared state is Overrides.toml, which rule 1 handles directly.
 
 --------------------------------------------------------------------------------
 OPERATIONAL — Derecho gotchas (inherited from ar/derecho_loop, all still true)
@@ -71,12 +120,16 @@ STEP 0 — ORIENT (every iteration, in this order)
 1. Read `experiments/integrated/prognostic_carbon/unsupervised_loop/STATE.md`.
    It is the source of truth for where the work is. Trust it over memory.
 2. Read `experiments/integrated/prognostic_carbon/MODEL.md`.
-3. `qstat -u arenchon`. Reconcile EVERY job in STATE.md's job table:
+3. `cat ~/.julia/artifacts/Overrides.toml` and compare with what STATE.md
+   recorded last iteration. A change you did not make came from the other loop —
+   record it and assess whether it invalidates recent results.
+4. `qstat -u arenchon`. Reconcile every job in STATE.md's job table THAT YOU
+   SUBMITTED (jobs named `pc_*`; ignore the other loop's):
    - still queued/running -> leave it, do NOT resubmit the same test;
    - finished             -> read its log and outputs, record pass/fail plus the
                              key numbers in STATE.md, and decide the follow-up.
-4. `git status` and `git log --oneline -5`.
-5. Only then decide what to do.
+5. `git status` and `git log --oneline -5`.
+6. Only then decide what to do.
 
 --------------------------------------------------------------------------------
 HOW TO TEST — cheap and parallel by default, global occasionally
