@@ -140,13 +140,66 @@ not wildly off where there is vegetation. The desert is the problem (below).
 
 ## Stage 1 — carbon pools in `biomass.jl`
 
-- **status:** not_started — **unblocked, this is the next work**
-- **gate satisfied:** stage 0 done; both baselines recorded, so rule 1 ("GPP and
-  LAI unchanged") is now checkable against
-  `harness/baseline_prescribed_lai.tsv` and `harness/baseline_prognostic_lai.tsv`
-- **rule-1 check procedure:** rerun the battery under each LAI mode with the
-  carbon model present and diff GPP and LAI per site against those two files.
-  Any difference beyond round-off is a stage-1 bug by definition.
+- **status:** in_progress — model and tests done and pushed (commit `2419a0c73`);
+  the site-battery half of the gate is still outstanding
+- **pools:** C_sugar, C_leaf, C_stem, C_root
+- **conservation test written:** **yes** —
+  `test/standalone/Vegetation/carbon_conservation.jl`, registered in
+  `test/runtests.jl`. 56 tests pass (Float32 and Float64).
+- **GPP/LAI unchanged vs stage-0 baseline:** unit-test level **yes**
+  (bit-identical LAI, GPP and Ra with vs without the carbon model); site-battery
+  level not yet run
+
+### Design: a wrapper, not a replacement
+
+`:biomass` is a single component slot, so `PrognosticCarbonModel` **wraps** an
+LAI model (`PrescribedBiomassModel` or `ZhouOptimalLAIModel`) and delegates all
+area-index and LAI decisions to it. That is what makes rule 1 structural rather
+than a thing to remember: the LAI path is the wrapped model's, untouched.
+
+Details worth not rediscovering:
+
+- `update_fractional_c3!` **must** be forwarded to the wrapped model. Without
+  it the Zhou C3/C4 competition silently stops being applied, which changes GPP
+  and breaks rule 1. There is a forwarding method; do not remove it.
+- `height` and `rooting_depth` are mirrored onto the wrapper because much of the
+  codebase reads `canopy.biomass.height` / `.rooting_depth` as direct fields.
+  Safe in phase 1 because neither is ever mutated.
+- The `CanopyModel` prescribed-LAI constructor asserted
+  `biomass.plant_area_index.LAI == LAI`, which a wrapper cannot satisfy. It now
+  goes through `prescribed_lai_input(biomass)`, which the wrapper forwards.
+- Accessors like `get_GPP(p, ...)` must be resolved **outside** `@.` blocks.
+  `@. lazy(M_C * get_GPP(p, ...))` broadcasts over `p` itself and throws
+  "broadcasting over dictionaries and NamedTuples is reserved".
+- The carbon model has its **own** `carbon_Q10 = 2.0`, deliberately separate
+  from `autotrophic_respiration_Q10 = 1.0`, so stage 1 gets a sensible
+  temperature response without silently changing the legacy scheme. Stage 2
+  owns the decision about the legacy parameter.
+
+### Deliberately deferred within stage 1
+
+- **Phenological leaf shedding** (`C_leaf·max(−dLAI/dt,0)/LAI`) is NOT
+  implemented; only background `C_leaf/τ_leaf` turnover is. `dLAI/dt` is
+  available for the Zhou model but needs finite-differencing for prescribed
+  LAI, and a half-implemented version would differ between the two LAI modes.
+  Consequence to expect in the battery: deciduous leaf carbon lags LAI through
+  autumn.
+- **Ra is not yet wired** into `p.canopy.autotrophic_respiration.Ra`. The pools
+  are driven by the carbon model's internal Rm/Rg while the legacy JULES scheme
+  still drives the canopy fluxes. This is what keeps stage 1 verifiably
+  behaviour-neutral; wiring it is stage 2.
+
+### Remaining for the stage-1 gate
+
+1. Wire `LAI_MODE`-aware carbon-model construction into
+   `harness/site_driver.jl` behind a `CARBON=1` switch, and add pool
+   diagnostics to `carbon_metrics.txt`.
+2. Run the 20-site battery under both LAI modes with the pools active.
+3. Diff GPP and LAI per site against `harness/baseline_prescribed_lai.tsv` and
+   `harness/baseline_prognostic_lai.tsv`. Any difference beyond round-off is a
+   stage-1 bug by definition.
+4. Check the failure signatures: C_sugar pinned at zero, C_stem unbounded,
+   `σl_implied` far outside 0.03–0.1 kg C m⁻² leaf.
 - **pools:** C_sugar, C_leaf, C_stem, C_root
 - **conservation test written:** no
 - **GPP/LAI unchanged vs stage-0 baseline:** —

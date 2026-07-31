@@ -205,3 +205,63 @@ Stage 0 is therefore **done**: harness ported, battery green 20/20 under both
 LAI models, per-site output in scratch, baselines committed. Stage 1 is
 unblocked and is the next work — the four pools in `biomass.jl`, the carbon
 conservation test, and the rule-1 check against these two tables.
+
+## 2026-07-31 — iteration 4: stage 1 model and tests
+
+Wrote the carbon pools. Commit `2419a0c73`; 56 new tests pass under Float32 and
+Float64, and the existing 468 canopy tests still pass.
+
+**The design decision that shaped everything: a wrapper, not a replacement.**
+`:biomass` is a single component slot, and both `PrescribedBiomassModel` and
+`ZhouOptimalLAIModel` occupy it. Since the specification requires the carbon
+model to compose with either, `PrognosticCarbonModel` wraps an LAI model and
+delegates every area-index and LAI decision to it. That makes rule 1 structural
+rather than something to remember to check — the LAI path *is* the wrapped
+model's, untouched — and the test confirms LAI, GPP and Ra are bit-identical
+with and without the pools.
+
+Four things that had to be got right, all found by running rather than by
+reading:
+
+- **`update_fractional_c3!` must be forwarded.** It dispatches on the biomass
+  model. Unforwarded, the Zhou C3/C4 competition silently stops being applied
+  when the carbon model wraps it — which changes GPP and breaks rule 1 quietly.
+- **`height` and `rooting_depth` are read as direct fields** across
+  plant hydraulics, root interactions and diagnostics, so the wrapper mirrors
+  them. Safe only because phase 1 never mutates either.
+- **The `CanopyModel` constructor asserted `biomass.plant_area_index.LAI == LAI`**,
+  which no wrapper can satisfy. Replaced with `prescribed_lai_input(biomass)`,
+  a small accessor the wrapper forwards. One line in `Canopy.jl`.
+- **Accessors must be hoisted out of `@.` blocks.**
+  `@. lazy(M_C * get_GPP(p, canopy.photosynthesis))` broadcasts over `p` itself
+  and throws "broadcasting over dictionaries and `NamedTuple`s is reserved".
+
+The conservation test is the real gate and it is a genuine test, not a
+tautology: it integrates one step from a non-trivial pool state and checks the
+summed tendencies against `GPP - Ra - litter` independently. Summing the four
+pool equations gives
+
+    d(ΣC)/dt = GPP - Rm - S + a·S - litter = GPP - (Rm + (1-a)S) - litter
+
+so the balance only closes if growth respiration is exactly `(1-a)S` and
+allocation is neither double-counted nor dropped. Residual is at round-off.
+
+**A parameter decision worth flagging.** The carbon model gets its own
+`carbon_Q10 = 2.0`, deliberately separate from `autotrophic_respiration_Q10`,
+which iteration 3 found ships at 1.0. Sharing the parameter would have meant
+stage 1's pools inheriting a temperature-blind maintenance term — the exact trap
+iteration 3 identified. Keeping them separate also means stage 1 changes no
+existing behaviour: the legacy scheme still drives the canopy fluxes untouched,
+and the decision about its Q10 belongs to stage 2, where it will be reported.
+
+**Deliberately deferred, and stated rather than hidden.** Phenological leaf
+shedding is not implemented; only background `C_leaf/τ_leaf` turnover is.
+`dLAI/dt` is directly available for the Zhou model but needs finite-differencing
+for prescribed LAI, and shipping it for one LAI mode only would make the two
+modes structurally different — worse than not shipping it. Expect deciduous leaf
+carbon to lag LAI through autumn in the battery.
+
+Stage 1 is **not** done: the gate also requires the site battery to complete
+with GPP and LAI unchanged from the stage-0 baseline at every site. Next
+iteration wires the carbon model into `harness/site_driver.jl` behind a
+`CARBON=1` switch and runs the battery under both LAI modes.
