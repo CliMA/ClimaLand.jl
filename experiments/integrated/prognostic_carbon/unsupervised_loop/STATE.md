@@ -473,7 +473,8 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 
 ## Stage 2 — pool-based autotrophic respiration
 
-- **status:** not_started — **unblocked, this is the next work**
+- **status:** in_progress — model and tests done (commit `4c6968e6e`, 77 tests
+  pass); battery running as job 6969572
 - **what it must do:** a new `AbstractAutotrophicRespirationModel` subtype that
   reads `Rm` and `Rg` from the carbon pools instead of respiring prescribed area
   indices, wired into `p.canopy.autotrophic_respiration.Ra`. Keep the JULES
@@ -493,6 +494,35 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
   reproduce. Wiring it is what makes that count.
 - **falsifiable prediction to check:** once Ra comes from the pools, Sahara Ra
   must fall to ≈ 0, because the pools there are exactly zero.
+
+### Design (implemented 2026-07-31, commit `4c6968e6e`)
+
+`PoolBasedAutotrophicRespirationModel` **holds no parameters of its own**. The
+carbon model already computes `Rm` and `Rg`; this reads them. That is
+deliberate — duplicating the parameters would let the respiration the canopy
+reports drift from the respiration the pools actually pay.
+
+**Required restructuring:** the fluxes used to be computed in the pool tendency,
+which runs *after* `update_aux`, so `Ra` could not have read them. They now live
+in `update_carbon_fluxes!`, called from `update_aux` after photosynthesis (which
+supplies GPP and `Rd`) and before autotrophic respiration. The tendency reads
+the cache. The conservation test still passing is what confirms the move is
+behaviour-preserving.
+
+**The Q10 question is settled without touching `autotrophic_respiration_Q10`.**
+That parameter ships at 1.0 and governs *only* the JULES model, which remains
+the default. The pool-based path uses the carbon model's own
+`carbon_Q10 = 2.0`, added in stage 1 precisely so the two could be separated.
+Nothing about existing behaviour changes.
+
+**Test that the JULES model structurally cannot pass:** with every pool empty,
+`Ra` is exactly zero. JULES respires prescribed constant SAI and RAI, which do
+not vanish over bare ground.
+
+**Note on rule 1 for stage-2 runs:** `CARBON_RA=1` changes `Ra` deliberately, so
+such a run is *not* expected to reproduce the baseline Ra. GPP and LAI must
+still match — phase 1 stays one-way coupled — and `check_rule1.jl` only compares
+those two, so it remains the right check.
 - **annual NPP/GPP by site:** —
 - **PBS job ids:** —
 - **notes:** —
@@ -533,6 +563,7 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
+| 6969572 | 2 | 20-site, `CARBON=1 CARBON_RA=1`, prescribed LAI (stage-2 gate) | 2026-07-31 | running | pending | `.../battery_pc_s2_pres_6969572.desched1/` |
 | 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_pres_6969169.desched1/` |
 | 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_prog_6969170.desched1/` |
 | 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | **done** | **PASS 4/4**; sahara sugar −0.075 → **exactly 0**; vegetated sites unchanged; rule 1 still exact | `.../battery_pc_s1_carb_6969094.desched1/` |
