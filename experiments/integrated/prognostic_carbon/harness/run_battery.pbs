@@ -47,6 +47,9 @@ SPINUP_YEARS="${SPINUP_YEARS:-1}"    # years excluded from the reported means
 DT="${DT:-450.0}"
 CARBON="${CARBON:-0}"           # 1 = wrap the LAI model in the prognostic carbon pools
 CARBON_RA="${CARBON_RA:-0}"      # 1 = take Ra from the pools instead of the JULES term (needs CARBON=1)
+# Diagnostic: seed the pools rather than starting empty (kg C m^-2). Empty = start empty.
+POOL_INIT_SUGAR="${POOL_INIT_SUGAR:-}"; POOL_INIT_LEAF="${POOL_INIT_LEAF:-}"
+POOL_INIT_STEM="${POOL_INIT_STEM:-}"; POOL_INIT_ROOT="${POOL_INIT_ROOT:-}"
 # Parameter overrides; empty = branch default (see site_driver.jl).
 OPT_Z="${OPT_Z:-}"; OPT_Z_C4="${OPT_Z_C4:-}"
 OPT_SIGMA="${OPT_SIGMA:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
@@ -70,6 +73,8 @@ run_site() {
     if START="$START" STOP="$STOP" DT="$DT" SITE_LON="$lon" SITE_LAT="$lat" \
         SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" LAI_MODE="$LAI_MODE" \
         CARBON="$CARBON" CARBON_RA="$CARBON_RA" \
+        POOL_INIT_SUGAR="$POOL_INIT_SUGAR" POOL_INIT_LEAF="$POOL_INIT_LEAF" \
+        POOL_INIT_STEM="$POOL_INIT_STEM" POOL_INIT_ROOT="$POOL_INIT_ROOT" \
         SPINUP_YEARS="$SPINUP_YEARS" \
         OPT_Z="$OPT_Z" OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA="$OPT_SIGMA" \
         OPT_SIGMA_C4="$OPT_SIGMA_C4" OPT_ALPHA="$OPT_ALPHA" F0="$F0" \

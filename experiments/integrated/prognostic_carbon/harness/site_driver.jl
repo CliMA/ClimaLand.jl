@@ -225,6 +225,28 @@ diagnostics = ClimaLand.default_diagnostics(
 );
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
+# Diagnostic knob: seed the pools instead of starting them empty. The pools take
+# decades to fill (τ_stem = 30 yr), so a 2-year run leaves maintenance
+# respiration - which scales with the sapwood and root pools - far under-sized.
+# Seeding lets a cheap column run test whether an Ra deficit is a spinup
+# artifact or a parameter problem, without waiting for the stage-4 spinup. This
+# is a test knob, NOT a substitute for spinup: the seeded state is not an
+# equilibrium, so the pools drift from it.
+if carbon_on
+    Y0 = simulation._integrator.u
+    for (var, envname) in (
+        (:C_sugar, "POOL_INIT_SUGAR"),
+        (:C_leaf, "POOL_INIT_LEAF"),
+        (:C_stem, "POOL_INIT_STEM"),
+        (:C_root, "POOL_INIT_ROOT"),
+    )
+        v = get(ENV, envname, "")
+        isempty(v) && continue
+        getproperty(Y0.canopy.biomass, var) .= parse(FT, v)
+        @info "seeded $(var) = $(v) kg C m^-2"
+    end
+end
+
 @info "Prognostic-carbon single-column battery site"
 @info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode  carbon: $carbon_on  pool_Ra: $carbon_ra"
 @info "Timestep: $Δt s   Window: $start_date -> $stop_date"
