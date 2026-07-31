@@ -157,6 +157,24 @@ maintenance really does draw its reserves down. Genuine carbon starvation (sugar
 signal worth reporting, not a numerical failure. The only clamp is a floor at
 `C_sugar ≥ 0` in the respiration term, for the explicit step.
 
+**How that floor is implemented (added 2026-07-31, after the stage-1 battery).**
+Reserves draw down to zero, not below: respiration requires substrate. `Rm` is
+multiplied by the same ramp applied to an absolute scale,
+
+```
+Rm ← g(C_sugar/C_sugar_ref)·Rm,     C_sugar_ref = 1e-3 kg C m⁻²
+```
+
+so maintenance stops as the pool empties. This is distinct from `g(x)` in the
+allocation rate, which is keyed to the *target*: a stressed plant with sugar
+below target still pays full maintenance and draws down: only an *exhausted*
+plant stops. `C_sugar_ref` is small enough that a healthy pool
+(0.05–0.2 kg C m⁻²) is unaffected to about one part in 10⁵.
+
+This was not hypothetical. The first stage-1 battery reached
+**C_sugar = −0.075 kg C m⁻²** at the Sahara point, where GPP is zero all year
+and maintenance kept drawing on an empty pool.
+
 If a global constant `f` set proves insufficient — most likely symptom: forests
 under-built and grasslands over-built at the same time — the fallback is to make
 `f_stem` (and correspondingly `f_root`) vary with mean annual temperature and

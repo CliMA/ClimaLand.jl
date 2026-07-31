@@ -246,6 +246,12 @@ type = "float"
 description = "Sharpness of the allocation ramp g(x) = x^n/(1 + x^n), where x = C_sugar/C_sugar_target. This proportional controller is what keeps the sugar pool oscillating seasonally about its target instead of pinning at zero, with no hard clamp."
 tag = "PrognosticCarbonParameters"
 
+["carbon_C_sugar_ref"]
+value = 1.0e-3
+type = "float"
+description = "Substrate-limitation scale for maintenance respiration (kg C m^-2). Rm is multiplied by the ramp g(C_sugar/C_sugar_ref), so respiration stops as the sugar pool is exhausted rather than driving it negative. Small enough that a healthy pool (0.05-0.2 kg C m^-2) is unaffected to about one part in 10^5."
+tag = "PrognosticCarbonParameters"
+
 ["carbon_Q10"]
 value = 2.0
 type = "float"

@@ -838,6 +838,8 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     τ_alloc::FT
     "Sharpness of the allocation ramp (-)"
     n_alloc::FT
+    "Substrate-limitation scale for maintenance respiration (kg C m^-2)"
+    C_sugar_ref::FT
     "Q10 temperature sensitivity of maintenance respiration (-)"
     Q10::FT
     "Reference temperature for the Q10 factor (K)"
@@ -869,6 +871,7 @@ function PrognosticCarbonParameters(
     c_nsc = toml_dict["carbon_c_nsc"],
     τ_alloc = toml_dict["carbon_tau_alloc"],
     n_alloc = toml_dict["carbon_alloc_ramp_n"],
+    C_sugar_ref = toml_dict["carbon_C_sugar_ref"],
     Q10 = toml_dict["carbon_Q10"],
     T_ref = toml_dict["carbon_T_ref"],
 )
@@ -889,6 +892,7 @@ function PrognosticCarbonParameters(
         c_nsc,
         τ_alloc,
         n_alloc,
+        C_sugar_ref,
         Q10,
         T_ref,
     )
@@ -1110,7 +1114,12 @@ checks.
 
 Maintenance respiration follows the specification,
 
-    Rm = f_T(T)*(M_C*Rd_canopy + r_stem*C_sap) + f_T(T)*r_root*C_root
+    Rm = g(C_sugar/C_sugar_ref) *
+         (f_T(T)*(M_C*Rd_canopy + r_stem*C_sap) + f_T(T)*r_root*C_root)
+
+The leading ramp is a substrate limitation: respiration stops as the sugar pool
+empties rather than driving it negative. `C_sugar_ref` is small enough that a
+healthy pool is unaffected.
 
 reusing the leaf dark respiration the photosynthesis scheme already computes,
 which avoids double-counting `Rd` (it is already inside `An = GPP - Rd`).
@@ -1146,6 +1155,7 @@ function ClimaLand.make_compute_exp_tendency(
         c_nsc,
         τ_alloc,
         n_alloc,
+        C_sugar_ref,
         Q10,
         T_ref,
     ) = component.parameters
@@ -1175,11 +1185,19 @@ function ClimaLand.make_compute_exp_tendency(
         # A floor at zero in the respiration term is the only clamp: it keeps the
         # explicit step from drawing a pool negative. Genuine carbon starvation
         # (sugar at zero and staying there) remains expressible.
+        # Respiration needs substrate: the ramp takes Rm to zero as the sugar
+        # pool is exhausted, instead of letting maintenance drive it negative.
+        # C_sugar_ref is small enough that a healthy pool is unaffected. Note
+        # this is a floor on the pool, not the allocation ramp g - a plant that
+        # cannot pay maintenance still draws its reserves down, it just cannot
+        # draw them below zero.
         @. p.canopy.biomass.carbon.Rm =
-            Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
-            Q10^((T_root_zone - T_ref) / 10) *
-            r_root *
-            max(Y.canopy.biomass.C_root, zero(FT))
+            allocation_ramp(Y.canopy.biomass.C_sugar / C_sugar_ref, n_alloc) * (
+                Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
+                Q10^((T_root_zone - T_ref) / 10) *
+                r_root *
+                max(Y.canopy.biomass.C_root, zero(FT))
+            )
 
         # The sugar buffer's target is set by the standing live biomass, so
         # allocation throttles smoothly as reserves are drawn down.

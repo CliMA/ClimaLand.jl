@@ -226,6 +226,53 @@ for FT in (Float32, Float64)
         end
     end
 
+    # An exhausted sugar pool must not be driven negative by maintenance
+    # respiration. The 4-site battery hit exactly this at the Sahara point,
+    # where GPP is zero all year: Rm kept drawing on an empty pool and C_sugar
+    # reached -0.075 kg C m^-2.
+    @testset "Maintenance respiration stops at an empty sugar pool, FT = $FT" begin
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics,
+            biomass,
+        )
+        Y, p, _ = initialize(canopy)
+        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(290.5)
+        Y.canopy.biomass.C_leaf .= FT(0.2)
+        Y.canopy.biomass.C_stem .= FT(5.0)
+        Y.canopy.biomass.C_root .= FT(1.0)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        dY = similar(Y)
+        exp_tendency! = make_compute_exp_tendency(canopy)
+
+        # Ample sugar: respiration runs essentially unthrottled.
+        Y.canopy.biomass.C_sugar .= FT(0.3)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        exp_tendency!(dY, Y, p, t0)
+        Rm_ample = first(Array(parent(p.canopy.biomass.carbon.Rm)))
+        @test Rm_ample > 0
+
+        # Empty sugar: respiration must vanish, so the pool cannot go negative.
+        Y.canopy.biomass.C_sugar .= FT(0)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        exp_tendency!(dY, Y, p, t0)
+        @test first(Array(parent(p.canopy.biomass.carbon.Rm))) == 0
+        @test all(parent(dY.canopy.biomass.C_sugar) .>= 0)
+
+        # The throttle must not meaningfully touch a healthy pool: Rm at a
+        # normal sugar level must match the unthrottled limit to within 0.1%.
+        Y.canopy.biomass.C_sugar .= FT(1e6)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        exp_tendency!(dY, Y, p, t0)
+        Rm_unthrottled = first(Array(parent(p.canopy.biomass.carbon.Rm)))
+        @test abs(Rm_ample - Rm_unthrottled) <= 1e-3 * Rm_unthrottled
+    end
+
     # Every prognostic variable needs a Jacobian block, or the implicit solver
     # refuses to build with "A does not have any entries at the following keys".
     # The tendency tests above never reach this: they call the tendency directly
