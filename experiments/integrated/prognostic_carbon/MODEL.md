@@ -93,7 +93,15 @@ f_T(T) = Q10^((T − T_ref)/10)
   inside `An = GPP − Rd`) and keeps leaf respiration consistent with GPP.
 - The sapwood saturation is what keeps a 20 kg C m⁻² tropical forest from
   respiring itself to death: living wood does not scale linearly with total wood.
-- The root term uses soil temperature, not canopy temperature.
+- The root term should use soil temperature, not canopy temperature. **Not yet
+  implemented as specified (2026-07-31):** there is no ground temperature the
+  canopy can read in both configurations — `p.drivers.T_ground` exists only for
+  a standalone canopy over prescribed ground, and reaching into the integrated
+  model's `p.soil.T` would make the canopy tendency depend on soil `update_aux`
+  ordering. Stage 1 therefore uses canopy temperature for both terms, which
+  leaves the root term more seasonally variable than it should be. Revisit at
+  stage 3, when the canopy→soil coupling is built and a shared ground
+  temperature becomes available.
 
 **`Q10` ships as 1.0, not 2.0 — stage 2 must set it deliberately.**
 `autotrophic_respiration_Q10` in `toml/default_parameters.toml` is `1.0`, whose

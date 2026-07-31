@@ -1110,11 +1110,15 @@ checks.
 
 Maintenance respiration follows the specification,
 
-    Rm = f_T(T_canopy)*(M_C*Rd_canopy + r_stem*C_sap) + f_T(T_soil)*r_root*C_root
+    Rm = f_T(T)*(M_C*Rd_canopy + r_stem*C_sap) + f_T(T)*r_root*C_root
 
 reusing the leaf dark respiration the photosynthesis scheme already computes,
-which avoids double-counting `Rd` (it is already inside `An = GPP - Rd`). The
-root term uses ground rather than canopy temperature.
+which avoids double-counting `Rd` (it is already inside `An = GPP - Rd`).
+
+The specification gives the root term soil temperature, but no ground
+temperature is readable by the canopy in both configurations - `p.drivers.T_ground`
+exists only for a standalone canopy over prescribed ground - so canopy
+temperature is used for both terms for now. See the note in the tendency.
 
 Phenological leaf shedding (the `C_leaf*max(-dLAI/dt, 0)/LAI` term) is not yet
 included; only the background `C_leaf/τ_leaf` turnover is. Deciduous leaf carbon
@@ -1157,7 +1161,15 @@ function ClimaLand.make_compute_exp_tendency(
         GPP = @. lazy(M_C * GPP_mol)
         Rd_canopy = @. lazy(M_C * Rd_mol)
         T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-        T_soil = p.drivers.T_ground
+        # The specification uses soil temperature for the root term, but there is
+        # no ground temperature the canopy can read in both configurations:
+        # `p.drivers.T_ground` exists only for a standalone canopy over prescribed
+        # ground, and the integrated model's soil temperature would make the
+        # canopy tendency depend on soil `update_aux` ordering. Canopy temperature
+        # is used instead, which damps the root term's seasonality less than soil
+        # temperature would. Revisit when stage 3 builds the canopy-to-soil
+        # coupling and a shared ground temperature becomes available.
+        T_root_zone = T_canopy
 
         C_sap = @. lazy(sapwood_carbon(Y.canopy.biomass.C_stem, C_sap_half))
         # A floor at zero in the respiration term is the only clamp: it keeps the
@@ -1165,7 +1177,7 @@ function ClimaLand.make_compute_exp_tendency(
         # (sugar at zero and staying there) remains expressible.
         @. p.canopy.biomass.carbon.Rm =
             Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
-            Q10^((T_soil - T_ref) / 10) *
+            Q10^((T_root_zone - T_ref) / 10) *
             r_root *
             max(Y.canopy.biomass.C_root, zero(FT))
 
