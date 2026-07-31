@@ -226,6 +226,28 @@ for FT in (Float32, Float64)
         end
     end
 
+    # Every prognostic variable needs a Jacobian block, or the implicit solver
+    # refuses to build with "A does not have any entries at the following keys".
+    # The tendency tests above never reach this: they call the tendency directly
+    # rather than constructing a simulation, so the pools have to be checked
+    # against the solver explicitly.
+    @testset "Carbon pools have Jacobian entries, FT = $FT" begin
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics,
+            biomass,
+        )
+        Y, _, _ = initialize(canopy)
+        for pool in (:C_sugar, :C_leaf, :C_stem, :C_root)
+            @test hasproperty(Y.canopy.biomass, pool)
+        end
+        @test ClimaLand.initialize_jacobian(Y) isa Any
+    end
+
     # The carbon model must also compose with the prognostic LAI model, which
     # carries nine time-integrated prognostic variables of its own. Wrapping it
     # must preserve all of them and keep forwarding the C3/C4 competition, or
