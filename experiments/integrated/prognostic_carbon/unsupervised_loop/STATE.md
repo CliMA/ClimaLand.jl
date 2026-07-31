@@ -207,6 +207,32 @@ Details worth not rediscovering:
 4. Check the failure signatures: C_sugar pinned at zero, C_stem unbounded,
    `σl_implied` far outside 0.03–0.1 kg C m⁻² leaf.
 
+### Fourth trap: `p.drivers.T_ground` does not exist in the integrated model (2026-07-31)
+
+Job 6968904 crashed at all four sites:
+
+```
+FieldError: type NamedTuple has no field `T_ground`, available fields:
+`P_liq`, `P_snow`, `T`, `P`, `u`, `q`, `c_co2`, `SW_d`, `LW_d`, `cosθs`, `frac_diff`
+```
+
+`p.drivers.T_ground` exists only for a **standalone canopy over prescribed
+ground**. The integrated `LandModel` carries no ground temperature in its
+drivers, and reaching into `p.soil.T` would make the canopy tendency depend on
+soil `update_aux` ordering. Stage 1 therefore uses canopy temperature for the
+root maintenance term. **This is a deviation from MODEL.md §2.1**, recorded
+there with its consequence (the root term stays more seasonally variable than
+soil temperature would make it) and deferred to stage 3, when the canopy→soil
+coupling makes a shared ground temperature available. Fixed in `e92726e16`.
+
+**The failure was reported misleadingly**, which cost a cycle: the crash was
+caught by ClimaLand's simulation error handler, so the run continued to the
+metrics block, which then failed with `KeyError: "gpp_1d_average" not found` —
+reading like a missing diagnostic rather than a dead simulation. The driver now
+checks for the GPP series and errors with a message pointing back up the log.
+**When a site fails, search the log upward for "simulation crashed" before
+believing the last error.**
+
 ### Third trap: new prognostic variables need Jacobian entries (2026-07-31)
 
 Job 6968847 failed at **all four sites**:
@@ -289,7 +315,8 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6968904 | 1 | 4-site CARBON=1 check (retry after Jacobian fix) | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6968904.desched1/` |
+| 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6968999.desched1/` |
+| 6968904 | 1 | 4-site CARBON=1 check (retry after Jacobian fix) | 2026-07-31 | **F** | **FAIL 0/4** — `p.drivers.T_ground` absent in the integrated model; fixed in `e92726e16` | `.../battery_pc_s1_carb_6968904.desched1/` |
 | 6968847 | 1 | 4-site CARBON=1 check, prescribed LAI, 2 yr | 2026-07-31 | **F** | **FAIL 0/4** — missing Jacobian blocks for the pools; fixed in `341d75f55` | `.../battery_pc_s1_carb_6968847.desched1/` |
 | 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prognostic_lai.tsv` | `.../battery_pc_base_prog_6967718.desched1/` |
 
