@@ -207,6 +207,51 @@ Details worth not rediscovering:
 4. Check the failure signatures: C_sugar pinned at zero, C_stem unbounded,
    `σl_implied` far outside 0.03–0.1 kg C m⁻² leaf.
 
+### First carbon-model results (job 6968999, 4/4 PASS, 2 yr from empty pools)
+
+**RULE 1 PASSES EXACTLY.** GPP and LAI are bit-identical with the carbon model
+active — `rel_diff = 0.0` at every site, not merely within tolerance. The
+wrapper design makes the LAI path literally the wrapped model's, so this is the
+expected result, but it is now measured rather than assumed.
+
+| site | LAI | C_sugar | C_leaf | C_stem | C_root | cVeg | σl_implied |
+|---|---|---|---|---|---|---|---|
+| amazon_central | 4.79 | 0.165 | 0.503 | 1.206 | 0.580 | 2.45 | **0.079** |
+| ozark_us | 1.12 | 0.093 | 0.271 | 0.545 | 0.315 | 1.22 | **0.164** |
+| us_great_plains | 0.66 | 0.064 | 0.178 | 0.350 | 0.211 | 0.80 | **0.190** |
+| sahara | 0.00 | **−0.075** | 0 | 0 | 0 | −0.075 | 0 |
+
+Reading these:
+
+- **Sugar is not pinned at zero** at any vegetated site (0.06–0.17 kg C m⁻²).
+  The allocation ramp regulates the pool as designed, with no hard clamp.
+- **Pool ordering is sensible**: stem > root > leaf > sugar everywhere.
+- **cVeg is far below equilibrium** (2.45 vs the 10–20 expected for tropical
+  forest). Expected, not a defect: the pools start empty and τ_stem is 30 years,
+  so two years fills only a few percent of the stem pool. Stage 4 exists for
+  exactly this.
+- **σl_implied at amazon is 0.079 kg C m⁻² leaf — inside the expected
+  0.03–0.1 band.** This is the headline diagnostic for whether constant
+  allocation fractions can work without PFTs, and at the tropical site it does.
+- **σl_implied at ozark (0.164) and us_great_plains (0.190) is roughly 2× above
+  the band.** Constant fractions over-build leaf carbon relative to LAI at
+  temperate and grassland sites. **Treat as preliminary**: the pools are still
+  filling, so the ratio is transient. Re-read it after stage 4 spinup before
+  concluding the constant-fraction assumption fails.
+- **Sahara sugar went negative (−0.075).** Fixed; see below.
+
+### Fifth issue: maintenance respiration drove the sugar pool negative
+
+At sahara GPP is zero all year, and `Rm` kept drawing on an empty pool. Negative
+carbon is not a physical outcome — respiration requires substrate. `Rm` is now
+multiplied by `g(C_sugar/C_sugar_ref)` with `C_sugar_ref = 1e-3 kg C m⁻²`
+(commit `dfad8f549`), which is the floor MODEL.md §2.3 already called for.
+
+Distinct from the allocation ramp, which is keyed to the sugar *target*: a
+stressed plant with sugar below target still pays full maintenance and draws
+down; only an *exhausted* one stops. A healthy pool is unaffected to ~1 part in
+10⁵, asserted in the tests against the unthrottled limit.
+
 ### Fourth trap: `p.drivers.T_ground` does not exist in the integrated model (2026-07-31)
 
 Job 6968904 crashed at all four sites:
@@ -315,7 +360,8 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6968999.desched1/` |
+| 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6969094.desched1/` |
+| 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | **done** | **PASS 4/4; RULE 1 PASSES EXACTLY** (GPP and LAI bit-identical, rel_diff 0.0); found negative sugar at sahara | `.../battery_pc_s1_carb_6968999.desched1/` |
 | 6968904 | 1 | 4-site CARBON=1 check (retry after Jacobian fix) | 2026-07-31 | **F** | **FAIL 0/4** — `p.drivers.T_ground` absent in the integrated model; fixed in `e92726e16` | `.../battery_pc_s1_carb_6968904.desched1/` |
 | 6968847 | 1 | 4-site CARBON=1 check, prescribed LAI, 2 yr | 2026-07-31 | **F** | **FAIL 0/4** — missing Jacobian blocks for the pools; fixed in `341d75f55` | `.../battery_pc_s1_carb_6968847.desched1/` |
 | 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prognostic_lai.tsv` | `.../battery_pc_base_prog_6967718.desched1/` |
