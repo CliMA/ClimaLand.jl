@@ -47,6 +47,16 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   members. The 12 h window in `main` is worth waiting for. KEEP WAITING.
   Reducing the orchestrator's `ncpus` would not help either: `main` allocates
   exclusive nodes for any request size.
+  DECISIVE HAZARD (noted iteration 6), beyond the wasted-time argument: member
+  jobs are independent PBS jobs, so killing the orchestrator does NOT kill them.
+  They keep running as orphans. A resubmitted orchestrator resumes at
+  `last_completed_iteration + 1`, and an iteration cut short never completed, so
+  it resubmits that iteration's members — while the orphans are still running
+  and writing. Two live member jobs would then target the same
+  `iteration_XXX/member_YYY` directory. That is a correctness risk (interleaved
+  or corrupted output), not merely wasted GPU time, and it applies to ANY
+  walltime kill. It is tolerable once at the end of a 12 h window; it is not
+  something to court every 6 h by design.
 - **timing evidence (iteration 4).** A previous run of essentially this same
   stage-1 config exists at
   `/glade/derecho/scratch/arenchon/calibration_gpp_energy_rosetta_rebased_v1`

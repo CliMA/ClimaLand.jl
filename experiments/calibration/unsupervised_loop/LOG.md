@@ -200,3 +200,29 @@ than obviously broken. Recorded in STATE.md so stage 2 does not have to
 rediscover it.
 
 **Next.** Unchanged. Blocker threshold still ~8-10 h eligible.
+
+## 2026-07-31 — iteration 6: still queued; one hazard worth recording
+
+`6967486` still `Q` at ~5 h 21 m eligible. No change, and no further pre-flight
+work available — stage 3's remaining prerequisite, the model-LAI validity mask,
+genuinely needs stage 2's long-run diagnostics as its reference simdir.
+
+Revisited the `develop`-queue idea once more, because five hours of waiting is a
+real cost and the earlier argument was about wasted time, which is arguable.
+Found a stronger reason not to, and it is about correctness rather than waste.
+
+**Member jobs are independent PBS jobs, so killing the orchestrator does not
+kill them.** They keep running as orphans. A resubmitted orchestrator resumes at
+`last_completed_iteration + 1`; an iteration cut short never completed, so it
+resubmits that iteration's members while the orphans are still running. Two live
+member jobs would then be writing the same `iteration_XXX/member_YYY` directory.
+That is interleaved or corrupted output, not just duplicated GPU hours.
+
+This applies to any walltime kill, including one in `main`. The difference is
+frequency: tolerable once at the end of a 12 h window, not something to design
+around every 6 h. It also means that if `6967486` ever does get walltime-killed
+mid-iteration, the right move is to check for still-running member jobs and let
+them finish or `qdel` them BEFORE resubmitting the orchestrator — not to
+resubmit immediately.
+
+**Next.** Unchanged. Blocker threshold still ~8-10 h eligible, i.e. ~19:00-21:00.
