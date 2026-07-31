@@ -293,9 +293,35 @@ stage as done:
 --------------------------------------------------------------------------------
 REPORTING
 --------------------------------------------------------------------------------
+The PR is #1832. `gh` is authenticated and works from here — use it.
+
 Post a PR comment at the end of each iteration that changed something material:
-what you did, what the numbers were, what you concluded, what is next. Prune to
-the most recent ~10 comments so the PR stays readable.
+what you did, what the numbers were, what you concluded, what is next.
+
+KEEP THE COMMENT COUNT AT 10 OR FEWER. Before posting, count them and DELETE the
+oldest ones so that the new comment leaves at most 10:
+
+  gh api repos/CliMA/ClimaLand.jl/issues/1832/comments --paginate \
+      --jq '.[] | "\(.id)\t\(.created_at)"'
+  gh api -X DELETE repos/CliMA/ClimaLand.jl/issues/comments/<id>
+
+Delete only loop-authored comments — never delete a human's comment, even to
+stay under the cap. If the humans' comments alone approach the cap, post less
+often rather than pruning theirs.
+
+KEEP THE OPENING COMMENT (the PR body) UP TO DATE. It carries a status block
+between the `<!-- PIPELINE-STATUS:START -->` and `<!-- PIPELINE-STATUS:END -->`
+markers: a per-stage table of status / job id / result, plus whether anything
+has been written to `toml/default_parameters.toml` yet. Rewrite that block every
+iteration whose status changed, so someone reading the PR top-down sees the
+current state without scrolling through comments. Edit only between the markers;
+leave the design description below them alone. Read-modify-write it:
+
+  gh pr view 1832 --json body --jq .body > body.md
+  # replace the marked block, then:
+  gh pr edit 1832 --body-file body.md
+
+Comments are the running commentary; the opening comment is the current state.
 
 Write the durable narrative into
 `experiments/calibration/unsupervised_loop/LOG.md` — one dated entry per
