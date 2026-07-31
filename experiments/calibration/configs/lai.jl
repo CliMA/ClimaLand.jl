@@ -17,8 +17,14 @@
 #      totals start near equilibrium, which is what lets `spinup` stay short
 #      (see the note on spinup below).
 #
-# Ensemble size = 5 params * 2 + 1 = 11 (TransformUnscented); set the number of
-# tasks in run_calibration.sh / the batch script to 11.
+# Ensemble size = 5 params * 2 + 1 = 11 (TransformUnscented). On the Derecho
+# backend each member gets its own single-task PBS job, so nothing needs setting
+# by hand; expect 11 member jobs per iteration.
+#
+# The `lai` target is masked to natural, undisturbed vegetation — see
+# build_natural_vegetation_mask.jl and apply_natural_vegetation_mask in
+# generate_observations.jl. Cropland, urban, glacier and habitually-burning
+# cells are excluded because this model represents none of those processes.
 
 """Per-variable observation variance; multiplies the identity in `ScalarCovariance`.
 Units are (m^2 m^-2)^2.
@@ -86,7 +92,7 @@ end
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["lai"],
     minibatch_size = 1,
-    n_iterations = 10,
+    n_iterations = 5,
     # One annual cycle to score (DJF-MAM-JJA from Dec 1 -> Sep 1, plus SON via
     # extend = Month(3)). Add more (year) tuples here, and raise minibatch_size,
     # to calibrate across multiple years.

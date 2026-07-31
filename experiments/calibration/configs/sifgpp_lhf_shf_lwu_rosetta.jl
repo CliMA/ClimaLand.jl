@@ -72,7 +72,7 @@ end
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["sif_gpp", "lhf", "shf", "lwu"],
     minibatch_size = 2,
-    n_iterations = 10,
+    n_iterations = 5,
     # Yearly DJF-MAM-JJA samples (Dec 1 -> Sep 1). With spinup = Year(1) and
     # extend = Month(3), all 16 samples stay within the artifact's 2002-2020
     # coverage; 16 is divisible by minibatch_size so none is dropped per epoch.
