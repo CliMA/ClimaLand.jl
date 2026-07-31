@@ -57,6 +57,9 @@ allocation fractions and the LAI model disagree, and that is a real, reportable
 finding — not something to paper over. It is also the cleanest single number to
 calibrate `f_leaf` against.
 
+DECIDED: constant `f_leaf` with emergent SLA, as above. Do not slave `C_leaf` to
+`σl·LAI`, and do not add a nudge without asking.
+
 ## 2. Fluxes
 
 GPP is `get_GPP(p, canopy.photosynthesis)` in mol CO₂ m⁻² s⁻¹; multiply by
@@ -193,7 +196,9 @@ dSOC/dt = I_litter(z) − Sm
 **SOC does not equilibrate on a runnable timescale** — τ is centuries to
 millennia. Plan for analytical spinup (§6), not brute force.
 
-## 5. Coupling direction — one-way first
+## 5. Coupling direction — one-way first (DECIDED)
+
+Phase 1 is one-way: `SAI`, `RAI` and canopy height stay prescribed.
 
 With `SAI`, `RAI` and canopy height left prescribed, the carbon model is a pure
 follower: nothing it computes feeds back into LAI, GPP, or the water and energy
@@ -231,18 +236,45 @@ Because of §5, equilibrium can be found **offline and cheaply**:
 
 Brute-force spinup inside the coupled model is the fallback, not the plan.
 
+**Forcing to recycle (DECIDED):** the earliest available ERA5 decade — ERA5
+begins in 1940, so loop roughly 1940–1950 — as the closest approach to a
+pre-climate-change climate in the forcing we already have. Atmospheric CO₂ should
+be held at that era's value (~310 ppm) rather than present-day for the spinup, or
+the "steady state" bakes in modern CO₂ fertilisation; confirm how `c_co2` is set
+before relying on it.
+
 ## 7. Validation
 
 Target: global `cVeg` of the right magnitude and pattern — roughly 10–20 kg C m⁻²
 in tropical forest, 5–15 boreal/temperate forest, 0.3–1 grassland, ~0 desert.
-Secondary checks: `cSoil` (first-metre integral) against SoilGrids, where SOC
-started; NPP/GPP ≈ 0.4–0.5 in the global annual mean; `σl_implied` (§1) against
-the prescribed `σl`; root:shoot ratio, which is a well-observed constraint and
-falls straight out of `f_root`/`τ_root`.
+Secondary checks: `cSoil` against HWSD and against SoilGrids (where SOC started);
+NPP/GPP ≈ 0.4–0.5 in the global annual mean; `σl_implied` (§1) against the
+prescribed `σl`; root:shoot ratio, a well-observed constraint that falls straight
+out of `f_root`/`τ_root`.
 
-Reference datasets to be confirmed — Spawn & Gibbs (2020) AGB+BGB, ESA CCI
-Biomass, GEOCARBON. ILAMB already knows `cVeg` and `cSoil`
-(`experiments/ilamb/ilamb_conversion.jl`).
+### Reference data — already on Derecho (verified 2026-07-31)
+
+The `ilamb_data` ClimaLand artifact holds only ET, GPP and two radiation fields —
+**no biomass**. The full ILAMB reference tree is staged at NCAR, though:
+
+```
+/glade/campaign/cesm/community/lmwg/diag/ILAMB/DATA/
+  biomass/XuSaatchi2021/XuSaatchi.nc      0.5°, 2000–2019, Mg ha⁻¹ (×0.1 → kg C m⁻²)
+                                          "annual carbon density of global live
+                                          woody vegetation" — the primary target
+  biomass/GEOCARBON/biomass.nc            pan-tropical + boreal AGB
+  biomass/ESACCI/biomass.nc               0.5°, 2010 epoch
+  biomass/{Thurner,Saatchi2011,Tropical,GLOBAL.CARBON,NBCD2000,USForest}/
+  soilc/HWSD_M/soilc_0.5x0.5.nc           cSoilAbove1m, kg m⁻²
+```
+
+Read them directly from that path (read-only, no download, no sandbox network
+needed). **Caveat that matters for the comparison:** these products are *woody*
+and mostly *aboveground* biomass. Compare the woody part of the model
+(`C_stem`, plus coarse root if separable) to XuSaatchi, not total `cVeg`, and
+treat grassland cells — where the observation is near zero by construction but
+the model legitimately carries leaf and root carbon — separately rather than as
+model error.
 
 ## 8. Parameters (first cut)
 
