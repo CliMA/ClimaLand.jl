@@ -14,6 +14,7 @@ export prescribed_lai_era5,
     ZhouOptimalLAIModel,
     PrognosticCarbonParameters,
     PrognosticCarbonModel,
+    update_carbon_fluxes!,
     mask_biomass!
 
 """
@@ -1104,6 +1105,96 @@ function update_fractional_c3!(p, Y, biomass::PrognosticCarbonModel, canopy)
 end
 
 """
+    update_carbon_fluxes!(p, Y, component, canopy)
+
+Fills `p.canopy.biomass.carbon` with the respiration, allocation and litter
+fluxes. No-op for biomass models that carry no carbon pools.
+
+This runs in `update_aux`, after photosynthesis has provided GPP and `Rd`, so
+that the fluxes are in the cache before anything reads them. The pool tendency
+and `PoolBasedAutotrophicRespirationModel` are both consumers: computing the
+fluxes once here is what keeps the respiration the canopy reports identical to
+the respiration the pools actually pay.
+"""
+update_carbon_fluxes!(p, Y, component::AbstractBiomassModel, canopy) = nothing
+
+function update_carbon_fluxes!(
+    p,
+    Y,
+    component::PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    (;
+        a,
+        r_stem,
+        r_root,
+        C_sap_half,
+        c_nsc,
+        τ_alloc,
+        n_alloc,
+        C_sugar_ref,
+        Q10,
+        T_ref,
+        τ_leaf,
+        τ_stem_c3,
+        τ_stem_c4,
+        τ_root,
+    ) = component.parameters
+    M_C = FT(0.012011)  # kg C per mol
+    fractional_c3 = p.canopy.photosynthesis.fractional_c3
+    # Resolved outside the broadcasts below: these select a field from the cache
+    # and must not themselves be broadcast over it.
+    Rd_mol = get_Rd_canopy(p, canopy.photosynthesis)
+    Rd_canopy = @. lazy(M_C * Rd_mol)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    # The specification uses soil temperature for the root term, but there is no
+    # ground temperature the canopy can read in both configurations:
+    # `p.drivers.T_ground` exists only for a standalone canopy over prescribed
+    # ground, and the integrated model's soil temperature would make this depend
+    # on soil `update_aux` ordering. Canopy temperature is used instead, which
+    # damps the root term's seasonality less than soil temperature would.
+    # Revisit when stage 3 builds the canopy-to-soil coupling.
+    T_root_zone = T_canopy
+
+    C_sap = @. lazy(sapwood_carbon(Y.canopy.biomass.C_stem, C_sap_half))
+    # Respiration needs substrate: the ramp takes Rm to zero as the sugar pool
+    # is exhausted, instead of letting maintenance drive it negative.
+    # `C_sugar_ref` is small enough that a healthy pool is unaffected. This is a
+    # floor on the pool, not the allocation ramp `g` - a plant that cannot pay
+    # maintenance still draws its reserves down, it just cannot draw them below
+    # zero.
+    @. p.canopy.biomass.carbon.Rm =
+        allocation_ramp(Y.canopy.biomass.C_sugar / C_sugar_ref, n_alloc) * (
+            Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
+            Q10^((T_root_zone - T_ref) / 10) *
+            r_root *
+            max(Y.canopy.biomass.C_root, zero(FT))
+        )
+
+    # The sugar buffer's target is set by the standing live biomass, so
+    # allocation throttles smoothly as reserves are drawn down.
+    @. p.canopy.biomass.carbon.S =
+        max(Y.canopy.biomass.C_sugar, zero(FT)) / τ_alloc * allocation_ramp(
+            Y.canopy.biomass.C_sugar / max(
+                c_nsc *
+                (Y.canopy.biomass.C_leaf + C_sap + Y.canopy.biomass.C_root),
+                eps(FT),
+            ),
+            n_alloc,
+        )
+    @. p.canopy.biomass.carbon.Rg = (1 - a) * p.canopy.biomass.carbon.S
+    @. p.canopy.biomass.carbon.Ra =
+        p.canopy.biomass.carbon.Rm + p.canopy.biomass.carbon.Rg
+
+    @. p.canopy.biomass.carbon.L_leaf = Y.canopy.biomass.C_leaf / τ_leaf
+    @. p.canopy.biomass.carbon.L_stem =
+        Y.canopy.biomass.C_stem /
+        pft_free_blend(fractional_c3, τ_stem_c3, τ_stem_c4)
+    @. p.canopy.biomass.carbon.L_root = Y.canopy.biomass.C_root / τ_root
+    return nothing
+end
+
+"""
     ClimaLand.make_compute_exp_tendency(component::PrognosticCarbonModel, canopy)
 
 Advances the four carbon pools, after advancing whatever prognostic variables
@@ -1116,27 +1207,9 @@ Following the model specification, with all fluxes in kg C m^-2 s^-1:
     dC_stem/dt  = a*f_stem*S - C_stem/τ_stem
     dC_root/dt  = a*f_root*S - C_root/τ_root
 
-where `S = (C_sugar/τ_alloc)*g(C_sugar/C_sugar_target)` is the sugar drawn for
-structure, `Rg = (1-a)*S` is growth respiration and `Ra = Rm + Rg`. Summing the
-four gives `d(ΣC)/dt = GPP - Ra - litter`, the balance the conservation test
-checks.
-
-Maintenance respiration follows the specification,
-
-    Rm = g(C_sugar/C_sugar_ref) *
-         (f_T(T)*(M_C*Rd_canopy + r_stem*C_sap) + f_T(T)*r_root*C_root)
-
-The leading ramp is a substrate limitation: respiration stops as the sugar pool
-empties rather than driving it negative. `C_sugar_ref` is small enough that a
-healthy pool is unaffected.
-
-reusing the leaf dark respiration the photosynthesis scheme already computes,
-which avoids double-counting `Rd` (it is already inside `An = GPP - Rd`).
-
-The specification gives the root term soil temperature, but no ground
-temperature is readable by the canopy in both configurations - `p.drivers.T_ground`
-exists only for a standalone canopy over prescribed ground - so canopy
-temperature is used for both terms for now. See the note in the tendency.
+The fluxes themselves are computed in `update_carbon_fluxes!` during
+`update_aux`; this reads them. Summing the four gives
+`d(ΣC)/dt = GPP - Ra - litter`, the balance the conservation test checks.
 
 Phenological leaf shedding (the `C_leaf*max(-dLAI/dt, 0)/LAI` term) is not yet
 included; only the background `C_leaf/τ_leaf` turnover is. Deciduous leaf carbon
@@ -1148,86 +1221,14 @@ function ClimaLand.make_compute_exp_tendency(
 ) where {FT}
     lai_tendency! =
         ClimaLand.make_compute_exp_tendency(component.lai_model, canopy)
-    (;
-        a,
-        f_leaf_c3,
-        f_stem_c3,
-        f_leaf_c4,
-        f_stem_c4,
-        τ_leaf,
-        τ_stem_c3,
-        τ_stem_c4,
-        τ_root,
-        r_stem,
-        r_root,
-        C_sap_half,
-        c_nsc,
-        τ_alloc,
-        n_alloc,
-        C_sugar_ref,
-        Q10,
-        T_ref,
-    ) = component.parameters
+    (; a, f_leaf_c3, f_stem_c3, f_leaf_c4, f_stem_c4) = component.parameters
     M_C = FT(0.012011)  # kg C per mol
     function compute_exp_tendency!(dY, Y, p, t)
         lai_tendency!(dY, Y, p, t)
 
         fractional_c3 = p.canopy.photosynthesis.fractional_c3
-        # Resolved outside the broadcasts below: these select a field from the
-        # cache and must not themselves be broadcast over it.
         GPP_mol = get_GPP(p, canopy.photosynthesis)
-        Rd_mol = get_Rd_canopy(p, canopy.photosynthesis)
         GPP = @. lazy(M_C * GPP_mol)
-        Rd_canopy = @. lazy(M_C * Rd_mol)
-        T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-        # The specification uses soil temperature for the root term, but there is
-        # no ground temperature the canopy can read in both configurations:
-        # `p.drivers.T_ground` exists only for a standalone canopy over prescribed
-        # ground, and the integrated model's soil temperature would make the
-        # canopy tendency depend on soil `update_aux` ordering. Canopy temperature
-        # is used instead, which damps the root term's seasonality less than soil
-        # temperature would. Revisit when stage 3 builds the canopy-to-soil
-        # coupling and a shared ground temperature becomes available.
-        T_root_zone = T_canopy
-
-        C_sap = @. lazy(sapwood_carbon(Y.canopy.biomass.C_stem, C_sap_half))
-        # A floor at zero in the respiration term is the only clamp: it keeps the
-        # explicit step from drawing a pool negative. Genuine carbon starvation
-        # (sugar at zero and staying there) remains expressible.
-        # Respiration needs substrate: the ramp takes Rm to zero as the sugar
-        # pool is exhausted, instead of letting maintenance drive it negative.
-        # C_sugar_ref is small enough that a healthy pool is unaffected. Note
-        # this is a floor on the pool, not the allocation ramp g - a plant that
-        # cannot pay maintenance still draws its reserves down, it just cannot
-        # draw them below zero.
-        @. p.canopy.biomass.carbon.Rm =
-            allocation_ramp(Y.canopy.biomass.C_sugar / C_sugar_ref, n_alloc) * (
-                Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
-                Q10^((T_root_zone - T_ref) / 10) *
-                r_root *
-                max(Y.canopy.biomass.C_root, zero(FT))
-            )
-
-        # The sugar buffer's target is set by the standing live biomass, so
-        # allocation throttles smoothly as reserves are drawn down.
-        @. p.canopy.biomass.carbon.S =
-            max(Y.canopy.biomass.C_sugar, zero(FT)) / τ_alloc * allocation_ramp(
-                Y.canopy.biomass.C_sugar / max(
-                    c_nsc *
-                    (Y.canopy.biomass.C_leaf + C_sap + Y.canopy.biomass.C_root),
-                    eps(FT),
-                ),
-                n_alloc,
-            )
-        @. p.canopy.biomass.carbon.Rg = (1 - a) * p.canopy.biomass.carbon.S
-        @. p.canopy.biomass.carbon.Ra =
-            p.canopy.biomass.carbon.Rm + p.canopy.biomass.carbon.Rg
-
-        @. p.canopy.biomass.carbon.L_leaf = Y.canopy.biomass.C_leaf / τ_leaf
-        @. p.canopy.biomass.carbon.L_stem =
-            Y.canopy.biomass.C_stem /
-            pft_free_blend(fractional_c3, τ_stem_c3, τ_stem_c4)
-        @. p.canopy.biomass.carbon.L_root = Y.canopy.biomass.C_root / τ_root
 
         @. dY.canopy.biomass.C_sugar =
             GPP - p.canopy.biomass.carbon.Rm - p.canopy.biomass.carbon.S

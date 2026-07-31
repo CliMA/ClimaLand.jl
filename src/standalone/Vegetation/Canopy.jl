@@ -1221,6 +1221,11 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # update stomatal conductance
         update_canopy_conductance!(p, Y, canopy.conductance, canopy)
 
+        # Fill the carbon-pool fluxes (no-op unless the biomass model carries
+        # pools). Must come after photosynthesis, which supplies GPP and Rd, and
+        # before autotrophic respiration, which may read them.
+        update_carbon_fluxes!(p, Y, canopy.biomass, canopy)
+
         # update autotrophic respiration
         update_autotrophic_respiration!(
             p,

@@ -273,6 +273,54 @@ for FT in (Float32, Float64)
         @test abs(Rm_ample - Rm_unthrottled) <= 1e-3 * Rm_unthrottled
     end
 
+    # Stage 2: Ra taken from the pools instead of from prescribed area indices.
+    @testset "PoolBasedAutotrophicRespirationModel, FT = $FT" begin
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics,
+            biomass,
+            autotrophic_respiration = Canopy.PoolBasedAutotrophicRespirationModel{
+                FT,
+            }(),
+        )
+        Y, p, _ = initialize(canopy)
+        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(290.5)
+        Y.canopy.biomass.C_sugar .= FT(0.3)
+        Y.canopy.biomass.C_leaf .= FT(0.2)
+        Y.canopy.biomass.C_stem .= FT(5.0)
+        Y.canopy.biomass.C_root .= FT(1.0)
+        make_set_initial_cache(canopy)(p, Y, t0)
+
+        M_C = FT(0.012011)
+        # Ra reported to the canopy must be exactly the carbon model's own Ra,
+        # in mol CO2 m^-2 s^-1. Anything else means the pools pay a different
+        # respiration than the canopy reports.
+        @test all(
+            parent(
+                @. abs(
+                    p.canopy.autotrophic_respiration.Ra -
+                    p.canopy.biomass.carbon.Ra / M_C,
+                )
+            ) .<= 10 * eps(FT),
+        )
+        @test all(parent(p.canopy.autotrophic_respiration.Ra) .> 0)
+
+        # With every pool empty and no leaf area to respire, Ra must vanish.
+        # The JULES model cannot do this: it respires prescribed SAI and RAI,
+        # which do not go to zero over bare ground.
+        Y.canopy.biomass.C_sugar .= FT(0)
+        Y.canopy.biomass.C_leaf .= FT(0)
+        Y.canopy.biomass.C_stem .= FT(0)
+        Y.canopy.biomass.C_root .= FT(0)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        @test all(parent(p.canopy.autotrophic_respiration.Ra) .== 0)
+    end
+
     # Every prognostic variable needs a Jacobian block, or the implicit solver
     # refuses to build with "A does not have any entries at the following keys".
     # The tendency tests above never reach this: they call the tendency directly

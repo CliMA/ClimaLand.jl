@@ -39,6 +39,7 @@ ClimaLand.Canopy.PrognosticCarbonModel{FT}(
 ) where {FT}
 ClimaLand.Canopy.PrognosticCarbonParameters
 ClimaLand.Canopy.PrognosticCarbonParameters(toml_dict::CP.ParamDict)
+ClimaLand.Canopy.update_carbon_fluxes!
 ClimaLand.Canopy.mask_biomass!(p, prognostic_land_components)
 ClimaLand.Canopy.mask_biomass!(
     p,
