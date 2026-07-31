@@ -236,12 +236,14 @@ Because of §5, equilibrium can be found **offline and cheaply**:
 
 Brute-force spinup inside the coupled model is the fallback, not the plan.
 
-**Forcing to recycle (DECIDED):** the earliest available ERA5 decade — ERA5
-begins in 1940, so loop roughly 1940–1950 — as the closest approach to a
-pre-climate-change climate in the forcing we already have. Atmospheric CO₂ should
-be held at that era's value (~310 ppm) rather than present-day for the spinup, or
-the "steady state" bakes in modern CO₂ fertilisation; confirm how `c_co2` is set
-before relying on it.
+**Forcing to recycle (DECIDED):** the earliest available ERA5 decade, looped.
+Note the constraint discovered while checking: the ClimaLand ERA5 forcing
+artifact (`forty_yrs_era5_land_forcing_data`) starts in **1979**, not 1940 — so
+the earliest decade we can actually recycle is **1979–1989**. That is the least
+climate-changed forcing available, not a pre-industrial one. Atmospheric CO₂
+should be held at that era's value (~340 ppm) rather than present-day, or the
+"steady state" bakes in modern CO₂ fertilisation; check how `c_co2` is set before
+relying on it.
 
 ## 7. Validation
 
