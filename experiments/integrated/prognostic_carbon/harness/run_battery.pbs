@@ -8,9 +8,12 @@
 #   /glade/derecho/scratch/arenchon/claude/prognostic_carbon/battery_<jobid>/
 #
 # qsub environment transfer (-v / -V) is disabled on Derecho, so configuration
-# is read from an optional sidecar file rather than the submit environment:
-#   $PC_SCRATCH/battery.conf   (may set SUBSET / START / STOP / LAI_MODE / ...)
-# Submit:  qsub experiments/integrated/prognostic_carbon/harness/run_battery.pbs
+# is read from a sidecar file rather than the submit environment. The job name
+# selects the file, so independent batteries can run concurrently without
+# fighting over one shared conf:
+#   $PC_SCRATCH/battery_<jobname>.conf   preferred
+#   $PC_SCRATCH/battery.conf             fallback
+# Submit:  qsub -N pc_batt_pres experiments/.../run_battery.pbs
 # With no conf file the full 20-site battery runs with prescribed MODIS LAI.
 #PBS -N pc_battery
 #PBS -A UCIT0011
@@ -29,11 +32,12 @@ HARNESS=$REPO/experiments/integrated/prognostic_carbon/harness
 CSV=$HARNESS/test_sites.csv
 DRIVER=$HARNESS/site_driver.jl
 PC_SCRATCH=/glade/derecho/scratch/arenchon/claude/prognostic_carbon
-RUNROOT=$PC_SCRATCH/battery_${PBS_JOBID:-local}
+RUNROOT=$PC_SCRATCH/battery_${PBS_JOBNAME:-run}_${PBS_JOBID:-local}
 mkdir -p "$RUNROOT"; cd "$RUNROOT"
 
-CONF=$PC_SCRATCH/battery.conf
-[[ -f "$CONF" ]] && source "$CONF"
+CONF=$PC_SCRATCH/battery_${PBS_JOBNAME}.conf
+[[ -f "$CONF" ]] || CONF=$PC_SCRATCH/battery.conf
+[[ -f "$CONF" ]] && { echo "CONF $CONF"; source "$CONF"; } || echo "CONF none (defaults)"
 
 START="${START:-2000-09-01}"
 STOP="${STOP:-2002-09-01}"

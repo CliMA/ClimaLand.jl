@@ -63,3 +63,59 @@ Operational finding: `module load gh` must be run **bare**. `module` is a shell
 function, so piping it (`module load gh | tail`) runs it in a subshell and the
 `PATH` change is discarded — which looks exactly like "gh is not installed".
 Bare, it works and is already authenticated (account AlexisRenchon).
+
+## 2026-07-31 — iteration 2: smoke test green, 20-site baselines launched
+
+Job 6967513 finished in 7 minutes, `Exit_status=0`, 4/4 sites PASS. The port
+works: per-site output under scratch, `carbon_metrics.txt` written, and
+`baseline_summary.tsv` collected. Annual means (g C m⁻² day⁻¹):
+
+| site | GPP | Ra | Rh | LAI | NPP/GPP |
+|---|---|---|---|---|---|
+| amazon_central | 8.83 | 4.08 | 1.60 | 4.78 | 0.54 |
+| ozark_us | 3.75 | 2.04 | 0.49 | 1.13 | 0.46 |
+| us_great_plains | 2.67 | 1.69 | 0.45 | 0.72 | 0.37 |
+| sahara | 0.00 | 1.00 | 0.06 | 0.00 | — |
+
+Amazon GPP of 8.8 g C m⁻² day⁻¹ is ≈ 3.2 kg C m⁻² yr⁻¹, right for tropical
+rainforest, and the three vegetated NPP/GPP ratios sit inside the 0.3–0.6 band
+stage 2 has to hit. So the existing JULES Ra is not badly wrong where there is
+vegetation.
+
+**The desert is a different story, and it is the finding of this iteration.**
+Sahara: GPP = 0, LAI = 0, Ra = 1.00 g C m⁻² day⁻¹ — about 365 g C m⁻² yr⁻¹ of
+autotrophic respiration with no photosynthesis anywhere in the year. The cause
+is structural, not numerical: the JULES term respires *prescribed constant*
+area indices (`Rd_ref·RAI`, `Rd_ref·μs·SAI`), and SAI/RAI do not vanish in a
+desert. The model is emitting carbon it never fixed, from a pool that does not
+exist. That is precisely the open budget MODEL.md §2.1 sets out to close, and
+it gives stage 2 a falsifiable prediction: once Ra is computed from the pools,
+Sahara Ra must fall to ≈ 0, because the pools there equilibrate near zero.
+
+Two harness fixes, both from things that actually bit:
+
+- **Per-job configs.** `run_battery.pbs` sourced one shared
+  `battery.conf`, so two concurrent batteries would have silently shared a
+  configuration — the second run would report the first's settings. It now
+  sources `battery_${PBS_JOBNAME}.conf` with `battery.conf` as fallback, and
+  `RUNROOT` carries the job name. Deleted the smoke-test `battery.conf` so its
+  4-site `SUBSET` could not leak into a full run.
+- **PBS output naming.** The iteration-1 monitor watched
+  `pc_battery.o6967513` and never fired. With `-j oe` and `-o <dir>`, Derecho
+  writes `<jobid>.OU` — `6967513.desched1.OU`. A monitor on the wrong path is
+  indistinguishable from a job that is still running, which is the failure mode
+  worth remembering.
+
+Also noted: a job id can be missing from `qstat` for a few seconds after `qsub`
+returns it (`Unknown Job Id`). Propagation delay, not a failed submission —
+6967718 looked lost and was in fact already running. Do not resubmit on that
+evidence.
+
+Submitted the real stage-0 baselines, both 20 sites, 2-year window with the
+first year excluded from the means, running concurrently:
+
+- **6967717** `pc_base_pres` — prescribed MODIS LAI (the stages 1–3 setup)
+- **6967718** `pc_base_prog` — prognostic `ZhouOptimalLAIModel` (stage 4+)
+
+Both baselines matter: stage 1's tests must cover both LAI models, so rule 1
+needs a reference table under each.

@@ -36,9 +36,26 @@ f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaA
   (`site_driver.jl`, `run_battery.pbs`, `test_sites.csv`) — deliberately NOT
   `experiments/integrated/era5/single_site.jl`, which is this branch's
   hard-coded desert experiment and is left untouched
-- **PBS job ids:** 6967513 (4-site smoke test, submitted 2026-07-31)
-- **baseline recorded (GPP / LAI / Ra / Rh per site):** no — pending 6967513,
-  then a full 20-site run
+- **PBS job ids:** 6967513 (4-site smoke test, PASSED 4/4, Exit_status=0, 7 min);
+  6967717 (20-site, prescribed LAI) and 6967718 (20-site, prognostic Zhou LAI),
+  both running
+- **baseline recorded (GPP / LAI / Ra / Rh per site):** partial — 4 sites from
+  the smoke test (below); full 20-site table pending 6967717 / 6967718
+
+### Smoke-test baseline (job 6967513, 1 yr from 2000-09-01, no spinup excluded)
+
+Fluxes in g C m⁻² day⁻¹, annual mean.
+
+| site | biome | GPP | Ra | Rh | LAI |
+|---|---|---|---|---|---|
+| amazon_central | tropical rainforest | 8.83 | 4.08 | 1.60 | 4.78 |
+| ozark_us | temperate deciduous | 3.75 | 2.04 | 0.49 | 1.13 |
+| us_great_plains | temperate grassland C4 | 2.67 | 1.69 | 0.45 | 0.72 |
+| sahara | desert | 0.00 | **1.00** | 0.06 | 0.00 |
+
+Implied NPP/GPP = 1 − Ra/GPP: 0.54 amazon, 0.46 ozark, 0.37 great plains —
+all inside the 0.3–0.6 band stage 2 must land in, so the *current* JULES Ra is
+not wildly off where there is vegetation. The desert is the problem (below).
 - **notes:** driver is ENV-parametrized (`SITE_LON/SITE_LAT/SITE_NAME/START/
   STOP/DT/SITE_OUTDIR/LAI_MODE/SPINUP_YEARS`). `LAI_MODE=prescribed` (MODIS,
   default, stages 1–3) or `prognostic` (Zhou, stage 4+). Writes
@@ -95,7 +112,9 @@ f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaA
 
 | job_id | stage | purpose | submitted | status | result | output path |
 |---|---|---|---|---|---|---|
-| 6967513 | 0 | 4-site smoke test of the ported harness (amazon_central, sahara, ozark_us, us_great_plains), 1 yr, prescribed LAI | 2026-07-31 | submitted | pending | `/glade/derecho/scratch/arenchon/claude/prognostic_carbon/battery_6967513.desched1/` |
+| 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
+| 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | running | pending | `.../battery_pc_base_pres_6967717.desched1/` |
+| 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | running | pending | `.../battery_pc_base_prog_6967718.desched1/` |
 
 Jobs seen in `qstat -u arenchon` that are NOT `pc_*` belong to the other loop —
 never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
@@ -120,6 +139,29 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
   function; piping it into anything runs it in a subshell and the `PATH` update
   is lost, which presents exactly as "gh: command not found". Run bare, `gh` is
   present (2.74.2) and authenticated as AlexisRenchon.
+- **2026-07-31, the desert respires carbon it never fixed — quantified.** At
+  `sahara`, GPP = 0.00 and LAI = 0.00, yet **Ra = 1.00 g C m⁻² day⁻¹**
+  (≈ 365 g C m⁻² yr⁻¹). This is the JULES-style `AutotrophicRespirationModel`
+  respiring *prescribed constant* area indices (`Rd_ref·RAI`,
+  `Rd_ref·μs·SAI`, MODEL.md §2.1): SAI and RAI do not go to zero in a desert,
+  so the plant pays maintenance forever with no photosynthesis and no pool to
+  draw down. The carbon budget is open by construction. This is the strongest
+  quantitative case for stage 2 (respire the pools, not the area indices), and
+  it is also a prediction to check: after stage 2, Sahara Ra should fall to
+  ≈ 0 because the pools there equilibrate near zero.
+- **2026-07-31, per-job battery configs.** `run_battery.pbs` now sources
+  `$PC_SCRATCH/battery_${PBS_JOBNAME}.conf` (falling back to `battery.conf`),
+  and `RUNROOT` includes the job name. One shared conf file could not support
+  two concurrent batteries — the second submission would silently run the
+  first's configuration. Submit with `qsub -N pc_<name>`.
+- **2026-07-31, PBS output file naming.** With `-j oe` and `-o <directory>`,
+  Derecho writes `<jobid>.OU` (e.g. `6967513.desched1.OU`) into that directory,
+  NOT `<jobname>.o<jobid>`. A monitor armed on the latter never fires and looks
+  exactly like a still-running job. Watch `$PC_SCRATCH/<jobid>.desched1.OU`.
+- **2026-07-31, `qstat` right after `qsub`.** A job id returned by `qsub` can be
+  briefly absent from both `qstat -u` and `qstat -x -f <jid>` ("Unknown Job
+  Id"). It is a propagation delay, not a failed submission — do not resubmit.
+  Re-check before concluding anything.
 - **2026-07-31, diagnostic name matching.** `output_short_name` is
   `"<short>_<schedule>_<suffix>"` (e.g. `gpp_1d_average`). The driver anchors
   its lookup with `startswith(name, short * "_")` rather than the original's
