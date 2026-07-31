@@ -29,7 +29,8 @@ f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaA
 
 ## Stage 0 — test harness (single-pixel ERA5 battery)
 
-- **status:** in_progress
+- **status:** **done** (2026-07-31) — harness ported, full 20-site battery green
+  under BOTH LAI models, baselines recorded and committed
 - **ported from:** `origin/ar/derecho_loop` (`single_site.jl`, `run_battery.pbs`,
   `test_sites.csv`)
 - **lives at:** `experiments/integrated/prognostic_carbon/harness/`
@@ -39,9 +40,9 @@ f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaA
 - **PBS job ids:** 6967513 (4-site smoke test, PASSED 4/4, Exit_status=0, 7 min);
   6967717 (20-site, prescribed LAI) and 6967718 (20-site, prognostic Zhou LAI),
   both running
-- **baseline recorded (GPP / LAI / Ra / Rh per site):** **prescribed LAI: yes**
-  (20/20, job 6967717, committed as `harness/baseline_prescribed_lai.tsv`);
-  prognostic LAI pending 6967718
+- **baseline recorded (GPP / LAI / Ra / Rh per site):** **yes, both** —
+  prescribed 20/20 (job 6967717, `harness/baseline_prescribed_lai.tsv`) and
+  prognostic 20/20 (job 6967718, `harness/baseline_prognostic_lai.tsv`)
 
 ### Stage-0 baseline, PRESCRIBED MODIS LAI (job 6967717, 20/20 PASS)
 
@@ -70,6 +71,45 @@ Committed in full at `harness/baseline_prescribed_lai.tsv`. NPP/GPP = 1 − Ra/G
 | alaska_north_slope | tundra | 0.98 | 1.07 | 0.00 | 0.40 | **−0.093** |
 | sahara | desert | 0.00 | 0.81 | 0.07 | 0.00 | n/a |
 | arabian | desert | 0.00 | 0.81 | 0.11 | 0.00 | n/a |
+
+### Stage-0 baseline, PROGNOSTIC Zhou LAI (job 6967718, 20/20 PASS)
+
+Full table at `harness/baseline_prognostic_lai.tsv`. Same window and units.
+Compared with prescribed MODIS LAI above:
+
+| site | LAI pres | LAI prog | GPP pres | GPP prog | NPP/GPP prog |
+|---|---|---|---|---|---|
+| congo_basin | 5.16 | 4.63 | 8.71 | 8.53 | 0.539 |
+| amazon_central | 4.79 | 4.30 | 8.16 | 8.00 | 0.532 |
+| borneo | 4.09 | 3.98 | 7.44 | 7.47 | 0.519 |
+| central_europe | 1.83 | 2.23 | 4.94 | 5.15 | 0.521 |
+| n_australia_savanna | 1.17 | **4.52** | 4.42 | 7.83 | 0.514 |
+| iberia | 0.74 | **2.03** | 2.58 | 4.44 | 0.500 |
+| cerrado_brazil | 1.60 | 3.05 | 3.77 | 5.17 | 0.495 |
+| pampas_argentina | 1.03 | 2.44 | 3.10 | 4.70 | 0.494 |
+| ozark_us | 1.12 | 2.52 | 3.25 | 4.69 | 0.493 |
+| us_great_plains | 0.66 | **2.31** | 2.08 | 3.96 | 0.463 |
+| ne_china | 0.66 | 1.66 | 1.53 | 3.16 | 0.425 |
+| california_vaira | 1.74 | **0.82** | 3.83 | 2.91 | 0.417 |
+| fennoscandia | 1.32 | 1.23 | 2.84 | 2.63 | 0.391 |
+| canada_boreal | 0.71 | 1.24 | 1.37 | 1.99 | 0.293 |
+| mojave_sw_us | 0.16 | 0.22 | 1.04 | 1.62 | 0.212 |
+| central_siberia | 1.29 | 0.72 | 1.61 | 1.17 | **0.028** |
+| alaska_north_slope | 0.40 | **0.14** | 0.98 | 0.49 | **−0.915** |
+| sahel | 0.37 | **0.00** | 1.20 | **0.00** | n/a |
+| sahara / arabian | 0.00 | 0.00 | 0.00 | 0.00 | n/a |
+
+The two LAI models disagree substantially — prognostic runs much higher at
+grassland/savanna/temperate sites and lower at `california_vaira`,
+`central_siberia`, `alaska_north_slope`, and collapses `sahel` to bare ground.
+That is the LAI model's own behaviour and **out of scope under rule 1**; it is
+recorded because the carbon model must work under both, and the pools will
+differ correspondingly. Do not "fix" it.
+
+Under prognostic LAI the respiration problem persists at the same cold/arid
+sites and is worse at `alaska_north_slope` (NPP/GPP −0.915, GPP halved to 0.49
+while Ra stays 0.93), with `central_siberia` marginal at 0.028. The middle of
+the distribution is healthier than under prescribed LAI (13 sites in 0.4–0.55).
 
 **The current model already fails the stage-2 acceptance criterion.** That
 criterion is "Ra neither collapses to zero nor exceeds GPP in the annual mean at
@@ -100,7 +140,13 @@ not wildly off where there is vegetation. The desert is the problem (below).
 
 ## Stage 1 — carbon pools in `biomass.jl`
 
-- **status:** not_started
+- **status:** not_started — **unblocked, this is the next work**
+- **gate satisfied:** stage 0 done; both baselines recorded, so rule 1 ("GPP and
+  LAI unchanged") is now checkable against
+  `harness/baseline_prescribed_lai.tsv` and `harness/baseline_prognostic_lai.tsv`
+- **rule-1 check procedure:** rerun the battery under each LAI mode with the
+  carbon model present and diff GPP and LAI per site against those two files.
+  Any difference beyond round-off is a stage-1 bug by definition.
 - **pools:** C_sugar, C_leaf, C_stem, C_root
 - **conservation test written:** no
 - **GPP/LAI unchanged vs stage-0 baseline:** —
@@ -150,7 +196,7 @@ not wildly off where there is vegetation. The desert is the problem (below).
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | running (33 min at last check) | pending | `.../battery_pc_base_prog_6967718.desched1/` |
+| 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prognostic_lai.tsv` | `.../battery_pc_base_prog_6967718.desched1/` |
 
 Jobs seen in `qstat -u arenchon` that are NOT `pc_*` belong to the other loop —
 never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).

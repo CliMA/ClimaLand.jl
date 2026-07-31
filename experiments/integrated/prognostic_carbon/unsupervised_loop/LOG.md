@@ -174,3 +174,34 @@ finished job. Monitors now key only on files the job writes; bare `qstat`
 liveness checks happen at the start of an iteration, where they work. This is
 the second monitor bug in three iterations, both of the same family: the
 monitor's own failure looking like a result.
+
+**Stage 0 closed later the same iteration.** 6967718 finished **20/20 PASS**
+(the rewritten file-based monitor fired correctly on `BATTERY_DONE`). Both
+baselines are recorded and committed: `harness/baseline_prescribed_lai.tsv` and
+`harness/baseline_prognostic_lai.tsv`.
+
+The two LAI models disagree a lot, which is worth knowing before writing any
+carbon code. Prognostic Zhou LAI runs much higher at grassland, savanna and
+temperate sites — `us_great_plains` 0.66 → 2.31, `iberia` 0.74 → 2.03,
+`n_australia_savanna` 1.17 → 4.52, `ozark_us` 1.12 → 2.52 — and lower at
+`california_vaira` 1.74 → 0.82, `central_siberia` 1.29 → 0.72,
+`alaska_north_slope` 0.40 → 0.14. At `sahel` it collapses to 0.00 and takes GPP
+with it, turning a savanna into bare ground.
+
+Under rule 1 that is emphatically not mine to fix, and I am not touching it. It
+is recorded because the carbon model has to work under both, and the pools will
+come out very differently between them — a constant allocation-fraction set
+that looks right under MODIS LAI may not under Zhou LAI, which is exactly what
+the `σl_implied` diagnostic exists to expose.
+
+The respiration problem is the same under both LAI models, which is
+reassuring: it is a property of the respiration scheme, not of the LAI input.
+Under prognostic LAI the middle of the distribution is healthier (13 sites in
+0.4–0.55), but `alaska_north_slope` is much worse — GPP halves to 0.49 while Ra
+stays at 0.93, giving NPP/GPP = −0.915 — and `central_siberia` is marginal at
+0.028.
+
+Stage 0 is therefore **done**: harness ported, battery green 20/20 under both
+LAI models, per-site output in scratch, baselines committed. Stage 1 is
+unblocked and is the next work — the four pools in `biomass.jl`, the carbon
+conservation test, and the rule-1 check against these two tables.
