@@ -240,6 +240,76 @@ Reading these:
   concluding the constant-fraction assumption fails.
 - **Sahara sugar went negative (−0.075).** Fixed; see below.
 
+### STAGE-1 GATE, prescribed LAI (job 6969169, 20/20 PASS)
+
+**Rule 1 passes exactly at all 20 sites** — GPP and LAI bit-identical to
+`baseline_prescribed_lai.tsv`, `rel_diff = 0.0` everywhere.
+
+Pools after 2 years from empty (kg C m⁻²), sorted by cVeg:
+
+| site | biome | LAI | sugar | leaf | stem | root | cVeg | σl_implied |
+|---|---|---|---|---|---|---|---|---|
+| congo_basin | tropical rainforest | 5.16 | 0.163 | 0.541 | 1.309 | 0.625 | 2.64 | 0.098 |
+| amazon_central | tropical rainforest | 4.79 | 0.165 | 0.503 | 1.206 | 0.580 | 2.45 | 0.079 |
+| borneo | tropical rainforest | 4.09 | 0.141 | 0.450 | 1.070 | 0.517 | 2.18 | 0.088 |
+| central_europe | temperate deciduous | 1.83 | 0.142 | 0.423 | 0.884 | 0.471 | 1.92 | 0.191 |
+| california_vaira | mediterranean | 1.74 | 0.101 | 0.330 | 0.747 | 0.374 | 1.55 | 0.163 |
+| cerrado_brazil | tropical savanna C4 | 1.60 | 0.071 | 0.258 | 0.631 | 0.301 | 1.26 | 0.234 |
+| n_australia_savanna | tropical savanna C4 | 1.17 | 0.081 | 0.354 | 0.294 | 0.522 | 1.25 | 0.395 |
+| ozark_us | temperate deciduous | 1.12 | 0.093 | 0.271 | 0.545 | 0.315 | 1.22 | 0.164 |
+| pampas_argentina | temperate grassland | 1.03 | 0.069 | 0.238 | 0.603 | 0.287 | 1.20 | 0.245 |
+| fennoscandia | boreal forest | 1.32 | 0.091 | 0.244 | 0.493 | 0.269 | 1.10 | 0.129 |
+| iberia | mediterranean | 0.74 | 0.065 | 0.212 | 0.486 | 0.245 | 1.01 | 0.249 |
+| us_great_plains | temperate grassland C4 | 0.66 | 0.064 | 0.178 | 0.350 | 0.211 | 0.80 | 0.190 |
+| central_siberia | boreal forest | 1.28 | 0.059 | 0.138 | 0.274 | 0.151 | 0.62 | 0.117 |
+| canada_boreal | boreal forest | 0.71 | 0.049 | 0.127 | 0.273 | 0.142 | 0.59 | 0.127 |
+| ne_china | temperate deciduous | 0.66 | 0.059 | 0.127 | 0.259 | 0.146 | 0.59 | 0.106 |
+| mojave_sw_us | desert | 0.16 | 0.028 | 0.089 | 0.202 | 0.101 | 0.42 | 0.501 |
+| alaska_north_slope | tundra | 0.40 | 0.035 | 0.094 | 0.176 | 0.101 | 0.41 | 0.205 |
+| sahel | tropical savanna C4 | 0.37 | 0.027 | 0.099 | 0.105 | 0.147 | 0.38 | 0.169 |
+| sahara | desert | 0.00 | 0 | 0 | 0 | 0 | **0** | 0 |
+| arabian | desert | 0.00 | 0 | 0 | 0 | 0 | **0** | 0 |
+
+**What passes:**
+
+- **cVeg follows the biomass gradient**: rainforest 2.2–2.6 > temperate forest
+  0.6–1.9 > savanna/grassland 0.4–1.3 > desert 0. Right ordering, though far
+  below equilibrium magnitudes (2 yr from empty, τ_stem = 30 yr).
+- **Sugar is off zero at every vegetated site** (0.027–0.165) and exactly zero at
+  both true deserts. No pinning, no phantom carbon, no clamp.
+- **No unbounded stem growth** anywhere; max stem is 1.31.
+- **Notably, sugar stays positive at `alaska_north_slope` and `mojave_sw_us`**,
+  the two sites where the *JULES* Ra exceeded GPP in the stage-0 baseline. The
+  pool-based Rm does not reproduce that pathology — an early, encouraging sign
+  for stage 2, though the wiring that makes it count has not happened yet.
+
+**The finding: `σl_implied` is systematically too high, and the spread is what
+matters.**
+
+Only the three tropical rainforests (0.079, 0.088, 0.098) land inside the
+expected 0.03–0.1 kg C m⁻² leaf. Every other site is 1.1× to **5×** above, and
+the excess broadly grows as LAI falls. The full spread is
+**0.079 → 0.501, a factor of 6.3**.
+
+This is not fixable by recalibrating `f_leaf`. A global change to `f_leaf`
+rescales every site by the same factor, so it can shift the distribution but not
+compress it: dividing by 2.5 would centre the middle of the range but push the
+tropics to 0.032 (bottom edge of the band) and still leave `mojave_sw_us` at
+0.20, twice the top.
+
+**The transient argues the wrong way for anyone hoping spinup fixes it.** The
+pools start empty, so `C_leaf` is *below* its equilibrium — with τ_leaf = 1.5 yr
+and a 2-year run it is at most ~74% equilibrated, and less than that because the
+allocation rate is itself still rising. Equilibrium `σl_implied` will therefore
+be **higher** than these numbers, not lower. Spinup makes this worse.
+
+Per MODEL.md §1 this is "a real, reportable finding — not something to paper
+over", and §2.3's prescribed fallback if constants fail is to let `f_stem` (and
+correspondingly `f_root`) vary with mean annual temperature and precipitation,
+never with a PFT. **Do not act on this yet**: confirm against the prognostic-LAI
+battery and re-measure after stage-4 spinup, since that is the state the
+comparison is properly made in.
+
 ### Sugar floor verified (job 6969094, 4/4 PASS)
 
 The substrate limitation does exactly what it should, and nothing else:
@@ -377,7 +447,7 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | running | pending | `.../battery_pc_s1_pres_6969169.desched1/` |
+| 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_pres_6969169.desched1/` |
 | 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | running | pending | `.../battery_pc_s1_prog_6969170.desched1/` |
 | 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | **done** | **PASS 4/4**; sahara sugar −0.075 → **exactly 0**; vegetated sites unchanged; rule 1 still exact | `.../battery_pc_s1_carb_6969094.desched1/` |
 | 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | **done** | **PASS 4/4; RULE 1 PASSES EXACTLY** (GPP and LAI bit-identical, rel_diff 0.0); found negative sugar at sahara | `.../battery_pc_s1_carb_6968999.desched1/` |
