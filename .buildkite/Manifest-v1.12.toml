@@ -1373,9 +1373,9 @@ version = "0.1.0"
 
 [[deps.Glib_jll]]
 deps = ["Artifacts", "GettextRuntime_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE2_jll", "Zlib_jll"]
-git-tree-sha1 = "24f6def62397474a297bfcec22384101609142ed"
+git-tree-sha1 = "090526e65de8f69648ac156daae153de8b56df62"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.86.3+0"
+version = "2.88.3+0"
 
 [[deps.Glossaries]]
 git-tree-sha1 = "60a11a815b6113e7024157c31a77a75619d97a23"
@@ -2105,9 +2105,9 @@ version = "1.12.1"
 
 [[deps.MLUtils]]
 deps = ["ChainRulesCore", "CodeTracking", "Compat", "DataAPI", "DelimitedFiles", "Distributed", "InteractiveUtils", "MLCore", "Mmap", "NNlib", "Random", "ShowCases", "SimpleTraits", "Statistics", "StatsBase", "Tables"]
-git-tree-sha1 = "cbaae75c0473c1650f472ca6ed1ec7fc09153b75"
+git-tree-sha1 = "0a589dc0ada20d30b7e9ad13752cf25361875bf2"
 uuid = "f1d291b0-491e-4a28-83b9-f70985020b54"
-version = "0.4.12"
+version = "0.4.13"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPIABI_jll", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "PkgVersion", "PrecompileTools", "Serialization", "Sockets"]
@@ -2270,9 +2270,9 @@ version = "1.11.0"
 
 [[deps.MathOptInterface]]
 deps = ["CodecBzip2", "CodecZlib", "ForwardDiff", "JSON", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test"]
-git-tree-sha1 = "7b57dbe5d2c988a0c7a0ea977045e844e3d0b263"
+git-tree-sha1 = "f1ccd9ffcb8577e207deb9aaebeb3f961de70380"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "1.51.2"
+version = "1.52.0"
 
     [deps.MathOptInterface.extensions]
     MathOptInterfaceBenchmarkToolsExt = "BenchmarkTools"
@@ -2728,9 +2728,9 @@ version = "1.5.2"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "REPL", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "988ff909479c5661b24f756432127198a7e465d0"
+git-tree-sha1 = "807a56f504aa08838a11e9a0727c3d704f90c44b"
 uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "3.4.3"
+version = "3.4.4"
 
     [deps.PrettyTables.extensions]
     PrettyTablesExcelExt = "XLSX"
@@ -3265,9 +3265,9 @@ version = "0.3.7"
 
 [[deps.StringManipulation]]
 deps = ["PrecompileTools"]
-git-tree-sha1 = "532e983cd333609f95d618c744fc40d01ea6e17a"
+git-tree-sha1 = "8a90c1d77c3277a5d43b83927b3cbe2c70a37484"
 uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.6"
+version = "0.4.7"
 
 [[deps.StructArrays]]
 deps = ["ConstructionBase", "DataAPI", "Tables"]
@@ -3320,9 +3320,9 @@ version = "7.8.3+2"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "2bc5d9df1fdc3298b3034f2023f922e0d9464d75"
+git-tree-sha1 = "0b35705e1866e02f581851e692573dbdd74f6291"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "1.2.0"
+version = "1.2.1"
 weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]
