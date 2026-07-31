@@ -1,0 +1,108 @@
+#!/bin/bash
+# Test battery runner for the prognostic-carbon single-column driver.
+# Runs site_driver.jl once per row of test_sites.csv, NPAR sites concurrently on
+# one CPU node. Each column is ~1 core and ~2-3 GB, and the sites are fully
+# independent, so a 20-site battery costs a few core-hours.
+#
+# Output goes to scratch, never the repo:
+#   /glade/derecho/scratch/arenchon/claude/prognostic_carbon/battery_<jobid>/
+#
+# qsub environment transfer (-v / -V) is disabled on Derecho, so configuration
+# is read from an optional sidecar file rather than the submit environment:
+#   $PC_SCRATCH/battery.conf   (may set SUBSET / START / STOP / LAI_MODE / ...)
+# Submit:  qsub experiments/integrated/prognostic_carbon/harness/run_battery.pbs
+# With no conf file the full 20-site battery runs with prescribed MODIS LAI.
+#PBS -N pc_battery
+#PBS -A UCIT0011
+#PBS -q develop
+#PBS -l walltime=05:00:00
+#PBS -l select=1:ncpus=8:mem=80GB
+#PBS -j oe
+#PBS -m n
+#PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+export HDF5_USE_FILE_LOCKING=FALSE   # intermittent HDF5 file-locking errors on Derecho Lustre
+REPO=/glade/u/home/arenchon/ClimaLand.jl
+JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+HARNESS=$REPO/experiments/integrated/prognostic_carbon/harness
+CSV=$HARNESS/test_sites.csv
+DRIVER=$HARNESS/site_driver.jl
+PC_SCRATCH=/glade/derecho/scratch/arenchon/claude/prognostic_carbon
+RUNROOT=$PC_SCRATCH/battery_${PBS_JOBID:-local}
+mkdir -p "$RUNROOT"; cd "$RUNROOT"
+
+CONF=$PC_SCRATCH/battery.conf
+[[ -f "$CONF" ]] && source "$CONF"
+
+START="${START:-2000-09-01}"
+STOP="${STOP:-2002-09-01}"
+SUBSET="${SUBSET:-}"
+LAI_MODE="${LAI_MODE:-prescribed}"   # prescribed MODIS LAI for stages 1-3; prognostic Zhou from stage 4
+SPINUP_YEARS="${SPINUP_YEARS:-1}"    # years excluded from the reported means
+DT="${DT:-450.0}"
+# Parameter overrides; empty = branch default (see site_driver.jl).
+OPT_Z="${OPT_Z:-}"; OPT_Z_C4="${OPT_Z_C4:-}"
+OPT_SIGMA="${OPT_SIGMA:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
+OPT_ALPHA="${OPT_ALPHA:-}"; F0="${F0:-}"; Z_A0="${Z_A0:-}"
+ONLINE_C3C4="${ONLINE_C3C4:-}"
+
+# NPAR sites run concurrently. Capped to the allocated ncpus (NOT nproc, which
+# can report the node's physical cores from inside a cpuset). Keep the PBS
+# select mem >= NPAR*3 GB.
+NPAR="${NPAR:-8}"
+echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE spinup_years=$SPINUP_YEARS npar=$NPAR runroot=$RUNROOT"
+
+# Precompile once up front so the concurrent workers hit a warm cache.
+"$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
+"$JULIA" --project="$REPO/.buildkite" -e 'using ClimaLand' >/dev/null 2>&1 || true
+
+run_site() {
+    local lon="$1" lat="$2" name="$3"
+    local SITEDIR="$RUNROOT/$name"
+    mkdir -p "$SITEDIR"
+    if START="$START" STOP="$STOP" DT="$DT" SITE_LON="$lon" SITE_LAT="$lat" \
+        SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" LAI_MODE="$LAI_MODE" \
+        SPINUP_YEARS="$SPINUP_YEARS" \
+        OPT_Z="$OPT_Z" OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA="$OPT_SIGMA" \
+        OPT_SIGMA_C4="$OPT_SIGMA_C4" OPT_ALPHA="$OPT_ALPHA" F0="$F0" \
+        Z_A0="$Z_A0" ONLINE_C3C4="$ONLINE_C3C4" \
+        "$JULIA" --project="$REPO/.buildkite" "$DRIVER" \
+        >"$SITEDIR/$name.log" 2>&1; then
+        echo "SITE_OK $name"; echo PASS >"$SITEDIR/.status"
+    else
+        echo "SITE_FAIL $name (see $SITEDIR/$name.log)"; echo FAIL >"$SITEDIR/.status"
+    fi
+}
+
+while IFS=, read -r lon lat biome name; do
+    [[ "$lon" =~ ^# ]] && continue
+    [[ "$lon" == "lon" ]] && continue
+    [[ -z "$lon" ]] && continue
+    if [[ -n "$SUBSET" ]]; then
+        case ",$SUBSET," in *",$name,"*) ;; *) continue ;; esac
+    fi
+    while (( $(jobs -rp | wc -l) >= NPAR )); do wait -n; done
+    echo "=== LAUNCH $name ($lon,$lat) $biome ==="
+    run_site "$lon" "$lat" "$name" &
+done <"$CSV"
+wait
+npass=$(grep -rl '^PASS$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
+nfail=$(grep -rl '^FAIL$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
+
+# Baseline table: one row per site, tab-separated, for pasting into STATE.md.
+SUMMARY="$RUNROOT/baseline_summary.tsv"
+{
+    printf 'site\tbiome\tGPP_gC_m2_day\tRa_gC_m2_day\tRh_gC_m2_day\tLAI\tTair_K\tSWC\n'
+    while IFS=, read -r lon lat biome name; do
+        [[ "$lon" =~ ^# || "$lon" == "lon" || -z "$lon" ]] && continue
+        m="$RUNROOT/$name/out/carbon_metrics.txt"
+        [[ -f "$m" ]] || continue
+        get() { awk -v k="$1" '$1==k{print $2}' "$m"; }
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$biome" \
+            "$(get GPP_gC_m2_day)" "$(get Ra_gC_m2_day)" "$(get Rh_gC_m2_day)" \
+            "$(get LAI_m2_m2)" "$(get Tair_K)" "$(get SWC_m3_m3)"
+    done <"$CSV"
+} >"$SUMMARY"
+echo "--- baseline_summary.tsv ---"; cat "$SUMMARY"
+echo "BATTERY_DONE pass=$npass fail=$nfail summary=$SUMMARY"
