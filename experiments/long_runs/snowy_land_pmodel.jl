@@ -163,7 +163,7 @@ LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,
-    leaderboard_data_sources = ["ERA5", "ILAMB", "FlagshipCarbonMetrics"],
+    leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"],
 )
 
 if LONGER_RUN
