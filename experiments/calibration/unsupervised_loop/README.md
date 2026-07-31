@@ -9,6 +9,12 @@ Derecho, ending with a calibrated prognostic-LAI ClimaLand configuration.
 | 2 | rebuild the optimal-LAI initial-condition artifact from a 10-year run | `experiments/long_runs/snowy_land_pmodel.jl` | — | — |
 | 3 | calibrate prognostic LAI against MODIS | `configs/lai.jl` | 5 | 11 |
 
+Stage 3 scores only natural, undisturbed vegetation: the optimal-LAI model has
+no crops, no land management and no fire, so `build_natural_vegetation_mask.jl`
+excludes cells with a CLM natural-vegetation landunit fraction below 80% or a
+GFED4.1s mean annual burned fraction above 5 %/yr (~43% of land area). Stages 1
+and 2 are unaffected.
+
 The stages are strictly sequential. Stage 1's parameters set the potential GPP
 that drives LAI, and are committed to `toml/default_parameters.toml` so stages 2
 and 3 inherit them. Stage 2 exists so stage 3 can start near equilibrium: with
@@ -25,10 +31,13 @@ force a multi-year spinup on every ensemble member of every iteration.
 
 ```bash
 cp .claude/unsupervised-loop.settings.json .claude/settings.local.json
-export GH_TOKEN=...                # PAT with PR write; gh's keyring is not
-                                   # reachable from Claude subprocesses
 claude --dangerously-skip-permissions
 ```
+
+`gh` is not on `PATH` by default on Derecho — prefix calls with
+`module load gh`. Its token lives in `~/.config/gh/hosts.yml` (not a keyring),
+so it is reachable from subprocesses, and `github.com` is in the sandbox's
+allowed domains; `GH_TOKEN` is only needed if that file-based auth is removed.
 
 Then feed it `loop_prompt.md`.
 

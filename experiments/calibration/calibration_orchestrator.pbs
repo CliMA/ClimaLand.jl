@@ -1,0 +1,50 @@
+#!/bin/bash
+# PBS job that runs a calibration orchestrator on Derecho.
+#
+# Why a job rather than a background process: the orchestrator is a long-lived
+# foreground process that submits one PBS job per ensemble member and waits.
+# Under an agent sandbox a detached process (`nohup ... &`) is killed when the
+# shell that started it exits, so the orchestrator has to live inside PBS.
+# Submitting jobs from a compute node works on Derecho (verified).
+#
+# Usage — run qsub BARE (wrapping it in bash/timeout/$() trips the sandbox):
+#
+#   qsub -v CALIBRATION_CONFIG=lai.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai \
+#       experiments/calibration/calibration_orchestrator.pbs
+#
+# Submit from the repository root: the job runs in $PBS_O_WORKDIR.
+#
+# If the job hits the walltime before finishing all iterations, just resubmit it
+# with the same CAL_OUTPUT_DIR. ClimaCalibrate restarts at
+# `last_completed_iteration + 1`, so no work is repeated.
+
+#PBS -N clima_calibration
+#PBS -A UCIT0011
+#PBS -q main
+#PBS -l select=1:ncpus=4
+#PBS -l walltime=12:00:00
+#PBS -j oe
+
+set -euo pipefail
+
+: "${CALIBRATION_CONFIG:?set CALIBRATION_CONFIG, e.g. -v CALIBRATION_CONFIG=lai.jl}"
+: "${CAL_OUTPUT_DIR:?set CAL_OUTPUT_DIR to a path under /glade/derecho/scratch}"
+
+cd "${PBS_O_WORKDIR:?}"
+
+# Match the module the forward-model member jobs load (pinned in
+# run_calibration.jl), so orchestrator and members share a Julia stack.
+module load climacommon/2026_04_08
+
+# Required on Derecho's Lustre scratch, else NC_EHDFERR (-101) reading the
+# NetCDF files that member jobs write.
+export HDF5_USE_FILE_LOCKING=FALSE
+export CALIBRATION_CONFIG
+
+echo "Orchestrator starting on $(hostname) at $(date)"
+echo "  config:     ${CALIBRATION_CONFIG}"
+echo "  output dir: ${CAL_OUTPUT_DIR}"
+
+bash experiments/calibration/run_calibration.sh "${CAL_OUTPUT_DIR}"
+
+echo "Orchestrator finished at $(date)"

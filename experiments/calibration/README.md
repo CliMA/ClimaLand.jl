@@ -49,6 +49,9 @@ Julia version mismatches, use the `climacommon` versions below. These versions
 are compatible with ClimaCalibrate v0.2.2.
 
 - `ClimaGPUBackend`: `climacommon/2026_02_18`
-- `DerechoBackend`: `climacommon/2025_02_25`
+- `DerechoBackend`: `climacommon/2026_04_08` (Julia 1.12.4; this is what
+  `run_calibration.jl` pins for the forward-model jobs). The older
+  `climacommon/2025_02_25` is Julia 1.11.3 and no longer precompiles the
+  `.buildkite` environment.
 - `CaltechHPCBackend`: `climacommon/2024_10_09`
 - `GCPBackend`: `climacommon` is not supported

@@ -33,6 +33,67 @@ Commit STATE.md every iteration with `[skip ci]`. It is the handoff between
 iterations — if it is wrong or stale, the loop loses its place.
 
 --------------------------------------------------------------------------------
+ENVIRONMENT — how to run things here
+--------------------------------------------------------------------------------
+WHERE OUTPUT GOES. Everything heavy — calibration output directories, long-run
+diagnostics, rebuilt artifacts, scratch scripts, plots, extracted data — goes
+under `/glade/derecho/scratch/arenchon/claude/`. Never write multi-GB output to
+`$HOME` (small quota) or into the repo checkout. Name calibration directories so
+the stage is obvious, e.g.
+  /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy
+  /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai
+
+LAUNCHING A CALIBRATION — AS A PBS JOB, NOT A BACKGROUND PROCESS. The
+orchestrator is a long-lived foreground process that submits one PBS job per
+ensemble member and waits for them. You CANNOT run it with `nohup ... &`: in
+this sandbox a detached process is killed as soon as the shell that started it
+exits (verified — it does not survive to the next tool call). So the
+orchestrator itself goes into PBS, using the wrapper committed for this:
+
+  qsub -v CALIBRATION_CONFIG=lai.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai \
+      experiments/calibration/calibration_orchestrator.pbs
+
+Run that from the repository root, bare (see the wrapping trap below). The
+wrapper loads `climacommon/2025_02_25` — the same module the forward-model
+member jobs are pinned to in `run_calibration.jl` — sets
+`HDF5_USE_FILE_LOCKING=FALSE`, and calls `run_calibration.sh`. Submitting jobs
+from inside a job works on Derecho; that has been verified, so member jobs
+appear in `qstat` under your user as usual.
+
+Record the orchestrator's job id AND the member job ids in STATE.md. The
+orchestrator's own log is `clima_calibration.o<jobid>` in the submission
+directory.
+
+If the orchestrator hits its 12-hour walltime before finishing all iterations,
+resubmit exactly the same command. ClimaCalibrate restarts at
+`last_completed_iteration + 1`, so finished iterations are not repeated. Treat a
+walltime kill as normal progress, not a failure.
+
+Short interactive work (building masks, generating observations, inspecting
+output) runs fine directly on the login node with `julia --project=.buildkite`.
+
+PBS — THE THREE FALSE ALARMS. In the previous unattended run, three separate
+job-submission failures were each misread as "Derecho is down for maintenance".
+None of them were. Before you ever conclude that the machine is unavailable,
+rule out all three:
+  1. WRONG ACCOUNT. The allocation is `UCIT0011`. `ucit0012` is not authorized
+     and PBS rejects it with "Invalid account".
+  2. WRAPPED COMMANDS. Run `qsub`, `qstat`, `qdel`, `qhist` BARE. They are in
+     the sandbox's `excludedCommands` list, and that list is matched against the
+     literal command, so wrapping one in `timeout ...`, `bash -c ...`, `$(...)`
+     or a `for` loop makes it sandboxed and it fails (errno=15008).
+  3. TARGETING A SPECIFIC NODE. Do not request a named host or a specific GPU
+     node. Let PBS schedule; a single bad node is not an outage.
+Only after all three are excluded, and `qstat -B` or the NCAR status notice
+actually says so, may you record "maintenance" as a blocker.
+
+SANDBOX. You run sandboxed even with --dangerously-skip-permissions. Writes are
+allowed to the repo, `~/.julia`, `~/.cache`, `/glade/derecho/scratch/arenchon`
+and `/tmp`; network access is limited to github and julialang. You cannot
+download datasets. If something seems to need new external data, say so in
+STATE.md as a blocker rather than trying to fetch it.
+
+--------------------------------------------------------------------------------
 STAGE 1 — calibrate GPP + energy fluxes
 --------------------------------------------------------------------------------
 Config: `experiments/calibration/configs/sifgpp_lhf_shf_lwu_rosetta.jl`
@@ -42,12 +103,18 @@ Ensemble: TransformUnscented, 10*2+1 = 21 members
 Runs with PRESCRIBED MODIS LAI — the canopy is observed, so GPP and the fluxes
 are fitted without prognostic-LAI error contaminating them.
 
-  CALIBRATION_CONFIG=sifgpp_lhf_shf_lwu_rosetta.jl \
-    bash experiments/calibration/run_calibration.sh
+  qsub -v CALIBRATION_CONFIG=sifgpp_lhf_shf_lwu_rosetta.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy \
+      experiments/calibration/calibration_orchestrator.pbs
 
-Set the task count in the batch script to 21.
+Nothing to set by hand for the ensemble size: on the Derecho backend
+ClimaCalibrate submits one single-task PBS job per member, so 21 member jobs
+appear in `qstat` per iteration. (The "match the task count in the batch script"
+note in `run_calibration.jl` applies only to the Slurm/WorkerBackend test path.)
 
-DONE WHEN: the EKI has run its 10 iterations, the final-iteration parameters are
+Calibrated over ALL land cells. The natural-vegetation mask is stage 3 only —
+do not apply it here.
+
+DONE WHEN: the EKI has run its 5 iterations, the final-iteration parameters are
 extracted, AND they are written into `toml/default_parameters.toml` (3 significant
 figures, matching how the previously calibrated values are stored there). Commit
 that TOML change with `[skip ci]` and record the values in STATE.md.
@@ -79,7 +146,9 @@ equilibrium. That is what this stage produces.
       for 10 years, on GPU. The script honours these env vars:
         PROGNOSTIC_LAI=""   select the optimal-LAI model
         RUN_YEARS=10        length in years
-        OUTPUT_ROOT=/glade/derecho/scratch/$USER   keep multi-GB output off home
+        OUTPUT_ROOT=/glade/derecho/scratch/arenchon/claude   keeps the multi-GB
+                            diagnostics off home, alongside the earlier global
+                            runs in that directory
       With PROGNOSTIC_LAI set the script already writes the six IC diagnostics
       listed in 2c, on top of the short set — no extra flag needed.
 
@@ -121,9 +190,14 @@ STAGE 3 — calibrate prognostic LAI
 Config: `experiments/calibration/configs/lai.jl`
 Target: `lai` (MODIS, via `get_modis_lai_obs_var`)
 Parameters: 5 — optimal_lai_z, z_c4, sigma, sigma_c4, alpha
-Ensemble: TransformUnscented, 5*2+1 = 11 members. Set tasks to 11.
+Ensemble: TransformUnscented, 5*2+1 = 11 members, so 11 member jobs per
+iteration in `qstat`. Nothing to set by hand.
 
-  CALIBRATION_CONFIG=lai.jl bash experiments/calibration/run_calibration.sh
+  qsub -v CALIBRATION_CONFIG=lai.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai \
+      experiments/calibration/calibration_orchestrator.pbs
+
+Build BOTH masks before this (see below) — `run_calibration.sh` regenerates the
+observation vector on every launch, and it errors if a mask is missing.
 
 Prerequisites, both of which you must confirm from STATE.md before starting:
   - stage 1's parameters are committed in `toml/default_parameters.toml` (they
@@ -135,10 +209,46 @@ DONE WHEN: the EKI has converged and the calibrated optimal-LAI parameters are
 written into `toml/default_parameters.toml` (3 significant figures) and committed
 with `[skip ci]`, with the before/after values recorded in STATE.md.
 
-`build_model_lai_validity_mask.jl` builds a grid-specific
-`model_lai_validity_mask.jld2` that the LAI observations are masked by. It is NOT
-committed. Build it for this grid BEFORE generating observations, or
-`generate_observations.jl` will error.
+TWO MASKS, BOTH REQUIRED BEFORE `generate_observations.jl` RUNS. Neither is
+committed (`*.jld2` is gitignored) and both are grid-specific — rebuild them
+whenever `nelements` changes. `generate_observations.jl` errors if either is
+missing, deliberately, so a stale or absent mask cannot quietly change what is
+being calibrated.
+
+  1. `experiments/calibration/model_lai_validity_mask.jld2`, from
+     `build_model_lai_validity_mask.jl <reference_simdir>`. Aligns the MODIS obs
+     with the simulated-LAI footprint. Needs a reference forward-model run:
+     build it from STAGE 2's long-run diagnostics, which are on this grid and
+     already exist by the time stage 3 starts. (A member directory from a
+     stage-3 iteration also works, but that is circular — observations are
+     generated before the first iteration runs.)
+
+  2. `experiments/calibration/natural_vegetation_mask.jld2`, from
+     `build_natural_vegetation_mask.jl`. Restricts the LAI target to natural
+     undisturbed vegetation: CLM `PCT_NATVEG` >= 80% (which drops cropland,
+     urban, lake, wetland and glacier in one criterion) AND GFED4.1s mean annual
+     burned fraction <= 5 %/yr (which drops habitually-burning savanna). It
+     keeps deserts — they are undisturbed, and the model's arid over-prediction
+     is a real residual that belongs in the score. It removes ~43% of land area,
+     leaving ~10k of 22k land cells, which is ample for 5 parameters. Takes no
+     arguments and needs no simulation; build it early.
+
+The natural-vegetation mask applies to the `lai` target ONLY, by construction
+(`apply_natural_vegetation_mask` is a no-op for other short names). Stage 1's
+flux targets stay global. When you report the stage-3 fit, say explicitly that
+the score is over natural vegetation only, and note the two caveats: the CLM
+surface dataset is `simyr2000` so post-2000 cropland expansion is not captured,
+and GFED4.1s ends in 2016 so the fire criterion is climatological rather than
+specific to the calibrated year.
+
+ITERATIONS. Both configs are set to `n_iterations = 5`, which should be enough.
+Check convergence before declaring done: the loss should have flattened over the
+last two iterations and the parameter means should have stopped moving
+materially. If it has NOT converged, raise `n_iterations` in the config, commit
+that with `[skip ci]`, and resubmit the orchestrator with the SAME
+`CAL_OUTPUT_DIR` — ClimaCalibrate resumes from `last_completed_iteration + 1`,
+so it picks up at iteration 6 rather than starting over. Say in STATE.md and the
+PR comment that you extended it and why.
 
 Knobs, in the order to try them if the fit is poor:
   - NOISE_SCALARS["lai"] (currently 0.5): raise toward 1.0 if EKI overfits the
@@ -188,7 +298,10 @@ RULES
     the before/after values were — a default change should never be silent.
     Do not hand-edit any other parameter while you are in there.
   - Never force-push, never `git reset --hard`, never merge or close the PR.
-  - Submit `qsub` bare, not inside a for-loop (the loop form gets sandboxed).
+  - All heavy output goes under `/glade/derecho/scratch/arenchon/claude/`;
+    nothing large in `$HOME` or in the checkout.
+  - Submit `qsub`/`qstat`/`qdel` BARE, and to account UCIT0011. See the three
+    false alarms in the ENVIRONMENT section before blaming the machine.
   - Global GPU runs can be submitted in parallel; do so when comparing configs.
   - If you are stuck on the same failure for THREE consecutive iterations, stop
     trying variations. Write up what you tried and what you think is wrong, and

@@ -178,8 +178,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
         :time => 180,
     ]
     # Pin the module version so forward-model jobs match the project Manifests;
-    # unversioned `climacommon` resolves to whatever is current.
-    modules = ["climacommon/2025_02_25"]
+    # unversioned `climacommon` resolves to whatever is current. 2026_04_08 is
+    # Julia 1.12.4, matching Derecho's current default: the older 2025_02_25
+    # (Julia 1.11.3) cannot precompile the .buildkite environment as resolved
+    # (OpenBLAS32_jll is missing for v1.11, taking SCS, EnsembleKalmanProcesses
+    # and ClimaCalibrate down with it).
+    modules = ["climacommon/2026_04_08"]
     # HDF5_USE_FILE_LOCKING=FALSE is required on Derecho's Lustre scratch.
     env_vars = [
         "CLIMACOMMS_CONTEXT" => "SINGLETON",

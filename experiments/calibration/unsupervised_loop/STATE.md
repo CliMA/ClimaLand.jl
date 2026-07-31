@@ -6,6 +6,8 @@ See `loop_prompt.md` for what each stage means and how it is gated.
 
 Status values: `not_started` | `running` | `done` | `failed`
 
+All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
+
 ---
 
 ## Stage 1 — GPP + energy fluxes
@@ -36,6 +38,7 @@ Status values: `not_started` | `running` | `done` | `failed`
 - **config:** `experiments/calibration/configs/lai.jl`
 - **ensemble:** 11 (5 params, TransformUnscented)
 - **validity mask built for this grid:** no
+- **natural-vegetation mask built for this grid:** no
 - **PBS job ids:** —
 - **output dir:** —
 - **calibrated parameters:** —
