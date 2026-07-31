@@ -69,8 +69,17 @@ resubmit exactly the same command. ClimaCalibrate restarts at
 `last_completed_iteration + 1`, so finished iterations are not repeated. Treat a
 walltime kill as normal progress, not a failure.
 
-Short interactive work (building masks, generating observations, inspecting
-output) runs fine directly on the login node with `julia --project=.buildkite`.
+Short interactive work — building the masks, inspecting output — runs fine on
+the login node with `julia --project=.buildkite`. Generating the LAI observation
+vector does NOT: two attempts were killed with zero output, which is what the
+login-node resource arbiter looks like (loading MODIS LAI 2000-2020 is heavy).
+Run anything of that weight as a `develop`-queue job instead. This does not
+affect the calibration itself — `run_calibration.sh` regenerates the
+observations inside the orchestrator job, where it takes about 3 minutes.
+
+A killed process on the login node leaves NO error message, because Julia's
+buffered output dies with it. Do not read that silence as "the job is still
+running" or as a code bug — check whether the process still exists.
 
 PBS — THE THREE FALSE ALARMS. In the previous unattended run, three separate
 job-submission failures were each misread as "Derecho is down for maintenance".
