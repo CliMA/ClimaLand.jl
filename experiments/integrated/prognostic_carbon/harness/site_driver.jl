@@ -228,11 +228,24 @@ const M_C = 0.012011  # kg C per mol
 to_gC_per_day(x) = x * M_C * 86400 * 1000
 
 diag_names = [d.output_short_name for d in diagnostics]
+# A crashed simulation writes no diagnostics, so the writer lookup throws a bare
+# `KeyError` that reads like a missing variable rather than a failed run. Return
+# nothing instead, and fail loudly below with a message that points at the crash.
 series_for(short) = begin
     idx = findfirst(n -> startswith(lowercase(n), short * "_"), diag_names)
     idx === nothing && return nothing
-    ClimaLand.Diagnostics.diagnostic_as_vectors(diag_writer, diag_names[idx])
+    try
+        ClimaLand.Diagnostics.diagnostic_as_vectors(diag_writer, diag_names[idx])
+    catch
+        nothing
+    end
 end
+
+isnothing(series_for("gpp")) && error(
+    "no GPP diagnostic was written for site $site_name - the simulation almost \
+     certainly crashed. Search this log upwards for \"simulation crashed\"; the \
+     real error is there, above this point.",
+)
 
 open(joinpath(root_path, "carbon_metrics.txt"), "w") do io
     println(io, "site $site_name")
