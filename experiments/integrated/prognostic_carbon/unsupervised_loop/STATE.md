@@ -495,6 +495,56 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 - **falsifiable prediction to check:** once Ra comes from the pools, Sahara Ra
   must fall to ≈ 0, because the pools there are exactly zero.
 
+### STAGE-2 RESULT (job 6969572, 20/20 PASS) — half the gate met
+
+Committed as `harness/stage2_prescribed_lai.tsv`. **Rule 1 still passes
+exactly**: switching Ra to the pools changes Ra without touching GPP or LAI.
+
+**The falsifiable prediction is CONFIRMED.** Sahara and Arabian Ra:
+**0.813 → exactly 0.000** g C m⁻² day⁻¹. The model no longer respires carbon it
+never fixed. That was the single number stage 2 existed to change.
+
+**Every Ra-sanity failure is gone.** No site has Ra > GPP, none has Ra ≤ 0 with
+GPP > 0:
+
+| site | Ra before | Ra after | NPP/GPP before | after |
+|---|---|---|---|---|
+| sahara / arabian | 0.813 | **0.000** | n/a | n/a |
+| alaska_north_slope | 1.068 | 0.301 | **−0.093** | 0.691 |
+| mojave_sw_us | 1.066 | 0.402 | **−0.024** | 0.614 |
+
+**But the band criterion now fails in the opposite direction** — 6 sites above
+0.6 where previously 3 were below 0.3:
+
+| site | Tair (K) | C_stem | NPP/GPP |
+|---|---|---|---|
+| central_siberia | 264.7 | 0.274 | 0.671 |
+| fennoscandia | 275.9 | 0.493 | 0.664 |
+| central_europe | 282.4 | 0.884 | 0.653 |
+| canada_boreal | 269.6 | 0.273 | 0.649 |
+| ne_china | 275.7 | 0.259 | 0.610 |
+| ozark_us | 282.5 | 0.545 | 0.603 |
+
+Tropical sites are comfortably in band (0.488–0.505). **NPP/GPP tracks
+temperature**: the coldest site is the highest.
+
+**Two causes compound, both under-sizing `Rm` at cold sites:**
+
+1. `carbon_Q10 = 2.0` with `T_ref = 298.15 K` gives `f_T = 0.08` at 262 K —
+   maintenance cut by more than 12×. The legacy `Q10 = 1.0` had no temperature
+   response at all, which is why the same sites previously came out too *low*.
+   Stage 2 has swung from one extreme to the other.
+2. `Rm ∝ C_sap`, and the stem pools are 2 years from empty: 0.26–0.27 at the
+   cold forests against 1.2–1.3 in the tropics, and all far below their 30-year
+   equilibrium. Since `C_sap = C_stem/(1 + C_stem/C_sap_half)` saturates at 2.0,
+   an equilibrium stem pool would raise `C_sap` roughly 6× and `Rm` with it.
+
+**DO NOT tune `r_stem`/`r_root` against these numbers.** Cause 2 is a spinup
+artifact that stage 4 removes; tuning to force the band now would bake in a
+compensation for it and then over-respire once the pools fill. Job 6969851 tests
+this directly by seeding the pools (stem 5.0, root 1.0) and rerunning — if the
+band failures close, the deficit is spinup, not parameters.
+
 ### Design (implemented 2026-07-31, commit `4c6968e6e`)
 
 `PoolBasedAutotrophicRespirationModel` **holds no parameters of its own**. The
@@ -563,7 +613,8 @@ those two, so it remains the right check.
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6969572 | 2 | 20-site, `CARBON=1 CARBON_RA=1`, prescribed LAI (stage-2 gate) | 2026-07-31 | running | pending | `.../battery_pc_s2_pres_6969572.desched1/` |
+| 6969851 | 2 | 20-site diagnostic: same as 6969572 but pools seeded (stem 5.0, root 1.0) | 2026-07-31 | running | pending | `.../battery_pc_s2_seed_6969851.desched1/` |
+| 6969572 | 2 | 20-site, `CARBON=1 CARBON_RA=1`, prescribed LAI (stage-2 gate) | 2026-07-31 | **done** | **PASS 20/20**; Ra pathology eliminated, prediction confirmed; band fails high at 6 cold forest sites | `.../battery_pc_s2_pres_6969572.desched1/` |
 | 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_pres_6969169.desched1/` |
 | 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_prog_6969170.desched1/` |
 | 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | **done** | **PASS 4/4**; sahara sugar −0.075 → **exactly 0**; vegetated sites unchanged; rule 1 still exact | `.../battery_pc_s1_carb_6969094.desched1/` |
