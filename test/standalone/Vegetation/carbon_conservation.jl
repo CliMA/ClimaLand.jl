@@ -1,0 +1,265 @@
+using Test
+using Dates
+using StaticArrays
+using Insolation
+import ClimaComms
+ClimaComms.@import_required_backends
+using ClimaCore
+import ClimaParams as CP
+using ClimaLand
+using ClimaLand.Canopy
+using ClimaLand.Domains: Point, Plane
+
+import ClimaLand
+import ClimaLand.Parameters as LP
+
+# Carbon conservation for the prognostic pools. Summing the four pool tendencies
+# must reproduce d(ΣC)/dt = GPP - Ra - litter exactly, where Ra = Rm + Rg is the
+# carbon model's own autotrophic respiration and litter is the sum of the three
+# turnover fluxes. If allocation, growth respiration or turnover is
+# double-counted or dropped, this residual is what catches it.
+for FT in (Float32, Float64)
+    cmax = FT(10)
+    cmin = FT(0)
+    nelems = 10
+    longlat = (FT(-118.14), FT(34.15))
+    pt = Point(; z_sfc = FT(0), longlat)
+    plane = Plane(;
+        xlim = (cmin, cmax),
+        ylim = (cmin, cmax),
+        nelements = (nelems, nelems),
+        longlat,
+    )
+    domains = [pt, plane]
+
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+
+    t0 = 0.0
+    start_date = DateTime(2005)
+
+    SW_d = TimeVaryingInput((t) -> eltype(t)(300.0))
+    LW_d = TimeVaryingInput((t) -> eltype(t)(300.0))
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            latitude = FT(40.0),
+            longitude = FT(-120.0),
+        )
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        cosθs = cos_zenith_angle,
+        toml_dict = toml_dict,
+    )
+
+    precip = TimeVaryingInput((t) -> eltype(t)(0))
+    T_atmos = TimeVaryingInput((t) -> eltype(t)(290.0))
+    u_atmos = TimeVaryingInput((t) -> eltype(t)(2.0))
+    q_atmos = TimeVaryingInput((t) -> eltype(t)(0.011))
+    h_atmos = FT(3)
+    P_atmos = TimeVaryingInput((t) -> eltype(t)(101325))
+    atmos = ClimaLand.PrescribedAtmosphere(
+        precip,
+        precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        start_date,
+        h_atmos,
+        toml_dict,
+    )
+    ground = PrescribedGroundConditions{FT}()
+
+    LAI_value = FT(3)
+    LAI = TimeVaryingInput(t -> LAI_value)
+    lai_model = Canopy.PrescribedBiomassModel{FT}(;
+        LAI,
+        SAI = FT(1),
+        RAI = FT(1),
+        rooting_depth = FT(0.5),
+        height = FT(2),
+    )
+    biomass = Canopy.PrognosticCarbonModel{FT}(lai_model, toml_dict)
+
+    @testset "Carbon pool conservation, FT = $FT" begin
+        for domain in domains
+            hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict;)
+            canopy = ClimaLand.Canopy.CanopyModel{FT}(
+                domain,
+                (; radiation, atmos, ground),
+                LAI,
+                toml_dict;
+                hydraulics,
+                biomass,
+            )
+
+            Y, p, cds = initialize(canopy)
+            Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+            Y.canopy.energy.T .= FT(290.5)
+            # Non-trivial pools, so allocation, respiration and turnover are all
+            # active. A zero state would satisfy the balance trivially.
+            Y.canopy.biomass.C_sugar .= FT(0.3)
+            Y.canopy.biomass.C_leaf .= FT(0.2)
+            Y.canopy.biomass.C_stem .= FT(5.0)
+            Y.canopy.biomass.C_root .= FT(1.0)
+
+            set_initial_cache! = make_set_initial_cache(canopy)
+            set_initial_cache!(p, Y, t0)
+
+            dY = similar(Y)
+            exp_tendency! = make_compute_exp_tendency(canopy)
+            exp_tendency!(dY, Y, p, t0)
+
+            M_C = FT(0.012011)
+            GPP_mol = Canopy.get_GPP(p, canopy.photosynthesis)
+            GPP = @. M_C * GPP_mol
+            dsum = @. dY.canopy.biomass.C_sugar +
+               dY.canopy.biomass.C_leaf +
+               dY.canopy.biomass.C_stem +
+               dY.canopy.biomass.C_root
+            litter = @. p.canopy.biomass.carbon.L_leaf +
+               p.canopy.biomass.carbon.L_stem +
+               p.canopy.biomass.carbon.L_root
+            residual = @. dsum - (GPP - p.canopy.biomass.carbon.Ra - litter)
+
+            # The pool fluxes are O(1e-8) kg C m^-2 s^-1, so an absolute
+            # tolerance scaled to the largest term is the meaningful check.
+            scale = maximum(abs.(parent(GPP))) + maximum(abs.(parent(dsum)))
+            @test maximum(abs.(parent(residual))) <=
+                  10 * eps(FT) * max(scale, eps(FT))
+
+            # Ra must be exactly the sum of its two parts.
+            @test all(
+                parent(
+                    @. abs(
+                        p.canopy.biomass.carbon.Ra - (
+                            p.canopy.biomass.carbon.Rm +
+                            p.canopy.biomass.carbon.Rg
+                        ),
+                    )
+                ) .<= eps(FT),
+            )
+
+            # Growth respiration is the (1-a) share of what allocation draws.
+            a = canopy.biomass.parameters.a
+            @test all(
+                parent(
+                    @. abs(
+                        p.canopy.biomass.carbon.Rg -
+                        (1 - a) * p.canopy.biomass.carbon.S,
+                    )
+                ) .<= 10 * eps(FT),
+            )
+
+            # cVeg is the sum of the four pools.
+            @test all(
+                parent(
+                    @. abs(
+                        p.canopy.biomass.cVeg - (
+                            Y.canopy.biomass.C_sugar +
+                            Y.canopy.biomass.C_leaf +
+                            Y.canopy.biomass.C_stem +
+                            Y.canopy.biomass.C_root
+                        ),
+                    )
+                ) .<= 10 * eps(FT),
+            )
+        end
+    end
+
+    # Rule 1: adding the carbon model must not change LAI or GPP. The pools are
+    # a pure follower in phase 1, so a run with them must reproduce the area
+    # indices and photosynthesis of a run without them.
+    @testset "Carbon model does not change LAI or GPP, FT = $FT" begin
+        for domain in domains
+            hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict;)
+            canopy_without = ClimaLand.Canopy.CanopyModel{FT}(
+                domain,
+                (; radiation, atmos, ground),
+                LAI,
+                toml_dict;
+                hydraulics,
+                biomass = lai_model,
+            )
+            canopy_with = ClimaLand.Canopy.CanopyModel{FT}(
+                domain,
+                (; radiation, atmos, ground),
+                LAI,
+                toml_dict;
+                hydraulics,
+                biomass,
+            )
+
+            states = map((canopy_without, canopy_with)) do canopy
+                Y, p, _ = initialize(canopy)
+                Y.canopy.hydraulics.ϑ_l .=
+                    canopy.hydraulics.parameters.ν / 2
+                Y.canopy.energy.T .= FT(290.5)
+                if canopy.biomass isa Canopy.PrognosticCarbonModel
+                    Y.canopy.biomass.C_sugar .= FT(0.3)
+                    Y.canopy.biomass.C_leaf .= FT(0.2)
+                    Y.canopy.biomass.C_stem .= FT(5.0)
+                    Y.canopy.biomass.C_root .= FT(1.0)
+                end
+                make_set_initial_cache(canopy)(p, Y, t0)
+                (Y, p, canopy)
+            end
+            (_, p_without, canopy_a) = states[1]
+            (_, p_with, canopy_b) = states[2]
+
+            @test parent(p_without.canopy.biomass.area_index.leaf) ==
+                  parent(p_with.canopy.biomass.area_index.leaf)
+            @test parent(p_without.canopy.biomass.area_index.stem) ==
+                  parent(p_with.canopy.biomass.area_index.stem)
+            @test parent(p_without.canopy.biomass.area_index.root) ==
+                  parent(p_with.canopy.biomass.area_index.root)
+            @test parent(Canopy.get_GPP(p_without, canopy_a.photosynthesis)) ==
+                  parent(Canopy.get_GPP(p_with, canopy_b.photosynthesis))
+            @test parent(p_without.canopy.autotrophic_respiration.Ra) ==
+                  parent(p_with.canopy.autotrophic_respiration.Ra)
+        end
+    end
+
+    # The carbon model must also compose with the prognostic LAI model, which
+    # carries nine time-integrated prognostic variables of its own. Wrapping it
+    # must preserve all of them and keep forwarding the C3/C4 competition, or
+    # the Zhou LAI - and with it GPP - would silently change.
+    @testset "Composition with ZhouOptimalLAIModel, FT = $FT" begin
+        domain = pt
+        zhou = Canopy.ZhouOptimalLAIModel{FT}(
+            domain,
+            toml_dict;
+            SAI = FT(1.0),
+            RAI = FT(1.0),
+            rooting_depth = FT(0.5),
+            height = FT(2.0),
+        )
+        wrapped = Canopy.PrognosticCarbonModel{FT}(zhou, toml_dict)
+
+        zhou_vars = ClimaLand.prognostic_vars(zhou)
+        wrapped_vars = ClimaLand.prognostic_vars(wrapped)
+        @test all(v -> v in wrapped_vars, zhou_vars)
+        @test all(v -> v in wrapped_vars, (:C_sugar, :C_leaf, :C_stem, :C_root))
+        @test length(wrapped_vars) == length(zhou_vars) + 4
+        @test length(ClimaLand.prognostic_types(wrapped)) ==
+              length(wrapped_vars)
+        @test length(ClimaLand.prognostic_domain_names(wrapped)) ==
+              length(wrapped_vars)
+        # LAI itself stays prognostic under the wrapper.
+        @test :LAI in wrapped_vars
+        @test all(
+            v -> v in ClimaLand.auxiliary_vars(wrapped),
+            ClimaLand.auxiliary_vars(zhou),
+        )
+        @test length(ClimaLand.auxiliary_types(wrapped)) ==
+              length(ClimaLand.auxiliary_vars(wrapped))
+        @test wrapped.height == zhou.height
+        @test wrapped.rooting_depth == zhou.rooting_depth
+    end
+end

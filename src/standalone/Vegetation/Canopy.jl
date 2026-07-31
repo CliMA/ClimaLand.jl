@@ -850,7 +850,7 @@ function CanopyModel{FT}(
     end
 
     # Confirm that the LAI passed agrees with the LAI of the biomass model
-    @assert biomass.plant_area_index.LAI == LAI
+    @assert prescribed_lai_input(biomass) == LAI
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,

@@ -154,6 +154,110 @@ type = "float"
 description = "Whether the C3 fraction (fractional_c3) is computed from the C3/C4 competition on the running-mean per-pathway potential GPP (1.0, default) or held fixed at the photosynthesis model's static value (0.0). The C4 GPP advantage (A0c4-A0c3)/A0c3 goes through a logistic to a C4 fraction, penalized by C3 tree-canopy shading (pyrealm/Lavergne, GPP-derived, no PFT)."
 tag = "OptimalLAIModel"
 
+# Prognostic Carbon Pools (PrognosticCarbonModel)
+
+["carbon_construction_efficiency"]
+value = 0.7
+type = "float"
+description = "Construction efficiency a (dimensionless): the fraction of sugar drawn for structure that ends up as structural carbon. The remainder (1-a) is growth respiration."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c3"]
+value = 0.3
+type = "float"
+description = "Fraction of structural allocation going to leaves, C3 vegetation (dimensionless). f_leaf + f_stem + f_root must equal 1."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c3"]
+value = 0.4
+type = "float"
+description = "Fraction of structural allocation going to stem and branch, C3 vegetation (dimensionless)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c4"]
+value = 0.4
+type = "float"
+description = "Fraction of structural allocation going to leaves, C4 vegetation (dimensionless). C4 vegetation is herbaceous, so it builds far less stem than C3."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c4"]
+value = 0.05
+type = "float"
+description = "Fraction of structural allocation going to stem, C4 vegetation (dimensionless)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_leaf"]
+value = 4.7304e7
+type = "float"
+description = "Leaf lifespan (s), 1.5 years. Sets the background leaf litter flux C_leaf/tau_leaf, which is what gives an evergreen tropical canopy leaf litter despite near-constant LAI."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c3"]
+value = 9.4608e8
+type = "float"
+description = "Stem turnover time (s) for C3 vegetation, 30 years. With f_stem this is the dominant control on standing woody biomass."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c4"]
+value = 3.1536e7
+type = "float"
+description = "Stem turnover time (s) for C4 vegetation, 1 year. Herbaceous C4 vegetation accumulates no long-lived wood."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_root"]
+value = 6.3072e7
+type = "float"
+description = "Fine root turnover time (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_stem"]
+value = 3.17e-9
+type = "float"
+description = "Sapwood specific maintenance respiration rate (s^-1), about 0.1 per year. Applied to the living (sapwood) fraction of the stem pool, not the whole pool. A calibration target."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_root"]
+value = 1.585e-8
+type = "float"
+description = "Root specific maintenance respiration rate (s^-1), about 0.5 per year. Fine roots respire faster per unit carbon than sapwood. A calibration target."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sap_half"]
+value = 2.0
+type = "float"
+description = "Sapwood saturation scale (kg C m^-2) in C_sap = C_stem/(1 + C_stem/C_sap_half). Living wood does not scale linearly with total wood; this saturation is what stops a 20 kg C m^-2 tropical forest respiring itself to death."
+tag = "PrognosticCarbonParameters"
+
+["carbon_c_nsc"]
+value = 0.1
+type = "float"
+description = "Target non-structural carbon store as a fraction of live biomass (dimensionless). Observed NSC is roughly 5-20% of live biomass."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_alloc"]
+value = 864000.0
+type = "float"
+description = "Allocation timescale (s), 10 days. Sets the maximum rate S_max = C_sugar/tau_alloc at which sugar can be drawn for structure."
+tag = "PrognosticCarbonParameters"
+
+["carbon_alloc_ramp_n"]
+value = 3.0
+type = "float"
+description = "Sharpness of the allocation ramp g(x) = x^n/(1 + x^n), where x = C_sugar/C_sugar_target. This proportional controller is what keeps the sugar pool oscillating seasonally about its target instead of pinning at zero, with no hard clamp."
+tag = "PrognosticCarbonParameters"
+
+["carbon_Q10"]
+value = 2.0
+type = "float"
+description = "Q10 temperature sensitivity of the carbon model's maintenance respiration (dimensionless). Deliberately distinct from autotrophic_respiration_Q10, which ships at 1.0 (temperature-insensitive) and governs the legacy JULES scheme; changing that one is a separate, explicit step."
+tag = "PrognosticCarbonParameters"
+
+["carbon_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature (K) for the carbon model's Q10 maintenance-respiration factor."
+tag = "PrognosticCarbonParameters"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]
