@@ -466,9 +466,18 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
   `gh api -X PATCH repos/CliMA/ClimaLand.jl/issues/comments/5145422196 -f body=@file`).
   Never delete it, and never let it go stale.
 - Iteration reports are posted as new comments below it. Keep at most ~10:
-  before posting, list comments and delete the oldest surplus ones with
-  `gh api -X DELETE repos/CliMA/ClimaLand.jl/issues/comments/<id>`, never
-  touching `5145422196`.
+  before posting, delete the oldest surplus ones, never touching `5145422196`.
+  **Get the numeric ids from the REST endpoint**, not `gh pr view` — the latter
+  returns node ids (`IC_kwDO...`) and its `databaseId` field comes back empty,
+  which produces a 404 on delete:
+
+  ```
+  gh api "repos/CliMA/ClimaLand.jl/issues/1834/comments?per_page=100" \
+      --jq '.[] | "\(.id)\t\(.body[0:42])"'
+  gh api -X DELETE repos/CliMA/ClimaLand.jl/issues/comments/<numeric-id>
+  ```
+
+  Pruned so far: iteration 1 (2026-07-31).
 
 ## Blockers
 
