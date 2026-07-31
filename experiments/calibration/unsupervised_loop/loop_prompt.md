@@ -86,6 +86,21 @@ A killed process on the login node leaves NO error message, because Julia's
 buffered output dies with it. Do not read that silence as "the job is still
 running" or as a code bug — check whether the process still exists.
 
+WAKING UP WHEN A JOB ENDS. The "detached processes die" rule above is about
+`nohup ... &`. A HARNESS-BACKGROUNDED command (Bash with `run_in_background`) is
+different and DOES survive across iterations — verified 2026-07-31, still alive
+after several turns. So the cheap way to avoid polling `qstat` on a timer is to
+background a waiter on the orchestrator's log file, which PBS writes back when
+the job ends on either success or failure:
+
+  until [ -f clima_calibration.o<jobid> ]; do sleep 120; done; echo finished
+
+That wakes the loop within ~2 min of the job ending, so the scheduled wakeup
+only has to be a slow backstop (lean toward the 3600 s ceiling) instead of a
+poll. Do NOT build this as a `qstat` poll loop: a loop-wrapped `qstat` no longer
+matches the sandbox's literal `excludedCommands` entry and fails, the same trap
+as `qstat -u $USER`. Watch the filesystem, not the queue.
+
 PBS — THE THREE FALSE ALARMS. In the previous unattended run, three separate
 job-submission failures were each misread as "Derecho is down for maintenance".
 None of them were. Before you ever conclude that the machine is unavailable,
