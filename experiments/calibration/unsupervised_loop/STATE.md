@@ -12,14 +12,22 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 1 — GPP + energy fluxes
 
-- **status:** not_started
+- **status:** running
 - **config:** `experiments/calibration/configs/sifgpp_lhf_shf_lwu_rosetta.jl`
 - **ensemble:** 21 (10 params, TransformUnscented)
-- **PBS job ids:** —
-- **output dir:** —
+- **PBS job ids:** orchestrator `6967486.desched1` (submitted 2026-07-31, queue
+  `cpu`, 12 h walltime). Member job ids: not yet — they appear once the
+  orchestrator reaches iteration 1.
+- **output dir:** `/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy`
+- **orchestrator log:** `clima_calibration.o6967486` in the repo root
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
-- **notes:** —
+- **notes:** Pre-flight checks before submitting — `pmodel_α` prior is 0.028
+  (post-#1817 `1/τ` convention, τ ≈ 36 d), so the convention trap is clear. Both
+  `.jld2` masks are no-ops for this stage's targets (`apply_*_mask` returns early
+  for any short name other than `lai`), so stage 1 does not need the validity
+  mask that stage 2's long run will supply. Orchestrator and member jobs both
+  pin `climacommon/2026_04_08`.
 
 ## Stage 2 — rebuild prognostic-LAI initial conditions
 
@@ -54,3 +62,13 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 ## Blockers
 
 None recorded.
+
+## Environment gotchas found by the loop
+
+- `qstat -u $USER` returns EMPTY OUTPUT, silently. The sandbox matches its
+  `excludedCommands` list against the literal command string, and the `$USER`
+  expansion defeats that match, so the command runs sandboxed and prints
+  nothing. Use `qstat -u arenchon`. This one is dangerous rather than merely
+  annoying: empty output is indistinguishable from "no jobs running", so an
+  iteration that trusts it would resubmit a job that is already queued.
+  `loop_prompt.md` has been corrected.

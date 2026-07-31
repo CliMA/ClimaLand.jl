@@ -24,7 +24,12 @@ paths, and the resulting parameters or artifact path.
 
 At the start of EVERY iteration:
   1. Read STATE.md.
-  2. `qstat -u $USER` to see what is still running.
+  2. `qstat -u arenchon` to see what is still running. Spell the username out:
+     `qstat -u $USER` returns EMPTY OUTPUT, silently. The sandbox matches its
+     `excludedCommands` list against the literal command string, and the `$USER`
+     expansion stops that match, so the command runs sandboxed and produces
+     nothing. Empty output there looks exactly like "no jobs running" and will
+     make you resubmit a job that is already queued.
   3. For each job that finished since last iteration, read its log, decide
      success or failure, and update STATE.md.
   4. Only then decide what to do next.
@@ -54,7 +59,7 @@ orchestrator itself goes into PBS, using the wrapper committed for this:
       experiments/calibration/calibration_orchestrator.pbs
 
 Run that from the repository root, bare (see the wrapping trap below). The
-wrapper loads `climacommon/2025_02_25` — the same module the forward-model
+wrapper loads `climacommon/2026_04_08` — the same module the forward-model
 member jobs are pinned to in `run_calibration.jl` — sets
 `HDF5_USE_FILE_LOCKING=FALSE`, and calls `run_calibration.sh`. Submitting jobs
 from inside a job works on Derecho; that has been verified, so member jobs
