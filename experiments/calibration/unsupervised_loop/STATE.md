@@ -37,8 +37,12 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 - **status:** not_started
 - **config:** `experiments/calibration/configs/lai.jl`
 - **ensemble:** 11 (5 params, TransformUnscented)
-- **validity mask built for this grid:** no
-- **natural-vegetation mask built for this grid:** no
+- **validity mask built for this grid:** no — needs stage 2's long-run
+  diagnostics as the reference simdir
+- **natural-vegetation mask built for this grid:** yes, pre-built 2026-07-31 at
+  `experiments/calibration/natural_vegetation_mask.jld2` (gitignored, so it is
+  on disk in the checkout only). 10113 of 22420 land cells kept. Rebuild only if
+  `nelements` changes.
 - **PBS job ids:** —
 - **output dir:** —
 - **calibrated parameters:** —
