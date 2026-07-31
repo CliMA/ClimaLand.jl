@@ -240,6 +240,23 @@ Reading these:
   concluding the constant-fraction assumption fails.
 - **Sahara sugar went negative (−0.075).** Fixed; see below.
 
+### Sugar floor verified (job 6969094, 4/4 PASS)
+
+The substrate limitation does exactly what it should, and nothing else:
+
+| site | C_sugar before | C_sugar after |
+|---|---|---|
+| sahara | **−0.0750** | **0** (exactly) |
+| amazon_central | 0.16494 | 0.16493 |
+| us_great_plains | 0.064274 | 0.064274 |
+| ozark_us | 0.092741 | 0.092754 |
+
+The desert floors at zero; vegetated sites move at most in the fifth significant
+digit (~1e-4 relative at `ozark_us`). Note that is the effect on the *integrated
+pool*, which accumulates through low-sugar periods, and so is larger than the
+~1e-5 instantaneous effect on `Rm` at a healthy pool. Rule 1 still passes
+exactly.
+
 ### Fifth issue: maintenance respiration drove the sugar pool negative
 
 At sahara GPP is zero all year, and `Rm` kept drawing on an empty pool. Negative
@@ -360,7 +377,9 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6969094.desched1/` |
+| 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | running | pending | `.../battery_pc_s1_pres_6969169.desched1/` |
+| 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | running | pending | `.../battery_pc_s1_prog_6969170.desched1/` |
+| 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | **done** | **PASS 4/4**; sahara sugar −0.075 → **exactly 0**; vegetated sites unchanged; rule 1 still exact | `.../battery_pc_s1_carb_6969094.desched1/` |
 | 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | **done** | **PASS 4/4; RULE 1 PASSES EXACTLY** (GPP and LAI bit-identical, rel_diff 0.0); found negative sugar at sahara | `.../battery_pc_s1_carb_6968999.desched1/` |
 | 6968904 | 1 | 4-site CARBON=1 check (retry after Jacobian fix) | 2026-07-31 | **F** | **FAIL 0/4** — `p.drivers.T_ground` absent in the integrated model; fixed in `e92726e16` | `.../battery_pc_s1_carb_6968904.desched1/` |
 | 6968847 | 1 | 4-site CARBON=1 check, prescribed LAI, 2 yr | 2026-07-31 | **F** | **FAIL 0/4** — missing Jacobian blocks for the pools; fixed in `341d75f55` | `.../battery_pc_s1_carb_6968847.desched1/` |
