@@ -125,6 +125,18 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
   its lookup with `startswith(name, short * "_")` rather than the original's
   `occursin`, so a short name can never cross-match another variable.
 
+## Reporting — PR #1834 comment hygiene
+
+- **Pinned status comment id `5145422196`.** This is the "opening comment": a
+  live dashboard of stage status, running jobs and blockers. EDIT it every
+  iteration (`gh pr comment --edit-last` will not find it — use
+  `gh api -X PATCH repos/CliMA/ClimaLand.jl/issues/comments/5145422196 -f body=@file`).
+  Never delete it, and never let it go stale.
+- Iteration reports are posted as new comments below it. Keep at most ~10:
+  before posting, list comments and delete the oldest surplus ones with
+  `gh api -X DELETE repos/CliMA/ClimaLand.jl/issues/comments/<id>`, never
+  touching `5145422196`.
+
 ## Blockers
 
 None recorded.
