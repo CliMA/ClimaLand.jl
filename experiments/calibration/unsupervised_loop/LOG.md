@@ -121,3 +121,44 @@ check rather than reason about.
 **Next.** Keep waiting on `6967486`; the waiter fires when it ends. If it is
 still queued around 8-10 h eligible, that stops being normal contention and
 should be reported as a blocker rather than waited out further.
+
+## 2026-07-31 — iteration 4: put a number on the queue decision
+
+`6967486` still `Q` at ~3 h 15 m eligible. Rather than re-argue the queue choice
+from first principles, went looking for evidence, and it was already on disk.
+
+**A previous run of essentially this stage-1 config exists**, at
+`/glade/derecho/scratch/arenchon/calibration_gpp_energy_rosetta_rebased_v1`,
+from 2026-06-19. Per-iteration wall times, read off directory mtimes:
+
+| iteration | finished | Δ |
+|---|---|---|
+| 001 | 06:07 | — |
+| 002 | 12:55 | 6 h 48 m (cold start) |
+| 003 | 15:02 | 2 h 07 m |
+| 004 | 17:13 | 2 h 11 m |
+| 005 | 18:27 | 1 h 14 m |
+| 006 | 19:38 | 1 h 11 m |
+| 007 | 20:50 | 1 h 12 m |
+| 008 | 22:39 | 1 h 49 m |
+
+A single member takes about 55 min (`iteration_005/member_001/model_log.txt`
+spans 17:14→18:09). So five iterations should take roughly **6-10 h** of
+orchestrator wall time, dominated by the cold-start first iteration.
+
+That converts the earlier queue argument into a measurement: 6-10 h fits the
+12 h `main` window and would certainly be killed by `develop`'s 6 h cap. The
+decision to wait stands, now on evidence rather than reasoning.
+
+It also gives a stall detector worth having: if the run is still on iteration 1
+more than ~7 h after the orchestrator starts, read a member `model_log.txt`
+rather than continuing to wait.
+
+**One flag for later.** That reference run went to **9** iterations; this config
+sets `n_iterations = 5`. That is not proof 5 is too few — the older run may just
+have been left going — but it is a reason to check convergence carefully at
+iteration 5 rather than assuming, and to be ready to extend per the ITERATIONS
+section of the prompt. The same directory is the natural reference for sanity-
+checking the calibrated parameter values when they arrive.
+
+**Next.** Unchanged: wait for `6967486` to start; the waiter catches completion.

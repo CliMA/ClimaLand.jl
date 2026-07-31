@@ -47,6 +47,25 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   members. The 12 h window in `main` is worth waiting for. KEEP WAITING.
   Reducing the orchestrator's `ncpus` would not help either: `main` allocates
   exclusive nodes for any request size.
+- **timing evidence (iteration 4).** A previous run of essentially this same
+  stage-1 config exists at
+  `/glade/derecho/scratch/arenchon/calibration_gpp_energy_rosetta_rebased_v1`
+  (2026-06-19). Per-iteration wall times from directory mtimes: 001→002 6 h 48 m
+  (cold start: precompile + queue), then 2 h 07 m, 2 h 11 m, 1 h 14 m, 1 h 11 m,
+  1 h 12 m, 1 h 49 m. A single member took ~55 min (`iteration_005/member_001`
+  `model_log.txt` spans 17:14→18:09). So EXPECT STAGE 1 TO TAKE ~6-10 h of
+  orchestrator wall time for 5 iterations, dominated by the cold-start first
+  iteration. This confirms the queue decision quantitatively: it fits the 12 h
+  `main` window and would certainly be killed by `develop`'s 6 h cap. If the run
+  is still on iteration 1 more than ~7 h after the orchestrator starts,
+  something is wrong — check member `model_log.txt` rather than waiting.
+- **precedent worth knowing:** that reference run went to 9 iterations, while
+  this config sets `n_iterations = 5`. That is not evidence 5 is wrong — the
+  older run may simply have been left to run on — but when this run reaches
+  iteration 5, check convergence properly (loss flat over the last two, means
+  stopped moving) before declaring done, and be prepared to extend per the
+  ITERATIONS section of `loop_prompt.md`. The same directory is also the natural
+  reference for sanity-checking the calibrated parameter values.
 - **notes:** Pre-flight checks before submitting — `pmodel_α` prior is 0.028
   (post-#1817 `1/τ` convention, τ ≈ 36 d), so the convention trap is clear. Both
   `.jld2` masks are no-ops for this stage's targets (`apply_*_mask` returns early
