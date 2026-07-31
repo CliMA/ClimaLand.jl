@@ -29,15 +29,24 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   128-core node. Derecho is busy (1447 queued / 338 running server-wide). Not
   escalating yet: `job_sort_formula` includes `300*(eligible_time/86400)`, so
   the job gains priority the longer it waits, and killing it would forfeit that.
-  ESCALATION RULE for the next iteration — if it is STILL `Q` at roughly 3 h
-  eligible, resubmit to the shared `develop` queue instead (`cpudev` defaults to
-  `place = pack:shared`, and had 88 running / 1 queued, so it starts almost
-  immediately). Trade-off to weigh at that point: `develop` is understood to cap
-  walltime near 6 h vs 12 h in `main` — no explicit `resources_max.walltime` is
-  published on the queue or server, so CONFIRM the cap before switching rather
-  than assuming 6 h. A walltime kill is recoverable (ClimaCalibrate resumes at
-  `last_completed_iteration + 1`) but orphans that iteration's in-flight member
-  jobs, so it is churn, not free.
+- **escalation to `develop`: RULED OUT (2026-07-31 13:01, iteration 3).** The
+  earlier plan was to move the orchestrator to the shared `develop` queue if it
+  stayed queued. Two measurements killed that idea:
+    1. `develop` caps walltime at 21600 s = 6 h exactly. Verified empirically by
+       submitting a probe job at 12 h, which PBS rejected with "your declared
+       wallclock time (43200 seconds) exceeds your maximum limit of 21600
+       seconds". No job was created. The cap is real, not folklore — no
+       `resources_max.walltime` is published on the queue or server.
+    2. Ensemble members are themselves `main`-queue GPU jobs. `pbs.jl:29` in
+       ClimaCalibrate defaults `queue` to `"main"` and `run_calibration.jl` does
+       not override it, so each of the 21 members per iteration is an exclusive
+       GPU job at 3 h walltime.
+  So 5 EKI iterations of 21 contended 3 h GPU jobs will plausibly run well past
+  6 h of orchestrator wall time. Moving to `develop` would trade a queue wait
+  for near-certain walltime kills, each orphaning that iteration's in-flight
+  members. The 12 h window in `main` is worth waiting for. KEEP WAITING.
+  Reducing the orchestrator's `ncpus` would not help either: `main` allocates
+  exclusive nodes for any request size.
 - **notes:** Pre-flight checks before submitting — `pmodel_α` prior is 0.028
   (post-#1817 `1/τ` convention, τ ≈ 36 d), so the convention trap is clear. Both
   `.jld2` masks are no-ops for this stage's targets (`apply_*_mask` returns early

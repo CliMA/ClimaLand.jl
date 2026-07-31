@@ -85,3 +85,39 @@ account but were not submitted by the loop. Left alone.
 
 **Next.** Same as before, plus: apply the escalation rule if `6967486` is still
 `Q` at ~3 h eligible.
+
+## 2026-07-31 — iteration 3: escalation plan measured, then abandoned
+
+`6967486` still `Q` at 2 h 11 m eligible, same exclusive-node reason, no
+estimated start time offered. Rather than burn the escalation iteration on
+investigation, settled the open question early — and the answer reversed the
+plan.
+
+**`develop` caps at 6 h, confirmed by experiment rather than assumption.**
+Submitted a trivial probe job requesting 12 h; PBS rejected it outright: "your
+declared wallclock time (43200 seconds) exceeds your maximum limit of 21600
+seconds ... the queue limit is 21600 seconds". Rejection means no job was
+created, so nothing needed cleaning up. 21600 s is 6 h exactly.
+
+**The members are GPU jobs in `main`, which is the fact that matters.**
+`ClimaCalibrate/src/pbs.jl:29` defaults the member queue to `"main"`, and
+`run_calibration.jl` never overrides it — it only sets `gpus_per_task = 1` and
+`time = 180`. So every one of the 21 members per iteration is an exclusive-node
+GPU job with a 3 h walltime, competing in the same contended queue.
+
+**Therefore: do not move to `develop`.** Five EKI iterations of 21 contended 3 h
+GPU jobs will plausibly exceed 6 h of orchestrator wall time. Switching would
+trade a bounded queue wait for repeated walltime kills, and each kill orphans
+that iteration's in-flight member jobs — ClimaCalibrate resumes at
+`last_completed_iteration + 1`, so the work is not lost, but the running members
+are wasted. The 12 h window in `main` is worth waiting for. Also checked whether
+shrinking the request would schedule sooner: it would not, because `main`
+allocates an exclusive node for any request size.
+
+This is the second time on this branch that a plausible-sounding assumption
+about Derecho turned out to be checkable in about a minute. Worth continuing to
+check rather than reason about.
+
+**Next.** Keep waiting on `6967486`; the waiter fires when it ends. If it is
+still queued around 8-10 h eligible, that stops being normal contention and
+should be reported as a blocker rather than waited out further.
