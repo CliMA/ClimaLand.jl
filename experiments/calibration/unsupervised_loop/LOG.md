@@ -162,3 +162,41 @@ section of the prompt. The same directory is the natural reference for sanity-
 checking the calibrated parameter values when they arrive.
 
 **Next.** Unchanged: wait for `6967486` to start; the waiter catches completion.
+
+## 2026-07-31 — iteration 5: contention confirmed system-wide; stage 2 pre-flighted
+
+`6967486` still `Q` at ~4 h 18 m eligible.
+
+**The wait is the machine, not the job.** `qstat -Qf cpu` shows 2373 nodes
+assigned out of Derecho's ~2488, with 1330 queued against 259 running, and
+`backfill_depth = 5` on this queue. The cluster is essentially full. This is
+worth stating explicitly because the prompt warns about misreading contention as
+an outage — the opposite error is also available, and the queue statistics rule
+out anything specific to this job.
+
+**Used the wait to pre-flight stage 2**, since a defect there would otherwise
+surface only after a 10-year GPU run had completed and been wasted. All checks
+are static; no compute was used.
+
+- All six IC fields have diagnostics. `lai` is in the base `CanopyModel` list;
+  `a0a`, `pra`, `olf0`, `olvpd`, `olgsl` are appended by the `add_diagnostics!`
+  method dispatched on `ZhouOptimalLAIModel`, which is what `PROGNOSTIC_LAI`
+  selects.
+- `snowy_land_pmodel.jl:166-176` requests exactly those six, unioned with the
+  short set, when `PROGNOSTIC_LAI` is set — confirming the prompt's claim that no
+  extra flag is needed.
+- `PROGNOSTIC_LAI` is `haskey`-tested, so `PROGNOSTIC_LAI=""` does enable it;
+  `RUN_YEARS` defaults to 2 and must be set to 10; `OUTPUT_ROOT` defaults to `.`
+  and must be set, or multi-GB diagnostics land in the checkout.
+
+**Pinned down the `precip_annual` unit trap with both sides quoted.** The prompt
+flags it; now it is exact. `pra` is `units = "m yr^-1"`
+(`define_diagnostics.jl:374`), the reader documents `precip_annual` as
+`mol H2O m^-2 yr^-1` (`spatially_varying_parameters.jl:406`). The factor is
+ρ_liq / M_H2O = 1000 / 0.018015 ≈ 5.5509e4 mol m^-3. Writing `pra` through raw
+would understate precipitation by about 4.7 orders of magnitude — every land
+cell would look hyper-arid, and the resulting IC would be quietly wrong rather
+than obviously broken. Recorded in STATE.md so stage 2 does not have to
+rediscover it.
+
+**Next.** Unchanged. Blocker threshold still ~8-10 h eligible.

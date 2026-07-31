@@ -87,6 +87,28 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 - **run output:** —
 - **new artifact path:** —
 - **`~/.julia/artifacts/Overrides.toml` verified:** no
+- **pre-flight done 2026-07-31 (iteration 5), while stage 1 was queued —
+  machinery verified, no compute used:**
+  - All six IC diagnostics are defined: `lai` comes from the base `CanopyModel`
+    list (`default_diagnostics.jl:510`); `a0a`, `pra`, `olf0`, `olvpd`, `olgsl`
+    are appended by the `add_diagnostics!` method dispatched on
+    `ZhouOptimalLAIModel` (`default_diagnostics.jl:443-453`), which is exactly
+    what `PROGNOSTIC_LAI` selects.
+  - `snowy_land_pmodel.jl:166-176` requests precisely those six, unioned with
+    `get_short_diagnostics(model)`, when `PROGNOSTIC_LAI` is set. So the prompt's
+    claim that no extra flag is needed is correct.
+  - Env vars behave as documented: `PROGNOSTIC_LAI` is `haskey`-tested (so any
+    value, including empty, enables it), `RUN_YEARS` defaults to 2, `OUTPUT_ROOT`
+    defaults to `.`.
+  - **UNIT CONVERSION for `precip_annual`, confirmed on both sides.** The `pra`
+    diagnostic is `units = "m yr^-1"` (`define_diagnostics.jl:374`), but the IC
+    reader documents `precip_annual` as `mol H2O m^-2 yr^-1`
+    (`spatially_varying_parameters.jl:406`). Multiply by ρ_liq / M_H2O =
+    1000 kg m^-3 / 0.018015 kg mol^-1 ≈ **5.5509e4 mol m^-3**. Writing `pra`
+    through raw would understate precipitation by ~4.7 orders of magnitude and
+    make every cell look hyper-arid.
+  - Not yet verified (needs the actual run): that the six fields are finite over
+    land, and that the artifact override resolves.
 - **notes:** —
 
 ## Stage 3 — prognostic LAI
