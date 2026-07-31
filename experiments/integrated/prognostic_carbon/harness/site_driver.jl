@@ -63,6 +63,12 @@ lai_mode in ("prescribed", "prognostic") ||
 # must leave GPP and LAI untouched, which is exactly what the battery checks by
 # diffing against the CARBON=0 baselines.
 carbon_on = get(ENV, "CARBON", "0") == "1"
+# CARBON_RA=1 additionally takes autotrophic respiration from the pools instead
+# of the JULES prescribed-area-index term. This DOES change Ra, deliberately, so
+# a CARBON_RA=1 run is not expected to reproduce the rule-1 baseline for Ra -
+# only for GPP and LAI, which stay one-way coupled.
+carbon_ra = get(ENV, "CARBON_RA", "0") == "1"
+carbon_ra && !carbon_on && error("CARBON_RA=1 requires CARBON=1")
 
 root_path = get(ENV, "SITE_OUTDIR", "prognostic_carbon_$(site_name)")
 mkpath(root_path)
@@ -104,6 +110,7 @@ function setup_model(
     toml_dict,
     lai_mode,
     carbon_on,
+    carbon_ra,
 ) where {FT}
     surface_space = domain.space.surface
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
@@ -159,7 +166,6 @@ function setup_model(
     # an apparent rule-1 violation that is really a harness bug.
     c = land.canopy
     canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-        autotrophic_respiration = c.autotrophic_respiration,
         radiative_transfer = c.radiative_transfer,
         photosynthesis = c.photosynthesis,
         conductance = c.conductance,
@@ -171,6 +177,10 @@ function setup_model(
             c.biomass,
             toml_dict,
         ),
+        autotrophic_respiration = carbon_ra ?
+                                  ClimaLand.Canopy.PoolBasedAutotrophicRespirationModel{
+            FT,
+        }() : c.autotrophic_respiration,
         boundary_conditions = c.boundary_conditions,
         earth_param_set = c.earth_param_set,
         domain = c.domain,
@@ -200,6 +210,7 @@ model = setup_model(
     toml_dict,
     lai_mode,
     carbon_on,
+    carbon_ra,
 );
 
 # In-memory diagnostics so the baseline metrics can be pulled straight out of
@@ -215,7 +226,7 @@ diagnostics = ClimaLand.default_diagnostics(
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
 @info "Prognostic-carbon single-column battery site"
-@info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode  carbon: $carbon_on"
+@info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode  carbon: $carbon_on  pool_Ra: $carbon_ra"
 @info "Timestep: $Δt s   Window: $start_date -> $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation);
@@ -253,6 +264,7 @@ open(joinpath(root_path, "carbon_metrics.txt"), "w") do io
     println(io, "lat $site_lat")
     println(io, "lai_mode $lai_mode")
     println(io, "carbon $(carbon_on ? 1 : 0)")
+    println(io, "carbon_ra $(carbon_ra ? 1 : 0)")
     println(io, "start $start_date")
     println(io, "stop $stop_date")
     println(io, "dt $Δt")

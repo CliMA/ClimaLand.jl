@@ -46,6 +46,7 @@ LAI_MODE="${LAI_MODE:-prescribed}"   # prescribed MODIS LAI for stages 1-3; prog
 SPINUP_YEARS="${SPINUP_YEARS:-1}"    # years excluded from the reported means
 DT="${DT:-450.0}"
 CARBON="${CARBON:-0}"           # 1 = wrap the LAI model in the prognostic carbon pools
+CARBON_RA="${CARBON_RA:-0}"      # 1 = take Ra from the pools instead of the JULES term (needs CARBON=1)
 # Parameter overrides; empty = branch default (see site_driver.jl).
 OPT_Z="${OPT_Z:-}"; OPT_Z_C4="${OPT_Z_C4:-}"
 OPT_SIGMA="${OPT_SIGMA:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
@@ -56,7 +57,7 @@ ONLINE_C3C4="${ONLINE_C3C4:-}"
 # can report the node's physical cores from inside a cpuset). Keep the PBS
 # select mem >= NPAR*3 GB.
 NPAR="${NPAR:-8}"
-echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE carbon=$CARBON spinup_years=$SPINUP_YEARS npar=$NPAR runroot=$RUNROOT"
+echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE carbon=$CARBON pool_Ra=$CARBON_RA spinup_years=$SPINUP_YEARS npar=$NPAR runroot=$RUNROOT"
 
 # Precompile once up front so the concurrent workers hit a warm cache.
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
@@ -68,7 +69,7 @@ run_site() {
     mkdir -p "$SITEDIR"
     if START="$START" STOP="$STOP" DT="$DT" SITE_LON="$lon" SITE_LAT="$lat" \
         SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" LAI_MODE="$LAI_MODE" \
-        CARBON="$CARBON" \
+        CARBON="$CARBON" CARBON_RA="$CARBON_RA" \
         SPINUP_YEARS="$SPINUP_YEARS" \
         OPT_Z="$OPT_Z" OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA="$OPT_SIGMA" \
         OPT_SIGMA_C4="$OPT_SIGMA_C4" OPT_ALPHA="$OPT_ALPHA" F0="$F0" \
