@@ -1,6 +1,6 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.10.3"
+version = "1.11.0"
 authors = ["Clima Land Team"]
 
 [deps]
@@ -74,6 +74,6 @@ Printf = "1"
 RootSolvers = "0.4.5, 1.0"
 StaticArrays = "1.9.8"
 Statistics = "1"
-SurfaceFluxes = "<1.2"
+SurfaceFluxes = ">= 1.2.1"
 Thermodynamics = "0.15.9, ~1.0, ~1.2"
 julia = "1.10"

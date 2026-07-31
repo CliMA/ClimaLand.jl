@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 main
 ----
 
+v1.11.0
+-----
+- ![][badge-🔥featureΔ] Use latest SF version which enables us to do a single rather than nested set of solves for the snow surface temperature. Since this SF release was a breaking change, upgrade compat to 1.2. We now use the snow surface temperature parameterization based on the equilibrium gradient approach by default [#1774](https://github.com/CliMA/ClimaLand.jl/pull/1774)
+
 v1.10.3
 -----
 - ![][badge-🐛bugfix] Fix the P-model intercellular CO2 (`ci`): guard the water-stress factor
