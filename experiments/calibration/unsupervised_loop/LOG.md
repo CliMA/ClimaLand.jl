@@ -44,3 +44,44 @@ Confirmed queued (state `Q`).
 **Next.** Wait on `6967486`. At the next check: if it is still `Q`/`R`, do
 nothing; if it has finished, read `clima_calibration.o6967486` and the member
 logs before believing any parameter values, per the failure signatures.
+
+## 2026-07-31 — iteration 2: still queued; diagnosed why
+
+Woken by the fallback heartbeat, not the log-file waiter, so stage 1 had not
+finished. It had not started either: `6967486` still `Q` at 1 h 08 m eligible.
+
+**Why it is waiting.** `qstat -f` gives the reason outright — `Not Running: Job
+is requesting an exclusive node and node is in use`, with `place =
+scatter:exclhost`. The `main` queue allocates whole nodes, so the orchestrator,
+which uses about one core to submit member jobs and poll, is queued behind a
+free 128-core node. Derecho is busy: 1447 queued against 338 running.
+
+**Chose not to escalate.** The server's `job_sort_formula` includes
+`300*(eligible_time/86400)`, so a waiting job climbs; killing and resubmitting
+would forfeit the accrued eligible time and restart that climb. Recorded an
+explicit rule in STATE.md instead — if still `Q` at ~3 h eligible, move to the
+shared `develop` queue (`cpudev` defaults to `pack:shared` and had 88 running
+against 1 queued, so it starts near-immediately), after first confirming its
+walltime cap. No `resources_max.walltime` is published on `develop`, `cpudev`,
+or the server, so the widely-assumed 6 h is unverified and must be checked
+rather than assumed before trading away a 12 h window.
+
+**Worth recording about the member jobs**, since it changes where the real
+bottleneck is: `run_calibration.jl` gives each ensemble member
+`:gpus_per_task => 1` and `CLIMACOMMS_DEVICE = CUDA`, at 3 h walltime. So the
+orchestrator is the only CPU job; the 21 members per iteration are GPU jobs.
+Orchestrator queue time is a startup cost, not the throughput limit.
+
+**Used the wait for a pre-flight check.** Verified all 10 prior parameter names
+resolve in `toml/default_parameters.toml`, and that every prior mean equals the
+current default — so the prior is centered on the defaults, as the config
+claims, and `pmodel_α` is 0.028 on both sides. One trap for anyone repeating
+this: the TOML mixes bare `[name]` and quoted `["name"]` headers, so grepping
+`^\[name\]` reports most of them MISSING. My first pass did exactly that and
+looked like a serious finding until I checked the file format.
+
+Two `cpudev` jobs (`6967717`, `6967718`, `pc_base_p*`) are running under this
+account but were not submitted by the loop. Left alone.
+
+**Next.** Same as before, plus: apply the escalation rule if `6967486` is still
+`Q` at ~3 h eligible.
