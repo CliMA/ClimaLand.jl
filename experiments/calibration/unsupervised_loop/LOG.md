@@ -226,3 +226,39 @@ them finish or `qdel` them BEFORE resubmitting the orchestrator — not to
 resubmit immediately.
 
 **Next.** Unchanged. Blocker threshold still ~8-10 h eligible, i.e. ~19:00-21:00.
+
+## 2026-07-31 — iteration 7: reported as blocked; chunked fallback verified
+
+`6967486` still `Q` at 6 h 23 m. The reason this iteration is different from the
+last two: the backlog is GROWING, so "keep waiting" stopped being obviously
+convergent.
+
+| | it. 5 (15:07) | it. 7 (17:12) |
+|---|---|---|
+| CPU nodes assigned | 2373 / ~2488 | 2406 |
+| queued | 1330 | 1411 |
+| running | 259 | 279 |
+
+**Found and verified a third option: chunking.**
+`ClimaCalibrate/src/backends.jl:277` computes
+`first_iter = last_completed_iteration(output_dir) + 1` and runs
+`first_iter:n_iterations`. So raising `n_iterations` one step at a time makes
+each job run exactly one more iteration and then exit NORMALLY. Each chunk is
+~1 h 15 m, well inside `develop`'s 6 h cap, and because no job is ever
+walltime-killed, the orphaned-member hazard from iteration 6 never arises. That
+hazard was the decisive argument against the naive "just use `develop`" idea;
+chunking sidesteps it rather than accepting it.
+
+**Why I reported instead of just switching.** The two approaches are mutually
+exclusive: two orchestrators must not share a `CAL_OUTPUT_DIR`, so adopting
+chunking means `qdel`-ing `6967486` and forfeiting 6 h 23 m of accrued
+`eligible_time` priority. It also deviates from the committed 12 h `main`
+wrapper, and the cold-start first chunk is the least certain to fit in 6 h. That
+is a genuine trade-off rather than a clear improvement, and the user is away, so
+the honest move is to state it, commit to a trigger, and keep working.
+
+**Trigger set:** implement chunking if `6967486` is still queued at ~9-10 h
+eligible (≈20:00-21:00 MDT). Posted to the PR as a blocked-status comment so the
+situation is visible rather than buried in another quiet tick.
+
+**Next.** Wait; act on the trigger if it fires.
