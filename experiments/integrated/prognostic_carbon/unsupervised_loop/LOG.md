@@ -265,3 +265,51 @@ Stage 1 is **not** done: the gate also requires the site battery to complete
 with GPP and LAI unchanged from the stage-0 baseline at every site. Next
 iteration wires the carbon model into `harness/site_driver.jl` behind a
 `CARBON=1` switch and runs the battery under both LAI modes.
+
+## 2026-07-31 — iteration 5: wired CARBON=1; battery found a third trap
+
+Wired `CARBON=1` through the harness and added `harness/check_rule1.jl`. Commits
+`9f18825e4`, `2cb8fc788`, `341d75f55`.
+
+**Job 6968847 failed 0/4 — and that is the iteration's real result.** Every site
+died before stepping:
+
+```
+The linear system cannot be solved because A does not have any entries at the
+following keys: (canopy.biomass.C_sugar, ...), (C_leaf, ...), (C_stem, ...),
+(C_root, ...)
+```
+
+Every prognostic variable needs a Jacobian block in
+`implicit_timestepping.jl`. The pools step explicitly, so they belong in
+`explicit_vars` beside the optimal-LAI time-integrated variables.
+
+What makes this worth writing down is *why the 56 passing unit tests did not
+catch it*. They call `make_compute_exp_tendency` directly and never construct a
+`LandSimulation`, so the implicit solver — and therefore the Jacobian — is never
+built. The tests covered the physics thoroughly and the plumbing not at all.
+There is now a test that calls `initialize_jacobian` on a carbon-model state,
+and I verified it is a real test rather than a decorative one by reverting the
+fix: it reproduces the battery error exactly, then passes with the fix restored.
+
+That is **three traps of the same shape in two iterations**: introducing a new
+biomass model silently fails to register with machinery that enumerates models
+or variables — `update_fractional_c3!` (dispatch falls to a default),
+`set_canopy_component_initial_conditions!` (dispatch falls to a no-op), and now
+`initialize_jacobian` (variable simply absent from a list). Two of the three
+would have produced *wrong numbers with no error*. The Jacobian one at least
+failed loudly.
+
+Also added this iteration, before the failure: the driver rebuilds only the
+canopy, wrapping the `LandModel`'s own biomass and reusing every other component
+object. Reconstructing them by hand would have picked
+`TuzetMoistureStressModel` (the standalone canopy default) instead of
+`PiecewiseMoistureStressModel` (what the integrated model uses), changing GPP
+and producing an apparent rule-1 violation that was really a harness bug.
+
+`check_rule1.jl` diffs a CARBON=1 summary against the committed baseline at
+1e-10 relative tolerance. Checked both directions: identity input passes all 20
+sites, a 0.1% GPP perturbation at one site is caught. A rule-1 checker that
+always passes would be worse than having none.
+
+Resubmitted as **6968904**.
