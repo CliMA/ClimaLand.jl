@@ -1078,8 +1078,17 @@ function update_biomass!(
         Y.canopy.biomass.C_root
     # Reported against the prescribed specific leaf density; far from ~0.03-0.1
     # kg C m^-2 leaf means the allocation fractions and the LAI model disagree.
-    @. p.canopy.biomass.σl_implied =
-        Y.canopy.biomass.C_leaf / max(p.canopy.biomass.area_index.leaf, eps(FT))
+    # Reported as zero where there is no leaf area rather than divided by eps:
+    # LAI is clipped to exactly zero below 0.05, so dividing by it produced
+    # values of order 1e14 at sites the LAI model considers bare. A site with
+    # zero LAI but non-zero C_leaf is a genuine inconsistency, but the leaf pool
+    # itself is what shows it - the ratio there is meaningless, not enormous.
+    @. p.canopy.biomass.σl_implied = ifelse(
+        p.canopy.biomass.area_index.leaf > 0,
+        Y.canopy.biomass.C_leaf /
+        max(p.canopy.biomass.area_index.leaf, eps(FT)),
+        zero(FT),
+    )
     return nothing
 end
 

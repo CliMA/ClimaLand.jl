@@ -140,8 +140,11 @@ not wildly off where there is vegetation. The desert is the problem (below).
 
 ## Stage 1 — carbon pools in `biomass.jl`
 
-- **status:** in_progress — model and tests done and pushed (commit `2419a0c73`);
-  the site-battery half of the gate is still outstanding
+- **status:** **DONE** (2026-07-31). All four gate criteria met:
+  package tests pass (74); carbon conservation test passes; the 20-site battery
+  completes under **both** LAI models (jobs 6969169, 6969170, 20/20 each); and
+  **GPP and LAI are bit-identical to the stage-0 baseline at every site under
+  both models** (`rel_diff = 0.0`, `check_rule1.jl`)
 - **pools:** C_sugar, C_leaf, C_stem, C_root
 - **conservation test written:** **yes** —
   `test/standalone/Vegetation/carbon_conservation.jl`, registered in
@@ -310,6 +313,70 @@ never with a PFT. **Do not act on this yet**: confirm against the prognostic-LAI
 battery and re-measure after stage-4 spinup, since that is the state the
 comparison is properly made in.
 
+### STAGE-1 GATE, prognostic Zhou LAI (job 6969170, 20/20 PASS) — and it changes the σl reading
+
+**Rule 1 passes exactly at all 20 sites under the prognostic LAI model too.**
+That also demonstrates the wrapper preserves Zhou's nine time-integrated
+prognostic variables and keeps forwarding the C3/C4 competition — the two silent
+failure modes identified in iterations 4–5.
+
+`σl_implied` under the two LAI models (committed:
+`harness/stage1_prescribed_lai.tsv`, `harness/stage1_prognostic_lai.tsv`):
+
+| site | LAI pres | LAI prog | σl pres | σl prog |
+|---|---|---|---|---|
+| congo_basin | 5.16 | 4.63 | 0.098 | 0.113 |
+| borneo | 4.09 | 3.98 | 0.088 | 0.110 |
+| amazon_central | 4.79 | 4.30 | 0.079 | 0.106 |
+| central_europe | 1.83 | 2.23 | 0.191 | **0.105** |
+| ozark_us | 1.12 | 2.52 | 0.164 | **0.088** |
+| us_great_plains | 0.66 | 2.31 | 0.190 | **0.098** |
+| ne_china | 0.66 | 1.66 | 0.106 | **0.096** |
+| pampas_argentina | 1.03 | 2.44 | 0.245 | **0.118** |
+| n_australia_savanna | 1.17 | 4.52 | 0.395 | **0.120** |
+| cerrado_brazil | 1.60 | 3.05 | 0.234 | **0.142** |
+| canada_boreal | 0.71 | 1.24 | 0.126 | **0.074** |
+| fennoscandia | 1.32 | 1.23 | 0.129 | **0.088** |
+| central_siberia | 1.28 | 0.72 | 0.117 | 0.115 |
+| iberia | 0.74 | 2.03 | 0.248 | 0.270 |
+| mojave_sw_us | 0.16 | 0.22 | 0.501 | 0.490 |
+| california_vaira | 1.74 | 0.82 | 0.163 | **0.395** |
+| alaska_north_slope | 0.40 | 0.14 | 0.205 | **0.857** |
+| sahel | 0.37 | 0.00 | 0.169 | — (LAI = 0) |
+
+**This materially revises the prescribed-LAI reading recorded above.** Under
+prognostic LAI, roughly half the sites land in or just above the expected
+0.03–0.1 band, where under prescribed MODIS LAI only the three rainforests did.
+
+The controlling variable is **LAI, not biome**: `σl_implied` is high wherever
+LAI is low, and it tracks LAI changes site by site. `us_great_plains` LAI
+0.66 → 2.31 takes σl 0.190 → 0.098; `n_australia_savanna` 1.17 → 4.52 takes
+0.395 → 0.120. It also moves the other way — `california_vaira` LAI 1.74 → 0.82
+takes σl 0.163 → 0.395, and `alaska_north_slope` 0.40 → 0.14 takes 0.205 →
+0.857.
+
+So the honest statement is **not** "constant allocation fractions fail". It is:
+the carbon model allocates leaf carbon roughly in proportion to productivity,
+and where the LAI model puts little leaf area on a productive column the two
+disagree. The remaining outliers are all low-LAI columns
+(`alaska_north_slope` 0.14, `mojave_sw_us` 0.22, `california_vaira` 0.82).
+
+Since stage 4 onward runs prognostic LAI, **the prognostic column is the one
+that matters for the final product**, and it is much closer to defensible than
+the prescribed one. Still do not act on it: pools are 2 years from empty and
+`C_leaf` is below equilibrium, so these numbers will rise. Re-measure after
+stage-4 spinup before touching `f_leaf` or invoking MODEL.md §2.3's
+climate-varying fallback.
+
+### Diagnostic bug found and fixed
+
+`σl_implied` at `sahel` under prognostic LAI came out as **9.8e13**: LAI is
+clipped to exactly zero below 0.05, and the diagnostic divided by
+`max(LAI, eps)`. It now reports zero where there is no leaf area. A site with
+zero LAI and non-zero `C_leaf` is a genuine inconsistency — `sahel` has
+cVeg = 0.106 with LAI = 0 — but the leaf pool itself is what shows it; the ratio
+there is meaningless rather than enormous.
+
 ### Sugar floor verified (job 6969094, 4/4 PASS)
 
 The substrate limitation does exactly what it should, and nothing else:
@@ -448,7 +515,7 @@ biomass model needs a `PrognosticCarbonModel` forwarding method.**
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
 | 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_pres_6969169.desched1/` |
-| 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | running | pending | `.../battery_pc_s1_prog_6969170.desched1/` |
+| 6969170 | 1 | **20-site** CARBON=1, prognostic Zhou LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_prog_6969170.desched1/` |
 | 6969094 | 1 | 4-site CARBON=1 rerun with the sugar floor | 2026-07-31 | **done** | **PASS 4/4**; sahara sugar −0.075 → **exactly 0**; vegetated sites unchanged; rule 1 still exact | `.../battery_pc_s1_carb_6969094.desched1/` |
 | 6968999 | 1 | 4-site CARBON=1 check (after `T_ground` fix) | 2026-07-31 | **done** | **PASS 4/4; RULE 1 PASSES EXACTLY** (GPP and LAI bit-identical, rel_diff 0.0); found negative sugar at sahara | `.../battery_pc_s1_carb_6968999.desched1/` |
 | 6968904 | 1 | 4-site CARBON=1 check (retry after Jacobian fix) | 2026-07-31 | **F** | **FAIL 0/4** — `p.drivers.T_ground` absent in the integrated model; fixed in `e92726e16` | `.../battery_pc_s1_carb_6968904.desched1/` |
