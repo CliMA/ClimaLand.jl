@@ -191,15 +191,33 @@ Details worth not rediscovering:
 
 ### Remaining for the stage-1 gate
 
-1. Wire `LAI_MODE`-aware carbon-model construction into
-   `harness/site_driver.jl` behind a `CARBON=1` switch, and add pool
-   diagnostics to `carbon_metrics.txt`.
-2. Run the 20-site battery under both LAI modes with the pools active.
-3. Diff GPP and LAI per site against `harness/baseline_prescribed_lai.tsv` and
-   `harness/baseline_prognostic_lai.tsv`. Any difference beyond round-off is a
-   stage-1 bug by definition.
+1. ~~Wire `CARBON=1` into `harness/site_driver.jl` and add pool diagnostics.~~
+   **Done** (commit `9f18825e4`). The driver rebuilds only the canopy, wrapping
+   the `LandModel`'s own biomass model and reusing every other component object
+   unchanged — reconstructing them would risk diverging from the LandModel
+   defaults (the integrated model uses a different soil-moisture stress model
+   than the standalone canopy default), and any such divergence would look like
+   a rule-1 violation that is really a harness bug.
+2. ~~Rule-1 comparison tool.~~ **Done**: `harness/check_rule1.jl` diffs a
+   CARBON=1 summary against the committed baseline per site, exits non-zero on
+   any difference beyond `1e-10` relative. Verified non-vacuous — a 0.1%
+   perturbation to one site's GPP is caught.
+3. **Running:** job 6968847 (`pc_s1_carb`), 4 sites, CARBON=1, prescribed LAI,
+   2-year window. Then the full 20 under both LAI modes.
 4. Check the failure signatures: C_sugar pinned at zero, C_stem unbounded,
    `σl_implied` far outside 0.03–0.1 kg C m⁻² leaf.
+
+### A second silent-failure trap caught while wiring (2026-07-31)
+
+`set_canopy_component_initial_conditions!` has a **generic no-op fallback** for
+`AbstractCanopyComponent`. A `PrognosticCarbonModel` wrapping
+`ZhouOptimalLAIModel` would therefore have matched the no-op and skipped Zhou's
+own IC entirely, leaving all nine of its time-integrated variables at zero and
+changing the simulated LAI — a rule-1 violation with no error message. There is
+now a forwarding IC method; do not remove it. This is the same failure family as
+`update_fractional_c3!`: dispatch on the biomass model silently selecting a
+default when a wrapper is introduced. **Any new function dispatching on the
+biomass model needs a `PrognosticCarbonModel` forwarding method.**
 - **pools:** C_sugar, C_leaf, C_stem, C_root
 - **conservation test written:** no
 - **GPP/LAI unchanged vs stage-0 baseline:** —
@@ -249,6 +267,7 @@ Details worth not rediscovering:
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
+| 6968847 | 1 | 4-site CARBON=1 check, prescribed LAI, 2 yr | 2026-07-31 | running | pending | `.../battery_pc_s1_carb_6968847.desched1/` |
 | 6967718 | 0 | 20-site baseline, 2 yr, **prognostic** Zhou LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prognostic_lai.tsv` | `.../battery_pc_base_prog_6967718.desched1/` |
 
 Jobs seen in `qstat -u arenchon` that are NOT `pc_*` belong to the other loop —
