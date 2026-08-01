@@ -83,34 +83,60 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   against the 23:47 walltime — roughly 50 min of margin. Watch it, but it should
   land. `checkpoint.txt` goes `started` → `completed`; that is the cheap way to
   count finished members without parsing logs.
-- **⚠ MEMBER 3 CRASHED — iteration 1 of stage 1 (2026-07-31 ~20:35).**
-  `member_003` died with **signal 11 (SIGSEGV), core dumped**, on node
-  `deg0069`, at 90 % complete after 47 min of healthy running
-  (`estimated_sypd` ~83, `percent_complete` rising normally right up to the
-  crash). Its `checkpoint.txt` is stuck at `started` while its PBS job is gone —
-  that mismatch, job absent but checkpoint not `completed`, is the signature of
-  a crashed member.
-  **This is almost certainly transient/hardware, not the parameters.** A bad
-  parameter set produces NaN or a solver failure, not a segfault after 47
-  minutes at normal throughput.
-  **It is handled, and iteration 1 will still complete:**
-    - `observation_map.jl:65-70` wraps member processing in try/catch and calls
-      `fill_g_ens_col!(..., NaN)` on failure, logging "Error processing member
-      $m, filling observation map entry with NaNs". So it degrades rather than
-      crashing the orchestrator.
-    - EKP's `TransformUnscented` defaults to
-      `failure_handler_method = SampleSuccGauss()`
-      (`EnsembleKalmanProcess.jl:123-129`); `run_calibration.jl` passes only
-      `scheduler`, so that default applies and the update is conditioned on the
-      successful particles.
-    - 1 failure in 21 is ~4.8 %.
-  **WHAT TO WATCH:** if further members segfault in later iterations, especially
-  on different nodes, it stops being transient and becomes a real defect worth
-  reporting rather than absorbing. Count crashed members per iteration via the
-  checkpoint/job mismatch above. Losing a sigma point degrades the unscented
-  covariance estimate, so several failures in one iteration would make that
-  iteration's update untrustworthy even though EKP will not error.
-- **calibrated parameters:** —
+- **MEMBER 3 CRASHED BUT ITS DATA IS VALID — corrected finding (2026-07-31 22:15).**
+  `member_003` died with signal 11 (SIGSEGV) on node `deg0069`, and its
+  `checkpoint.txt` is stuck at `started`, so ClimaCalibrate logged
+  `Failed ensemble members: [3]`. My first reading — that it would degrade to a
+  NaN column and iteration 1 would run on 20/21 sigma points — WAS WRONG.
+  What actually happened: the simulation ran to completion and wrote all its
+  diagnostics at 20:35 (its own predicted finish time), then segfaulted during
+  teardown, before `checkpoint.txt` could be updated. Verified directly:
+  `member_003` has the same 10 `.nc` files as a healthy member, the same 36
+  time steps, and an identical time coordinate (first=0, last=92102400).
+  Consequently `observation_map` read it successfully — the log contains ZERO
+  "Error processing member" lines — and the G ensemble has **0 NaN columns,
+  finite fraction 1.0 across all 21 members**. Iteration 1 used the full
+  ensemble; the unscented covariance is NOT degraded.
+  **Lesson for future iterations: `checkpoint.txt` is not a reliable success
+  signal.** It reports whether the process exited cleanly, not whether the
+  science completed. Check the diagnostics (file count, time length) before
+  concluding a flagged member actually lost data. Conversely, a member that
+  crashes EARLY would leave short/missing files, and that is what the NaN path
+  is for — it just did not trigger here.
+- **ITERATION 1 COMPLETE (2026-07-31 22:14).** Chunk 1 (`6970028`) exited
+  cleanly in 3 h 57 m, well inside its 5 h 30 m walltime, and wrote
+  `iteration_002/eki_file.jld2` (336 MB) plus staged member dirs. Chunking works
+  end-to-end. **Chunk 2 (`6970860`, `N_ITERATIONS=2`) submitted 22:16, running.**
+  G ensemble: `size=(647824, 21)`, **0 members with NaN, finite fraction 1.0**.
+  Misfit history so far: `[0.157]` — one value, so convergence cannot be judged
+  yet.
+  Constrained parameter means, prior (= TOML default) → after iteration 1:
+
+  | parameter | prior mean | after it.1 | bounds | note |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.4295 | 0.4617 | 0.2–0.7 | small |
+  | pmodel_β_c3 | 87.05 | 41.44 | 10–300 | halved |
+  | pmodel_β_c4 | 5.121 | 18.00 | 1–100 | ~3.5×, large |
+  | pmodel_α | 0.0268 | 0.02869 | 0.001–0.15 | small; τ ≈ 35 d, convention OK |
+  | moisture_stress_c | 0.5947 | 0.7168 | 0.05–1.0 | moderate |
+  | leaf_Cd | 0.06922 | 0.04393 | 0–Inf | moderate |
+  | canopy_z_0m_coeff | 0.3520 | 0.1578 | 0–0.5 | large, ~3.9σ |
+  | canopy_z_0b_coeff | 0.04422 | **0.09765** | 0–**0.1** | ⚠ **97.7 % of upper bound** |
+  | canopy_d_coeff | 0.05446 | 0.05019 | 0–1.0 | small |
+  | canopy_K_lw | 0.9168 | 1.229 | 0–2.0 | moderate |
+
+  **⚠ `canopy_z_0b_coeff` is at 97.7 % of its upper bound (0.09765 vs 0.1) after
+  one iteration.** Not yet pinned, but heading there. Per `loop_prompt.md`, a
+  parameter pinned at a bound means the prior is mis-specified, and that is a
+  finding to REPORT, not something to quietly widen. Watch at iteration 2: if it
+  sits at ~0.0999 it is effectively pinned and must go in the PR comment. Its
+  prior σ is only 0.01 against a mean of 0.0444, so the bound is 5.6σ out — a
+  tight prior, and the data appear to want a larger roughness ratio than it
+  allows.
+  Several other parameters moved multiple σ in one step, which is possible with
+  `TransformUnscented` + `DataMisfitController` but worth watching for
+  oscillation rather than convergence across iterations 2-5.
+- **calibrated parameters:** — (not final; iteration 1 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and

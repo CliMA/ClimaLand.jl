@@ -356,3 +356,57 @@ rather than absorb.
 **Timing improved.** GPU concurrency rose from 6 to 15; all remaining members
 (7-21) are now running and should finish ~22:15, comfortably inside the 23:47
 walltime. The earlier "20-40 min of margin" worry has receded.
+
+## 2026-07-31 — iteration 13: chunk 1 done; I was wrong about member 3
+
+**Chunk 1 finished cleanly at 22:14**, 3 h 57 m after starting, well inside its
+5 h 30 m walltime. It wrote `iteration_002/eki_file.jld2` (336 MB) and staged the
+next member dirs, so the chunking scheme is proven end-to-end. Chunk 2
+(`6970860`, `N_ITERATIONS=2`) went in at 22:16 and started immediately.
+
+**Correction: member 3's data is valid, and iteration 1 used all 21 members.**
+Last iteration I reported that `member_003`'s segfault would degrade it to a NaN
+column, leaving the update on 20/21 sigma points. That was wrong, and it matters
+because it changes how sound iteration 1's update is.
+
+What actually happened: the simulation ran to completion and wrote all its
+diagnostics at 20:35 — its own predicted finish time — and then segfaulted
+during teardown, before `checkpoint.txt` could be flipped to `completed`. So
+ClimaCalibrate flagged `Failed ensemble members: [3]` off the checkpoint, while
+`observation_map` read the file tree without complaint.
+
+Verified rather than assumed, three ways:
+- `member_003` has the same 10 `.nc` files as a healthy member;
+- the same 36 time steps, with an identical time coordinate (first=0,
+  last=92102400) to `member_001` and `member_005`;
+- the orchestrator log contains ZERO "Error processing member" lines, and the G
+  ensemble reports `size=(647824, 21)` with **0 NaN columns and finite fraction
+  1.0**.
+
+**The general lesson: `checkpoint.txt` is a process-exit signal, not a science
+signal.** It says the process ended cleanly, not that the output is complete —
+and the two can disagree in both directions. A member that crashed EARLY would
+leave short or missing files, and the NaN path exists for exactly that; it
+simply did not trigger here. Check the diagnostics before believing a flagged
+member lost data.
+
+**Iteration 1 results.** Misfit `[0.157]` — a single value, so nothing can be
+said about convergence yet. Parameter means moved substantially from the prior,
+and one deserves attention:
+
+**`canopy_z_0b_coeff` went 0.04422 → 0.09765 against an upper bound of 0.1** —
+97.7 % of the way there after ONE iteration. Not yet pinned, but heading for it.
+Its prior σ is 0.01 on a mean of 0.0444, so the bound sits only 5.6σ out; the
+data appear to want a larger roughness ratio than the prior permits. Per the
+rules this is a finding to report, not something to quietly widen, so it goes in
+the PR comment now and will be re-checked at iteration 2. If it reaches ~0.0999
+it is effectively pinned and the prior is mis-specified.
+
+Several other parameters also moved multiple σ in a single step (`pmodel_β_c4`
+5.12 → 18.0, `canopy_z_0m_coeff` 0.352 → 0.158, `pmodel_β_c3` halved). That is
+possible with `TransformUnscented` + `DataMisfitController`, but iterations 2-5
+need watching for oscillation rather than convergence.
+
+**Next.** Chunk 2 runs iteration 2. On completion: re-check
+`canopy_z_0b_coeff` against its bound, confirm the misfit fell, and submit chunk
+3.
