@@ -58,9 +58,18 @@ start_date = DateTime(get(ENV, "START", "2008-03-01"))
 stop_date = DateTime(get(ENV, "STOP", "2010-03-01"))
 Δt = parse(FT, get(ENV, "DT", "900.0"))
 
-stage("building domain")
-domain =
-    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+# NLAT/NLON coarsen the grid. The default 1x1 degree matches the ILAMB products
+# cell for cell; a coarser grid still tests spatial pattern, since biome
+# gradients are far broader than a few degrees, and costs proportionally less.
+nlat = parse(Int, get(ENV, "NLAT", "180"))
+nlon = parse(Int, get(ENV, "NLON", "360"))
+stage("building domain ($(nlat)x$(nlon))")
+domain = ClimaLand.Domains.global_box_domain(
+    FT;
+    context,
+    mask_threshold = FT(0.99),
+    nelements = (nlat, nlon, 15),
+)
 stage("domain built; reading parameters")
 toml_dict = LP.create_toml_dict(FT)
 surface_space = domain.space.surface

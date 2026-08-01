@@ -45,6 +45,8 @@ export GLOBAL_OUTDIR="$RUNROOT/drivers"
 export START="${START:-2008-03-01}"
 export STOP="${STOP:-2010-03-01}"
 export DT="${DT:-900.0}"
+export NLAT="${NLAT:-180}"
+export NLON="${NLON:-360}"
 
 echo "GLOBAL start=$START stop=$STOP dt=$DT outdir=$GLOBAL_OUTDIR"
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
