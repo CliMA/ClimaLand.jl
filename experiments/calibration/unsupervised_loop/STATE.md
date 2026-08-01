@@ -71,6 +71,18 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   finish comfortably, keep one iteration per chunk; if it is killed, the pipeline
   needs `main`-queue GPU concurrency to improve, or a longer-walltime queue for
   the orchestrator.
+- **measured member cost (2026-07-31 20:31): ~1 h 10 m per member**, not the 55 m
+  read off the reference run's directory mtimes. `member_001` reported 90 %
+  complete at 20:29 with `wall_time_spent = 46 min 58 s` and
+  `estimated_sypd = 82.8`, i.e. ~52 min of simulation plus ~16 min of
+  startup/compile (member dir created 19:25, simulation began ~19:41). The model
+  is healthy — a crashed member would not report sypd or a rising
+  `percent_complete`.
+  Concurrency rose from 6 to 10 once GPU nodes freed. At 10 concurrent, 21
+  members is 3 waves ≈ 3 h 30 m from 19:25, so iteration 1 should finish ~22:55
+  against the 23:47 walltime — roughly 50 min of margin. Watch it, but it should
+  land. `checkpoint.txt` goes `started` → `completed`; that is the cheap way to
+  count finished members without parsing logs.
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
