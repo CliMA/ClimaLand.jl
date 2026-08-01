@@ -1353,6 +1353,28 @@ user, none taken unilaterally:
 - admit a disturbance or fire-return dataset, which is arguably a vegetation map
   under another name and so may fall foul of the no-PFT constraint.
 
+## Operational: do NOT run two batteries concurrently (2026-08-01)
+
+Jobs 6976878 and 6976879 were submitted together and sat at **0/20 after 30
+minutes**, where a single battery reaches 8/20. The site logs show why:
+
+```
+Warning: Module ClimaLand with build ID ... is missing from the cache.
+```
+
+Both jobs precompile into the same `~/.julia` depot, race, and invalidate each
+other's cache, so every site recompiles ClimaLand from scratch instead of
+hitting a warm cache. The concurrent stage-0 pair (6967717/6967718) got away
+with it; with the source changing more often now, it does not.
+
+The depot is also shared with the **other loop**, whose precompilation can
+invalidate ours regardless of what this loop does — so this is a reason to
+prefer serial submission, not a guarantee.
+
+**Rule:** submit batteries one at a time unless there is a strong reason not to.
+The `run_battery.pbs` warm-up (`julia -e 'using ClimaLand'`) only helps if it is
+not competing with another job doing the same thing.
+
 ## Loop discipline — do not let the loop stall
 
 The loop stopped for ~9 hours on 2026-07-31/08-01 because an iteration ended
