@@ -43,6 +43,35 @@ valid(x) = !ismissing(x) && isfinite(x) && abs(x) < SENTINEL
 const DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
 """
+    as_lon_lat_time(ds, name)
+
+Load a variable as `A[lon, lat, time]` whatever order it is stored in.
+
+This is not defensive boilerplate. ClimaLand's own `NetCDFWriter` produces
+`(time, lon, lat)` in Julia's index order while every ILAMB biomass product is
+`(lon, lat, time)`, so a single hard-coded convention silently transposes one of
+the two - and a transposed field is not an error, just a wrong map. Dispatching
+on the dimension names removes the choice.
+"""
+function as_lon_lat_time(ds, name)
+    v = ds[name]
+    dims = collect(NCDatasets.dimnames(v))
+    A = Array(v[ntuple(_ -> Colon(), length(dims))...])
+    want = ("lon", "lat", "time")
+    perm = Int[]
+    for w in want
+        k = findfirst(d -> lowercase(d) == w, dims)
+        k === nothing || push!(perm, k)
+    end
+    length(perm) == length(dims) || error(
+        "$name has dimensions $dims; expected lon/lat and optionally time",
+    )
+    A = permutedims(A, perm)
+    # A product with a single map and no time axis still indexes uniformly.
+    return ndims(A) == 2 ? reshape(A, size(A, 1), size(A, 2), 1) : A
+end
+
+"""
     month_of_year_index()
 
 Day-of-year to month on a no-leap calendar. The drivers are a whole number of
@@ -74,7 +103,7 @@ function read_monthly(dir, var)
     try
         lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
         lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
-        raw = Array(ds[var][:, :, :])
+        raw = as_lon_lat_time(ds, var)
         nt = size(raw, 3)
         nyr = div(nt, 12)
         nyr >= 1 || error("$var has only $nt monthly records; need >= 12")
@@ -115,7 +144,7 @@ function obs_grid(path)
         f = occursin("kg", get(v.attrib, "units", "")) ? FT(1) : FT(0.1)
         lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
         lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
-        A = Array(v[:, :, :])
+        A = as_lon_lat_time(ds, vn)
         B = fill(FT(NaN), size(A, 1), size(A, 2))
         for i in axes(A, 1), j in axes(A, 2)
             s = FT(0)
