@@ -365,7 +365,12 @@ end
 # LAI for the sigma_l diagnostic.
 if get(ENV, "DUMP_DRIVERS", "1") == "1"
     try
-        cols = ("gpp", "rd", "ct", "fc3", "lai")
+        # tair is dumped alongside ct because the `ct` diagnostic is masked to
+        # NaN wherever leaf+stem area index is zero (`nan_if_no_canopy`, a
+        # plotting convention). The underlying canopy temperature is finite -
+        # the coupled model is unaffected - but the record needs a fallback, and
+        # with no canopy the canopy temperature relaxes to air temperature.
+        cols = ("gpp", "rd", "ct", "tair", "fc3", "lai")
         series = Dict{String, Any}()
         times = nothing
         for c in cols

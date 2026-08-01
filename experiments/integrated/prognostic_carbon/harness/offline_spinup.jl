@@ -34,14 +34,36 @@ function read_driver_record(path)
     header = split(strip(lines[1]), ',')
     idx = Dict(h => i for (i, h) in enumerate(header))
     n = length(lines) - 1
-    cols = Dict(
-        c => Vector{FT}(undef, n) for c in ("gpp", "rd", "ct", "fc3", "lai")
-    )
+    have =
+        [c for c in ("gpp", "rd", "ct", "tair", "fc3", "lai") if haskey(idx, c)]
+    cols = Dict(c => Vector{FT}(undef, n) for c in have)
     for (j, line) in enumerate(lines[2:end])
         f = split(strip(line), ',')
         for c in keys(cols)
             cols[c][j] = parse(FT, f[idx[c]])
         end
+    end
+    # The `ct` diagnostic is masked to NaN where leaf+stem area index is zero
+    # (`nan_if_no_canopy`). Substitute air temperature there: with no canopy the
+    # canopy temperature relaxes to it, and leaving NaN would poison Rm through
+    # 0 * NaN even when the substrate ramp is zero. The coupled model reads the
+    # unmasked field and is unaffected.
+    if haskey(cols, "tair")
+        nfixed = 0
+        for j in eachindex(cols["ct"])
+            if !isfinite(cols["ct"][j])
+                cols["ct"][j] = cols["tair"][j]
+                nfixed += 1
+            end
+        end
+        nfixed > 0 &&
+            @info "filled $nfixed masked canopy temperatures with air temperature"
+    end
+    for (c, v) in cols
+        all(isfinite, v) || error(
+            "driver record column '$c' has non-finite entries with no fallback; \
+             refusing to integrate against it",
+        )
     end
     return cols
 end
