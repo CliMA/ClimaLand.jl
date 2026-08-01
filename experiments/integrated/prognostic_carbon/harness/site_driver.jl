@@ -333,10 +333,25 @@ if carbon_on
             ("Rm_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Rm),
             ("Ra_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Ra),
             ("S_alloc_kgC_m2_s", pf.canopy.biomass.carbon.S),
+            ("L_leaf_kgC_m2_s", pf.canopy.biomass.carbon.L_leaf),
+            ("L_stem_kgC_m2_s", pf.canopy.biomass.carbon.L_stem),
+            ("L_root_kgC_m2_s", pf.canopy.biomass.carbon.L_root),
         )
             println(io, "$label $(scalar(field))")
         end
     end
+end
+
+# Column-integrated soil organic carbon (kg C m^-2), the stage-3 diagnostic.
+try
+    Yf = simulation._integrator.u
+    soc_int = ClimaCore.Fields.zeros(surface_space)
+    ClimaCore.Operators.column_integral_definite!(soc_int, Yf.soilco2.SOC)
+    open(joinpath(root_path, "carbon_metrics.txt"), "a") do io
+        println(io, "cSoil_kgC_m2 $(first(Array(parent(soc_int))))")
+    end
+catch e
+    @warn "cSoil diagnostic failed" exception = (e, catch_backtrace())
 end
 
 for line in eachline(joinpath(root_path, "carbon_metrics.txt"))
