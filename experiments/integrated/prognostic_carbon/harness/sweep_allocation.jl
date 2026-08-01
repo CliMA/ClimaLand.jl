@@ -42,13 +42,15 @@ read_sites(csv) = [
 
 Spins up every site offline and returns its equilibrium cVeg.
 """
-function equilibrium_cVeg(records, p; years = 400)
+function equilibrium_cVeg(records, p; years = 400, map_half = 0.0, map_n = 2.0)
     out = Dict{String, Float64}()
+    stem = Dict{String, Float64}()
     for (name, d) in records
-        pools, _ = spinup(d, p; years)
+        pools, _ = spinup(d, p; years, map_half, map_n)
         out[name] = sum(pools)
+        stem[name] = pools[3]
     end
-    return out
+    return out, stem
 end
 
 """
@@ -88,31 +90,30 @@ function main(runroot; years = 400)
 
     toml_dict = LP.create_toml_dict(Float64)
     println(
-        rpad("f_stem_c3", 11),
-        rpad("tau_stem_yr", 13),
+        rpad("map_half", 11),
+        rpad("f_stem_c3", 13),
         rpad("woody in band", 15),
         rpad("herb in band", 14),
-        "grassland cVeg (great_plains / pampas)",
+        "C_stem at key sites",
     )
-    for f_stem in (0.4, 0.3, 0.2, 0.1, 0.05, 0.02)
-        for τ_yr in (30.0, 10.0)
-            p = Canopy.PrognosticCarbonParameters(
-                toml_dict;
-                f_stem_c3 = f_stem,
-                τ_stem_c3 = τ_yr * 365 * 86400,
-            )
-            cveg = equilibrium_cVeg(records, p; years)
+    # map_half = 0 is the constant-f_stem control, so the mechanism is always
+    # compared against the behaviour it is meant to replace.
+    for map_half in (0.0, 0.4, 0.7, 1.0, 1.5)
+        for f_stem in (0.4, 0.5)
+            p = Canopy.PrognosticCarbonParameters(toml_dict; f_stem_c3 = f_stem)
+            cveg, stem = equilibrium_cVeg(records, p; years, map_half)
             sc = score(cveg, sites)
-            gp = get(cveg, "us_great_plains", NaN)
-            pa = get(cveg, "pampas_argentina", NaN)
             println(
-                rpad(f_stem, 11),
-                rpad(τ_yr, 13),
+                rpad(map_half == 0 ? "off" : map_half, 11),
+                rpad(f_stem, 13),
                 rpad("$(sc.woody_ok)/$(sc.woody_n)", 15),
                 rpad("$(sc.herb_ok)/$(sc.herb_n)", 14),
-                round(gp, digits = 2),
+                "stem gp/pampas/siberia ",
+                round(get(stem, "us_great_plains", NaN), digits = 2),
                 " / ",
-                round(pa, digits = 2),
+                round(get(stem, "pampas_argentina", NaN), digits = 2),
+                " / ",
+                round(get(stem, "central_siberia", NaN), digits = 2),
             )
         end
     end
