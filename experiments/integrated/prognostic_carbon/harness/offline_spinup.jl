@@ -69,14 +69,38 @@ function read_driver_record(path)
 end
 
 """
+    woody_fraction(MAP, half, n)
+
+Fraction of the structural allocation that goes to stem, as a function of mean
+annual precipitation (m yr^-1). A saturating ramp: dry columns build almost no
+wood, wet ones approach the full `f_stem`.
+
+Mean annual precipitation is the classic climate control on maximum woody cover
+(Sankaran et al. 2005), it is already carried as a trailing integral by the LAI
+model, and it is emphatically **not** a plant functional type - which is the
+constraint MODEL.md §2.3 imposes on this fallback.
+
+`half = 0` disables the mechanism and recovers the constant-`f_stem` behaviour,
+so the same code path serves both and the sweep can compare them directly.
+"""
+function woody_fraction(MAP, half, n)
+    half <= 0 && return one(MAP)
+    x = max(MAP, zero(MAP)) / half
+    xn = x^n
+    return xn / (1 + xn)
+end
+
+"""
     step_pools(pools, drivers, i, params, dt)
 
 One explicit Euler step of the four pools, using exactly the fluxes
 `update_carbon_fluxes!` computes. Returns the updated pools and the fluxes, so
 the caller can report `Ra` and litter without recomputing them.
 """
-function step_pools(pools, d, i, p, dt)
+function step_pools(pools, d, i, p, dt; map_half = 0.0, map_n = 2.0)
     (C_sugar, C_leaf, C_stem, C_root) = pools
+    MAP = haskey(d, "pra") ? d["pra"][i] : zero(FT)
+    w = woody_fraction(MAP, map_half, map_n)
     GPP = M_C * d["gpp"][i]
     Rd = M_C * d["rd"][i]
     T = d["ct"][i]
@@ -98,7 +122,9 @@ function step_pools(pools, d, i, p, dt)
 
     blend(v3, v4) = fc3 * v3 + (1 - fc3) * v4
     f_leaf = blend(p.f_leaf_c3, p.f_leaf_c4)
-    f_stem = blend(p.f_stem_c3, p.f_stem_c4)
+    # Stem allocation is scaled by the climate-derived woody fraction; whatever
+    # it gives up goes to roots, so the three fractions still sum to one.
+    f_stem = blend(p.f_stem_c3, p.f_stem_c4) * w
     f_root = 1 - f_leaf - f_stem
     τ_stem = blend(p.τ_stem_c3, p.τ_stem_c4)
 
@@ -127,6 +153,8 @@ function spinup(
     years = 400,
     dt = SECONDS_PER_DAY,
     pools0 = (FT(0), FT(0), FT(0), FT(0)),
+    map_half = 0.0,
+    map_n = 2.0,
 )
     n = length(d["gpp"])
     pools = pools0
@@ -135,7 +163,7 @@ function spinup(
     nacc = 0
     for k in 1:steps
         i = mod1(k, n)
-        pools, fl = step_pools(pools, d, i, p, dt)
+        pools, fl = step_pools(pools, d, i, p, dt; map_half, map_n)
         if k > steps - n  # last cycle only
             acc = (;
                 Ra = acc.Ra + fl.Ra,
