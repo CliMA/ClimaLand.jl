@@ -627,21 +627,40 @@ those two, so it remains the right check.
 
 ## Stage 3 — prognostic SOC
 
-- **status:** in_progress — **half done, and the halves must not be run apart**
-- **DONE (2026-07-31):** `MicrobeProduction` now debits `Sm` from SOC, closing
-  the soil carbon balance. Standalone biogeochemistry tests updated to the new
-  physics (`dY.soilco2.SOC == -Sm`) and passing, as are the saturation-stability
-  tests.
-- **NOT YET DONE:** the canopy→soil litter input. **Until it lands, SOC decays
-  everywhere with no source.** Do NOT run a battery in this state and read the
-  SOC drift as a result — it would show collapse by construction, which is the
-  stage-3 failure signature and would be a self-inflicted false positive.
-- **next:** add `SoilCarbonLitterInput <: AbstractCarbonSource` reading a cache
-  field owned by the integrated model (mirroring how `RootExtraction` reads
-  `p.root_extraction`), and pass it via the `SoilCO2Model` `sources` tuple in
-  the integrated constructor. The standalone model simply does not get the
-  source, so its zero-litter behaviour is preserved structurally rather than by
-  a flag.
+- **status:** in_progress — **code complete** (commits `9e7a2c0db`,
+  `7fdc0fb01`); gate battery 6970322 running
+- `dSOC/dt = I_litter(z) − Sm` now closes. `MicrobeProduction` debits `Sm`;
+  `SoilCarbonLitterInput` adds the litter, reading `p.soil_litter_input` the way
+  `RootExtraction` reads `p.root_extraction`. The integrated `LandModel`
+  constructors pass it; the standalone `SoilCO2Model` never gets the source, so
+  its zero-litter behaviour is preserved **structurally**, not by a flag.
+- **Standalone test updated, not worked around:** the test asserting
+  `dY.soilco2.SOC == 0` ("SOC held constant") was asserting the defect. It now
+  asserts the tendency equals `−Sm`. Biogeochemistry and saturation-stability
+  tests pass.
+
+### Why surface litter uses an exponential, not a single cell
+
+MODEL.md says leaf and stem litter goes in "the top layer". The implementation
+uses a shallow exponential (`carbon_soil_litter_depth = 0.05 m`) normalised by
+its own column integral, because **`Fields.level(f, 1)` is the BOTTOM** here —
+verified, it is the `FreeDrainage`/`BottomBoundary` path — and getting that
+backwards would silently bury all surface litter at 15 m depth. The continuum
+form depends on neither the layer thickness nor the indexing convention.
+
+**The normalisation is load-bearing.** On the standard column a 5 cm e-folding
+depth against a 5 cm top layer leaves the raw shape integrating to **0.892**, so
+an un-normalised input would deliver **11% less carbon to the soil than the
+canopy shed** — silently. The test asserts both that the column integral returns
+the litter flux to round-off *and* that the raw shape does not integrate to one,
+so the normalisation cannot be dropped without a failure.
+
+### `check_stage3.jl` — validated both ways
+
+Gate: SOC drift < 10% over the 2-year run (its turnover is centuries, so a large
+move is a rate problem, not spinup) and Rh within 2× of the stage-0 baseline.
+Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
+"cSoil not finite" rather than silently passing when the columns are absent.
 - **what it must do:** `dY.soilco2.SOC = I_litter(z) − Sm`. Today
   `make_compute_exp_tendency(::SoilCO2Model)` sets `dY.soilco2.SOC = 0`, and
   `MicrobeProduction` adds `Sm` to CO₂ and subtracts O₂ but **never debits SOC**
@@ -696,6 +715,8 @@ those two, so it remains the right check.
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
+| 6970322 | 3 | 20-site, pools + pool-based Ra + **prognostic SOC** (stage-3 gate) | 2026-07-31 | running | pending | `.../battery_pc_s3_pres_6970322.desched1/` |
+| 6970193 | 3 | first stage-3 attempt — **cancelled by me at 8/20**: it recorded only final cSoil, so the drift criterion could not be evaluated | 2026-07-31 | cancelled | superseded by 6970322 | — |
 | 6969851 | 2 | 20-site diagnostic: same as 6969572 but pools seeded (stem 5.0, root 1.0) | 2026-07-31 | **done** | **PASS 20/20**; 5 of the 6 band failures close, 6th at 0.602 — spinup artifact confirmed | `.../battery_pc_s2_seed_6969851.desched1/` |
 | 6969572 | 2 | 20-site, `CARBON=1 CARBON_RA=1`, prescribed LAI (stage-2 gate) | 2026-07-31 | **done** | **PASS 20/20**; Ra pathology eliminated, prediction confirmed; band fails high at 6 cold forest sites | `.../battery_pc_s2_pres_6969572.desched1/` |
 | 6969169 | 1 | **20-site** CARBON=1, prescribed LAI (stage-1 gate) | 2026-07-31 | **done** | **PASS 20/20; RULE 1 PASSES EXACTLY at all 20 sites** | `.../battery_pc_s1_pres_6969169.desched1/` |
