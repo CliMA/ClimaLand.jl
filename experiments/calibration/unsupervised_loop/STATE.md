@@ -136,6 +136,21 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   Several other parameters moved multiple σ in one step, which is possible with
   `TransformUnscented` + `DataMisfitController` but worth watching for
   oscillation rather than convergence across iterations 2-5.
+- **CHUNK 2 / ITERATION 2 (2026-07-31 23:21, 1 h 01 m elapsed): warm start
+  CONFIRMED, full concurrency.** The assumption chunking rests on holds:
+    - Setup took **27 min** (job start 22:16 → members submitted ~22:43) versus
+      **68 min** for chunk 1 (18:17 → 19:25). The shared `~/.julia` depot meant
+      `Pkg.update()` was a no-op and the precompile caches were warm. Chunk 2's
+      log is 255 lines against chunk 1's 1355. So chunking costs ~27 min of
+      overhead per chunk, not ~1 h — it is cheap, and there is no reason to pack
+      more iterations per chunk.
+    - **All 21 members are running CONCURRENTLY** (`run_2_1`…`run_2_21`), versus
+      chunk 1's 6-then-15 ramp. GPU contention has cleared.
+  Expected: members finish ~23:53-00:07, iteration 2 completes ~00:15-00:30,
+  i.e. ~2 h 15 m for the chunk against chunk 1's 3 h 57 m, and far inside the
+  5 h 30 m walltime (which expires 03:46). REVISED ESTIMATE for the remaining
+  work: chunks 3-5 at ~2 h 15 m each ≈ 6 h 45 m, so stage 1 should finish around
+  07:00-07:30 on 2026-08-01 if concurrency holds.
 - **calibrated parameters:** — (not final; iteration 1 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m

@@ -410,3 +410,28 @@ need watching for oscillation rather than convergence.
 **Next.** Chunk 2 runs iteration 2. On completion: re-check
 `canopy_z_0b_coeff` against its bound, confirm the misfit fell, and submit chunk
 3.
+
+## 2026-07-31 — iteration 14: warm start confirmed, full GPU concurrency
+
+Chunk 2 is an hour in and both open questions resolved in the pipeline's favour.
+
+**Warm start holds — the assumption chunking depends on.** Chunk 2's setup took
+27 min (job start 22:16 → members submitted ~22:43) against chunk 1's 68 min
+(18:17 → 19:25); its log is 255 lines against 1355. The shared `~/.julia` depot
+meant `Pkg.update()` was a no-op and the caches were warm. So each chunk costs
+about 27 min of overhead rather than an hour, and there is no reason to pack
+more iterations into a chunk to amortise it. Had this gone the other way,
+chunking would have cost ~4 extra hours across stage 1 and I would have had to
+reconsider.
+
+**All 21 members are running concurrently**, versus chunk 1's 6-then-15 ramp.
+The GPU contention that shaped the earlier timing estimates has cleared.
+
+Together these cut the per-chunk time from 3 h 57 m to a projected ~2 h 15 m.
+Revised estimate: chunks 3-5 at ~2 h 15 m each ≈ 6 h 45 m, so stage 1 should
+finish around 07:00-07:30 on 2026-08-01 if concurrency holds. Chunk 2's walltime
+does not expire until 03:46, so there is no pressure.
+
+**Next.** On chunk 2 completion: check whether the misfit fell from 0.157,
+re-check `canopy_z_0b_coeff` against its 0.1 bound (0.09765 after iteration 1),
+count crashed members, and submit chunk 3.
