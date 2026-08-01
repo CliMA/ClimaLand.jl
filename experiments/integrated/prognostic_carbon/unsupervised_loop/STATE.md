@@ -627,8 +627,8 @@ those two, so it remains the right check.
 
 ## Stage 3 — prognostic SOC
 
-- **status:** in_progress — **code complete** (commits `9e7a2c0db`,
-  `7fdc0fb01`); gate battery 6970322 running
+- **status:** **DONE** (2026-07-31). All criteria met at 20/20 sites, job
+  6970322. `check_stage3.jl` reports **STAGE3 PASS**.
 - `dSOC/dt = I_litter(z) − Sm` now closes. `MicrobeProduction` debits `Sm`;
   `SoilCarbonLitterInput` adds the litter, reading `p.soil_litter_input` the way
   `RootExtraction` reads `p.root_extraction`. The integrated `LandModel`
@@ -638,6 +638,46 @@ those two, so it remains the right check.
   `dY.soilco2.SOC == 0` ("SOC held constant") was asserting the defect. It now
   asserts the tendency equals `−Sm`. Biogeochemistry and saturation-stability
   tests pass.
+
+### STAGE-3 RESULT (job 6970322, 20/20 PASS) — all criteria met
+
+Committed as `harness/stage3_prescribed_lai.tsv`.
+
+**SOC drifts slowly, with mixed signs** — the signature of a system near
+balance rather than a systematic bias:
+
+| extreme | site | drift over 2 yr |
+|---|---|---|
+| largest loss | cerrado_brazil | **−4.69%** |
+| largest gain | central_europe | **+0.26%** |
+
+Everything else lies between. Nothing collapses, nothing explodes, no SOC goes
+negative. **Rh is within 3% of its stage-0 baseline at every site** — far inside
+the factor-of-2 criterion.
+
+**Independent consistency check:** the Rh ratio tracks the SOC ratio nearly
+one-to-one (amazon 0.968 → 0.981, congo 0.978 → 0.978, borneo 1.001 → 0.999).
+That is what the microbial source implies, since `microbe_source` reads
+`Csom = Y.soilco2.SOC`, and it confirms the feedback is now **live**: before
+stage 3, SOC was frozen at its SoilGrids initial condition, so Rh could not
+respond to it at all.
+
+**Where the drift comes from, and why it is not a defect.** At `amazon_central`
+the year-2 litter flux is 1.823 g C m⁻² day⁻¹ against Rh = 1.831 — a 0.4%
+imbalance. But the SOC loss of 0.50 kg C m⁻² over two years implies ~0.69
+g C m⁻² day⁻¹ net, ~86× larger. The two reconcile because the reported fluxes
+are means over the *second* year only (`SPINUP_YEARS=1`) while the SOC change
+spans both: in year 1 the plant pools were still filling from empty, so litter
+was near zero while Rh ran at ~1.8 — about 0.66 kg C m⁻² of loss on its own,
+close to the 0.50 observed. **Most of the decline happened in year 1 while the
+litter source ramped up; by year 2 litter and Rh have nearly balanced.** Same
+spinup signature as stage 2, and it argues the soil settles once the plant pools
+fill.
+
+**Deserts behave correctly:** `sahara` and `arabian` have zero litter (their
+plant pools are exactly zero), so SOC decays slowly through Rh alone
+(−0.28%, −0.63%). `alaska_north_slope` has Rh = 0 (frozen) and SOC essentially
+static (+0.09%).
 
 ### Why surface litter uses an exponential, not a single cell
 
@@ -715,7 +755,7 @@ Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
 |---|---|---|---|---|---|---|
 | 6967513 | 0 | 4-site smoke test of the ported harness, 1 yr, prescribed LAI | 2026-07-31 | **F, exit 0** | PASS 4/4 in 7 min; baseline table above | `.../battery_6967513.desched1/` |
 | 6967717 | 0 | 20-site baseline, 2 yr, **prescribed** MODIS LAI, 1 yr spinup excluded | 2026-07-31 | **done** | PASS 20/20; table above; committed as `harness/baseline_prescribed_lai.tsv` | `.../battery_pc_base_pres_6967717.desched1/` |
-| 6970322 | 3 | 20-site, pools + pool-based Ra + **prognostic SOC** (stage-3 gate) | 2026-07-31 | running | pending | `.../battery_pc_s3_pres_6970322.desched1/` |
+| 6970322 | 3 | 20-site, pools + pool-based Ra + **prognostic SOC** (stage-3 gate) | 2026-07-31 | **done** | **PASS 20/20; STAGE3 PASS** — SOC drift −4.7%…+0.3%, Rh within 3% of baseline everywhere | `.../battery_pc_s3_pres_6970322.desched1/` |
 | 6970193 | 3 | first stage-3 attempt — **cancelled by me at 8/20**: it recorded only final cSoil, so the drift criterion could not be evaluated | 2026-07-31 | cancelled | superseded by 6970322 | — |
 | 6969851 | 2 | 20-site diagnostic: same as 6969572 but pools seeded (stem 5.0, root 1.0) | 2026-07-31 | **done** | **PASS 20/20**; 5 of the 6 band failures close, 6th at 0.602 — spinup artifact confirmed | `.../battery_pc_s2_seed_6969851.desched1/` |
 | 6969572 | 2 | 20-site, `CARBON=1 CARBON_RA=1`, prescribed LAI (stage-2 gate) | 2026-07-31 | **done** | **PASS 20/20**; Ra pathology eliminated, prediction confirmed; band fails high at 6 cold forest sites | `.../battery_pc_s2_pres_6969572.desched1/` |
