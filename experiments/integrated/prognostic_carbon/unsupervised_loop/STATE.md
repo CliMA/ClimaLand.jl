@@ -730,7 +730,31 @@ Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
 
 ## Stage 4 — offline spinup to steady state
 
-- **status:** not_started
+- **status:** not_started — **unblocked, this is the next work**
+- **why it matters more than usual now:** every stage so far has been read
+  through a spinup artifact. Stage 1's `σl_implied` was inflated because
+  `C_leaf` was below equilibrium; stage 2's NPP/GPP overshot because `Rm` scales
+  with an unfilled sapwood pool; stage 3's SOC drift was concentrated in year 1
+  while litter ramped up. **Stage 4 is what makes all three re-measurable**, and
+  there are recorded obligations to re-check each of them afterwards.
+- **what it must do (MODEL.md §6):** dump the carbon model's drivers to scratch
+  (GPP, LAI, T_canopy, T_soil, θ_l, fractional_c3), integrate the pool ODEs alone
+  against that record — recycled — for as long as stem and SOC need, and write an
+  initial-condition file. Seconds, not node-hours, because phase 1 is one-way.
+- **or solve the steady state directly:** the system is linear in the pools once
+  the mean fluxes are known, `C_i* = a·f_i·S̄·τ_i` and `SOC*(z) = Ī_litter(z)/k̄(z)`.
+  Worth trying first — it is cheaper and gives an independent check on the
+  integrator.
+- **validate on the battery before going global:** the offline integrator must
+  reproduce a coupled run's pools to within a few percent at every battery site.
+  The `POOL_INIT_*` knob added in stage 2 already lets a coupled run start from
+  an arbitrary pool state, which is the mechanism for that comparison.
+- **artifact rule (hard):** this loop must NOT write
+  `~/.julia/artifacts/Overrides.toml` — it is shared with the other loop. Pass
+  the IC file path by ENV var to the driver instead. Verify the path actually
+  resolves before trusting any result: a silently ignored IC makes stage 5 look
+  like it worked.
+- **switch to prognostic Zhou LAI from here on** (settled configuration).
 - **driver dump path (scratch):** —
 - **offline integrator validated against coupled run:** no
 - **IC file path:** —
