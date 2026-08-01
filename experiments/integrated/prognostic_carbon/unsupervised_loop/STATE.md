@@ -432,6 +432,35 @@ checks for the GPP series and errors with a message pointing back up the log.
 **When a site fails, search the log upward for "simulation crashed" before
 believing the last error.**
 
+### FIFTH trap, same shape: `add_diagnostics!` (2026-07-31)
+
+The stage-4 battery failed **0/20** on the `output_vars` assertion in
+`default_diagnostics`. `add_diagnostics!` dispatches on `ZhouOptimalLAIModel`,
+so a `PrognosticCarbonModel` wrapping it never matched and the Zhou diagnostics
+(`a0d`, `a0a`, `a0c3`, `a0c4`, `pra`, `fc3`) were silently never registered.
+Requesting `fc3` for the offline spinup's driver record is what surfaced it.
+
+Also needed: `PrognosticCarbonModel` imported into the `Diagnostics` module —
+it was not, so the forwarding method failed to load with `UndefVarError`.
+
+**No earlier result is affected**: `add_diagnostics!` controls only which
+diagnostics are *available*, not the physics, and the rule-1 checks used `gpp`
+and `lai`, which are unconditional.
+
+**The running tally of this one pattern** — a function dispatching on the
+biomass model silently selecting a default once a wrapper exists:
+
+| # | machinery | how it presented |
+|---|---|---|
+| 1 | `update_fractional_c3!` | silent (caught by construction) |
+| 2 | `set_canopy_component_initial_conditions!` | silent (caught by construction) |
+| 3 | `initialize_jacobian` | loud, at Jacobian build |
+| 4 | `prescribed_lai_input` | loud, at constructor |
+| 5 | `add_diagnostics!` | loud, 0/20 battery after 40 min |
+
+The test now asserts the wrapper exposes every diagnostic the wrapped model
+does, so the next omission fails in the suite rather than in a battery.
+
 ### Third trap: new prognostic variables need Jacobian entries (2026-07-31)
 
 Job 6968847 failed at **all four sites**:
@@ -730,7 +759,31 @@ Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
 
 ## Stage 4 — offline spinup to steady state
 
-- **status:** not_started — **unblocked, this is the next work**
+- **status:** in_progress. Offline integrator written and mutually validated
+  (commit `d1d5c0e`-series); driver-record battery 6970595 running.
+- **The integrator and an independent analytic steady state agree to ratio
+  1.000** on all structural pools under constant drivers at `T_ref`, and to
+  within 4% under a strongly seasonal cold record — where the analytic form is
+  *expected* to drift, since it uses annual means and ignores the covariance of
+  GPP with temperature. Two independent methods, mutually validating.
+- **Equilibrium numbers (synthetic drivers) — these discharge the stage-2
+  re-check from an independent direction:**
+
+  | drivers | cVeg | NPP/GPP |
+  |---|---|---|
+  | tropical-productivity, constant | **20.3 kg C m⁻²** | **0.508** |
+  | boreal-like, seasonal | 3.08 kg C m⁻² | 0.598 |
+
+  Both NPP/GPP values are inside the 0.3–0.6 band, and tropical cVeg lands in
+  MODEL.md §7's 10–20 kg C m⁻² target — against the **2.45** measured after two
+  years from empty pools. An 8× difference, and the reason every earlier stage
+  was read through a spinup artifact.
+- **Note on MODEL.md §6's "linear in the pools":** true of allocation, but `Rm`
+  depends on the sapwood it builds, so `S̄` is a scalar fixed point
+  (`S̄ = GPP̄ − Rm(S̄)`), solved by bisection — not closed-form.
+- **The integrator reads parameters from the same TOML as the model**, never
+  hard-coded, so a parameter change cannot silently make the offline and coupled
+  models disagree.
 - **why it matters more than usual now:** every stage so far has been read
   through a spinup artifact. Stage 1's `σl_implied` was inflated because
   `C_leaf` was below equilibrium; stage 2's NPP/GPP overshot because `Rm` scales
