@@ -227,7 +227,51 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   an env override, so chunks 6-9 are just `N_ITERATIONS=6…9`. The config default
   should still be updated to 9 if that becomes the conclusion, so the file
   reflects reality rather than relying on how the loop happened to invoke it.
-- **calibrated parameters:** — (not final; iteration 3 of 5 done)
+- **ITERATION 4 COMPLETE (2026-08-01 03:22).** Chunk 4 ran in 1 h 32 m;
+  **21/21 members, zero segfaults** (as in iterations 2 and 3 — member 3's crash
+  remains a one-off). Chunk 5 (`6972224`, `N_ITERATIONS=5`) submitted 03:25.
+  Misfit: `[0.157, 0.173, 0.154, 0.150]` — still not comparable across
+  iterations (minibatching), so still not a convergence signal.
+
+  Parameter means, and the change over the LAST step (it.4 → it.5 column):
+
+  | parameter | it.1 | it.2 | it.3 | it.4 | it.5 | last step |
+  |---|---|---|---|---|---|---|
+  | pmodel_cstar | 0.4295 | 0.4617 | 0.4066 | 0.3945 | 0.3823 | −3.1 % |
+  | pmodel_β_c3 | 87.05 | 41.44 | 32.42 | 32.28 | 29.49 | **−8.6 %** |
+  | pmodel_β_c4 | 5.121 | 18.00 | 9.125 | 8.558 | 8.389 | −2.0 % |
+  | pmodel_α | 0.0268 | 0.02869 | 0.03244 | 0.02896 | 0.02782 | −3.9 % |
+  | moisture_stress_c | 0.5947 | 0.7168 | 0.6197 | 0.6090 | 0.5936 | −2.5 % |
+  | leaf_Cd | 0.06922 | 0.04393 | 0.06503 | 0.06658 | 0.07191 | **+8.0 %** |
+  | canopy_z_0m_coeff | 0.3520 | 0.1578 | 0.1834 | 0.1382 | 0.1105 | **−20 %** |
+  | canopy_z_0b_coeff | 0.04422 | 0.09765 | 0.08586 | 0.09301 | 0.08608 | −7.5 % |
+  | canopy_d_coeff | 0.05446 | 0.05019 | 0.03263 | 0.02785 | 0.04199 | **+51 %** |
+  | canopy_K_lw | 0.9168 | 1.229 | 1.215 | 1.211 | 1.199 | −1.0 % |
+
+  **NOT CONVERGED, decisively.** Only `canopy_K_lw` (−1 %) and `pmodel_β_c4`
+  (−2 %) have settled. `canopy_z_0m_coeff` is still moving 20 % per step,
+  `canopy_d_coeff` jumped 51 %, and `pmodel_β_c3` moved −8.6 % after appearing
+  flat at iteration 3 — a reminder that two similar consecutive values are not
+  convergence. **Stopping at 5 would freeze at least four parameters mid-flight.**
+  Combined with the epoch argument (5 iterations sees 10 of 16 sample years),
+  extending is the clear call.
+
+- **⚠ NEW: `canopy_z_0m_coeff` is heading for its LOWER bound.** Monotonic across
+  every iteration: 0.352 → 0.158 → 0.183 → 0.138 → 0.1105, against bounds
+  0–0.5 and a prior of (0.349, σ=0.05). It is now ~4.8σ below the prior mean and
+  still falling. If it keeps going it will press against 0, which is the mirror
+  image of the `canopy_z_0b_coeff` concern and would likewise mean a
+  mis-specified prior. Watch it at iterations 5+.
+- **⚠ PHYSICAL PLAUSIBILITY, worth a domain expert's eye.** These two coefficients
+  multiply canopy height to give the momentum and scalar roughness lengths, and
+  they are moving in OPPOSITE directions: `z_0b/z_0m` has gone from
+  0.04422/0.3520 ≈ **0.13** at the prior to 0.08608/0.1105 ≈ **0.78** at
+  iteration 5. Scalar roughness is conventionally much smaller than momentum
+  roughness (ratio ~0.1), so a ratio approaching unity is atypical. The data may
+  genuinely want this — it is compensating for something in the flux fit — but it
+  should be reported rather than absorbed, and NOT quietly corrected by changing
+  priors mid-run.
+- **calibrated parameters:** — (not final; iteration 4 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
