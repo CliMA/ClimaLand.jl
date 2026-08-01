@@ -1599,3 +1599,21 @@ wrong. It is now tracked via `git add -f`.
 `git ls-files <path>` or `git show HEAD:<path>`, not by the absence of an error.
 This is the same class of failure as the `.replace()` that silently no-opped —
 an operation that reports success while doing nothing.
+
+### Julia buffers stderr into a redirected file (found 2026-08-01, iteration 40)
+
+Smoke test `6977392` produced a **zero-byte log for 96 minutes**. I read that as
+"stuck in model construction". It was not evidence of anything: verified
+directly that `@info` written to a redirected file does **not** appear until the
+process exits, so an empty log is indistinguishable from a hang and carries no
+information about progress.
+
+**Rule:** any batch script this loop writes must flush its own progress markers
+(`flush(stderr)`), and monitors must key on those markers rather than on the log
+merely existing. `global_driver.jl` now has a `stage()` helper that does this.
+
+Job `6977392` was killed rather than waited out: with an uninformative log,
+another four hours would have bought one bit. Resubmitted as **`6978215`**,
+instrumented and **without the GPU request** — asking for a GPU pulls in the
+CUDA stack whose precompile caches are broken on the shared depot, which is the
+most likely explanation for the very slow setup.
