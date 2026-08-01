@@ -541,6 +541,20 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   empty one.
 - **log:** `clima_long_run.o6973822` in the repo root
 - **expected output:** `/glade/derecho/scratch/arenchon/claude/global_runs/snowy_land_pmodel_opt_lai_longrun_gpu`
+- **progress (2026-08-01 11:01, 2 h 06 m in): PRECOMPILING, not stuck.**
+  `find ~/.julia/compiled -name '*.ji' -newermt '2026-08-01 08:55' | wc -l`
+  gives **274** caches written since the job started, with writes continuing past
+  10:53. This is the CairoMakie/GeoMakie visualization stack that
+  `snowy_land_pmodel.jl` pulls in for its trailing ILAMB/plot step and that the
+  calibration path never loaded, so it was not already warm. Memory is climbing
+  (8.6 → 9.9 GB) and `cpupercent = 153`.
+  **This vindicates asking for 12 h in `main`.** A 5 h 30 m `develop` job would
+  have spent 2 h precompiling and had only ~3.5 h left for a ~4 h simulation —
+  it would very likely have been killed, and a long run has no checkpoint.
+  ⚠ **`find -newermt "-20 minutes"` GAVE A FALSE NEGATIVE** here — it reported
+  0 recent caches while absolute-timestamp queries showed writes minutes earlier,
+  which briefly made a healthy job look hung. Use absolute timestamps
+  (`-newermt "2026-08-01 08:55"`) for this check, not relative ones.
 - **progress (2026-08-01 09:57, 1 h 02 m in):** running on `deg0019`. The PBS log
   shows only the wrapper's echo lines and no output dir yet, which looks alarming
   but is not: Julia block-buffers stdout to a file. `qstat -f` confirms real work
