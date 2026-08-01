@@ -35,6 +35,14 @@ using Dates
 
 const FT = Float64
 
+# Julia block-buffers stderr when it is redirected to a file, so `@info` from a
+# batch job can sit unwritten for the whole run: an empty log then looks
+# identical to a hung job. Every stage marker is flushed explicitly, which is
+# the only thing that makes this script diagnosable from outside.
+stage(msg) = (@info "STAGE $msg"; flush(stderr); flush(stdout))
+
+stage("julia up, packages loaded")
+
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -50,10 +58,14 @@ start_date = DateTime(get(ENV, "START", "2008-03-01"))
 stop_date = DateTime(get(ENV, "STOP", "2010-03-01"))
 Δt = parse(FT, get(ENV, "DT", "900.0"))
 
+stage("building domain")
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+stage("domain built; reading parameters")
 toml_dict = LP.create_toml_dict(FT)
 surface_space = domain.space.surface
+
+stage("setting up ERA5 forcing (regridding can be slow on a cold cache)")
 
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     start_date,
@@ -64,6 +76,8 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     max_wind_speed = 25.0,
     context,
 )
+
+stage("forcing ready; constructing LandModel")
 
 # No prescribed LAI argument, so the LandModel constructor selects the prognostic
 # optimal-LAI model - the same configuration the battery runs under.
@@ -78,6 +92,7 @@ model = LandModel{FT}(
 # Exactly the columns `read_driver_record` consumes, and no more: every extra
 # global field is gigabytes of NetCDF for nothing. `tair` is carried because the
 # `ct` diagnostic is NaN-masked wherever there is no canopy and needs a fallback.
+stage("LandModel constructed; setting up diagnostics")
 driver_vars = ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra"]
 diagnostics = ClimaLand.default_diagnostics(
     model,
@@ -93,6 +108,7 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics)
 @info "resolution" nelements = domain.nelements
 @info "driver vars" driver_vars
 
+stage("starting solve")
 solve!(simulation)
 
 @info "GLOBAL_DRIVER_DONE" outdir

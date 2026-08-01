@@ -20,13 +20,16 @@
 #PBS -A UCIT0011
 #PBS -q develop
 #PBS -l walltime=05:45:00
-#PBS -l select=1:ncpus=16:ngpus=1:mem=200GB
+#PBS -l select=1:ncpus=16:mem=200GB
 #PBS -j oe
 #PBS -m n
 #PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
 export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
 module load climacommon
 export HDF5_USE_FILE_LOCKING=FALSE   # intermittent HDF5 file-locking errors on Derecho Lustre
+# No GPU. Requesting one drags in the CUDA stack, whose precompile caches are
+# broken on the shared depot, so every run pays a full in-process recompile.
+# The driver run is short and the pools are integrated offline afterwards.
 REPO=/glade/u/home/arenchon/ClimaLand.jl
 JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
 HARNESS=$REPO/experiments/integrated/prognostic_carbon/harness
