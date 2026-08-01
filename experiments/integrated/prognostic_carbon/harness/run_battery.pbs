@@ -66,10 +66,28 @@ echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' lai_mode=$LAI_MODE
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
 "$JULIA" --project="$REPO/.buildkite" -e 'using ClimaLand' >/dev/null 2>&1 || true
 
+# SEED_FROM_TSV points at harness/equilibrium_pools.tsv and seeds each site with
+# its own offline equilibrium instead of one global value. The offline-vs-coupled
+# drift check needs this: a coupled run started at the offline steady state
+# should stay there, and a per-site seed is the only way to ask that question at
+# more than one site per job.
+SEED_FROM_TSV="${SEED_FROM_TSV:-}"
+
+seed_for() {
+    local name="$1" col="$2"
+    [[ -n "$SEED_FROM_TSV" && -f "$SEED_FROM_TSV" ]] || return 0
+    awk -F'\t' -v s="$name" -v c="$col" '$1==s{print $c}' "$SEED_FROM_TSV"
+}
+
 run_site() {
     local lon="$1" lat="$2" name="$3"
     local SITEDIR="$RUNROOT/$name"
     mkdir -p "$SITEDIR"
+    if [[ -n "$SEED_FROM_TSV" ]]; then
+        POOL_INIT_SUGAR="$(seed_for "$name" 3)"; POOL_INIT_LEAF="$(seed_for "$name" 4)"
+        POOL_INIT_STEM="$(seed_for "$name" 5)";  POOL_INIT_ROOT="$(seed_for "$name" 6)"
+        echo "SEED $name sugar=$POOL_INIT_SUGAR leaf=$POOL_INIT_LEAF stem=$POOL_INIT_STEM root=$POOL_INIT_ROOT"
+    fi
     if START="$START" STOP="$STOP" DT="$DT" SITE_LON="$lon" SITE_LAT="$lat" \
         SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" LAI_MODE="$LAI_MODE" \
         CARBON="$CARBON" CARBON_RA="$CARBON_RA" \
