@@ -92,7 +92,14 @@ end
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["lai"],
     minibatch_size = 1,
-    n_iterations = 5,
+    # N_ITERATIONS lets a run be advanced one iteration at a time. ClimaCalibrate
+    # resumes at `last_completed_iteration + 1` and stops at `n_iterations`, so
+    # raising it in steps keeps each orchestrator job short enough to exit
+    # normally inside a queue's walltime cap, instead of being killed mid-
+    # iteration and leaving that iteration's member jobs running as orphans that
+    # race the resubmitted orchestrator for the same member directories.
+    # Default is unchanged.
+    n_iterations = parse(Int, get(ENV, "N_ITERATIONS", "5")),
     # One annual cycle to score (DJF-MAM-JJA from Dec 1 -> Sep 1, plus SON via
     # extend = Month(3)). Add more (year) tuples here, and raise minibatch_size,
     # to calibrate across multiple years.

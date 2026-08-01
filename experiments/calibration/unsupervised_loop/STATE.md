@@ -683,17 +683,41 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 3 — prognostic LAI
 
-- **status:** not_started
+- **status:** running — chunk 1 submitted 2026-08-01 13:33 (`6976711`)
 - **config:** `experiments/calibration/configs/lai.jl`
 - **ensemble:** 11 (5 params, TransformUnscented)
-- **validity mask built for this grid:** no — needs stage 2's long-run
-  diagnostics as the reference simdir
+- **validity mask built for this grid:** **yes** — built 2026-08-01 13:30 from
+  stage 2's long-run diagnostics
+  (`.../snowy_land_pmodel_opt_lai_longrun_gpu/global_diagnostics/output_0000`).
+  **Verified it is a valid reference despite the domains differing.** The long run
+  uses `global_box_domain` defaults while the calibration sets
+  `nelements = (180, 360, 15)`, so the footprints could in principle disagree.
+  Compared the NaN footprint of the long run's `lai` against a stage-1 member's
+  `gpp`: both 22420 finite cells, **identical footprint, zero disagreement in
+  either direction**. So the prompt's claim that the long run is "on this grid"
+  holds empirically, not just by assertion.
+  (Note when reading these files directly: the arrays are `(time, lon, lat)`,
+  not `(lon, lat, time)`.)
 - **natural-vegetation mask built for this grid:** yes, pre-built 2026-07-31 at
   `experiments/calibration/natural_vegetation_mask.jld2` (gitignored, so it is
   on disk in the checkout only). 10113 of 22420 land cells kept. Rebuild only if
   `nelements` changes.
-- **PBS job ids:** —
-- **output dir:** —
+- **PBS job ids:** `6976711` (chunk 1, `N_ITERATIONS=1`). An earlier submission
+  `6976710` was cancelled within a minute — see the config note below.
+- **output dir:** `/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai`
+- **⚠ `lai.jl` NEEDED THE SAME `N_ITERATIONS` OVERRIDE, and did not have it.**
+  The chunking override was only ever added to the stage-1 config, so the first
+  stage-3 submission silently ignored `N_ITERATIONS=1` and would have attempted
+  all 5 iterations in one 5 h 30 m job. At ~1 h 15 m per iteration that overruns
+  the walltime, and a kill mid-iteration orphans member jobs that then race the
+  resubmitted orchestrator for the same member directories. Cancelled it,
+  added the override to `lai.jl` (default still 5), and resubmitted.
+- **DIFFERENT FROM STAGE 1: the misfit series here IS a valid convergence
+  signal.** `lai.jl` sets `minibatch_size = 1` with a single
+  `sample_date_ranges` entry, so every iteration scores the SAME data. The
+  reasoning that invalidated the "loss decreased across iterations" check for
+  stage 1 (16 samples at minibatch 2, a different pair of years each iteration)
+  does not apply here. Use the loss trend for stage 3.
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
 - **notes:** —
