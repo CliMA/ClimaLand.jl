@@ -72,7 +72,12 @@ end
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["sif_gpp", "lhf", "shf", "lwu"],
     minibatch_size = 2,
-    n_iterations = 5,
+    # N_ITERATIONS lets a run be advanced one iteration at a time. ClimaCalibrate
+    # resumes at `last_completed_iteration + 1` and stops at `n_iterations`, so
+    # raising it in steps keeps each orchestrator job short enough to exit
+    # normally inside a queue's walltime cap, instead of being killed mid-
+    # iteration and orphaning that iteration's member jobs. Default is unchanged.
+    n_iterations = parse(Int, get(ENV, "N_ITERATIONS", "5")),
     # Yearly DJF-MAM-JJA samples (Dec 1 -> Sep 1). With spinup = Year(1) and
     # extend = Month(3), all 16 samples stay within the artifact's 2002-2020
     # coverage; 16 is divisible by minibatch_size so none is dropped per epoch.

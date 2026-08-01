@@ -41,9 +41,17 @@ module load climacommon/2026_04_08
 export HDF5_USE_FILE_LOCKING=FALSE
 export CALIBRATION_CONFIG
 
+# Optional: advance the run only as far as this iteration, so the job exits
+# normally rather than being walltime-killed mid-iteration. See N_ITERATIONS in
+# the config files.
+if [ -n "${N_ITERATIONS:-}" ]; then
+    export N_ITERATIONS
+fi
+
 echo "Orchestrator starting on $(hostname) at $(date)"
 echo "  config:     ${CALIBRATION_CONFIG}"
 echo "  output dir: ${CAL_OUTPUT_DIR}"
+echo "  n_iterations cap: ${N_ITERATIONS:-<config default>}"
 
 bash experiments/calibration/run_calibration.sh "${CAL_OUTPUT_DIR}"
 

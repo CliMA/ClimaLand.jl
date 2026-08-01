@@ -12,12 +12,27 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 1 — GPP + energy fluxes
 
-- **status:** running
+- **status:** running (CHUNKED — see below)
 - **config:** `experiments/calibration/configs/sifgpp_lhf_shf_lwu_rosetta.jl`
 - **ensemble:** 21 (10 params, TransformUnscented)
-- **PBS job ids:** orchestrator `6967486.desched1` (submitted 2026-07-31, queue
-  `cpu`, 12 h walltime). Member job ids: not yet — they appear once the
-  orchestrator reaches iteration 1.
+- **PBS job ids:**
+  - `6967486.desched1` — original `main`-queue submission, 12 h walltime.
+    **CANCELLED (`qdel`) 2026-07-31 18:16 after 7 h 26 m queued without ever
+    starting.** Never ran, so it produced no output file and wrote nothing.
+  - `6970028.desched1` — **CURRENT**, chunk 1 (`N_ITERATIONS=1`), queue
+    `develop`→`cpudev`, 5 h 30 m walltime, `select=1:ncpus=4:mem=32gb`. Submitted
+    18:17, **started within ~2 minutes**, running on `dec2436`.
+  - Member job ids: appear once the orchestrator reaches the ensemble stage.
+- **chunking scheme:** each orchestrator job advances the run by ONE iteration
+  and exits normally, instead of running to 5 and risking a walltime kill.
+  Resubmit with `N_ITERATIONS=2`, then 3, 4, 5 — ClimaCalibrate resumes at
+  `last_completed_iteration + 1` (`backends.jl:277`) and stops at
+  `n_iterations`. Command (note the command-line overrides beat the script's
+  `#PBS -q main` / 12 h directives, verified):
+
+      qsub -q develop -l walltime=05:30:00 -l select=1:ncpus=4:mem=32gb \
+          -v CALIBRATION_CONFIG=sifgpp_lhf_shf_lwu_rosetta.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy,N_ITERATIONS=<n> \
+          experiments/calibration/calibration_orchestrator.pbs
 - **output dir:** `/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy`
 - **orchestrator log:** `clima_calibration.o6967486` in the repo root
 - **calibrated parameters:** —
@@ -145,6 +160,26 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 None recorded.
 
 ## Environment gotchas found by the loop
+
+- **A `develop`-queue job starts in ~2 minutes; a `main`-queue job waited 7 h 26 m
+  and never started.** Measured 2026-07-31 with the CPU queue at 1461 jobs
+  queued / 2411 of ~2488 nodes assigned. The GPU queue was nearly EMPTY at the
+  same moment (4 queued, 26 running), so the CPU orchestrator was the only real
+  bottleneck — the GPU member jobs it submits were never the constraint. Check
+  BOTH queues before concluding the machine is busy.
+- **Command-line `qsub` flags override the script's `#PBS` directives.** Verified
+  with a probe carrying `#PBS -q main` and `#PBS -l walltime=12:00:00`, submitted
+  as `qsub -q develop -l walltime=05:30:00`: it landed in `cpudev` and ran. So
+  the queue and walltime can be changed without editing
+  `calibration_orchestrator.pbs`.
+- **`qstat <jobid>` can transiently report "Unknown Job Id"** for a few seconds
+  after submission, while the job routes from `develop` to `cpudev`. It is not a
+  failure. Re-check with `qstat -u arenchon` before concluding anything.
+- **The orchestrator's PBS output file is written LIVE, not at job end.**
+  `clima_calibration.o<jobid>` appears in the repo root seconds after the job
+  starts and grows as it runs. So "wait for the file to exist" does NOT detect
+  completion — watch for the `Orchestrator finished` line (and failure markers)
+  in its contents instead.
 
 - `qstat -u $USER` returns EMPTY OUTPUT, silently. The sandbox matches its
   `excludedCommands` list against the literal command string, and the `$USER`

@@ -262,3 +262,55 @@ eligible (≈20:00-21:00 MDT). Posted to the PR as a blocked-status comment so t
 situation is visible rather than buried in another quiet tick.
 
 **Next.** Wait; act on the trigger if it fires.
+
+## 2026-07-31 — iteration 8: switched to chunked `develop`; stage 1 IS RUNNING
+
+Pulled the trigger early — at 7 h 26 m rather than the announced 9-10 h — because
+two measurements taken this iteration were exactly the evidence the trigger was
+waiting for, not impatience.
+
+**1. A `develop` job starts instantly.** Submitted a probe carrying
+`#PBS -q main` and `#PBS -l walltime=12:00:00`, overridden on the command line
+with `-q develop -l walltime=05:30:00`. It was accepted (proving the walltime
+override took effect, since 12 h would have been rejected), landed in `cpudev`,
+ran, and finished within seconds. So the queue and walltime can be changed
+WITHOUT editing the committed PBS wrapper.
+
+**2. The GPU queue is nearly empty.** 4 queued, 26 running, against a CPU queue
+with 1461 queued. The members are GPU jobs; the CPU orchestrator was the entire
+bottleneck. That also collapses the cold-start risk that made me hesitate: with
+the GPU queue clear, iteration 1 should be precompile (~30 min) + observations
+(~3 min) + one member wave (~55 min) ≈ 2-2.5 h, comfortably inside 6 h.
+
+Waiting two more hours purely to honour a self-imposed number would have been
+worse work than acting on new information.
+
+**What was done.**
+- Added an `N_ITERATIONS` env override to the stage-1 config
+  (`n_iterations = parse(Int, get(ENV, "N_ITERATIONS", "5"))`, default
+  unchanged) and passed it through the PBS wrapper. This is the enabler for
+  chunking: each job advances the run by one iteration and exits NORMALLY, so no
+  walltime kill, so no orphaned members.
+- `qdel 6967486` — 7 h 26 m queued, never ran, wrote nothing.
+- Submitted chunk 1: `6970028`, `N_ITERATIONS=1`, `develop`, 5 h 30 m,
+  `ncpus=4:mem=32gb`. **Started within ~2 minutes** on `dec2436`. Confirmed from
+  its log: `n_iterations cap: 1`.
+
+**Three environment facts learned, all recorded in STATE.md.**
+- `qstat <jobid>` transiently reports "Unknown Job Id" while a job routes from
+  `develop` to `cpudev`. Briefly alarming; not a failure.
+- The PBS output file is written LIVE and appears seconds after the job starts,
+  not at the end. My iteration-1 waiter design — "wait for the file to exist" —
+  would therefore have fired immediately and meant nothing. Replaced with a
+  waiter that greps the log for `Orchestrator finished` plus failure markers.
+  Worth flagging that the earlier design was only ever correct by accident: it
+  was never exercised, because that job never ran.
+- `pkill -f <pattern>` self-matches, because the pattern appears in pkill's own
+  command line; it kills its own shell first (exit 143). Use a bracket class
+  (`o696748[6]`) to avoid it. The stale waiter from iteration 1 survives but is
+  inert — it watches for an output file that a cancelled job never produced — so
+  it was left alone rather than spending more turns on it.
+
+**Next.** Watch `6970028`. When it exits cleanly, verify iteration 1's output
+(members present, no all-NaN/all-zero GPP, loss finite) BEFORE submitting chunk 2
+with `N_ITERATIONS=2`. The point of chunking is that each step is checkable.
