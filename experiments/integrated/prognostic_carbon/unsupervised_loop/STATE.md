@@ -894,7 +894,56 @@ Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
 
 ## Stage 5 — global run, comparison, tuning
 
-- **status:** not_started
+- **status:** in_progress — no constant allocation works, proven by sweep;
+  climate-varying `f_stem` is the next implementation step
+- **reference biome targets:** MODEL.md §7
+
+### Proven: no constant `(f_stem, τ_stem)` satisfies woody and herbaceous
+
+`harness/sweep_allocation.jl` spins up all 20 sites offline for each parameter
+pair — seconds, not node-hours, because phase 1 is one-way coupled.
+
+| f_stem_c3 | τ_stem (yr) | woody in band | herb in band | grassland cVeg |
+|---|---|---|---|---|
+| 0.4 | 30 | **6/9** | 2/5 | 10.1 / 14.8 |
+| 0.3 | 30 | **6/9** | 2/5 | 7.9 / 11.2 |
+| 0.2 | 10 | 0/9 | **3/5** | 3.0 / 3.7 |
+| 0.02 | 10 | 0/9 | **3/5** | 1.9 / 2.1 |
+
+Woody peaks at 6/9 exactly where herbaceous sits at 2/5; herbaceous peaks at 3/5
+exactly where woody collapses to 0/9. **The two cannot be satisfied at once by
+any constant**, which is the structural claim MODEL.md §2.3's fallback rests on.
+
+### The robust statement of the error — independent of target definitions
+
+MODEL.md §7 itself warns that grassland cVeg comparisons are treacherous, since
+the observations are *woody and mostly aboveground* while the model legitimately
+carries leaf and root carbon. So do not lean on the total-cVeg miss. (Note too
+that even at `f_stem = 0.02` grassland cVeg is 1.9–2.1, above the 0.3–1 target:
+leaf and root alone exceed it, so no stem setting could reach that number.)
+
+The target-independent statement is about the **stem** pool:
+
+| site | biome | C_stem |
+|---|---|---|
+| congo_basin | tropical rainforest | 18.7 |
+| borneo | tropical rainforest | 15.0 |
+| **pampas_argentina** | **temperate grassland** | **13.6** |
+| **us_great_plains** | **temperate grassland** | **8.9** |
+| fennoscandia | boreal forest | 5.0 |
+| central_siberia | boreal forest | 2.1 |
+
+**A temperate grassland is carrying more woody carbon than a boreal forest —
+6.5× more than `central_siberia`, and comparable to Borneo rainforest.** That is
+wrong on any definition, and it is exactly the quantity the stage-5 comparison
+uses, since XuSaatchi is a woody-biomass product.
+
+### Next
+
+Implement MODEL.md §2.3's fallback: `f_stem` (and correspondingly `f_root`)
+varying with mean annual temperature and precipitation, both already available
+as trailing integrals — **never with a PFT**. Re-run the sweep to confirm it
+resolves the conflict, then the global run and the XuSaatchi comparison.
 - **reference biomass dataset:** — (TBD, see open questions)
 - **PBS job ids:** —
 - **cVeg RMSE / bias by zone:** —
