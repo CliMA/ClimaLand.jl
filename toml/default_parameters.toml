@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.59
+value = 0.591
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -326,19 +326,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.43
+value = 0.366
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 91.1
+value = 24.9
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 5.36
+value = 8.89
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -392,7 +392,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.028
+value = 0.0251
 type = "float"
 description = "1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -507,7 +507,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.919
+value = 1.16
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -642,25 +642,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.349
+value = 0.0823
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0444
+value = 0.073
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0573
+value = 0.0416
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.0726
+value = 0.07
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
