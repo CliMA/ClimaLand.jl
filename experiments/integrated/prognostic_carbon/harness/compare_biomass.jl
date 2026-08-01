@@ -18,8 +18,25 @@ import NCDatasets
 import ClimaLand.Parameters as LP
 import ClimaLand.Canopy
 
-const OBS_PATH = "/glade/campaign/cesm/community/lmwg/diag/ILAMB/DATA/biomass/XuSaatchi2021/XuSaatchi.nc"
-const MG_HA_TO_KG_M2 = 0.1   # 1 Mg ha^-1 = 0.1 kg m^-2
+const OBS_DIR = "/glade/campaign/cesm/community/lmwg/diag/ILAMB/DATA/biomass"
+
+# Several products, not one. They disagree by 2-4x at most forest sites, so a
+# comparison against any single product mostly measures which product was
+# chosen. The model is scored against the observational *range*.
+const PRODUCTS = [
+    ("XuSaatchi", joinpath(OBS_DIR, "XuSaatchi2021", "XuSaatchi.nc")),
+    ("Thurner", joinpath(OBS_DIR, "Thurner", "biomass_0.5x0.5.nc")),
+    ("ESACCI", joinpath(OBS_DIR, "ESACCI", "biomass.nc")),
+    ("GEOCARBON", joinpath(OBS_DIR, "GEOCARBON", "biomass.nc")),
+    ("Saatchi2011", joinpath(OBS_DIR, "Saatchi2011", "biomass_0.5x0.5.nc")),
+    ("USForest", joinpath(OBS_DIR, "USForest", "biomass_0.5x0.5.nc")),
+]
+
+# netCDF classic missing-value sentinel. It is finite and not `missing`, so it
+# survives both checks and silently enters the mean as ~1e36 if not caught.
+const SENTINEL = 1e30
+
+valid(x) = !ismissing(x) && isfinite(x) && abs(x) < SENTINEL
 
 # Broad zones for the by-zone summary the stage asks for.
 zone_of(biome, mat) =
@@ -46,6 +63,37 @@ Time-mean observed woody carbon density (kg C m^-2) at the nearest grid cell.
 Returns NaN where the product has no data, which is the honest answer over
 desert and ice rather than a zero that would flatter the comparison.
 """
+function obs_at(path, lon, lat)
+    ds = NCDatasets.NCDataset(path)
+    try
+        vn = first([
+            k for k in keys(ds) if occursin("biomass", lowercase(k)) ||
+            occursin("cveg", lowercase(k))
+        ])
+        v = ds[vn]
+        units = get(v.attrib, "units", "")
+        lons = coalesce.(Array(ds["lon"][:]), NaN)
+        lats = coalesce.(Array(ds["lat"][:]), NaN)
+        l = lon
+        if maximum(lons) > 180 && l < 0
+            l += 360
+        elseif maximum(lons) <= 180 && l > 180
+            l -= 360
+        end
+        i = argmin(abs.(lons .- l))
+        j = argmin(abs.(lats .- lat))
+        A = Array(v[:, :, :])
+        col = ndims(A) == 3 ? A[i, j, :] : [A[i, j]]
+        good = filter(valid, col)
+        isempty(good) && return NaN
+        # kg m^-2 stays; Mg ha^-1 becomes kg m^-2 by 0.1
+        f = occursin("kg", units) ? 1.0 : 0.1
+        return (sum(good) / length(good)) * f
+    finally
+        close(ds)
+    end
+end
+
 function obs_biomass(lons, lats, B, lon, lat)
     # the file may use either -180..180 or 0..360
     l = lon
@@ -67,16 +115,6 @@ function main(runroot)
     toml_dict = LP.create_toml_dict(Float64)
     p = Canopy.PrognosticCarbonParameters(toml_dict)
 
-    ds = NCDatasets.NCDataset(OBS_PATH)
-    lons = Array(ds["lon"][:])
-    lats = Array(ds["lat"][:])
-    # NCDatasets already returns Julia-order (lon, lat, time) for a CF file
-    # declared (time, lat, lon); permuting again would transpose it back.
-    B = Array(ds["biomass"][:, :, :])
-    lons = coalesce.(lons, NaN)
-    lats = coalesce.(lats, NaN)
-    close(ds)
-
     rows = []
     for s in sites
         f = joinpath(runroot, s.name, "out", "driver_record.csv")
@@ -90,14 +128,23 @@ function main(runroot)
             T_ref_tau = p.T_ref_τ_stem,
             q_tau = p.q_τ_stem,
         )
+        obs = Float64[]
+        for (_, path) in PRODUCTS
+            isfile(path) || continue
+            v = try
+                obs_at(path, s.lon, s.lat)
+            catch
+                NaN
+            end
+            isfinite(v) && push!(obs, v)
+        end
         push!(
             rows,
             (
                 name = s.name,
-                biome = s.biome,
                 zone = zone_of(s.biome, MAT),
-                model = pools[3],           # C_stem: the woody pool
-                obs = obs_biomass(lons, lats, B, s.lon, s.lat),
+                model = pools[3],
+                obs = obs,
             ),
         )
     end
@@ -105,68 +152,52 @@ function main(runroot)
     println(
         rpad("site", 21),
         rpad("zone", 15),
-        rpad("model C_stem", 14),
-        rpad("XuSaatchi", 12),
-        "diff",
+        rpad("model", 9),
+        rpad("obs range (n)", 24),
+        "verdict",
     )
+    inside = 0
+    scored = 0
     for r in rows
-        d = r.model - r.obs
+        isempty(r.obs) && continue
+        lo, hi = minimum(r.obs), maximum(r.obs)
+        ok = lo <= r.model <= hi
+        scored += 1
+        inside += ok
+        verdict =
+            ok ? "inside" :
+            r.model > hi ?
+            "above by $(round(r.model / max(hi, 0.01), digits = 1))x" :
+            "below by $(round(max(lo, 0.01) / max(r.model, 0.01), digits = 1))x"
         println(
             rpad(r.name, 21),
             rpad(r.zone, 15),
-            rpad(round(r.model, digits = 2), 14),
-            rpad(isnan(r.obs) ? "no data" : round(r.obs, digits = 2), 12),
-            isnan(r.obs) ? "" : string(d > 0 ? "+" : "", round(d, digits = 2)),
+            rpad(round(r.model, digits = 2), 9),
+            rpad(
+                "$(round(lo, digits = 2))-$(round(hi, digits = 2)) ($(length(r.obs)))",
+                24,
+            ),
+            verdict,
         )
     end
 
     println(
-        "\n",
-        rpad("zone", 16),
-        rpad("n", 4),
-        rpad("bias", 10),
-        rpad("RMSE", 10),
-        "mean obs",
+        "\nmodel inside the observational range at $inside of $scored sites",
     )
-    for z in (
-        "tropics",
-        "temperate",
-        "boreal/tundra",
-        "savanna",
-        "grassland",
-        "arid",
+    println(
+        "products disagree by a median factor of ",
+        round(
+            begin
+                sp = [
+                    maximum(r.obs) / max(minimum(r.obs), 0.01) for
+                    r in rows if length(r.obs) > 1
+                ]
+                sort(sp)[max(1, div(length(sp), 2))]
+            end,
+            digits = 1,
+        ),
+        "x, so scoring against any single product mostly measures the choice of product",
     )
-        sel = [r for r in rows if r.zone == z && isfinite(r.obs)]
-        isempty(sel) && continue
-        diffs = [r.model - r.obs for r in sel]
-        bias = sum(diffs) / length(diffs)
-        rmse = sqrt(sum(abs2, diffs) / length(diffs))
-        mobs = sum(r.obs for r in sel) / length(sel)
-        println(
-            rpad(z, 16),
-            rpad(length(sel), 4),
-            rpad(string(bias > 0 ? "+" : "", round(bias, digits = 2)), 10),
-            rpad(round(rmse, digits = 2), 10),
-            round(mobs, digits = 2),
-        )
-    end
-
-    # The woody comparison is only meaningful where the observation is woody.
-    woody = [
-        r for r in rows if isfinite(r.obs) && !(r.zone in ("grassland", "arid"))
-    ]
-    if !isempty(woody)
-        diffs = [r.model - r.obs for r in woody]
-        println(
-            "\nwoody zones only (n=",
-            length(woody),
-            "):  bias ",
-            round(sum(diffs) / length(diffs), digits = 2),
-            "   RMSE ",
-            round(sqrt(sum(abs2, diffs) / length(diffs)), digits = 2),
-            "   kg C m^-2",
-        )
-    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

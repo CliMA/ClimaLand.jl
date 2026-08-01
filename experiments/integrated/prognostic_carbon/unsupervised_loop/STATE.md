@@ -1144,6 +1144,46 @@ precipitation did. Check the direction on the battery before building on it.
 Candidate predictors already in `soil.parameters`: sand/clay fraction, porosity,
 hydraulic conductivity, and the soil depth of the column.
 
+## MULTI-PRODUCT COMPARISON (2026-08-01) — and a correction to the entry below
+
+**Correction.** The XuSaatchi-only comparison recorded below led me to state that
+`τ_stem(MAT)` "over-corrects at canada_boreal and fennoscandia". **That was
+wrong.** Against the full set of biomass products, `fennoscandia` (8.18) is
+**inside** the observational range 4.08–8.77, and `canada_boreal` is only 1.2×
+above the top. XuSaatchi simply sits at the low end of a wide spread.
+
+**The products disagree by a median factor of 3.4×.** Scoring against any single
+one mostly measures which product was chosen. `harness/compare_biomass.jl` now
+scores against the observational **range** across XuSaatchi, Thurner, ESACCI,
+GEOCARBON, Saatchi2011 and USForest.
+
+**Model inside the observational range at 8 of 20 sites**, and the pattern is
+clean:
+
+| verdict | sites |
+|---|---|
+| **inside range** | all 3 tropical rainforests, both true deserts, central_europe, central_siberia, fennoscandia |
+| within 2× of top | ozark_us 1.6×, canada_boreal 1.2×, california_vaira 1.0×, alaska 1.7×, us_great_plains 1.9×, n_australia 2.0× |
+| **robustly over** | sahel 2.7×, cerrado 3.7×, iberia 4.5×, ne_china 7.2×, pampas 11.1×, mojave 12.9× |
+
+**Forests and true deserts are within observational uncertainty.** The robust
+failures are dry, seasonal and herbaceous systems — the same woody-allocation
+problem already diagnosed, now confirmed against six products rather than
+inferred from one. `mojave_sw_us` at 2.58 kg C m⁻² of stem in a desert is the
+starkest case.
+
+**Methodological consequence:** do not tune against a single product. A 3.4×
+median spread means most of the apparent "bias" in any one comparison is
+observational, and fitting to it would be fitting to the choice of dataset.
+
+### A bug this exposed
+
+The netCDF classic missing-value sentinel (~9.97e36) is **finite and not
+`missing`**, so it survives both `ismissing` and `isfinite` and enters a mean as
+1e36. `compare_biomass.jl` now rejects anything above 1e30. XuSaatchi uses NaN so
+the original comparison was unaffected, but the other five products use the
+sentinel and would have been silently poisoned.
+
 ## FIRST OBSERVATIONAL COMPARISON (2026-08-01) — XuSaatchi woody biomass
 
 `harness/compare_biomass.jl` compares equilibrium `C_stem` against XuSaatchi
