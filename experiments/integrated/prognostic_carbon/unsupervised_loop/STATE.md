@@ -15,13 +15,52 @@ Status values: `not_started` | `in_progress` | `done` | `failed` | `blocked`
 - spinup: recycle ERA5 1979–1989 with CO₂ held at ~340 ppm
 - `gh` requires `module load gh`
 
-## `~/.julia/artifacts/Overrides.toml` — last observed (2026-07-31)
+## ⚠️ OVERRIDES.TOML CHANGED BY THE OTHER LOOP (2026-08-01 ~13:07)
+
+The shared override for `optimal_lai_inputs` was repointed, **not by this loop**:
+
+```
+was:  /glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs
+now:  /glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs_calibrated
+```
+
+Both directories exist; the files **differ** (3126182 vs 3126269 bytes). The
+calibrated one was written minutes before this iteration.
+
+### Impact — read before running anything with prognostic LAI
+
+- **Prescribed-LAI results are unaffected.** Stages 0–3 prescribed batteries use
+  MODIS LAI and never touch this artifact.
+- **All prognostic-LAI results to date used the OLD artifact** — including
+  `harness/baseline_prognostic_lai.tsv`, the driver records from job 6971245,
+  every offline equilibrium, and the multi-product observational comparison.
+  They are internally consistent, because one artifact was in force throughout.
+- **The next prognostic-LAI battery will use the calibrated artifact and produce
+  different LAI, hence different GPP.**
+
+### The trap this sets
+
+`check_rule1.jl` compares a new run's GPP and LAI against
+`baseline_prognostic_lai.tsv`. Run now, it would report a **rule-1 FAILURE that
+is really an artifact change** — the LAI model's inputs moved, not the carbon
+model's behaviour. Rule 1 is the project's central claim, so a false failure
+there is expensive.
+
+**Before any further prognostic-LAI comparison: re-baseline.** Run a CARBON=0
+prognostic battery against the calibrated artifact and regenerate
+`baseline_prognostic_lai.tsv`, or state explicitly which artifact each side of
+the comparison used.
+
+This loop must **not** write `Overrides.toml` (hard rule), so pinning the old
+path back is not an option — and would sabotage the other loop in any case.
+
+## `~/.julia/artifacts/Overrides.toml` — last observed (2026-08-01)
 
 Shared with the other loop; this loop must never write it. Re-read and compare
 every iteration.
 
 ```
-2ce5e5e05e4f17c86b07eadff1f9dd551e779524 = "/glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs"
+2ce5e5e05e4f17c86b07eadff1f9dd551e779524 = "/glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs_calibrated"
 f269a0b057b9f438b4caafdef17da73746310787 = "/glade/campaign/univ/ucit0011/ClimaArtifacts2/artifacts/forty_yrs_era5_land_forcing_data/forty_yrs_era5_land_forcing_data_artifact"
 ```
 
