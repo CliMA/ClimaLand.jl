@@ -841,6 +841,8 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     n_alloc::FT
     "Substrate-limitation scale for maintenance respiration (kg C m^-2)"
     C_sugar_ref::FT
+    "E-folding depth (m) of the leaf and stem litter input to soil carbon"
+    soil_litter_depth::FT
     "Q10 temperature sensitivity of maintenance respiration (-)"
     Q10::FT
     "Reference temperature for the Q10 factor (K)"
@@ -873,6 +875,7 @@ function PrognosticCarbonParameters(
     τ_alloc = toml_dict["carbon_tau_alloc"],
     n_alloc = toml_dict["carbon_alloc_ramp_n"],
     C_sugar_ref = toml_dict["carbon_C_sugar_ref"],
+    soil_litter_depth = toml_dict["carbon_soil_litter_depth"],
     Q10 = toml_dict["carbon_Q10"],
     T_ref = toml_dict["carbon_T_ref"],
 )
@@ -894,6 +897,7 @@ function PrognosticCarbonParameters(
         τ_alloc,
         n_alloc,
         C_sugar_ref,
+        soil_litter_depth,
         Q10,
         T_ref,
     )

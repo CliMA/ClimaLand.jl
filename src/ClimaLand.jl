@@ -444,6 +444,7 @@ include("integrated/soil_snow_model.jl")
 include("integrated/land.jl")
 include("integrated/lake_land_interactions.jl")
 include("integrated/soil_canopy_root_interactions.jl")
+include("integrated/soil_canopy_carbon_interactions.jl")
 include("integrated/land_radiation.jl")
 
 include("shared_utilities/show_methods.jl")

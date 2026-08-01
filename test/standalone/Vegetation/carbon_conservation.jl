@@ -321,6 +321,40 @@ for FT in (Float32, Float64)
         @test all(parent(p.canopy.autotrophic_respiration.Ra) .== 0)
     end
 
+    # Stage 3: litter must reach the soil carbon pool without being diluted or
+    # amplified by the vertical discretisation. Each shape is normalised by its
+    # own column integral, so the integral of the input returns the surface
+    # litter flux exactly whatever the layer thickness or rooting depth.
+    @testset "Litter input conserves the surface flux, FT = $FT" begin
+        col = ClimaLand.Domains.Column(;
+            zlim = FT.((-15, 0)),
+            longlat = (FT(-92), FT(39)),
+            nelements = 15,
+            dz_tuple = FT.((3, 0.05)),
+        )
+        z = col.fields.z
+        litter_depth = biomass.parameters.soil_litter_depth
+        L_surface, L_root = FT(3e-8), FT(2e-8)
+        for rooting_depth in (FT(0.5), FT(2.0))
+            root_shape = @. Canopy.root_distribution(z, rooting_depth)
+            surf_shape = @. Canopy.root_distribution(z, litter_depth)
+            rn = ClimaCore.Fields.zeros(col.space.surface)
+            sn = ClimaCore.Fields.zeros(col.space.surface)
+            ClimaCore.Operators.column_integral_definite!(rn, root_shape)
+            ClimaCore.Operators.column_integral_definite!(sn, surf_shape)
+            input = @. L_surface * surf_shape / sn + L_root * root_shape / rn
+            total = ClimaCore.Fields.zeros(col.space.surface)
+            ClimaCore.Operators.column_integral_definite!(total, input)
+            got = first(Array(parent(total)))
+            @test abs(got - (L_surface + L_root)) <=
+                  100 * eps(FT) * (L_surface + L_root)
+            # The un-normalised shape does NOT integrate to 1 on this grid: a
+            # 5 cm e-folding depth is under-resolved by a 5 cm top layer. That
+            # is exactly why the normalisation is needed.
+            @test first(Array(parent(sn))) < FT(0.95)
+        end
+    end
+
     # Every prognostic variable needs a Jacobian block, or the implicit solver
     # refuses to build with "A does not have any entries at the following keys".
     # The tendency tests above never reach this: they call the tendency directly

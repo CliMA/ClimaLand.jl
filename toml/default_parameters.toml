@@ -246,6 +246,12 @@ type = "float"
 description = "Sharpness of the allocation ramp g(x) = x^n/(1 + x^n), where x = C_sugar/C_sugar_target. This proportional controller is what keeps the sugar pool oscillating seasonally about its target instead of pinning at zero, with no hard clamp."
 tag = "PrognosticCarbonParameters"
 
+["carbon_soil_litter_depth"]
+value = 0.05
+type = "float"
+description = "E-folding depth (m) of the leaf and stem litter input to soil carbon. The specification places surface litter in the top soil layer; this is the continuum form of that, and unlike writing into a single cell it does not depend on the layer thickness. Comparable to the top layer thickness of a typical column."
+tag = "PrognosticCarbonParameters"
+
 ["carbon_C_sugar_ref"]
 value = 1.0e-3
 type = "float"
