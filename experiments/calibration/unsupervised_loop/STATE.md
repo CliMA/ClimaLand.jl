@@ -294,6 +294,19 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
     make every cell look hyper-arid.
   - Not yet verified (needs the actual run): that the six fields are finite over
     land, and that the artifact override resolves.
+- **sizing the stage-2 run (2026-08-01 01:12, from prior runs on scratch).**
+  `/glade/derecho/scratch/arenchon/claude/global_runs/` holds many earlier
+  `PROGNOSTIC_LAI` long runs. Taking
+  `snowy_land_pmodel_opt_lai_zhouparams_longrun_gpu` as representative: file
+  mtimes span 02:46 → 04:18, i.e. **1 h 32 m end-to-end for a 3-year run**
+  (36 monthly outputs), including the trailing plotting/ILAMB step. Scaling the
+  simulation part to `RUN_YEARS=10` gives roughly **3.5-4 h**, so stage 2 fits
+  inside `develop`'s 6 h cap as well as `main`. Prefer `develop` for the fast
+  start, same as the calibration chunks.
+  Those older runs carry `pra` and `a0a` but NOT `olf0`/`olvpd`/`olgsl`, which
+  confirms those three diagnostics are new on this branch and were added for the
+  IC rebuild — so no earlier run can substitute for stage 2's, even though the
+  directory is full of superficially similar output.
 - **notes:** —
 
 ## Stage 3 — prognostic LAI
