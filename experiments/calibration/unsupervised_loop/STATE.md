@@ -308,7 +308,53 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   order of magnitude below the other. This is stable across iterations 2-5, so it
   is a real feature of the fit, not a transient. Report it with the final
   numbers; do not tune priors to remove it.
-- **calibrated parameters:** — (not final; iteration 5 of 9 done)
+- **ITERATION 6 COMPLETE (2026-08-01 06:06).** Chunk 6 ran in 1 h 16 m; 21/21
+  members, zero segfaults. Chunk 7 (`6972557`, `N_ITERATIONS=7`) submitted 06:10.
+  Misfit: `[0.157, 0.173, 0.154, 0.150, 0.151, 0.154]`.
+
+  | parameter | it.5 | it.6 | it.7 | last step |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.3823 | 0.3870 | 0.3728 | −3.7 % |
+  | pmodel_β_c3 | 29.49 | 30.37 | 25.90 | **−14.7 %** |
+  | pmodel_β_c4 | 8.389 | 9.315 | 8.352 | −10.3 % |
+  | pmodel_α | 0.02782 | 0.02630 | 0.02516 | −4.3 % |
+  | moisture_stress_c | 0.5936 | 0.5875 | 0.5886 | +0.2 % |
+  | leaf_Cd | 0.07191 | 0.06908 | 0.06781 | −1.8 % |
+  | canopy_z_0m_coeff | 0.1105 | 0.1009 | 0.08303 | **−17.7 %** |
+  | canopy_z_0b_coeff | 0.08608 | 0.08427 | 0.09546 | **+13.3 %** |
+  | canopy_d_coeff | 0.04199 | 0.03645 | 0.04532 | **+24.3 %** |
+  | canopy_K_lw | 1.199 | 1.195 | 1.175 | −1.7 % |
+
+- **CORRECTION to the iteration-5 read.** I recorded that
+  `canopy_z_0m_coeff`'s decline was decelerating and "consistent with asymptoting
+  near 0.09-0.10". **That was premature.** It fell another 17.7 % to 0.08303, so
+  the deceleration was a one-iteration pause, not an asymptote. Full sequence:
+  0.352 → 0.158 → 0.183 → 0.138 → 0.1105 → 0.1009 → 0.08303 — monotonic decline
+  throughout, at a fluctuating rate. It is still heading toward its lower bound
+  of 0 and the concern is live again. Lesson, the same one iteration 3 taught
+  about `pmodel_β_c3`: a single slower step is not convergence.
+- **⚠⚠ THE ROUGHNESS RATIO HAS NOW INVERTED — this is the headline finding.**
+  `canopy_z_0b_coeff` (0.09546) has overtaken `canopy_z_0m_coeff` (0.08303), so
+  `z_0b/z_0m` ≈ **1.15**. Scalar roughness now EXCEEDS momentum roughness.
+  Standard surface-layer theory has z_0b roughly an order of magnitude SMALLER
+  than z_0m (ratio ~0.1); the prior encoded ~0.13. A ratio above 1 is not merely
+  atypical, it inverts the expected physics. Trajectory of the ratio: 0.13
+  (prior) → 0.62 → 0.47 → 0.67 → 0.78 → 0.84 → **1.15**, i.e. monotonic and
+  still climbing. This is a stable, developing feature of the fit across seven
+  iterations, not noise.
+  **Do not tune priors to suppress it.** Report it with the final numbers and
+  flag it for a domain expert: either the flux data genuinely require it (the
+  pair may be compensating for a missing process in the canopy turbulence
+  scheme), or the parameterisation is being pushed outside its valid regime — and
+  which of those it is cannot be settled from the EKI output alone.
+- **convergence status: NOT converging monotonically.** Iteration 6's steps are
+  LARGER than iteration 5's for four parameters (`β_c3` +3.0 → −14.7 %,
+  `z_0m` −8.7 → −17.7 %, `d_coeff` −13 → +24.3 %, `z_0b` −2.1 → +13.3 %). With a
+  different minibatch each iteration the means chase the current pair of years,
+  so per-iteration steps are noisy by construction. This is a further argument
+  for running the full 9 (one epoch plus one) and, when judging the final answer,
+  looking at the trend over the last few iterations rather than the last step.
+- **calibrated parameters:** — (not final; iteration 6 of 9 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
