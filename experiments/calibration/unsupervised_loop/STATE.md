@@ -523,7 +523,24 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 2 — rebuild prognostic-LAI initial conditions
 
-- **status:** not_started
+- **status:** running — long run submitted 2026-08-01 09:35
+- **PBS job:** `6973822.desched1`, queue `gpu` (`main`), **12 h walltime**,
+  `select=1:ncpus=4:ngpus=1`, via the new
+  `experiments/long_runs/long_run_gpu.pbs` wrapper:
+
+      qsub -v LONG_RUN_SCRIPT=snowy_land_pmodel.jl,PROGNOSTIC_LAI=1,RUN_YEARS=10,OUTPUT_ROOT=/glade/derecho/scratch/arenchon/claude \
+          experiments/long_runs/long_run_gpu.pbs
+
+  **Why `main`/12 h and not the faster `develop` queue:** a long run has NO
+  checkpoint to resume from, so a walltime kill loses everything and starts over.
+  The estimate is ~4.5 h, which leaves too little margin against `develop`'s hard
+  6 h cap. The calibration could safely use `develop` only because ClimaCalibrate
+  resumes at `last_completed_iteration + 1`; that argument does not transfer here.
+  `PROGNOSTIC_LAI=1` rather than an empty value: the driver tests
+  `haskey(ENV, ...)`, and a non-empty value avoids any risk of PBS dropping an
+  empty one.
+- **log:** `clima_long_run.o6973822` in the repo root
+- **expected output:** `/glade/derecho/scratch/arenchon/claude/global_runs/snowy_land_pmodel_opt_lai_longrun_gpu`
 - **driver:** `experiments/long_runs/snowy_land_pmodel.jl`, `PROGNOSTIC_LAI` set, 10 years, GPU
 - **required diagnostics:** `lai`, `a0a`, `pra`, `olf0`, `olvpd`, `olgsl`
 - **PBS job ids:** —

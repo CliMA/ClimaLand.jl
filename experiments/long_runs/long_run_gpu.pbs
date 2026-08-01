@@ -1,0 +1,46 @@
+#!/bin/bash
+# PBS job that runs one of the `experiments/long_runs` drivers on a Derecho GPU node.
+#
+# Usage — run qsub BARE (wrapping it in bash/timeout/$() trips an agent sandbox):
+#
+#   qsub -v LONG_RUN_SCRIPT=snowy_land_pmodel.jl,PROGNOSTIC_LAI=,RUN_YEARS=10,OUTPUT_ROOT=/glade/derecho/scratch/$USER/claude \
+#       experiments/long_runs/long_run_gpu.pbs
+#
+# Submit from the repository root: the job runs in $PBS_O_WORKDIR.
+#
+# Unlike a calibration, a long run has no checkpoint to resume from: if it hits
+# the walltime it is lost and must start over. That is why this asks for the
+# full 12 h in `main` rather than the faster-starting `develop` queue, whose
+# hard 6 h cap leaves too little margin for a 10-year global run.
+
+#PBS -N clima_long_run
+#PBS -A UCIT0011
+#PBS -q main
+#PBS -l select=1:ncpus=4:ngpus=1
+#PBS -l walltime=12:00:00
+#PBS -j oe
+
+set -euo pipefail
+
+: "${LONG_RUN_SCRIPT:?set LONG_RUN_SCRIPT, e.g. -v LONG_RUN_SCRIPT=snowy_land_pmodel.jl}"
+
+cd "${PBS_O_WORKDIR:?}"
+
+# Match the module the calibration member jobs load, so every run in the
+# pipeline shares one Julia stack.
+module load climacommon/2026_04_08
+
+# Required on Derecho's Lustre scratch, else NC_EHDFERR (-101) writing NetCDF.
+export HDF5_USE_FILE_LOCKING=FALSE
+export CLIMACOMMS_CONTEXT=SINGLETON
+export CLIMACOMMS_DEVICE=CUDA
+
+echo "Long run starting on $(hostname) at $(date)"
+echo "  script:         ${LONG_RUN_SCRIPT}"
+echo "  PROGNOSTIC_LAI: ${PROGNOSTIC_LAI-<unset, prescribed MODIS LAI>}"
+echo "  RUN_YEARS:      ${RUN_YEARS:-<script default>}"
+echo "  OUTPUT_ROOT:    ${OUTPUT_ROOT:-<repo root>}"
+
+julia --project=.buildkite "experiments/long_runs/${LONG_RUN_SCRIPT}"
+
+echo "Long run finished at $(date)"
