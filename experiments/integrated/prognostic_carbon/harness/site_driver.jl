@@ -350,6 +350,12 @@ if carbon_on
     pf = simulation._integrator.p
     scalar(field) = first(Array(parent(field)))
     open(joinpath(root_path, "carbon_metrics.txt"), "a") do io
+        tau_scale_field =
+            ClimaLand.Canopy.tau_stem_scale.(
+                Yf.canopy.biomass.T_annual,
+                model.canopy.biomass.parameters.T_ref_τ_stem,
+                model.canopy.biomass.parameters.q_τ_stem,
+            )
         for (label, field) in (
             ("C_sugar_kgC_m2", Yf.canopy.biomass.C_sugar),
             ("C_leaf_kgC_m2", Yf.canopy.biomass.C_leaf),
@@ -360,6 +366,12 @@ if carbon_on
             ("Rm_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Rm),
             ("Ra_carbon_kgC_m2_s", pf.canopy.biomass.carbon.Ra),
             ("S_alloc_kgC_m2_s", pf.canopy.biomass.carbon.S),
+            # Mean annual temperature and the stem-turnover multiplier it drives.
+            # A 2-year run cannot show the turnover change in the pools - over
+            # that span C_stem is set by growth, not turnover - so these make the
+            # mechanism itself checkable instead.
+            ("T_annual_K", Yf.canopy.biomass.T_annual),
+            ("tau_stem_scale", tau_scale_field),
             ("L_leaf_kgC_m2_s", pf.canopy.biomass.carbon.L_leaf),
             ("L_stem_kgC_m2_s", pf.canopy.biomass.carbon.L_stem),
             ("L_root_kgC_m2_s", pf.canopy.biomass.carbon.L_root),
