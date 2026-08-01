@@ -221,7 +221,18 @@ diagnostics = ClimaLand.default_diagnostics(
     start_date;
     output_writer = diag_writer,
     reduction_period = :daily,
-    output_vars = ["gpp", "lai", "ra", "hr", "tair", "swc", "rd", "ct", "fc3"],
+    output_vars = [
+        "gpp",
+        "lai",
+        "ra",
+        "hr",
+        "tair",
+        "swc",
+        "rd",
+        "ct",
+        "fc3",
+        "pra",
+    ],
 );
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
@@ -370,7 +381,10 @@ if get(ENV, "DUMP_DRIVERS", "1") == "1"
         # plotting convention). The underlying canopy temperature is finite -
         # the coupled model is unaffected - but the record needs a fallback, and
         # with no canopy the canopy temperature relaxes to air temperature.
-        cols = ("gpp", "rd", "ct", "tair", "fc3", "lai")
+        # `pra` is the trailing-year precipitation total the Zhou model already
+        # carries - the mean annual precipitation MODEL.md §3 says to reuse
+        # rather than declare afresh. Needed for the climate-varying allocation.
+        cols = ("gpp", "rd", "ct", "tair", "fc3", "lai", "pra")
         series = Dict{String, Any}()
         times = nothing
         for c in cols
