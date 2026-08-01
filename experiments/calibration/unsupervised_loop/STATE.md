@@ -151,7 +151,51 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   5 h 30 m walltime (which expires 03:46). REVISED ESTIMATE for the remaining
   work: chunks 3-5 at ~2 h 15 m each ≈ 6 h 45 m, so stage 1 should finish around
   07:00-07:30 on 2026-08-01 if concurrency holds.
-- **calibrated parameters:** — (not final; iteration 1 of 5 done)
+- **ITERATION 2 COMPLETE (2026-08-01 00:08).** Chunk 2 ran in **1 h 52 m** — the
+  warm start and full 21-way concurrency delivered. **All 21 members completed,
+  zero failures, zero segfaults**, which supports reading member 3's crash as
+  transient/hardware: no recurrence. Chunk 3 (`6971281`, `N_ITERATIONS=3`)
+  submitted 00:10 and running.
+
+  | parameter | prior | it.1 | it.2 | bounds |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.4295 | 0.4617 | 0.4066 | 0.2–0.7 |
+  | pmodel_β_c3 | 87.05 | 41.44 | 32.42 | 10–300 |
+  | pmodel_β_c4 | 5.121 | 18.00 | 9.125 | 1–100 |
+  | pmodel_α | 0.0268 | 0.02869 | 0.03244 | 0.001–0.15 |
+  | moisture_stress_c | 0.5947 | 0.7168 | 0.6197 | 0.05–1.0 |
+  | leaf_Cd | 0.06922 | 0.04393 | 0.06503 | 0–Inf |
+  | canopy_z_0m_coeff | 0.3520 | 0.1578 | 0.1834 | 0–0.5 |
+  | canopy_z_0b_coeff | 0.04422 | 0.09765 | **0.08586** | 0–0.1 |
+  | canopy_d_coeff | 0.05446 | 0.05019 | 0.03263 | 0–1.0 |
+  | canopy_K_lw | 0.9168 | 1.229 | 1.215 | 0–2.0 |
+
+  **`canopy_z_0b_coeff` backed OFF the bound** (0.09765 → 0.08586). It is not
+  pinned; the iteration-1 alarm has receded. Keep watching, but do not treat it
+  as a mis-specified prior on current evidence.
+
+- **⚠ THE MISFIT SERIES IS NOT A CONVERGENCE DIAGNOSTIC HERE — important.**
+  Misfit went 0.157 → **0.173**, i.e. UP. That is NOT evidence of divergence,
+  because `minibatch_size = 2`: `run_calibration.jl:117` builds the
+  `ObservationSeries` with `minibatcher_over_samples(16, 2)`, so EACH ITERATION
+  SCORES A DIFFERENT PAIR OF YEARS. The two numbers are computed on different
+  data and are not comparable. `loop_prompt.md`'s "the loss decreased across
+  iterations" check is therefore misleading for this config, and must not be
+  applied naively.
+  **Use instead:** parameter means ceasing to move materially, which is the
+  other criterion the prompt gives. For a like-for-like loss comparison one would
+  have to score a fixed batch, which the pipeline does not currently do.
+- **⚠ 5 ITERATIONS DOES NOT COMPLETE ONE EPOCH.** 16 samples at minibatch 2 is
+  **8 iterations per epoch**, so `n_iterations = 5` sees only 10 of the 16
+  sample years — some data is never used, and no parameter has been scored
+  against the full record. This is a principled reason the reference run's **9**
+  iterations may have been the right choice (one full epoch plus one), rather
+  than an arbitrary preference. RECOMMENDATION to weigh at iteration 5: extend
+  to at least 8, ideally 9, per the ITERATIONS section of `loop_prompt.md`
+  (raise `n_iterations`, commit `[skip ci]`, resubmit with the same
+  `CAL_OUTPUT_DIR`). Report the reasoning in the PR rather than extending
+  silently.
+- **calibrated parameters:** — (not final; iteration 2 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and

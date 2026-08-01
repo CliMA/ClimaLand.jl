@@ -435,3 +435,48 @@ does not expire until 03:46, so there is no pressure.
 **Next.** On chunk 2 completion: check whether the misfit fell from 0.157,
 re-check `canopy_z_0b_coeff` against its 0.1 bound (0.09765 after iteration 1),
 count crashed members, and submit chunk 3.
+
+## 2026-08-01 — iteration 15: iteration 2 done; the misfit series is misleading
+
+Chunk 2 finished at 00:08 in **1 h 52 m**, beating the 2 h 15 m projection —
+warm start plus 21-way concurrency. **All 21 members completed, zero failures,
+zero segfaults.** No recurrence of the member-3 crash, which supports reading it
+as transient or hardware rather than systematic. Chunk 3 (`6971281`) went in at
+00:10 and is running.
+
+**The misfit went UP: 0.157 → 0.173. This is not divergence, and the naive
+reading would have been wrong.** `run_calibration.jl:117` builds the
+`ObservationSeries` with `minibatcher_over_samples(16, 2)`, so **each iteration
+scores a different pair of years**. The two misfit values are computed on
+different data and are simply not comparable.
+
+That matters beyond this one number: `loop_prompt.md` lists "the loss decreased
+across iterations" as a sanity check before declaring a stage successful. For
+this config that check is invalid, and applying it naively would either condemn
+a healthy run or bless a bad one depending on which years each batch drew. The
+usable criterion is the other one the prompt gives — parameter means ceasing to
+move materially. A like-for-like loss would require scoring a fixed batch, which
+the pipeline does not currently do.
+
+**A second consequence, which bears on the `n_iterations` question.** 16 samples
+at minibatch 2 is **8 iterations per epoch**. So `n_iterations = 5` never
+completes one epoch — it sees 10 of the 16 sample years, and no parameter set is
+ever scored against the full record. That gives a principled reason why the
+reference run's 9 iterations may have been deliberate (one epoch plus one)
+rather than someone simply letting it run. I will recommend extending to 8-9 at
+iteration 5, with the reasoning in the PR, rather than extending silently or
+stopping at 5 out of deference to the config.
+
+**`canopy_z_0b_coeff` backed off its bound**: 0.09765 → 0.08586 against a limit
+of 0.1. Not pinned. The iteration-1 alarm has receded, and on current evidence
+the prior is not mis-specified — worth continuing to watch, not worth reporting
+as a defect.
+
+Parameters are still moving. `pmodel_β_c4` swung 5.12 → 18.0 → 9.13 and
+`canopy_z_0m_coeff` 0.352 → 0.158 → 0.183, so there is oscillation; but
+`pmodel_β_c3` (87 → 41 → 32) and `pmodel_α` (0.0268 → 0.0287 → 0.0324) are
+drifting monotonically. Nothing has settled at iteration 2 of 5, which is
+expected.
+
+**Next.** Chunk 3 → iteration 3. Judge convergence on parameter movement, not on
+the misfit series.
