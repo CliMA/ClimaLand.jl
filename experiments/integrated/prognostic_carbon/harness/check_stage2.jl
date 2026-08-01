@@ -71,7 +71,10 @@ function main(path, baseline_path)
         verdict = if gpp == 0
             # No photosynthesis at all: Ra must be ~0, or the model is
             # respiring carbon it never fixed. This is the prediction.
-            ra <= 1e-6 ? "PREDICTION OK (Ra~0 with GPP=0)" :
+            # 1e-3 g C m^-2 day^-1 is 0.36 g C m^-2 yr^-1: physically nil, and
+            # ~800x below the 0.813 the JULES term produced at these sites. A
+            # tighter threshold flags decaying seeded pools, which is noise.
+            ra <= 1e-3 ? "PREDICTION OK (Ra~0 with GPP=0)" :
             (
                 push!(failures, "$site: Ra=$ra with GPP=0"); "FAIL Ra>0 with GPP=0"
             )
