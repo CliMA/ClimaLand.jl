@@ -627,7 +627,28 @@ those two, so it remains the right check.
 
 ## Stage 3 — prognostic SOC
 
-- **status:** not_started
+- **status:** not_started — **unblocked, this is the next work**
+- **what it must do:** `dY.soilco2.SOC = I_litter(z) − Sm`. Today
+  `make_compute_exp_tendency(::SoilCO2Model)` sets `dY.soilco2.SOC = 0`, and
+  `MicrobeProduction` adds `Sm` to CO₂ and subtracts O₂ but **never debits SOC**
+  — the soil carbon balance is open, the same class of defect stage 2 just
+  closed on the plant side.
+- **litter input:** `(L_leaf + L_stem)/Δz_top` in the top layer plus
+  `L_root·root_distribution(z, rooting_depth)` through the column. The three
+  litter fluxes are already computed and cached by `update_carbon_fluxes!` as
+  `p.canopy.biomass.carbon.L_leaf/L_stem/L_root`, so stage 3 consumes them
+  rather than recomputing.
+- **coupling:** made in the integrated model, as
+  `soil_canopy_root_interactions.jl` does for root water extraction. Standalone
+  `SoilCO2Model` keeps zero/prescribed litter and its existing tests must pass.
+- **acceptance:** soil C conservation test passes; the battery shows SOC
+  drifting slowly (not collapsing, not exploding) with Rh within a factor of ~2
+  of its stage-0 baseline at every site.
+- **watch for:** `SOC` is a *prognostic* variable already in `Y`, so it is
+  already in `implicit_timestepping.jl`'s `explicit_vars` — unlike the carbon
+  pools, no new Jacobian entry is needed. Confirm rather than assume.
+- **failure signature to check:** SOC collapsing to zero within a few years
+  means litter is not reaching the soil, or `Sm` is being double-debited.
 - **`dY.soilco2.SOC` wired to litter − Sm:** no
 - **soil C conservation test passes:** no
 - **Rh vs stage-0 baseline:** —
