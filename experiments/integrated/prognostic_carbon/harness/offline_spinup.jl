@@ -93,13 +93,41 @@ function woody_fraction(MAP, half, n)
 end
 
 """
+    tau_stem_scale(MAT, T_ref_tau, q)
+
+Multiplier on stem turnover time as a function of mean annual temperature.
+Cold columns hold their wood longer - boreal trees live for centuries where
+temperate ones live decades - so τ_stem rises toward the cold as
+`q^((T_ref_tau - MAT)/10)`, and is flat above `T_ref_tau`.
+
+MAT is a *climate* mean over the whole record, not the instantaneous
+temperature: stem longevity is a property of where a plant grows, not of the
+weather on a given day.
+
+`q = 1` disables the mechanism and recovers constant τ_stem exactly.
+"""
+function tau_stem_scale(MAT, T_ref_tau, q)
+    q <= 1 && return one(MAT)
+    return q^(max(T_ref_tau - MAT, zero(MAT)) / 10)
+end
+
+"""
     step_pools(pools, drivers, i, params, dt)
 
 One explicit Euler step of the four pools, using exactly the fluxes
 `update_carbon_fluxes!` computes. Returns the updated pools and the fluxes, so
 the caller can report `Ra` and litter without recomputing them.
 """
-function step_pools(pools, d, i, p, dt; map_half = 0.0, map_n = 2.0)
+function step_pools(
+    pools,
+    d,
+    i,
+    p,
+    dt;
+    map_half = 0.0,
+    map_n = 2.0,
+    tau_scale = 1.0,
+)
     (C_sugar, C_leaf, C_stem, C_root) = pools
     MAP = haskey(d, "pra") ? d["pra"][i] : zero(FT)
     w = woody_fraction(MAP, map_half, map_n)
@@ -128,7 +156,7 @@ function step_pools(pools, d, i, p, dt; map_half = 0.0, map_n = 2.0)
     # it gives up goes to roots, so the three fractions still sum to one.
     f_stem = blend(p.f_stem_c3, p.f_stem_c4) * w
     f_root = 1 - f_leaf - f_stem
-    τ_stem = blend(p.τ_stem_c3, p.τ_stem_c4)
+    τ_stem = blend(p.τ_stem_c3, p.τ_stem_c4) * tau_scale
 
     L_leaf = C_leaf / p.τ_leaf
     L_stem = C_stem / τ_stem
@@ -157,15 +185,21 @@ function spinup(
     pools0 = (FT(0), FT(0), FT(0), FT(0)),
     map_half = 0.0,
     map_n = 2.0,
+    T_ref_tau = 0.0,
+    q_tau = 1.0,
 )
     n = length(d["gpp"])
+    # MAT is a climate mean over the record, evaluated once - not a per-step
+    # quantity - because stem longevity reflects where a plant grows.
+    MAT = haskey(d, "tair") ? sum(d["tair"]) / length(d["tair"]) : FT(0)
+    tau_scale = tau_stem_scale(MAT, T_ref_tau, q_tau)
     pools = pools0
     steps = round(Int, years * n)
     acc = (; Ra = FT(0), litter = FT(0), GPP = FT(0), S = FT(0))
     nacc = 0
     for k in 1:steps
         i = mod1(k, n)
-        pools, fl = step_pools(pools, d, i, p, dt; map_half, map_n)
+        pools, fl = step_pools(pools, d, i, p, dt; map_half, map_n, tau_scale)
         if k > steps - n  # last cycle only
             acc = (;
                 Ra = acc.Ra + fl.Ra,
