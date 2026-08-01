@@ -1465,3 +1465,43 @@ If a turn is running long, re-arm first and continue in the next iteration.
 ## Blockers
 
 None recorded.
+
+---
+
+## Stage 5b — the global equilibrium map (opened 2026-08-01, iteration 37)
+
+The project goal names **magnitude *and* spatial pattern**. Twenty columns test
+only magnitude. This is the half that was still missing.
+
+**Prerequisite settled first.** `harness/check_monthly_drivers.jl` coarsens the
+battery's daily driver records to monthly means and re-integrates. Result:
+**median 0.4%, max 3.3%** change in equilibrium `C_stem` across all 20 sites.
+Monthly global output is therefore adequate, which is what makes a global map
+affordable at all. Do not skip this justification if the pipeline is revisited —
+`Rm` carries a Q10 and a saturating ramp, so Jensen's inequality guarantees
+*some* bias; the point is that it was measured and is small.
+
+**Pipeline:**
+1. `harness/global_driver.jl` + `run_global_driver.pbs` — global 1°×1° coupled
+   run, prognostic LAI, **carbon pools OFF**. Phase-1 coupling is one-way, so
+   the drivers are bit-identical with and without the pools and rule 1 holds by
+   construction. Writes monthly `gpp lai rd ct tair fc3 pra` and nothing else.
+2. `harness/global_equilibrium.jl` — threads over land columns, integrates each
+   to steady state, writes `equilibrium_carbon.nc`, scores **spatial
+   correlation** against all six gridded ILAMB products.
+
+Spatial correlation is the metric of interest, not bias: the products disagree
+on magnitude by a median factor of 3.4×, so pattern is the stronger evidence.
+
+**Live:** job `6977392` (`pc_gsmoke`) — 40-day smoke test to prove the script
+builds the model and the writer resolves, before spending a 2-year global run on
+an untested script. Monitor armed on `.status` (files only — `qstat` is
+sandboxed inside monitors).
+
+**Note:** an existing 10-year global prognostic-LAI run sits at
+`/glade/derecho/scratch/arenchon/claude/snowy_land_pmodel_opt_lai_longrun_gpu/`
+with monthly `gpp lai tair pra fc3 tsoil ra` — everything except **`rd`**. It
+belongs to the other loop; read only, never write. `rd` could in principle be
+inverted from `ra` (Ra = Rpm + Rel·max(An−Rpm,0), f_T ≡ 1 since Q10 = 1), but
+the inversion is branch-dependent through the `max` and would not survive
+monthly averaging — hence running our own driver output instead.
