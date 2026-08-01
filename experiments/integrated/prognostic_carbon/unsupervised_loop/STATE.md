@@ -1158,8 +1158,15 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
 ## Published artifact — model description & results
 
 **URL:** https://claude.ai/code/artifact/abe376d5-57dc-430d-8fcc-b0fd8237e900
-Linked at the top of the pinned status comment. Source lives in the session
-scratchpad as `carbon_model.html`.
+Linked at the top of the pinned status comment. **The source is now committed as
+`experiments/integrated/prognostic_carbon/model_description.html`** so it
+survives the session scratchpad — republish from there (or from the scratchpad
+copy) to keep the same URL.
+
+Contents: the pool and soil equations, the design rationale, and four figures
+built from committed battery output — equilibrium cVeg against biome targets,
+pool composition, required τ_stem against mean annual temperature, and the model
+against the spread of six observational biomass products.
 
 To UPDATE it rather than mint a new URL, republish with the **same file path**
 in the same conversation, or pass that URL as the `url` argument from any other
