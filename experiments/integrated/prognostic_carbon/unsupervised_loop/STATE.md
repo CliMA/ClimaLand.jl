@@ -627,7 +627,21 @@ those two, so it remains the right check.
 
 ## Stage 3 — prognostic SOC
 
-- **status:** not_started — **unblocked, this is the next work**
+- **status:** in_progress — **half done, and the halves must not be run apart**
+- **DONE (2026-07-31):** `MicrobeProduction` now debits `Sm` from SOC, closing
+  the soil carbon balance. Standalone biogeochemistry tests updated to the new
+  physics (`dY.soilco2.SOC == -Sm`) and passing, as are the saturation-stability
+  tests.
+- **NOT YET DONE:** the canopy→soil litter input. **Until it lands, SOC decays
+  everywhere with no source.** Do NOT run a battery in this state and read the
+  SOC drift as a result — it would show collapse by construction, which is the
+  stage-3 failure signature and would be a self-inflicted false positive.
+- **next:** add `SoilCarbonLitterInput <: AbstractCarbonSource` reading a cache
+  field owned by the integrated model (mirroring how `RootExtraction` reads
+  `p.root_extraction`), and pass it via the `SoilCO2Model` `sources` tuple in
+  the integrated constructor. The standalone model simply does not get the
+  source, so its zero-litter behaviour is preserved structurally rather than by
+  a flag.
 - **what it must do:** `dY.soilco2.SOC = I_litter(z) − Sm`. Today
   `make_compute_exp_tendency(::SoilCO2Model)` sets `dY.soilco2.SOC = 0`, and
   `MicrobeProduction` adds `Sm` to CO₂ and subtracts O₂ but **never debits SOC**

@@ -493,13 +493,18 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil and consumption of O2
-SOC is held constant (initialized from data, no tendency).
+case of microbe production of CO2 in soil and consumption of O2.
 
 Physics:
 - CO2 production from microbial respiration (kg C m⁻³ s⁻¹)
+- the same carbon debited from SOC, so the soil carbon balance closes
 - O2 consumption with correct stoichiometry: C + O₂ → CO₂
   For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
+
+The SOC debit means SOC decays wherever there is no litter input. In the
+standalone `SoilCO2Model` there is none, so SOC declines; the canopy litter
+input that balances it is added by the integrated model, the same way root water
+extraction is coupled.
 """
 NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -509,6 +514,9 @@ NVTX.@annotate function ClimaLand.source!(
     params,
 )
     dY.soilco2.CO2 .+= p.soilco2.Sm
+    # Debit the same carbon from SOC. Without this the model produces CO2 from a
+    # pool that is never drawn down, leaving the soil carbon balance open.
+    dY.soilco2.SOC .-= p.soilco2.Sm
 
     FT = eltype(p.soilco2.Sm)
     # Stoichiometry of aerobic respiration C + O₂ → CO₂: 1 mol O₂ consumed per
