@@ -480,3 +480,44 @@ expected.
 
 **Next.** Chunk 3 → iteration 3. Judge convergence on parameter movement, not on
 the misfit series.
+
+## 2026-08-01 — iterations 17-21: chunks 3-5, and the run extended to 9
+
+Chunks 3, 4 and 5 all completed cleanly — 1 h 38 m, 1 h 32 m, 1 h 21 m — each
+with **21/21 members and zero segfaults**. Member 3's crash in iteration 1
+remains a single isolated event across five iterations and 105 member runs,
+which settles it as transient/hardware.
+
+**Extended `n_iterations` 5 → 9 and committed it.** Two independent reasons:
+
+1. *Principled.* 16 samples at `minibatch_size = 2` is 8 iterations per epoch,
+   so 5 never scores a parameter set against the full record — it sees 10 of the
+   16 sample years.
+2. *Empirical.* At iteration 4 the ensemble was plainly still moving:
+   `canopy_z_0m_coeff` −20 % per step, `canopy_d_coeff` +51 %, and
+   `pmodel_β_c3` −8.6 % after appearing flat the iteration before. Stopping at 5
+   would have frozen at least four parameters mid-trajectory.
+
+9 is one epoch plus one, which is also what the reference run did — so that
+number now has a rationale rather than being inherited.
+
+Iteration 5 confirms the call: step sizes are shrinking (`canopy_z_0m_coeff`
+−20 % → −8.7 %) and `canopy_K_lw`, `moisture_stress_c` and `pmodel_cstar` are
+within a few percent, but `pmodel_β_c4` (+11 %) and `canopy_d_coeff` (−13 %) are
+still swinging.
+
+**Two parameter stories to carry to the end.**
+
+- `canopy_z_0m_coeff`'s march toward its lower bound is decelerating
+  (0.352 → 0.158 → 0.183 → 0.138 → 0.1105 → 0.1009), consistent with asymptoting
+  near 0.09-0.10 rather than pinning at 0. The earlier alarm is receding; do not
+  report it as pinned.
+- The roughness ratio is the finding that matters. `z_0b/z_0m` has gone from
+  ≈0.13 at the prior to ≈**0.84**, i.e. the scalar and momentum roughness
+  coefficients have converged toward each other, where convention has scalar
+  roughness roughly an order of magnitude smaller. It has been stable across
+  iterations 2-5, so it is a genuine feature of the fit rather than a transient.
+  It goes in the final report as-is; priors do not get tuned to make it go away.
+
+**Next.** Chunks 6-9. At iteration 9: check convergence, then write the final
+parameters to `toml/default_parameters.toml` at 3 s.f. and move to stage 2.

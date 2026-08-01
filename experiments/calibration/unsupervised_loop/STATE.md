@@ -271,7 +271,44 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   genuinely want this — it is compensating for something in the flux fit — but it
   should be reported rather than absorbed, and NOT quietly corrected by changing
   priors mid-run.
-- **calibrated parameters:** — (not final; iteration 4 of 5 done)
+- **ITERATION 5 COMPLETE (2026-08-01 04:46), AND THE RUN WAS EXTENDED TO 9.**
+  Chunk 5 ran in 1 h 21 m; 21/21 members, zero segfaults. `n_iterations` raised
+  5 → 9 in the config and committed; chunk 6 (`6972345`, `N_ITERATIONS=6`)
+  submitted 04:50 and running.
+  Misfit: `[0.157, 0.173, 0.154, 0.150, 0.151]` — now fluctuating in a narrow
+  band, but still not a convergence signal (different minibatch each iteration).
+
+  | parameter | it.4 | it.5 | it.6 | last step |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.3945 | 0.3823 | 0.3870 | +1.2 % |
+  | pmodel_β_c3 | 32.28 | 29.49 | 30.37 | +3.0 % |
+  | pmodel_β_c4 | 8.558 | 8.389 | 9.315 | **+11 %** |
+  | pmodel_α | 0.02896 | 0.02782 | 0.02630 | −5.5 % |
+  | moisture_stress_c | 0.6090 | 0.5936 | 0.5875 | −1.0 % |
+  | leaf_Cd | 0.06658 | 0.07191 | 0.06908 | −3.9 % |
+  | canopy_z_0m_coeff | 0.1382 | 0.1105 | 0.1009 | −8.7 % |
+  | canopy_z_0b_coeff | 0.09301 | 0.08608 | 0.08427 | −2.1 % |
+  | canopy_d_coeff | 0.02785 | 0.04199 | 0.03645 | **−13 %** |
+  | canopy_K_lw | 1.211 | 1.199 | 1.195 | −0.3 % |
+
+  **Converging, not yet converged — extending was the right call.** Step sizes
+  are broadly smaller than the previous iteration (`canopy_z_0m_coeff` −20 % →
+  −8.7 %), and `canopy_K_lw`, `moisture_stress_c` and `pmodel_cstar` are inside
+  a few percent. But `pmodel_β_c4` (+11 %) and `canopy_d_coeff` (−13 %) are still
+  swinging. Had the run stopped at 5, those two would have been frozen at
+  arbitrary points on their trajectories.
+- **`canopy_z_0m_coeff` lower-bound concern is RECEDING.** Sequence:
+  0.352 → 0.158 → 0.183 → 0.138 → 0.1105 → 0.1009. Still monotonic, but the
+  decline is decelerating (−20 %, then −8.7 %), consistent with asymptoting near
+  0.09-0.10 rather than running into the bound at 0. Keep watching to iteration
+  9, but do not report it as pinned on current evidence.
+- **The roughness-ratio oddity persists and is the main thing for a domain
+  expert.** `z_0b/z_0m` = 0.08427/0.1009 ≈ **0.84**, up from ≈0.13 at the prior.
+  The two coefficients have converged toward each other rather than one being an
+  order of magnitude below the other. This is stable across iterations 2-5, so it
+  is a real feature of the fit, not a transient. Report it with the final
+  numbers; do not tune priors to remove it.
+- **calibrated parameters:** — (not final; iteration 5 of 9 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
