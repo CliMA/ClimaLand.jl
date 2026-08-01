@@ -1,0 +1,98 @@
+## Global driver run for the prognostic-carbon equilibrium map (stage 5).
+##
+## The project goal names *spatial pattern*, which twenty columns cannot test.
+## This produces the global driver climatology the offline pool integrator needs,
+## on the same 1x1 degree lat-lon grid the ILAMB biomass products use.
+##
+## The carbon model is deliberately **not** run here. Phase-1 coupling is
+## one-way - the pools consume GPP and LAI and feed nothing back - so the drivers
+## are identical with and without them, and a CARBON=0 run costs less while
+## making rule 1 true by construction rather than by inspection.
+##
+## Monthly means are sufficient: `check_monthly_drivers.jl` compares
+## daily-driven against monthly-driven equilibria at all twenty battery sites and
+## finds a median difference of 0.4% and a maximum of 3.3%, against a 3.4x spread
+## among the observational products themselves.
+##
+## Usage (see run_global_driver.pbs):
+##   julia --project=.buildkite global_driver.jl
+
+import ClimaComms
+ClimaComms.@import_required_backends
+using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities
+import ClimaUtilities.TimeManager: ITime, date
+import ClimaParams as CP
+using ClimaCore
+using ClimaLand
+using ClimaLand.Snow
+using ClimaLand.Soil
+using ClimaLand.Canopy
+import ClimaLand
+import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
+using Dates
+
+const FT = Float64
+
+context = ClimaComms.context()
+ClimaComms.init(context)
+device = ClimaComms.device()
+
+outroot = get(
+    ENV,
+    "GLOBAL_OUTDIR",
+    "/glade/derecho/scratch/arenchon/claude/prognostic_carbon/global_drivers",
+)
+outdir = ClimaUtilities.OutputPathGenerator.generate_output_path(outroot)
+
+start_date = DateTime(get(ENV, "START", "2008-03-01"))
+stop_date = DateTime(get(ENV, "STOP", "2010-03-01"))
+Δt = parse(FT, get(ENV, "DT", "900.0"))
+
+domain =
+    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+toml_dict = LP.create_toml_dict(FT)
+surface_space = domain.space.surface
+
+atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    start_date,
+    stop_date,
+    surface_space,
+    toml_dict,
+    FT;
+    max_wind_speed = 25.0,
+    context,
+)
+
+# No prescribed LAI argument, so the LandModel constructor selects the prognostic
+# optimal-LAI model - the same configuration the battery runs under.
+model = LandModel{FT}(
+    (; atmos, radiation),
+    toml_dict,
+    domain,
+    Δt;
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2),
+)
+
+# Exactly the columns `read_driver_record` consumes, and no more: every extra
+# global field is gigabytes of NetCDF for nothing. `tair` is carried because the
+# `ct` diagnostic is NaN-masked wherever there is no canopy and needs a fallback.
+driver_vars = ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra"]
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date;
+    output_writer = ClimaLand.Diagnostics.NetCDFWriter(surface_space, outdir),
+    reduction_period = :monthly,
+    output_vars = driver_vars,
+)
+
+simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics)
+
+@info "global driver run" start_date stop_date Δt device outdir
+@info "resolution" nelements = domain.nelements
+@info "driver vars" driver_vars
+
+solve!(simulation)
+
+@info "GLOBAL_DRIVER_DONE" outdir

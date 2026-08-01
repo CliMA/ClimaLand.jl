@@ -1,0 +1,58 @@
+#!/bin/bash
+# Global driver run for the stage-5 equilibrium map.
+#
+# Produces monthly-mean gpp/lai/rd/ct/tair/fc3/pra on the global 1x1 degree grid,
+# which `global_equilibrium.jl` then integrates to steady state column by column.
+# The carbon model is off: phase-1 coupling is one-way, so the drivers are
+# identical with and without it and rule 1 holds by construction.
+#
+# Output goes to scratch, never the repo:
+#   /glade/derecho/scratch/arenchon/claude/prognostic_carbon/global_<jobid>/
+#
+# qsub environment transfer (-v / -V) is disabled on Derecho, so configuration is
+# read from a sidecar file selected by the job name, letting a smoke test and a
+# production run be queued without fighting over one conf:
+#   $PC_SCRATCH/global_<jobname>.conf   preferred
+#   $PC_SCRATCH/global.conf             fallback
+#
+# Submit:  qsub -N pc_gsmoke experiments/.../run_global_driver.pbs
+#PBS -N pc_global
+#PBS -A UCIT0011
+#PBS -q develop
+#PBS -l walltime=05:45:00
+#PBS -l select=1:ncpus=16:ngpus=1:mem=200GB
+#PBS -j oe
+#PBS -m n
+#PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+export HDF5_USE_FILE_LOCKING=FALSE   # intermittent HDF5 file-locking errors on Derecho Lustre
+REPO=/glade/u/home/arenchon/ClimaLand.jl
+JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+HARNESS=$REPO/experiments/integrated/prognostic_carbon/harness
+PC_SCRATCH=/glade/derecho/scratch/arenchon/claude/prognostic_carbon
+RUNROOT=$PC_SCRATCH/global_${PBS_JOBNAME:-run}_${PBS_JOBID:-local}
+mkdir -p "$RUNROOT"; cd "$RUNROOT"
+
+CONF=$PC_SCRATCH/global_${PBS_JOBNAME}.conf
+[[ -f "$CONF" ]] || CONF=$PC_SCRATCH/global.conf
+[[ -f "$CONF" ]] && { echo "CONF $CONF"; source "$CONF"; } || echo "CONF none (defaults)"
+
+export GLOBAL_OUTDIR="$RUNROOT/drivers"
+export START="${START:-2008-03-01}"
+export STOP="${STOP:-2010-03-01}"
+export DT="${DT:-900.0}"
+
+echo "GLOBAL start=$START stop=$STOP dt=$DT outdir=$GLOBAL_OUTDIR"
+"$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
+
+if "$JULIA" --project="$REPO/.buildkite" "$HARNESS/global_driver.jl" \
+    >"$RUNROOT/global_driver.log" 2>&1; then
+    echo PASS >"$RUNROOT/.status"
+    echo "GLOBAL_OK $RUNROOT"
+else
+    echo FAIL >"$RUNROOT/.status"
+    echo "GLOBAL_FAIL (see $RUNROOT/global_driver.log)"
+    tail -40 "$RUNROOT/global_driver.log"
+fi
+ls -la "$GLOBAL_OUTDIR"/output_active/ 2>/dev/null | head -20
