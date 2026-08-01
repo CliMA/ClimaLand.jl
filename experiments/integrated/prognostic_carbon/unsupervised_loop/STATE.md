@@ -946,6 +946,70 @@ had it started faster it would have fallen through to defaults (prescribed LAI,
 `CARBON=0`) and produced a plausible-looking run of the wrong configuration.
 Verify the `CONF` / `BATTERY` line in the job output before trusting any result.
 
+### NEGATIVE RESULT: precipitation alone cannot separate forest from grassland
+
+MODEL.md §2.3's fallback was implemented offline and swept against real
+`precip_annual` from job 6971245. **It does not work**, and the reason is
+structural rather than a bad choice of shape parameter.
+
+| map_half | woody in band | herb in band | C_stem gp / pampas / siberia |
+|---|---|---|---|
+| off (constant) | **6/9** | 2/5 | 8.92 / 13.55 / 2.07 |
+| 0.7 | 5/9 | **3/5** | 4.42 / 8.12 / 0.67 |
+| 1.5 | 5/9 | **3/5** | 1.60 / 3.37 / **0.20** |
+
+It buys one herbaceous site and costs one woody site, while reducing
+`central_siberia`'s stem pool from 2.07 to 0.20 — a boreal forest left with
+almost no wood, when it was **already** the most under-built site.
+
+**Why, in one table.** Mean annual precipitation at the four sites that matter:
+
+| site | biome | MAP (m yr⁻¹) |
+|---|---|---|
+| pampas_argentina | **grassland** | **0.928** |
+| us_great_plains | grassland | 0.699 |
+| canada_boreal | **boreal forest** | **0.567** |
+| central_siberia | **boreal forest** | **0.450** |
+
+**The wettest of the four is a grassland and the two driest are forests.** Any
+monotonically increasing `w(MAP)` therefore suppresses the boreal forests
+*harder* than the grassland it is meant to fix — by 2.2× at `map_half = 0.7` and
+3.4× at 1.5. The discriminator anti-correlates with the target for exactly the
+two hardest cases.
+
+`pampas_argentina` is a fire- and grazing-maintained grassland in a climate that
+would support forest. No function of mean annual temperature and precipitation
+encodes that, because it is not a climate fact. Adding temperature does not
+rescue it either: pampas (291 K) is *warmer* than the boreal sites (265–270 K),
+so a temperature term would have to increase woodiness toward the cold to help,
+which is physically backwards.
+
+**A separate finding, visible in the same data.** The boreal under-build is not
+an `f_stem` problem at all. Those sites have low GPP (1.2–2.6 g C m⁻² day⁻¹), so
+reaching the 5–15 kg C m⁻² target needs a *longer* `τ_stem` — real boreal trees
+live for centuries — rather than a larger allocation fraction. `τ_stem = 30 yr`
+is a compromise that fits neither boreal forest nor grassland, and the sweep
+shows `τ_stem` moves the two groups in opposite directions where `f_stem` cannot.
+
+**Not acted on.** Whether to pursue a `τ_stem` climate dependence, accept that
+fire-maintained grasslands are out of reach for a no-PFT model, or revisit the
+grassland target itself (MODEL.md §7 already warns the observations are woody
+and aboveground while the model carries root carbon) is a scientific judgement
+for the user, not something to settle unilaterally at 01:00.
+
+### Process note: a silent no-op edit produced a meaningless sweep
+
+The first run of this sweep reported `C_stem = 0.0` at **every** site including
+Amazon. Cause: a `python .replace()` without an assert, applied to a string the
+formatter had already reflowed, so the edit adding `"pra"` to the driver-record
+reader silently did nothing. With precipitation absent, `MAP = 0` everywhere and
+the mechanism zeroed all stem allocation — a result that would have read as
+"the fallback destroys everything".
+
+Caught by checking Amazon against expectation (MAP 2.44 with `map_half` 0.4
+should give `w ≈ 0.97`, i.e. almost no change) rather than by reading the table.
+**Every string edit in this harness now carries an assert.**
+
 ### Next
 
 Implement MODEL.md §2.3's fallback: `f_stem` (and correspondingly `f_root`)

@@ -34,8 +34,10 @@ function read_driver_record(path)
     header = split(strip(lines[1]), ',')
     idx = Dict(h => i for (i, h) in enumerate(header))
     n = length(lines) - 1
-    have =
-        [c for c in ("gpp", "rd", "ct", "tair", "fc3", "lai") if haskey(idx, c)]
+    have = [
+        c for c in ("gpp", "rd", "ct", "tair", "fc3", "lai", "pra") if
+        haskey(idx, c)
+    ]
     cols = Dict(c => Vector{FT}(undef, n) for c in have)
     for (j, line) in enumerate(lines[2:end])
         f = split(strip(line), ',')
