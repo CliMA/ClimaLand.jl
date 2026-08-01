@@ -446,7 +446,7 @@ function define_diagnostics!(land_model, possible_diags)
         units = "mol CO2 m^-2 s^-1",
         comments = "Leaf respiration, called dark respiration because usually measured in the abscence of radiation.",
         compute! = (out, Y, p, t) ->
-            compute_respiration_leaf!(out, Y, p, t, land_model),
+            compute_respiration_canopy!(out, Y, p, t, land_model),
     )
 
     # Vcmax25
