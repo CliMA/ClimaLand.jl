@@ -718,7 +718,43 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   reasoning that invalidated the "loss decreased across iterations" check for
   stage 1 (16 samples at minibatch 2, a different pair of years each iteration)
   does not apply here. Use the loss trend for stage 3.
-- **calibrated parameters:** —
+- **ITERATION 1 COMPLETE (2026-08-01 15:12).** Chunk 1 ran in 1 h 39 m; **11/11
+  members, zero segfaults, zero failed members.** Chunk 2 (`6977375`,
+  `N_ITERATIONS=2`) submitted 15:20.
+  G ensemble `(40424, 11)`, **0 NaN columns, finite fraction 1.0** — both masks
+  are doing their job (40424 ≈ 10113 natural-vegetation cells × 4 scored months).
+  Misfit: `[0.2229]`.
+
+- **THE REBUILT IC WORKS — this was the real test of stage 2.** `member_001`'s
+  simulated LAI shows a clean two-cycle seasonal signal: global mean oscillating
+  0.55 → 1.36, maxima ~5.4-5.6, finite throughout. No collapse, no NaN.
+  Crucially the winter minimum (~0.55) sits essentially at the IC's `lai_init`
+  mean (0.578), i.e. **the model starts near its own equilibrium**, which is
+  exactly what stage 2 existed to achieve — the 1-year spinup is adequate despite
+  `optimal_lai_tau_long_term` being 2 years.
+
+  | parameter | prior mean | after it.1 | bounds | % of range |
+  |---|---|---|---|---|
+  | optimal_lai_z | 14.92 | 9.326 | 1–40 | 21 % |
+  | optimal_lai_z_c4 | 14.92 | **36.45** | 1–40 | **91 %** ⚠ |
+  | optimal_lai_sigma | 0.9293 | 0.4933 | 0.1–3.0 | 14 % |
+  | optimal_lai_sigma_c4 | 0.9293 | **2.734** | 0.1–3.0 | **91 %** ⚠ |
+  | optimal_lai_alpha | 0.0685 | 0.1869 | 0.01–0.3 | 61 % |
+
+- **⚠ WATCH: both C4 parameters are at ~91 % of their range after ONE step.**
+  `optimal_lai_z_c4` → 36.45 against a bound of 40, and `optimal_lai_sigma_c4` →
+  2.734 against 3.0. Deliberately NOT calling this pinned yet: at stage 1
+  `canopy_z_0b_coeff` reached 97.7 % of its range at iteration 1 and then backed
+  off, so one iteration proves nothing.
+  There is a plausible reason it may be real, though. The C3/C4 split is NEW in
+  this PR, and `lai.jl:82-85` gives the C4 parameters priors IDENTICAL to the C3
+  ones (`z_c4` mean 15.0 like `z`; `sigma_c4` mean 0.939 like `sigma`) — the C4
+  priors are borrowed C3 defaults rather than independently chosen. If C4
+  vegetation genuinely wants a much larger z and sigma, that borrowed range is
+  simply too narrow, and the parameters will pin. **If they are still ≥95 % at
+  iteration 3-5, report it as a mis-specified prior — do NOT widen the bounds
+  mid-run.**
+- **calibrated parameters:** — (not final; iteration 1 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **notes:** —
 
