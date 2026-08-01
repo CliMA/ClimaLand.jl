@@ -1144,6 +1144,51 @@ precipitation did. Check the direction on the battery before building on it.
 Candidate predictors already in `soil.parameters`: sand/clay fraction, porosity,
 hydraulic conductivity, and the soil depth of the column.
 
+## FIRST OBSERVATIONAL COMPARISON (2026-08-01) — XuSaatchi woody biomass
+
+`harness/compare_biomass.jl` compares equilibrium `C_stem` against XuSaatchi
+(0.5°, 2000–2019, Mg C ha⁻¹ × 0.1). Per MODEL.md §7 the comparison is against
+the **woody** pool, not total cVeg, and grassland/arid cells are reported
+separately rather than counted as error.
+
+| zone | n | bias | RMSE | mean obs |
+|---|---|---|---|---|
+| tropics | 3 | **+1.68** | 3.83 | 15.19 |
+| arid | 3 | +0.77 | 1.38 | 0.09 |
+| boreal/tundra | 5 | +4.33 | 5.41 | 3.64 |
+| savanna | 3 | +7.54 | 9.16 | 1.23 |
+| temperate | 4 | +9.12 | 9.17 | 1.96 |
+| grassland | 2 | +11.45 | 11.64 | 0.04 |
+
+Woody zones only (n=15): bias +5.72, RMSE 7.20 kg C m⁻².
+
+**The tropics are genuinely good** — bias +1.68 against a mean observed 15.19,
+so ~11%. congo 18.68 vs 20.84, borneo 14.98 vs 13.95, amazon 16.97 vs 10.79.
+
+**τ_stem(MAT) is validated against observations, not just against the target
+band I wrote down.** `central_siberia` was 2.07 before the change and is 7.09
+after; XuSaatchi says **6.60**. That is a real, independent confirmation.
+
+**But it over-corrects at the other two boreal sites**: `canada_boreal`
+4.01 → 10.01 against obs 4.00, `fennoscandia` 5.05 → 8.18 against obs 4.08. So
+`q = 2` is too strong outside the coldest site. Worth re-tuning **against
+XuSaatchi** now that there is an observational target, rather than against the
+5–15 band.
+
+### The caveat that governs how the rest is read
+
+**A 0.5° observation cell is ~50 km and contains mixed land use** — cropland,
+pasture, settlement — while the model column is a single point chosen to
+represent natural vegetation of its biome. That biases model − obs **positive
+by construction**, and most strongly exactly where humans farm: temperate,
+grassland, savanna. `ozark_us` observes 2.08 kg C m⁻², far below any intact
+temperate forest, which is consistent with a cell that is largely agricultural.
+
+So the +9.12 temperate bias should **not** be read as pure model error. Before
+tuning against these numbers, either select cells with high natural-vegetation
+fraction, or compare against a land-cover-masked product. Tuning `f_stem` down
+to match a cropland-diluted observation would be fitting the model to land use.
+
 ## τ_stem(MAT) is in the model and verified (2026-08-01, job 6976081)
 
 Commit `e2fc0ea34`. 20/20 sites, **RULE 1 PASSES at all 20** — GPP and LAI
