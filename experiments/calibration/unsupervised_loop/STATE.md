@@ -354,7 +354,46 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   so per-iteration steps are noisy by construction. This is a further argument
   for running the full 9 (one epoch plus one) and, when judging the final answer,
   looking at the trend over the last few iterations rather than the last step.
-- **calibrated parameters:** — (not final; iteration 6 of 9 done)
+- **ITERATION 7 COMPLETE (2026-08-01 07:24).** Chunk 7 ran in 1 h 14 m; 21/21
+  members, zero segfaults. Chunk 8 (`6972840`, `N_ITERATIONS=8`) submitted 07:28.
+  Misfit: `[…, 0.1539, 0.1535]`.
+
+  | parameter | it.6 | it.7 | it.8 | last step |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.3870 | 0.3728 | 0.3655 | −2.0 % |
+  | pmodel_β_c3 | 30.37 | 25.90 | 24.94 | −3.7 % |
+  | pmodel_β_c4 | 9.315 | 8.352 | 8.891 | +6.5 % |
+  | pmodel_α | 0.02630 | 0.02516 | 0.02514 | **−0.08 %** |
+  | moisture_stress_c | 0.5875 | 0.5886 | 0.5907 | +0.4 % |
+  | leaf_Cd | 0.06908 | 0.06781 | 0.07003 | +3.3 % |
+  | canopy_z_0m_coeff | 0.1009 | 0.08303 | 0.08225 | −0.9 % |
+  | canopy_z_0b_coeff | 0.08427 | 0.09546 | 0.07297 | **−23.6 %** |
+  | canopy_d_coeff | 0.03645 | 0.04532 | 0.04160 | −8.2 % |
+  | canopy_K_lw | 1.195 | 1.175 | 1.156 | −1.6 % |
+
+- **CORRECTION: I overstated the roughness-ratio trend last iteration.** I
+  described it as "monotonic and still climbing" and called the inversion the
+  headline finding. Two things were wrong:
+    1. It was never monotonic. The sequence I quoted contains a decrease I
+       glossed over (0.62 → 0.47 between iterations 2 and 3).
+    2. The inversion did not persist. `canopy_z_0b_coeff` fell 23.6 % this
+       iteration, so `z_0b/z_0m` = 0.07297/0.08225 ≈ **0.89**, back below 1.
+  Accurate sequence: **0.126 (prior) → 0.62 → 0.47 → 0.67 → 0.78 → 0.84 → 1.15
+  → 0.89.** Rising strongly overall but oscillating, and the >1 excursion was a
+  single iteration.
+  **The substantive finding survives, restated correctly:** the ratio has settled
+  around **0.8-0.9 over the last four iterations, versus ~0.13 in the prior and a
+  conventional ~0.1** — roughly a factor of 7 higher than surface-layer theory
+  expects, with scalar and momentum roughness nearly equal. That is still well
+  worth a domain expert's attention. It is NOT a stable inversion, and I should
+  not have called it one on a single data point.
+- **`canopy_z_0m_coeff` has nearly stopped** (−0.9 %, 0.08303 → 0.08225) after
+  −17.7 % the iteration before. Deliberately NOT calling this convergence — I
+  made exactly that mistake at iteration 5 and it resumed falling. Judge it at
+  iteration 9 on the trend, not on one small step.
+- **`pmodel_α` is effectively converged** at 0.02514 (−0.08 %), i.e. τ ≈ 40 d.
+  Still firmly in the post-#1817 `1/τ` convention.
+- **calibrated parameters:** — (not final; iteration 7 of 9 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
