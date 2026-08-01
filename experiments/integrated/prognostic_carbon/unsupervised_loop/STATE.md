@@ -938,6 +938,14 @@ The target-independent statement is about the **stem** pool:
 wrong on any definition, and it is exactly the quantity the stage-5 comparison
 uses, since XuSaatchi is a woody-biomass product.
 
+### Operational note (2026-08-01)
+
+**Write the battery conf BEFORE `qsub`, not after.** Job 6971245 was submitted
+and the conf written seconds later; the job happened to read the right one, but
+had it started faster it would have fallen through to defaults (prescribed LAI,
+`CARBON=0`) and produced a plausible-looking run of the wrong configuration.
+Verify the `CONF` / `BATTERY` line in the job output before trusting any result.
+
 ### Next
 
 Implement MODEL.md §2.3's fallback: `f_stem` (and correspondingly `f_root`)
