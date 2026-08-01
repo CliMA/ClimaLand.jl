@@ -195,7 +195,39 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   (raise `n_iterations`, commit `[skip ci]`, resubmit with the same
   `CAL_OUTPUT_DIR`). Report the reasoning in the PR rather than extending
   silently.
-- **calibrated parameters:** — (not final; iteration 2 of 5 done)
+- **ITERATION 3 COMPLETE (2026-08-01 01:48).** Chunk 3 ran in 1 h 38 m;
+  **21/21 members completed, zero segfaults**. Chunk 4 (`6971902`,
+  `N_ITERATIONS=4`) submitted 01:50, running. All G blocks remain
+  `size=(647824, 21)` with 0 NaN and finite fraction 1.0.
+  Misfit: `[0.157, 0.173, 0.154]` — fluctuating, as expected given each
+  iteration scores a different minibatch. NOT a convergence signal; see above.
+
+  | parameter | prior | it.1 | it.2 | it.3 | trend |
+  |---|---|---|---|---|---|
+  | pmodel_cstar | 0.4295 | 0.4617 | 0.4066 | 0.3945 | drifting down |
+  | pmodel_β_c3 | 87.05 | 41.44 | 32.42 | 32.28 | **settled** |
+  | pmodel_β_c4 | 5.121 | 18.00 | 9.125 | 8.558 | settling |
+  | pmodel_α | 0.0268 | 0.02869 | 0.03244 | 0.02896 | oscillating |
+  | moisture_stress_c | 0.5947 | 0.7168 | 0.6197 | 0.6090 | settling |
+  | leaf_Cd | 0.06922 | 0.04393 | 0.06503 | 0.06658 | settling |
+  | canopy_z_0m_coeff | 0.3520 | 0.1578 | 0.1834 | 0.1382 | still moving |
+  | canopy_z_0b_coeff | 0.04422 | 0.09765 | 0.08586 | 0.09301 | oscillating high |
+  | canopy_d_coeff | 0.05446 | 0.05019 | 0.03263 | 0.02785 | drifting down |
+  | canopy_K_lw | 0.9168 | 1.229 | 1.215 | 1.211 | **settled** |
+
+  Read: `pmodel_β_c3` and `canopy_K_lw` have essentially stopped moving;
+  `pmodel_β_c4`, `moisture_stress_c` and `leaf_Cd` are settling; but
+  `canopy_z_0m_coeff`, `canopy_d_coeff` and `pmodel_cstar` are still drifting
+  materially at iteration 3 of 5. **Not converged.** This is direct evidence for
+  the epoch argument — stopping at 5 would freeze three parameters mid-drift.
+  `canopy_z_0b_coeff` keeps orbiting 0.086-0.098 against its 0.1 bound: never
+  pinned, but persistently pressed against it, so it stays on the watch list
+  even though the iteration-1 alarm was withdrawn.
+- **NOTE on extending:** no config edit is needed to go past 5. `N_ITERATIONS` is
+  an env override, so chunks 6-9 are just `N_ITERATIONS=6…9`. The config default
+  should still be updated to 9 if that becomes the conclusion, so the file
+  reflects reality rather than relying on how the loop happened to invoke it.
+- **calibrated parameters:** — (not final; iteration 3 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
