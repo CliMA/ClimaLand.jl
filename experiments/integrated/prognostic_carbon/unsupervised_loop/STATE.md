@@ -1617,3 +1617,33 @@ another four hours would have bought one bit. Resubmitted as **`6978215`**,
 instrumented and **without the GPU request** — asking for a GPU pulls in the
 CUDA stack whose precompile caches are broken on the shared depot, which is the
 most likely explanation for the very slow setup.
+
+### Global driver cost: 1° CPU is infeasible (2026-08-01, iteration 42)
+
+Smoke `6978215` (CPU, no GPU, 1°×1°, `nelements = (180, 360, 15)`, Δt = 900 s):
+
+| phase | cost |
+|---|---|
+| packages → domain built | ~30 s |
+| ERA5 forcing regrid | ~6 min |
+| LandModel construction | ~4 min |
+| solve | **< 31 simulated days in 47 min** |
+
+Extrapolated: a 730-day production run needs **> 18 hours**. The develop queue
+caps at 5:45, and even a 12-hour queue would not hold it.
+
+**The absent NetCDF file is real evidence here, unlike the empty log.** Checked
+the writer rather than assuming: `NetCDFWriter` defaults to
+`sync_schedule = nothing` on CPU (`EveryStepSchedule()` on CUDA), but the
+`NCDataset` is still created on the *first write*, which for `reduction_period
+= :monthly` is the end of month one. The output directory was created before
+diagnostics setup and has stayed empty since, so fewer than 31 days are done.
+
+Two viable routes, and the choice is being measured rather than guessed:
+1. **GPU** — every `*_longrun_gpu` directory in scratch is a 10-year global run,
+   so this is the established path and must be far faster. Smoke `6978388`
+   submitted to measure CUDA setup cost and solve rate. Bonus: on CUDA the
+   writer syncs every step, so progress is actually visible.
+2. **Coarsen to 2°** (`NLAT=90 NLON=180`) — 4× fewer columns, ~4.6 h solve, fits
+   the develop queue. Costs resolution but still tests spatial pattern, since
+   biome gradients are far broader than 2°.
