@@ -105,18 +105,18 @@ nfail=$(grep -rl '^FAIL$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
 # Baseline table: one row per site, tab-separated, for pasting into STATE.md.
 SUMMARY="$RUNROOT/baseline_summary.tsv"
 {
-    printf 'site\tbiome\tGPP_gC_m2_day\tRa_gC_m2_day\tRh_gC_m2_day\tLAI\tTair_K\tSWC\tC_sugar\tC_leaf\tC_stem\tC_root\tcVeg\tsigma_l_implied\tcSoil\n'
+    printf 'site\tbiome\tGPP_gC_m2_day\tRa_gC_m2_day\tRh_gC_m2_day\tLAI\tTair_K\tSWC\tC_sugar\tC_leaf\tC_stem\tC_root\tcVeg\tsigma_l_implied\tcSoil\tcSoil_init\tcSoil_dfrac\n'
     while IFS=, read -r lon lat biome name; do
         [[ "$lon" =~ ^# || "$lon" == "lon" || -z "$lon" ]] && continue
         m="$RUNROOT/$name/out/carbon_metrics.txt"
         [[ -f "$m" ]] || continue
         get() { awk -v k="$1" '$1==k{print $2}' "$m"; }
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$biome" \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$biome" \
             "$(get GPP_gC_m2_day)" "$(get Ra_gC_m2_day)" "$(get Rh_gC_m2_day)" \
             "$(get LAI_m2_m2)" "$(get Tair_K)" "$(get SWC_m3_m3)" \
             "$(get C_sugar_kgC_m2)" "$(get C_leaf_kgC_m2)" "$(get C_stem_kgC_m2)" \
             "$(get C_root_kgC_m2)" "$(get cVeg_kgC_m2)" "$(get sigma_l_implied_kgC_m2leaf)" \
-            "$(get cSoil_kgC_m2)"
+            "$(get cSoil_kgC_m2)" "$(get cSoil_initial_kgC_m2)" "$(get cSoil_frac_change)"
     done <"$CSV"
 } >"$SUMMARY"
 echo "--- baseline_summary.tsv ---"; cat "$SUMMARY"

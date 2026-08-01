@@ -247,6 +247,22 @@ if carbon_on
     end
 end
 
+# Column-integrated SOC at the initial state (from SoilGrids). Recorded before
+# solve! so the stage-3 drift criterion - SOC drifting slowly rather than
+# collapsing or exploding - can actually be evaluated; the final value alone
+# says nothing about the rate.
+cSoil_initial = try
+    tmp = ClimaCore.Fields.zeros(surface_space)
+    ClimaCore.Operators.column_integral_definite!(
+        tmp,
+        simulation._integrator.u.soilco2.SOC,
+    )
+    first(Array(parent(tmp)))
+catch e
+    @warn "initial cSoil diagnostic failed" exception = (e, catch_backtrace())
+    NaN
+end
+
 @info "Prognostic-carbon single-column battery site"
 @info "Site: $site_name  (lon=$site_lon, lat=$site_lat)  LAI: $lai_mode  carbon: $carbon_on  pool_Ra: $carbon_ra"
 @info "Timestep: $Δt s   Window: $start_date -> $stop_date"
@@ -348,7 +364,15 @@ try
     soc_int = ClimaCore.Fields.zeros(surface_space)
     ClimaCore.Operators.column_integral_definite!(soc_int, Yf.soilco2.SOC)
     open(joinpath(root_path, "carbon_metrics.txt"), "a") do io
-        println(io, "cSoil_kgC_m2 $(first(Array(parent(soc_int))))")
+        cSoil_final = first(Array(parent(soc_int)))
+        println(io, "cSoil_kgC_m2 $(cSoil_final)")
+        println(io, "cSoil_initial_kgC_m2 $(cSoil_initial)")
+        # Fractional change over the run; the stage-3 criterion is that this is
+        # small, and in particular that SOC neither collapses nor explodes.
+        println(
+            io,
+            "cSoil_frac_change $((cSoil_final - cSoil_initial) / max(cSoil_initial, eps(FT)))",
+        )
     end
 catch e
     @warn "cSoil diagnostic failed" exception = (e, catch_backtrace())
