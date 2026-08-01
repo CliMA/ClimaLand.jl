@@ -48,6 +48,29 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   depot (`~/.julia`) is shared, so later chunks' `Pkg.update()` is a no-op and
   the caches are warm. If chunk 2 also spends ~1 h precompiling, that assumption
   is wrong and chunking becomes expensive; check it.
+- **chunk 1 milestone (2026-07-31 19:44, 1 h 27 m elapsed):** precompile cleared,
+  observations built (`land_observation_vector_sifgpp_lhf_shf_lwu.jld2`, 110 MB,
+  19:12 — gitignored, so it will not be committed), output dir created 19:25 with
+  `interface.jld2`, `prior.jld2`, `eki_file.jld2` and all 21 member dirs, and
+  **21 member GPU jobs submitted** (`run_1_1`…`run_1_21` = 10*2+1, as expected).
+  Confirms end-to-end that a `develop`-queue orchestrator can submit `main`-queue
+  GPU members.
+- **⚠ WALLTIME RISK ON CHUNK 1.** Only ~6 members run concurrently (GPU queue at
+  77/82 nodes, 26 queued). At the reference ~55 min per member that is 4 waves
+  ≈ 3 h 40 m, on top of 1 h 27 m already spent ≈ 5 h 10 m against a 5 h 30 m
+  walltime. Margin is roughly 20-40 min. If the orchestrator IS killed:
+    1. Do NOT resubmit immediately. Check `qstat -u arenchon` for surviving
+       `run_1_*` members and let them finish or `qdel` them first — otherwise the
+       resubmitted orchestrator races them for the same member directories.
+    2. Then resubmit with `N_ITERATIONS=1`; it will redo iteration 1 from
+       scratch (21 fresh member jobs), because an incomplete iteration never
+       counts as completed.
+  NEXT CHUNKS SHOULD REQUEST MORE WALLTIME than 5 h 30 m is worth — but the
+  `develop` cap is a hard 6 h, so the real lesson is that one iteration per chunk
+  is near the limit of what fits when GPU concurrency is ~6. If chunk 1 does
+  finish comfortably, keep one iteration per chunk; if it is killed, the pipeline
+  needs `main`-queue GPU concurrency to improve, or a longer-walltime queue for
+  the orchestrator.
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
