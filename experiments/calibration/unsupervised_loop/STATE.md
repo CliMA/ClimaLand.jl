@@ -541,6 +541,25 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   empty one.
 - **log:** `clima_long_run.o6973822` in the repo root
 - **expected output:** `/glade/derecho/scratch/arenchon/claude/global_runs/snowy_land_pmodel_opt_lai_longrun_gpu`
+- **progress (2026-08-01 12:02, 3 h 06 m in): STILL PRECOMPILING, and it is
+  genuine work, not a loop.** 847 `.ji` files written since the job started,
+  across **707 DISTINCT PACKAGES** — repeats are negligible (max 6, for one small
+  extension). So this is a real first-time build of the whole environment, not
+  cache thrashing. Cause: the calibration's `Pkg.update()` bumped ClimaCore, a
+  deep dependency, invalidating most of the tree, and `snowy_land_pmodel.jl`
+  additionally loads the CairoMakie/GeoMakie visualization stack for its trailing
+  ILAMB/plot step, which the calibration never touched. 707 packages at ~10 s
+  each is ~2 h, matching what is observed. Memory 11.1 GB and climbing.
+  **HOW TO TEST FOR A PRECOMPILE LOOP** (worth keeping, it is not obvious): count
+  `.ji` files by their PARENT DIRECTORY, which is the package name —
+
+      find ~/.julia/compiled -name '*.ji' -newermt '<job start>' -printf '%h\n' \
+        | sed 's|.*/||' | sort | uniq -c | sort -rn | head
+
+  Many files but few distinct directories means thrashing; many distinct
+  directories means honest progress. Do NOT key on the `.ji` FILENAME — its
+  suffix encodes the build configuration, not the package, so grouping by it
+  shows a handful of "slugs" and looks exactly like a loop when nothing is wrong.
 - **progress (2026-08-01 11:01, 2 h 06 m in): PRECOMPILING, not stuck.**
   `find ~/.julia/compiled -name '*.ji' -newermt '2026-08-01 08:55' | wc -l`
   gives **274** caches written since the job started, with writes continuing past
