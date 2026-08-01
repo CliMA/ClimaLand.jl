@@ -51,6 +51,13 @@ prognostic battery against the calibrated artifact and regenerate
 `baseline_prognostic_lai.tsv`, or state explicitly which artifact each side of
 the comparison used.
 
+**Re-baseline in flight (2026-08-01):** jobs **6976878** (`pc_rb_base`,
+CARBON=0) and **6976879** (`pc_rb_carb`, CARBON=1 CARBON_RA=1), both prognostic
+LAI on the calibrated artifact. Diffing them re-establishes rule 1 with both
+sides on the same artifact — which is the only comparison that means anything
+now. Once green, replace `harness/baseline_prognostic_lai.tsv` with 6976878's
+summary and record that it is the calibrated-artifact baseline.
+
 This loop must **not** write `Overrides.toml` (hard rule), so pinning the old
 path back is not an option — and would sabotage the other loop in any case.
 
