@@ -1116,6 +1116,42 @@ never reconcile or `qdel` them. Observed 2026-07-31: `clima_cal*` (6967486).
   its lookup with `startswith(name, short * "_")` rather than the original's
   `occursin`, so a short name can never cross-match another variable.
 
+## Published artifact — model description & results
+
+**URL:** https://claude.ai/code/artifact/abe376d5-57dc-430d-8fcc-b0fd8237e900
+Linked at the top of the pinned status comment. Source lives in the session
+scratchpad as `carbon_model.html`.
+
+To UPDATE it rather than mint a new URL, republish with the **same file path**
+in the same conversation, or pass that URL as the `url` argument from any other
+conversation. Keep it current as stages land — it carries the equations, the
+verification story, and the figures from the committed battery output.
+
+## User direction (2026-08-01) — soil properties are permitted
+
+**Still no PFTs.** But the user has explicitly allowed **non-climate structural
+predictors such as soil properties**, and has said limitations are acceptable.
+
+This is the way out of the wall in §5 below: climate cannot separate a warm
+forest from a warm grassland, but soil can plausibly carry some of it — texture,
+depth, and water-holding capacity all bear on whether a column can support
+woody vegetation, all come from SoilGrids rather than a vegetation map, and all
+are already available in the model.
+
+**Caveat to test rather than assume:** `pampas_argentina` sits on deep fertile
+mollisols, so soil *fertility* may anti-correlate with grassland exactly as
+precipitation did. Check the direction on the battery before building on it.
+Candidate predictors already in `soil.parameters`: sand/clay fraction, porosity,
+hydraulic conductivity, and the soil depth of the column.
+
+## Loop discipline — do not let the loop stall
+
+The loop stopped for ~9 hours on 2026-07-31/08-01 because an iteration ended
+**without calling `ScheduleWakeup`**. In dynamic mode that call is the only thing
+that re-arms the loop; without it nothing fires again. **Every iteration must end
+with `ScheduleWakeup`**, including iterations that only report or that end early.
+If a turn is running long, re-arm first and continue in the next iteration.
+
 ## Reporting — PR #1834 comment hygiene
 
 - **Pinned status comment id `5145422196`.** This is the "opening comment": a
