@@ -541,6 +541,31 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   empty one.
 - **log:** `clima_long_run.o6973822` in the repo root
 - **expected output:** `/glade/derecho/scratch/arenchon/claude/global_runs/snowy_land_pmodel_opt_lai_longrun_gpu`
+- **progress (2026-08-01 09:57, 1 h 02 m in):** running on `deg0019`. The PBS log
+  shows only the wrapper's echo lines and no output dir yet, which looks alarming
+  but is not: Julia block-buffers stdout to a file. `qstat -f` confirms real work
+  — `cpupercent = 153`, `cput = 00:40:42` over 1 h walltime, 8.5 GB resident. It
+  is compiling. Do NOT read the quiet log as a hang; check `resources_used`.
+- **AN OVERRIDE IS ALREADY IN PLACE — do not assume stage 2e starts from
+  nothing.** `~/.julia/artifacts/Overrides.toml` already maps the
+  `optimal_lai_inputs` artifact (hash `2ce5e5e0…`) to
+  `/glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs`. So the
+  mechanism is live and the *stock* artifact is already shadowed by a local copy.
+  Write the rebuilt IC to a NEW directory and repoint the override, rather than
+  overwriting that file — otherwise the current IC is destroyed with no way back.
+- **IC file template, read off the existing file** (match it): dims `lon = 360`,
+  `lat = 180`; `lon`/`lat` as `double` with `degrees_east`/`degrees_north`; six
+  `double` variables named `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
+  `lai_init`, `f0`.
+  Its own `precip_annual` description independently confirms the conversion
+  factor — "1 mm = 55.51 mol H2O m^-2", i.e. 5.551e4 mol m^-3, matching the
+  ρ_liq/M_H2O = 5.5509e4 derived earlier.
+- **builder written and ready:**
+  `/glade/derecho/scratch/arenchon/claude/build_optimal_lai_ic.jl`, takes
+  `<simdir> <out.nc>`, takes the LAST time slice of each of the six diagnostics,
+  applies the `pra` conversion, and reports per-field finite counts and ranges so
+  a mostly-NaN or collapsed field is visible immediately rather than after
+  stage 3 starts.
 - **driver:** `experiments/long_runs/snowy_land_pmodel.jl`, `PROGNOSTIC_LAI` set, 10 years, GPU
 - **required diagnostics:** `lai`, `a0a`, `pra`, `olf0`, `olvpd`, `olgsl`
 - **PBS job ids:** —
