@@ -1523,3 +1523,66 @@ numbers are **not results** — it synthesises `rd = 0.05*gpp` where the real
 ratio runs 0.042 (tundra) to 0.146 (tropics), i.e. it flattens the very
 temperature gradient the spatial correlation is meant to measure. Its README
 says so; do not quote its spatial-r.
+
+---
+
+## The residual is a *disturbance* gap, not an allocation gap (2026-08-01, iteration 38)
+
+Two cheap checks, run while the global smoke test was building, together
+identify what the remaining error actually is. This supersedes the loose framing
+of "the model over-builds woody biomass in dry and herbaceous systems".
+
+### 1. The error is entirely in `C_stem`. Leaf and root are right.
+
+| site | C_leaf | C_stem | C_root | cVeg | cVeg target |
+|---|---|---|---|---|---|
+| pampas_argentina | 0.39 | **10.63** | 0.55 | 11.73 | 0.3–1.0 |
+| us_great_plains | 0.39 | **8.70** | 0.53 | 9.81 | 0.3–1.0 |
+| ne_china | 0.32 | **9.46** | 0.45 | 10.40 | — |
+| cerrado_brazil | 0.39 | **10.20** | 0.53 | 11.28 | — |
+| central_europe | 0.57 | 11.71 | 0.75 | 13.27 | 5–15 |
+| amazon_central | 0.61 | 16.73 | 0.82 | 18.40 | 10–20 |
+
+At pampas, **leaf + root = 0.94 kg C m⁻², inside the 0.3–1.0 grassland
+target.** The model gets herbaceous biomass essentially right and then grows a
+forest on top of it.
+
+**This kills the "definitional artifact" hypothesis.** It was worth asking
+whether comparing `C_stem` against *woody* products was unfair over grassland,
+since those products are near-zero there partly by construction. It is not
+unfair: total `cVeg` is 12× over too, and the excess is all wood.
+
+### 2. The climate at these sites *can* support forest. The model is not wrong about climate.
+
+| site | MAT (°C) | MAP (mm yr⁻¹) | model C_stem | observed |
+|---|---|---|---|---|
+| pampas_argentina | **17.9** | **915** | 10.63 | 0.00–1.22 |
+| cerrado_brazil | **24.7** | **1437** | 10.20 | 2.17–3.28 |
+| us_great_plains | 9.0 | 751 | 8.70 | 0.05–5.06 |
+| ne_china | 2.5 | 479 | 9.46 | 0.10–1.54 |
+| central_europe | 9.3 | 1056 | 11.71 | 3.70–15.56 |
+| ozark_us | 9.3 | 1090 | 10.95 | 2.08–7.03 |
+
+Pampas is **warmer and nearly as wet as central Europe**, which is a real forest.
+Cerrado gets 1437 mm — climatically rainforest territory. A climate-driven model
+*should* predict trees at both. They have none because of **fire** (cerrado is
+the textbook fire-maintained savanna) and **grazing and cultivation** (pampas,
+Great Plains, and the Songnen plain).
+
+### Consequences
+
+- **This explains why precipitation and soil properties both failed.** The
+  information that separates these sites from forest is not in the climate and
+  not in the soil. It is in the disturbance regime. Two negative results that
+  looked like bad luck were actually the same result twice.
+- **`ne_china` (125°E, 45°N) is mislabelled** `temperate_deciduous_forest` in
+  `test_sites.csv`. It is the Songnen agricultural plain; every product puts it
+  at 0.1–1.5 kg C m⁻². Not silently relabelled, because the biome column keys
+  `sweep_allocation.jl`'s scoring and changing it would move past scores. Treat
+  the label as unreliable, not the observations.
+- **All five worst sites are herbaceous, savanna, or arid** — pampas, ne_china,
+  cerrado, us_great_plains, mojave. There is no forest site among them. The
+  model has no systematic forest error.
+- The honest statement of the limitation is therefore sharp: *this model
+  simulates climate-potential woody biomass, and is not given the disturbance
+  information that determines where that potential is realised.*
