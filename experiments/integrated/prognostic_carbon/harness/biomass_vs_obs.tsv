@@ -1,0 +1,24 @@
+# Offline equilibrium C_stem vs ILAMB woody-biomass products, kg C m-2.
+# Model: battery 6976879 (prognostic LAI, CARBON=1, calibrated optimal-LAI artifact).
+# obs_lo/obs_hi span 6 products (XuSaatchi, Thurner, ESACCI, GEOCARBON, Saatchi2011, USForest).
+site	zone	model	obs_lo	obs_hi	verdict
+congo_basin	tropics	17.88	16.31	42.93	inside
+amazon_central	tropics	16.73	5.97	23.88	inside
+borneo	tropics	14.79	13.95	43.61	inside
+central_europe	temperate	11.71	3.70	15.56	inside
+central_siberia	boreal	6.87	4.70	13.90	inside
+fennoscandia	boreal	8.40	4.08	8.77	inside
+california_vaira	temperate	5.45	0.00	9.30	inside
+sahel	savanna	0.00	0.00	0.13	inside
+sahara	arid	0.00	0.00	0.01	inside
+arabian	arid	0.00	0.00	0.05	inside
+n_australia_savanna	savanna	7.56	0.70	7.02	above 1.1x
+canada_boreal	boreal	9.69	4.00	8.64	above 1.1x
+alaska_north_slope	boreal	3.23	0.00	2.09	above 1.5x
+ozark_us	temperate	10.95	2.08	7.03	above 1.6x
+us_great_plains	grassland	8.70	0.05	5.06	above 1.7x
+iberia	temperate	4.70	0.74	2.50	above 1.9x
+mojave_sw_us	arid	0.50	0.10	0.20	above 2.5x
+cerrado_brazil	savanna	10.20	2.17	3.28	above 3.1x
+ne_china	boreal	9.46	0.10	1.54	above 6.1x
+pampas_argentina	grassland	10.63	0.00	1.22	above 8.7x

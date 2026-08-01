@@ -76,12 +76,45 @@ which feeds less GPP into allocation. Some of the grassland over-build may
 shrink under the new artifact — worth re-measuring the equilibria rather than
 assuming the earlier numbers carry over.
 
-**Superseded, kept for reference:** jobs **6976878** (`pc_rb_base`,
-CARBON=0) and **6976879** (`pc_rb_carb`, CARBON=1 CARBON_RA=1), both prognostic
-LAI on the calibrated artifact. Diffing them re-establishes rule 1 with both
-sides on the same artifact — which is the only comparison that means anything
-now. Once green, replace `harness/baseline_prognostic_lai.tsv` with 6976878's
-summary and record that it is the calibrated-artifact baseline.
+**Resolved (2026-08-01).** Jobs **6976878** (`pc_rb_base`, CARBON=0) and
+**6976879** (`pc_rb_carb`, CARBON=1 CARBON_RA=1), both prognostic LAI on the
+calibrated artifact, completed 20/20. Diffed against each other — both sides on
+the same artifact, the only comparison that means anything now:
+
+- **`RULE1 PASS` at all 20 sites, `rel_diff = 0.0` bit-exactly.** Against the
+  stale baseline the same check reported up to **33% apparent violation** at
+  pampas LAI. That contrast is the evidence for the STEP 0 discipline.
+- `harness/baseline_prognostic_lai.tsv` is 6976878's summary; the old-artifact
+  version is kept as `baseline_prognostic_lai_OLDARTIFACT.tsv`.
+
+### Observational comparison moved with the artifact: 8/20 → **10/20** inside range
+
+The re-measurement anticipated above confirmed the note: the grassland/dry-site
+over-build **shrank substantially** under the calibrated LAI, because lower LAI
+feeds less GPP into allocation.
+
+| site | old artifact | calibrated | verdict |
+|---|---|---|---|
+| mojave_sw_us | 2.58 (12.9× above) | 0.50 | 2.5× above |
+| iberia | 11.33 (4.5×) | 4.70 | 1.9× above |
+| n_australia_savanna | 13.75 (2.0×) | 7.56 | 1.1× above |
+| sahel | 0.35 (above) | 0.00 | **inside** |
+| california_vaira | 9.74 (above) | 5.45 | **inside** |
+| pampas_argentina | 13.55 (11.1×) | 10.63 | 8.7× above |
+| ne_china | 11.07 (7.2×) | 9.46 | 6.1× above |
+| cerrado_brazil | 12.23 (3.7×) | 10.20 | 3.1× above |
+| us_great_plains | 9.45 (1.9×) | 8.70 | 1.7× above |
+
+Tropics and boreal barely moved (all still inside except canada_boreal at 1.1×).
+Products still disagree by a median factor of **3.4×**.
+
+**Scientific correction to record:** the earlier characterisation — "the carbon
+model over-builds woody biomass in dry and herbaceous systems" — **overstated the
+carbon model's share of the error**. A large part of it was LAI-model bias that
+the other loop's calibration has now removed. The residual over-build is real but
+smaller, and concentrated in two sites: `pampas_argentina` (8.7×) and `ne_china`
+(6.1×). Any future claim about allocation must be measured against the
+calibrated artifact, never the old numbers.
 
 This loop must **not** write `Overrides.toml` (hard rule), so pinning the old
 path back is not an option — and would sabotage the other loop in any case.
