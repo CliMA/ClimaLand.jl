@@ -222,6 +222,20 @@ if abspath(PROGRAM_FILE) == @__FILE__
         )
     end
     println("C_sugar     ", round(pools[1], digits = 4))
+    # sigma_l_implied at equilibrium: the stage-1 diagnostic, re-measured on a
+    # spun-up state rather than on pools two years from empty. Uses the mean LAI
+    # over the record, weighted only where there is leaf area.
+    lai_pos = filter(>(0), d["lai"])
+    if !isempty(lai_pos)
+        LAI_mean = sum(lai_pos) / length(lai_pos)
+        println(
+            "sigma_l_eq  ",
+            round(pools[2] / LAI_mean, digits = 4),
+            " kg C m^-2 leaf   (LAI_mean ",
+            round(LAI_mean, digits = 3),
+            ", target 0.03-0.1)",
+        )
+    end
     println("cVeg        ", round(sum(pools), digits = 4), " kg C m^-2")
     println(
         "NPP/GPP     ",
