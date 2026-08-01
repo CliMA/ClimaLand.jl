@@ -34,7 +34,20 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
           -v CALIBRATION_CONFIG=sifgpp_lhf_shf_lwu_rosetta.jl,CAL_OUTPUT_DIR=/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy,N_ITERATIONS=<n> \
           experiments/calibration/calibration_orchestrator.pbs
 - **output dir:** `/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy`
-- **orchestrator log:** `clima_calibration.o6967486` in the repo root
+- **orchestrator log:** `clima_calibration.o<jobid>` in the repo root, written
+  LIVE as the job runs
+- **chunk 1 progress (2026-07-31 19:02, 44 min elapsed):** still precompiling,
+  no output dir yet, no failures (`✗` count is 0). `run_calibration.sh` begins
+  with `Pkg.update()`, which upgraded ClimaCalibrate 0.3.1→0.3.2 and ClimaCore
+  0.14.54→0.14.55 and so forced a full rebuild including CUDA. The log's "24
+  dependencies failed but may be precompilable after restarting julia" is the
+  normal parallel-precompile cache race, not an error: `run_calibration.sh` uses
+  three separate `julia` invocations, so the stragglers precompile on the next
+  one. Only `.buildkite/Manifest-v1.12.toml` is dirtied; `Project.toml` is not.
+  NOTE for chunking: this precompile cost should be paid ONCE, by chunk 1 — the
+  depot (`~/.julia`) is shared, so later chunks' `Pkg.update()` is a no-op and
+  the caches are warm. If chunk 2 also spends ~1 h precompiling, that assumption
+  is wrong and chunking becomes expensive; check it.
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
