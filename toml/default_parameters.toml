@@ -258,6 +258,24 @@ type = "float"
 description = "Substrate-limitation scale for maintenance respiration (kg C m^-2). Rm is multiplied by the ramp g(C_sugar/C_sugar_ref), so respiration stops as the sugar pool is exhausted rather than driving it negative. Small enough that a healthy pool (0.05-0.2 kg C m^-2) is unaffected to about one part in 10^5."
 tag = "PrognosticCarbonParameters"
 
+["carbon_tau_stem_q"]
+value = 2.0
+type = "float"
+description = "Sensitivity of stem turnover time to mean annual temperature: tau_stem is multiplied by q^((T_ref - MAT)/10), so colder columns hold their wood longer. Set to 1.0 to disable and recover a constant tau_stem. Boreal trees live for centuries where temperate ones live decades, and a single constant fits neither; q = 2 gives ~107 yr at 265 K and ~30 yr in the temperate and tropical zone. This is a climate dependence, not a plant functional type."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_T_ref"]
+value = 283.0
+type = "float"
+description = "Reference mean annual temperature (K) for the stem turnover scaling. The scaling is flat at or above this temperature, so temperate and tropical columns are unaffected and only the cold end is lengthened."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_MAT"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale (s) of the running mean air temperature used as mean annual temperature, 2 years. Long enough to filter the seasonal cycle, so stem turnover responds to climate rather than weather."
+tag = "PrognosticCarbonParameters"
+
 ["carbon_Q10"]
 value = 2.0
 type = "float"

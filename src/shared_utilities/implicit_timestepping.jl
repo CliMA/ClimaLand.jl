@@ -98,6 +98,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(canopy.biomass.C_leaf),
         @name(canopy.biomass.C_stem),
         @name(canopy.biomass.C_root),
+        @name(canopy.biomass.T_annual),
         @name(snow.S),
         @name(snow.S_l),
         @name(snow.U),

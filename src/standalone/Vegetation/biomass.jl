@@ -843,6 +843,12 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     C_sugar_ref::FT
     "E-folding depth (m) of the leaf and stem litter input to soil carbon"
     soil_litter_depth::FT
+    "Sensitivity of stem turnover time to mean annual temperature (-); 1 disables"
+    q_τ_stem::FT
+    "Reference mean annual temperature (K) for the stem turnover scaling"
+    T_ref_τ_stem::FT
+    "Memory timescale (s) of the running-mean air temperature used as MAT"
+    τ_MAT::FT
     "Q10 temperature sensitivity of maintenance respiration (-)"
     Q10::FT
     "Reference temperature for the Q10 factor (K)"
@@ -876,6 +882,9 @@ function PrognosticCarbonParameters(
     n_alloc = toml_dict["carbon_alloc_ramp_n"],
     C_sugar_ref = toml_dict["carbon_C_sugar_ref"],
     soil_litter_depth = toml_dict["carbon_soil_litter_depth"],
+    q_τ_stem = toml_dict["carbon_tau_stem_q"],
+    T_ref_τ_stem = toml_dict["carbon_tau_stem_T_ref"],
+    τ_MAT = toml_dict["carbon_tau_MAT"],
     Q10 = toml_dict["carbon_Q10"],
     T_ref = toml_dict["carbon_T_ref"],
 )
@@ -898,6 +907,9 @@ function PrognosticCarbonParameters(
         n_alloc,
         C_sugar_ref,
         soil_litter_depth,
+        q_τ_stem,
+        T_ref_τ_stem,
+        τ_MAT,
         Q10,
         T_ref,
     )
@@ -930,6 +942,7 @@ struct PrognosticCarbonModel{
     PCP <: PrognosticCarbonParameters{FT},
     RDTH,
     HTH,
+    TIV,
 } <: AbstractBiomassModel{FT}
     "The underlying LAI/area-index model the carbon pools compose with"
     lai_model::LM
@@ -939,6 +952,8 @@ struct PrognosticCarbonModel{
     rooting_depth::RDTH
     "Canopy height (m); mirrored from `lai_model`"
     height::HTH
+    "Time-integrated variables carried by the carbon model itself"
+    time_integrated_vars::TIV
 end
 
 Base.eltype(::PrognosticCarbonModel{FT}) where {FT} = FT
@@ -959,7 +974,17 @@ function PrognosticCarbonModel{FT}(
 ) where {FT}
     rooting_depth = lai_model.rooting_depth
     height = lai_model.height
-    args = (lai_model, parameters, rooting_depth, height)
+    # Mean annual temperature, as a running mean of air temperature. The LAI
+    # models carry no temperature mean, so the carbon model declares its own -
+    # which also means it is available under prescribed LAI, where the optimal
+    # LAI model and all its trailing integrals are absent.
+    tiv = ClimaLand.time_integrated_variables(
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :T_annual,
+            reduction = ClimaLand.RunningMean(parameters.τ_MAT),
+        ),
+    )
+    args = (lai_model, parameters, rooting_depth, height, tiv)
     PrognosticCarbonModel{FT, typeof.(args)...}(args...)
 end
 
@@ -982,16 +1007,28 @@ end
 # same four alongside its nine time-integrated ones.
 const CARBON_POOLS = (:C_sugar, :C_leaf, :C_stem, :C_root)
 
-ClimaLand.prognostic_vars(m::PrognosticCarbonModel) =
-    (ClimaLand.prognostic_vars(m.lai_model)..., CARBON_POOLS...)
-ClimaLand.prognostic_types(m::PrognosticCarbonModel{FT}) where {FT} =
-    (ClimaLand.prognostic_types(m.lai_model)..., FT, FT, FT, FT)
+ClimaLand.prognostic_vars(m::PrognosticCarbonModel) = (
+    ClimaLand.prognostic_vars(m.lai_model)...,
+    CARBON_POOLS...,
+    ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)...,
+)
+ClimaLand.prognostic_types(m::PrognosticCarbonModel{FT}) where {FT} = (
+    ClimaLand.prognostic_types(m.lai_model)...,
+    FT,
+    FT,
+    FT,
+    FT,
+    ClimaLand.time_integrated_prognostic_types(m.time_integrated_vars)...,
+)
 ClimaLand.prognostic_domain_names(m::PrognosticCarbonModel) = (
     ClimaLand.prognostic_domain_names(m.lai_model)...,
     :surface,
     :surface,
     :surface,
     :surface,
+    ClimaLand.time_integrated_prognostic_domain_names(
+        m.time_integrated_vars,
+    )...,
 )
 
 """
@@ -1049,6 +1086,34 @@ than pin at zero, and it needs no hard clamp.
 function allocation_ramp(x::FT, n::FT) where {FT}
     xn = max(x, zero(FT))^n
     return xn / (1 + xn)
+end
+
+"""
+    tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
+
+Multiplier on stem turnover time as a function of mean annual temperature:
+`q^((T_ref - MAT)/10)`, flat at or above `T_ref`.
+
+Cold columns hold their wood far longer than warm ones - boreal trees live for
+centuries where temperate ones live decades - and a single constant `τ_stem`
+fits neither end. This is a continuous climate dependence, not a plant
+functional type: it reads a running mean of air temperature the model already
+computes.
+
+Being flat above `T_ref` means temperate and tropical columns are untouched by
+construction, so the correction only lengthens the cold end. `q = 1` disables it
+and recovers a constant `τ_stem` exactly.
+
+The scale is capped at `MAX_TAU_STEM_SCALE`. With the default 30 yr base that
+bounds stem turnover at ~300 years, about the oldest realistic boreal stand, and
+it also means an uninitialised mean annual temperature degrades to a long but
+finite turnover rather than to `q^28`.
+"""
+const MAX_TAU_STEM_SCALE = 10
+
+function tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
+    q <= 1 && return one(FT)
+    return min(q^(max(T_ref - MAT, zero(FT)) / 10), FT(MAX_TAU_STEM_SCALE))
 end
 
 """
@@ -1143,6 +1208,8 @@ function update_carbon_fluxes!(
         τ_stem_c3,
         τ_stem_c4,
         τ_root,
+        q_τ_stem,
+        T_ref_τ_stem,
     ) = component.parameters
     M_C = FT(0.012011)  # kg C per mol
     fractional_c3 = p.canopy.photosynthesis.fractional_c3
@@ -1191,9 +1258,12 @@ function update_carbon_fluxes!(
         p.canopy.biomass.carbon.Rm + p.canopy.biomass.carbon.Rg
 
     @. p.canopy.biomass.carbon.L_leaf = Y.canopy.biomass.C_leaf / τ_leaf
+    # Stem turnover lengthens toward the cold; see `tau_stem_scale`.
     @. p.canopy.biomass.carbon.L_stem =
-        Y.canopy.biomass.C_stem /
-        pft_free_blend(fractional_c3, τ_stem_c3, τ_stem_c4)
+        Y.canopy.biomass.C_stem / (
+            pft_free_blend(fractional_c3, τ_stem_c3, τ_stem_c4) *
+            tau_stem_scale(Y.canopy.biomass.T_annual, T_ref_τ_stem, q_τ_stem)
+        )
     @. p.canopy.biomass.carbon.L_root = Y.canopy.biomass.C_root / τ_root
     return nothing
 end
@@ -1226,6 +1296,7 @@ function ClimaLand.make_compute_exp_tendency(
     lai_tendency! =
         ClimaLand.make_compute_exp_tendency(component.lai_model, canopy)
     (; a, f_leaf_c3, f_stem_c3, f_leaf_c4, f_stem_c4) = component.parameters
+    tivs = component.time_integrated_vars
     M_C = FT(0.012011)  # kg C per mol
     function compute_exp_tendency!(dY, Y, p, t)
         lai_tendency!(dY, Y, p, t)
@@ -1244,6 +1315,13 @@ function ClimaLand.make_compute_exp_tendency(
             a *
             pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_stem
+        # Mean annual temperature, relaxing toward air temperature.
+        @. dY.canopy.biomass.T_annual = apply_time_reduction(
+            p.drivers.T,
+            Y.canopy.biomass.T_annual,
+            tivs.T_annual.reduction,
+        )
+
         # f_root is the remainder, so the three fractions sum to one exactly.
         @. dY.canopy.biomass.C_root =
             a *

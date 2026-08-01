@@ -355,6 +355,51 @@ for FT in (Float32, Float64)
         end
     end
 
+    # Stem turnover lengthens toward the cold. The mean annual temperature this
+    # reads is seeded from air temperature at initialisation; left at zero it
+    # would be 0 K and the scaling q^((T_ref-MAT)/10) would start at 2^28.
+    @testset "Stem turnover scales with mean annual temperature, FT = $FT" begin
+        p_c = biomass.parameters
+        @test Canopy.tau_stem_scale(FT(283), p_c.T_ref_τ_stem, p_c.q_τ_stem) ==
+              FT(1)
+        @test Canopy.tau_stem_scale(FT(298), p_c.T_ref_τ_stem, p_c.q_τ_stem) ==
+              FT(1)          # flat above T_ref: warm sites untouched
+        @test Canopy.tau_stem_scale(FT(263), p_c.T_ref_τ_stem, p_c.q_τ_stem) ≈
+              FT(4) atol = FT(1e-5)   # 20 K colder, q=2 => 2^2
+        # q = 1 must recover a constant turnover exactly.
+        @test Canopy.tau_stem_scale(FT(250), p_c.T_ref_τ_stem, FT(1)) == FT(1)
+
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics,
+            biomass,
+        )
+        # The scale is capped, so even a completely unseeded state - which is
+        # what a missed initial condition looks like - gives a long but finite
+        # turnover rather than q^28.
+        @test Canopy.tau_stem_scale(FT(0), p_c.T_ref_τ_stem, p_c.q_τ_stem) ==
+              FT(Canopy.MAX_TAU_STEM_SCALE)
+
+        # The initial condition seeds MAT from air temperature. Call it directly:
+        # it runs from the simulation's initial-state pass, not from the cache.
+        Y, p, _ = initialize(canopy)
+        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(290.5)
+        make_set_initial_cache(canopy)(p, Y, t0)
+        ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            canopy.biomass,
+            canopy,
+        )
+        @test all(parent(Y.canopy.biomass.T_annual) .> FT(200))
+        @test all(isfinite.(parent(Y.canopy.biomass.T_annual)))
+    end
+
     # Every prognostic variable needs a Jacobian block, or the implicit solver
     # refuses to build with "A does not have any entries at the following keys".
     # The tendency tests above never reach this: they call the tendency directly
@@ -371,7 +416,7 @@ for FT in (Float32, Float64)
             biomass,
         )
         Y, _, _ = initialize(canopy)
-        for pool in (:C_sugar, :C_leaf, :C_stem, :C_root)
+        for pool in (:C_sugar, :C_leaf, :C_stem, :C_root, :T_annual)
             @test hasproperty(Y.canopy.biomass, pool)
         end
         @test ClimaLand.initialize_jacobian(Y) isa Any
@@ -396,8 +441,13 @@ for FT in (Float32, Float64)
         zhou_vars = ClimaLand.prognostic_vars(zhou)
         wrapped_vars = ClimaLand.prognostic_vars(wrapped)
         @test all(v -> v in wrapped_vars, zhou_vars)
-        @test all(v -> v in wrapped_vars, (:C_sugar, :C_leaf, :C_stem, :C_root))
-        @test length(wrapped_vars) == length(zhou_vars) + 4
+        # The wrapper adds exactly the four pools plus its own mean annual
+        # temperature; naming them beats a magic count, which silently needs
+        # editing every time a state variable is added.
+        added = (:C_sugar, :C_leaf, :C_stem, :C_root, :T_annual)
+        @test all(v -> v in wrapped_vars, added)
+        @test length(wrapped_vars) == length(zhou_vars) + length(added)
+        @test isempty(setdiff(wrapped_vars, (zhou_vars..., added...)))
         @test length(ClimaLand.prognostic_types(wrapped)) ==
               length(wrapped_vars)
         @test length(ClimaLand.prognostic_domain_names(wrapped)) ==

@@ -446,6 +446,10 @@ function set_canopy_component_initial_conditions!(
     canopy,
 ) where {FT}
     set_canopy_component_initial_conditions!(Y, p, model.lai_model, canopy)
+    # Seed the mean annual temperature from the current air temperature. Left at
+    # zero it would be 0 K, and the stem-turnover scaling q^((T_ref - MAT)/10)
+    # would start at 2^28 - the pools would never recover from the first step.
+    Y.canopy.biomass.T_annual .= p.drivers.T
     Y.canopy.biomass.C_sugar .= FT(0)
     Y.canopy.biomass.C_leaf .= FT(0)
     Y.canopy.biomass.C_stem .= FT(0)
