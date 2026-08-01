@@ -728,6 +728,53 @@ plant pools are exactly zero), so SOC decays slowly through Rh alone
 (−0.28%, −0.63%). `alaska_north_slope` has Rh = 0 (frozen) and SOC essentially
 static (+0.09%).
 
+### STAGE-4 RESULT: constants fail in exactly the way MODEL.md predicted
+
+Equilibrium cVeg against MODEL.md §7's targets:
+
+| biome | target | model at equilibrium | verdict |
+|---|---|---|---|
+| tropical rainforest | 10–20 | 16.5 / 18.7 / 20.5 | **✓** |
+| temperate forest | 5–15 | 7.8 / 12.2 / 13.2 | **✓** |
+| boreal forest | 5–15 | 2.5 / 4.7 / 5.9 | **under-built** |
+| **grassland** | **0.3–1** | **10.1 / 14.8** | **✗ 10–15× too high** |
+| desert | ~0 | 0.0 / 0.0 / 2.7 (mojave) | ✓ / ✗ mojave |
+
+**MODEL.md §2.3 predicted this verbatim:** "most likely symptom: forests
+under-built and grasslands over-built at the same time". That is precisely what
+happened — `central_siberia` at 2.5 against a 5–15 target while
+`us_great_plains` sits at 10.1 against 0.3–1.
+
+**Why the C3/C4 split does not rescue it — the sharp part of the finding.**
+The C4 parameters (`f_stem_c4 = 0.05`, `τ_stem_c4 = 1 yr`) exist to stop
+herbaceous vegetation building wood, but they are barely engaged: the *modelled*
+`fractional_c3` is **0.88 at `us_great_plains` and 0.996 at `pampas_argentina`**.
+Both are read as essentially C3, so both get `f_stem = 0.4` and `τ_stem = 30 yr`
+and accumulate a forest-sized stem pool.
+
+That is not a bug in the C3/C4 competition. **`fractional_c3` is the wrong axis
+for stem allocation**: it separates photosynthetic *pathway*, not growth form. A
+C3 grassland is still a grassland. Nothing in the current parameterisation can
+distinguish woody from herbaceous, which is the axis that actually controls
+stem allocation.
+
+**MODEL.md §2.3's prescribed response now applies**, having tried constants and
+reported what forced the change: let `f_stem` (and correspondingly `f_root`)
+vary with mean annual temperature and precipitation — both already available as
+trailing integrals — never with a PFT. This belongs to stage 5, which owns
+tuning.
+
+### Stage-1 re-check discharged: σl is systematically high at equilibrium
+
+`σl_implied` at equilibrium ranges **0.092 (central_siberia) to 0.61 (mojave)**,
+with most sites 0.12–0.27, against a 0.03–0.1 target. Only `central_siberia`
+lands in band.
+
+In stage 1 the tropical sites read 0.079–0.098 and I called them in-band while
+flagging that `C_leaf` sat below equilibrium so the ratio would rise. It rose to
+0.14. **The favourable stage-1 reading was itself a spinup artifact**, and the
+re-check obligation is what caught it rather than letting it stand.
+
 ### Why surface litter uses an exponential, not a single cell
 
 MODEL.md says leaf and stem litter goes in "the top layer". The implementation
@@ -779,7 +826,18 @@ Verified it catches a synthetic −97.5% SOC collapse at every site, and reports
 
 ## Stage 4 — offline spinup to steady state
 
-- **status:** in_progress. Offline integrator written and mutually validated
+- **status:** **DONE** (2026-07-31). All 20 sites spin up cleanly, pools finite
+  and non-negative everywhere, and the integrator reproduces the coupled run's
+  structural pools to **0.4–4.2%** over the overlapping 2-year window from the
+  same empty initial state. Equilibrium table committed as
+  `harness/stage4_spinup_equilibrium.tsv`.
+- **Validation caveat, stated:** the worst per-pool disagreement is **19% at
+  `sahel/C_sugar`** — the smallest and fastest pool, at a starving site, where a
+  *daily* driver record cannot resolve the diurnal cycle a 10-day pool responds
+  to. Sugar is 1–2% of cVeg, so this does not affect what stage 5 consumes; the
+  structural pools that dominate cVeg agree to a few percent as the gate
+  requires.
+- **status (historical):** offline integrator written and mutually validated
   (commit `d1d5c0e`-series); driver-record battery 6970595 running.
 - **The integrator and an independent analytic steady state agree to ratio
   1.000** on all structural pools under constant drivers at `T_ref`, and to

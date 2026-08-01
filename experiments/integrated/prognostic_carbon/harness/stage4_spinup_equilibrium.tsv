@@ -1,0 +1,21 @@
+site	biome	cVeg	C_leaf	C_stem	C_root	NPP_GPP	sigma_l_eq	LAI_mean
+amazon_central	tropical_rainforest	18.6556	0.6214	16.9676	0.8329	0.465	0.145	4.287
+congo_basin	tropical_rainforest	20.4992	0.6772	18.681	0.9104	0.473	0.1446	4.684
+borneo	tropical_rainforest	16.4874	0.554	14.9838	0.7407	0.444	0.1395	3.971
+sahel	tropical_savanna_C4	0.422	0.0268	0.3475	0.0477	0.431	0.1826	0.147
+cerrado_brazil	tropical_savanna_C4	13.4589	0.4507	12.2334	0.6052	0.482	0.1353	3.333
+n_australia_savanna	tropical_savanna_C4	15.1776	0.5281	13.7489	0.7034	0.426	0.1376	3.839
+sahara	desert	0.0	0.0	0.0	0.0	NaN		
+arabian	desert	0.0	0.0	0.0	0.0	NaN		
+mojave_sw_us	desert	2.7133	0.1653	2.2295	0.23	0.567	0.6059	0.273
+ozark_us	temperate_deciduous_forest	12.1852	0.4988	10.819	0.6659	0.571	0.1661	3.003
+central_europe	temperate_deciduous_forest	13.1669	0.5844	11.5695	0.7757	0.607	0.2185	2.674
+ne_china	temperate_deciduous_forest	7.7698	0.3674	6.7154	0.5132	0.588	0.1695	2.167
+us_great_plains	temperate_grassland_C4	10.1059	0.4248	8.9204	0.5778	0.561	0.1575	2.698
+pampas_argentina	temperate_grassland	14.8113	0.4576	13.5503	0.6283	0.536	0.1648	2.777
+california_vaira	mediterranean	9.1141	0.4031	7.9927	0.5659	0.611	0.2657	1.517
+iberia	mediterranean	12.6989	0.5027	11.3289	0.6935	0.574	0.2158	2.33
+central_siberia	boreal_forest	2.4803	0.1336	2.0657	0.1827	0.624	0.0923	1.448
+canada_boreal	boreal_forest	4.7092	0.236	4.0123	0.325	0.614	0.1239	1.904
+fennoscandia	boreal_forest	5.9327	0.3061	5.0482	0.4155	0.617	0.1537	1.991
+alaska_north_slope	tundra	1.0654	0.0572	0.8905	0.0752	0.644	0.1182	0.484
