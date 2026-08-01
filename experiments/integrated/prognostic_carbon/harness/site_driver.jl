@@ -221,7 +221,7 @@ diagnostics = ClimaLand.default_diagnostics(
     start_date;
     output_writer = diag_writer,
     reduction_period = :daily,
-    output_vars = ["gpp", "lai", "ra", "hr", "tair", "swc"],
+    output_vars = ["gpp", "lai", "ra", "hr", "tair", "swc", "rd", "ct", "fc3"],
 );
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
@@ -355,6 +355,37 @@ if carbon_on
         )
             println(io, "$label $(scalar(field))")
         end
+    end
+end
+
+# Driver record for the offline pool integrator (stage 4). Phase 1 is one-way
+# coupled, so the pools can be integrated for centuries against this record in
+# seconds rather than node-hours. Everything update_carbon_fluxes! reads is here:
+# GPP and Rd (mol CO2 m^-2 s^-1), canopy temperature (K), the C3 fraction, and
+# LAI for the sigma_l diagnostic.
+if get(ENV, "DUMP_DRIVERS", "1") == "1"
+    try
+        cols = ("gpp", "rd", "ct", "fc3", "lai")
+        series = Dict{String, Any}()
+        times = nothing
+        for c in cols
+            s = series_for(c)
+            s === nothing && error("driver dump needs the '$c' diagnostic")
+            times, series[c] = s
+        end
+        open(joinpath(root_path, "driver_record.csv"), "w") do io
+            println(io, "date,", join(cols, ","))
+            for i in eachindex(times)
+                print(io, date(times[i]))
+                for c in cols
+                    print(io, ",", series[c][i])
+                end
+                println(io)
+            end
+        end
+        @info "wrote driver_record.csv" n = length(times)
+    catch e
+        @warn "driver dump failed" exception = (e, catch_backtrace())
     end
 end
 
