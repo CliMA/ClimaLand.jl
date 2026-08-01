@@ -1505,3 +1505,21 @@ belongs to the other loop; read only, never write. `rd` could in principle be
 inverted from `ra` (Ra = Rpm + Rel·max(An−Rpm,0), f_T ≡ 1 since Q10 = 1), but
 the inversion is branch-dependent through the `max` and would not survive
 monthly averaging — hence running our own driver output instead.
+
+### Trap found while building the map (2026-08-01)
+
+**ClimaLand's `NetCDFWriter` stores diagnostics as `(time, lon, lat)` in Julia's
+index order. Every ILAMB biomass product is `(lon, lat, time)`.** Hard-coding
+either convention silently transposes the other, and a transposed field raises
+no error — it is just a wrong map. `global_equilibrium.jl` now dispatches on
+dimension names (`as_lon_lat_time`). `compare_biomass.jl` reads only ILAMB
+products, whose layout matched what it assumed, so **the 10/20 result is not
+affected** — checked, not presumed.
+
+Pipeline timing, measured on the plumbing test: 15499 land columns, ~36 s at 30
+years on 8 threads, so a 400-year global equilibrium is single-digit minutes.
+The plumbing test itself is at `.../prognostic_carbon/plumbing_test/` and its
+numbers are **not results** — it synthesises `rd = 0.05*gpp` where the real
+ratio runs 0.042 (tundra) to 0.146 (tropics), i.e. it flattens the very
+temperature gradient the spatial correlation is meant to measure. Its README
+says so; do not quote its spatial-r.
