@@ -51,7 +51,32 @@ prognostic battery against the calibrated artifact and regenerate
 `baseline_prognostic_lai.tsv`, or state explicitly which artifact each side of
 the comparison used.
 
-**Re-baseline in flight (2026-08-01):** jobs **6976878** (`pc_rb_base`,
+**Re-baseline DONE (2026-08-01, job 6976878, 20/20).**
+`harness/baseline_prognostic_lai.tsv` is now the **calibrated-artifact**
+baseline; the previous one is kept as
+`harness/baseline_prognostic_lai_OLDARTIFACT.tsv` for provenance.
+
+**The artifact change was material — this justifies the STEP 0 discipline
+concretely.** LAI moved at 5 of 6 spot-checked sites:
+
+| site | LAI old → new | change |
+|---|---|---|
+| us_great_plains | 2.306 → 1.813 | **−21%** |
+| congo_basin | 4.627 → 4.007 | **−13%** |
+| ozark_us | 2.522 → 2.422 | −4% |
+| amazon_central | 4.297 → 4.168 | −3% |
+| central_siberia | 0.715 → 0.699 | −2% |
+
+Run against the stale baseline, `check_rule1.jl` would have reported violations
+of up to 21% — a catastrophic-looking failure of the project's central claim,
+caused entirely by someone else's artifact.
+
+**Note for later:** the calibrated LAI is *lower* at `us_great_plains` (−21%),
+which feeds less GPP into allocation. Some of the grassland over-build may
+shrink under the new artifact — worth re-measuring the equilibria rather than
+assuming the earlier numbers carry over.
+
+**Superseded, kept for reference:** jobs **6976878** (`pc_rb_base`,
 CARBON=0) and **6976879** (`pc_rb_carb`, CARBON=1 CARBON_RA=1), both prognostic
 LAI on the calibrated artifact. Diffing them re-establishes rule 1 with both
 sides on the same artifact — which is the only comparison that means anything
