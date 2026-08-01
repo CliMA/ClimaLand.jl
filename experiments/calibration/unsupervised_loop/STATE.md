@@ -12,7 +12,7 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 1 — GPP + energy fluxes
 
-- **status:** running (CHUNKED — see below)
+- **status:** **done** (2026-08-01 08:47, terminated by EKP at iteration 8)
 - **config:** `experiments/calibration/configs/sifgpp_lhf_shf_lwu_rosetta.jl`
 - **ensemble:** 21 (10 params, TransformUnscented)
 - **PBS job ids:**
@@ -393,7 +393,67 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   iteration 9 on the trend, not on one small step.
 - **`pmodel_α` is effectively converged** at 0.02514 (−0.08 %), i.e. τ ≈ 40 d.
   Still firmly in the post-#1817 `1/τ` convention.
-- **calibrated parameters:** — (not final; iteration 7 of 9 done)
+- **STAGE 1 IS DONE. The EKI TERMINATED ITSELF AT ITERATION 8 (2026-08-01
+  08:47).** Chunk 8's log ends with:
+
+      Warning: Termination condition of scheduler `DataMisfitController` has been
+      exceeded, returning `true` from `update_ensemble!` and preventing futher updates
+
+  `run_calibration.jl:140` sets `DataMisfitController(terminate_at = 100)`, and
+  `LearningRateSchedulers.jl:284` terminates once `sum_Δt >= T` — the inversion
+  has consumed its allotted algorithmic time. **This is a principled stopping
+  criterion, not a failure.** Iteration 8's members ran and were processed, but
+  the resulting update was refused, which is why `iteration_009/eki_file.jld2`
+  contains no new block.
+  It stopped at **exactly one epoch (8 iterations at minibatch 2 over 16
+  samples)**, which independently corroborates the epoch reasoning used to raise
+  `n_iterations` from 5 to 9.
+  **Chunk 9 (`6973790`) was cancelled** — with updates blocked it would have
+  burned 21 GPU jobs to produce nothing.
+
+- **CALIBRATED PARAMETERS, written to `toml/default_parameters.toml` at 3 s.f.
+  and committed.** Final ensemble mean (u[8]); spread is the ensemble std.
+
+  | parameter | old default | **calibrated** | spread | CV |
+  |---|---|---|---|---|
+  | pmodel_cstar | 0.43 | **0.366** | 0.00071 | 0.2 % |
+  | pmodel_β_c3 | 91.1 | **24.9** | 0.20 | 0.8 % |
+  | pmodel_β_c4 | 5.36 | **8.89** | 0.27 | 3.0 % |
+  | pmodel_α | 0.028 | **0.0251** | 0.00011 | 0.4 % |
+  | moisture_stress_c | 0.59 | **0.591** | 0.0015 | 0.3 % |
+  | leaf_Cd | 0.0726 | **0.07** | 0.00053 | 0.8 % |
+  | canopy_z_0m_coeff | 0.349 | **0.0823** | 0.0028 | 3.4 % |
+  | canopy_z_0b_coeff | 0.0444 | **0.073** | 0.0046 | 6.3 % |
+  | canopy_d_coeff | 0.0573 | **0.0416** | 0.0127 | **30 %** |
+  | canopy_K_lw | 0.919 | **1.16** | 0.0040 | 0.4 % |
+
+- **Sanity checks, all passed.**
+  - G ensemble finite over ALL 8 iterations: `size=(647824, 21)`, 0 NaN columns,
+    finite fraction 1.0. GPP is not zero or NaN anywhere.
+  - **No parameter pinned at a prior bound.** Closest is `canopy_z_0b_coeff` at
+    73 % of its 0–0.1 range. `canopy_d_coeff` sits at 4.2 % of its 0–1 range but
+    its prior mean (0.0573) was already near the bottom of that range and it is
+    3.3σ above zero, so it is poorly CONSTRAINED, not pinned.
+  - Ensemble spreads are mostly under 1 % CV, i.e. the ensemble has genuinely
+    collapsed. The exception is `canopy_d_coeff` at 30 % CV — the flux targets
+    barely constrain it, which is worth knowing before anyone treats 0.0416 as a
+    precise result.
+  - The prompt's "loss decreased across iterations" check is NOT applicable:
+    `minibatch_size = 2` means each iteration scores a different pair of years.
+    EKP's own termination is the sound stopping signal here.
+
+- **⚠ FINDING FOR A DOMAIN EXPERT: the roughness ratio.** Final
+  `z_0b/z_0m` = 0.073/0.0823 ≈ **0.89**, against ≈0.13 in the prior and a
+  conventional ≈0.1 — roughly 7× higher, i.e. scalar and momentum roughness end
+  up nearly equal where surface-layer theory expects an order of magnitude
+  between them. `canopy_z_0m_coeff` fell from 0.349 to 0.0823 (a factor of 4)
+  while `canopy_z_0b_coeff` rose from 0.0444 to 0.073. Both stayed inside their
+  bounds, and the ensemble is tight, so this is what the flux data actually
+  prefer under this parameterisation. Either the pair is compensating for a
+  missing process in the canopy turbulence scheme, or the scheme is being pushed
+  outside its valid regime. Not resolvable from EKI output; reported, not tuned
+  away.
+- **committed to `toml/default_parameters.toml`:** **yes** — commit `ec4774837`.
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m
   eligible. PBS reason: `Not Running: Job is requesting an exclusive node and
