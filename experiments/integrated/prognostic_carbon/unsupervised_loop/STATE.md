@@ -1144,6 +1144,49 @@ precipitation did. Check the direction on the battery before building on it.
 Candidate predictors already in `soil.parameters`: sand/clay fraction, porosity,
 hydraulic conductivity, and the soil depth of the column.
 
+## Soil properties tested (2026-08-01) — they do not carry the signal either
+
+Ran the same ordering check on SoilGrids composition *before* wiring anything
+into the allocation (`harness/soil_properties.jl`). Result: **no soil property
+separates grassland from forest at similar climate.**
+
+| property | grassland max | forest min | verdict |
+|---|---|---|---|
+| sand / quartz | 0.5152 | 0.0980 | overlaps |
+| gravel (coarse frag) | 0.0452 | 0.0132 | overlaps |
+| porosity | 0.5609 | 0.4598 | overlaps |
+| **organic matter** | **0.0279** | **0.0307** | separates, gap **0.0028** |
+
+Organic matter is the only one that separates, and three things say the
+separation is a 20-site coincidence rather than a mechanism:
+
+1. **`us_great_plains` (grass) and `central_europe` (forest) have near-identical
+   sand** — 0.1623 vs 0.1614. Texture cannot tell them apart at all.
+2. **`canada_boreal` — a forest that must stay woody — sits only 16% above
+   pampas** in organic matter. That is a razor-thin margin on a regridded field.
+3. **`alaska_north_slope` tundra has the highest organic matter of the
+   temperate/boreal group (0.1733) and has no trees.** Organic matter is tracking
+   cold, wet, slow decomposition — peat — not woodiness. A woody fraction built
+   on it would make tundra maximally woody.
+
+So soil composition fails for the same *kind* of reason precipitation did: it
+correlates with something real, but not with the woody/herbaceous axis, and the
+hardest cases sit on the wrong side.
+
+**Conclusion to carry forward.** Across climate (MAT, MAP) and soil (texture,
+organic matter, porosity, conductivity), nothing available separates a
+disturbance-maintained grassland from a forest in the same climate on the same
+soil. That is consistent with the ecology: pampas is grassland because of fire
+and grazing history, which is neither a climate nor a soil fact. Options for the
+user, none taken unilaterally:
+
+- accept the limitation and document it — the model does forests and deserts
+  well and over-builds fire-maintained grassland;
+- revisit the grassland target, which MODEL.md §7 already flags as confounded
+  (the observations are woody and aboveground; the model carries root carbon);
+- admit a disturbance or fire-return dataset, which is arguably a vegetation map
+  under another name and so may fall foul of the no-PFT constraint.
+
 ## Loop discipline — do not let the loop stall
 
 The loop stopped for ~9 hours on 2026-07-31/08-01 because an iteration ended
