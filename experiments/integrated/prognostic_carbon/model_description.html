@@ -1,0 +1,1216 @@
+<title>Prognostic carbon pools for ClimaLand</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #FBFBF9;
+    --surface:      #fcfcfb;
+    --rule:         #E2E3DD;
+    --rule-strong:  #C9CBC2;
+    --ink:          #14120F;
+    --ink-2:        #56534B;
+    --ink-3:        #8A857C;
+    --accent:       #1F5D45;
+    --accent-soft:  #E8F0EB;
+    --s1: #2a78d6;  --s2: #eb6834;  --s3: #1baf7a;  --s4: #eda100;
+    --good: #0ca30c;
+    --critical: #d03b3b;
+    --band: #DCE6E0;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --paper:       #12110E;
+      --surface:     #1a1a19;
+      --rule:        #2B2A26;
+      --rule-strong: #3D3B35;
+      --ink:         #F0EEE8;
+      --ink-2:       #B3AEA4;
+      --ink-3:       #837E74;
+      --accent:      #5FB08E;
+      --accent-soft: #16241D;
+      --s1: #3987e5;  --s2: #d95926;  --s3: #199e70;  --s4: #c98500;
+      --good: #0ca30c;
+      --critical: #d03b3b;
+      --band: #25302B;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:       #12110E;
+    --surface:     #1a1a19;
+    --rule:        #2B2A26;
+    --rule-strong: #3D3B35;
+    --ink:         #F0EEE8;
+    --ink-2:       #B3AEA4;
+    --ink-3:       #837E74;
+    --accent:      #5FB08E;
+    --accent-soft: #16241D;
+    --s1: #3987e5;  --s2: #d95926;  --s3: #199e70;  --s4: #c98500;
+    --good: #0ca30c;
+    --critical: #d03b3b;
+    --band: #25302B;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .col { max-width: 40em; margin: 0 auto; width: 100%; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    padding: 72px 0 34px;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.08;
+    margin: 0 0 18px;
+    font-weight: 600;
+    letter-spacing: -0.014em;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 21px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin: 0 0 26px;
+    text-wrap: pretty;
+  }
+  .byline {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+  .byline code { font-family: var(--mono); font-size: 12px; }
+
+  /* ---------- sections ---------- */
+  section { margin: 0 0 12px; }
+  .stage-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 52px 0 6px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+  }
+  .stage-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: .06em;
+    flex: none;
+    padding-top: .35em;
+  }
+  h2 {
+    font-size: 27px;
+    line-height: 1.22;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 19px;
+    margin: 34px 0 10px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  p { margin: 0 0 16px; text-wrap: pretty; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  strong { font-weight: 650; }
+  em.term { font-style: italic; color: var(--ink-2); }
+
+  /* ---------- equations ---------- */
+  .eq {
+    font-family: var(--mono);
+    font-size: 14.5px;
+    line-height: 1.85;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--accent);
+    padding: 18px 22px;
+    margin: 22px 0;
+    overflow-x: auto;
+    white-space: pre;
+    tab-size: 4;
+  }
+  .eq .cmt { color: var(--ink-3); }
+  .defs {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    margin: -6px 0 22px;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 3px 16px;
+  }
+  .defs dt { font-family: var(--mono); color: var(--ink); font-size: 13px; }
+  .defs dd { margin: 0; }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 34px 0 30px;
+    max-width: 100%;
+  }
+  figure.wide { max-width: 1064px; margin-left: 50%; transform: translateX(-50%); }
+  .figbox {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 22px 14px;
+    overflow-x: auto;
+  }
+  figcaption {
+    font-family: var(--sans);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    margin-top: 12px;
+    max-width: 46em;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .figtitle {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink);
+    margin: 0 0 2px;
+  }
+  .figsub {
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin: 0 0 16px;
+  }
+  svg { display: block; overflow: visible; }
+  svg text { font-family: var(--sans); fill: var(--ink-2); }
+  .tick { font-size: 11px; fill: var(--ink-3); }
+  .sitelab { font-size: 11.5px; }
+  .val { font-size: 11px; font-variant-numeric: tabular-nums; fill: var(--ink-2); }
+  .gridline { stroke: var(--rule); stroke-width: 1; }
+  .axis { stroke: var(--rule-strong); stroke-width: 1; }
+
+  /* legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-2);
+    margin: 4px 0 16px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .swatch.band { background: var(--band); border: 1px solid var(--rule-strong); }
+
+  /* ---------- stat strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    margin: 30px 0 8px;
+    overflow: hidden;
+  }
+  .stat { background: var(--surface); padding: 16px 18px 15px; }
+  .stat .k {
+    font-family: var(--sans); font-size: 11px; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 7px;
+  }
+  .stat .v {
+    font-family: var(--mono); font-size: 22px; color: var(--ink);
+    font-variant-numeric: tabular-nums; line-height: 1.1; margin: 0 0 5px;
+  }
+  .stat .v.ok { color: var(--good); }
+  .stat .n { font-family: var(--sans); font-size: 12px; color: var(--ink-3); margin: 0; line-height: 1.45; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 22px 0; }
+  table { border-collapse: collapse; font-family: var(--sans); font-size: 13.5px; width: 100%; }
+  th, td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--rule); }
+  th {
+    font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--rule-strong);
+  }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 20px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 600; padding: 1px 8px 1px 6px;
+    border-radius: 10px; white-space: nowrap;
+  }
+  .pill.ok { color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+  .pill.bad { color: var(--critical); background: color-mix(in srgb, var(--critical) 12%, transparent); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 18px 22px;
+    margin: 26px 0;
+    border-radius: 2px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .lab {
+    font-family: var(--sans); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); font-weight: 650; margin: 0 0 8px;
+  }
+
+  /* ---------- tooltip ---------- */
+  #tip {
+    position: fixed; pointer-events: none; opacity: 0;
+    transition: opacity .1s;
+    background: var(--ink); color: var(--paper);
+    font-family: var(--sans); font-size: 12.5px; line-height: 1.45;
+    padding: 7px 10px; border-radius: 3px; z-index: 50;
+    max-width: 250px;
+  }
+  #tip .tv { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .hoverable { cursor: default; }
+  .hoverable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer {
+    margin-top: 56px; padding-top: 22px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: var(--sans); font-size: 13px; color: var(--ink-3);
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 780px) {
+    body { font-size: 17px; }
+    figure.wide { margin-left: 0; transform: none; }
+  }
+</style>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<div class="wrap">
+
+<header class="masthead col">
+  <p class="eyebrow">ClimaLand · model description</p>
+  <h1>A prognostic live-carbon model without plant functional types</h1>
+  <p class="standfirst">Four live carbon pools driven by an existing photosynthesis and leaf-area
+  model, closing the plant and soil carbon budgets that were previously open — and a measured account
+  of where a no-PFT formulation stops working.</p>
+  <p class="byline">
+    <span>Branch <code>ar/prognostic_carbon</code></span>
+    <span>PR <code>#1834</code></span>
+    <span>20-site ERA5 column battery</span>
+  </p>
+</header>
+
+<div class="col">
+
+<p>This describes a carbon model added to ClimaLand's canopy: four prognostic pools —
+labile sugar, leaf, stem and root — plus a prognostic soil organic carbon pool that was
+previously frozen. It is written against results from a 20-site single-column battery
+spanning tropical rainforest to tundra, and it reports what the model gets right and
+what it does not.</p>
+
+<p>The governing design rule is that <strong>the carbon model does not change GPP or leaf area
+index</strong>. Both are already modelled — a P-model for photosynthesis, and either prescribed
+MODIS LAI or a prognostic optimal-LAI scheme — and the carbon model consumes them as inputs.
+This one-way coupling is what makes the model cheap to spin up and its correctness checkable:
+a run with the pools must reproduce a run without them exactly.</p>
+
+<div class="stats">
+  <div class="stat">
+    <p class="k">GPP &amp; LAI unchanged</p>
+    <p class="v ok">0.0</p>
+    <p class="n">Relative difference at all 20 sites, under both LAI models — bit-identical, not within tolerance</p>
+  </div>
+  <div class="stat">
+    <p class="k">Desert respiration</p>
+    <p class="v">0.813 → 0.000</p>
+    <p class="n">g C m⁻² day⁻¹ at Sahara, where GPP is zero all year</p>
+  </div>
+  <div class="stat">
+    <p class="k">Carbon conservation</p>
+    <p class="v ok">round-off</p>
+    <p class="n">d(ΣC)/dt = GPP − Ra − litter, verified in the test suite</p>
+  </div>
+  <div class="stat">
+    <p class="k">Within observed range</p>
+    <p class="v">10<span style="font-size:15px;color:var(--ink-3)"> / 20</span></p>
+    <p class="n">Sites where modelled woody carbon falls inside the spread of six biomass products</p>
+  </div>
+</div>
+
+</div>
+
+<!-- ================= POOLS ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§1</span><h2>The pools and their fluxes</h2></div>
+
+  <p>All pools are in kg C m⁻² of ground and live in the canopy's prognostic state. Gross
+  primary production arrives as sugar; sugar pays maintenance respiration and funds structural
+  growth; structure turns over into litter.</p>
+
+  <div class="eq">dC_sugar/dt = GPP − Rm − S
+dC_leaf/dt  = a·f_leaf·S − C_leaf/τ_leaf
+dC_stem/dt  = a·f_stem·S − C_stem/τ_stem
+dC_root/dt  = a·f_root·S − C_root/τ_root</div>
+
+  <dl class="defs">
+    <dt>S</dt><dd>sugar drawn for structure (kg C m⁻² s⁻¹)</dd>
+    <dt>a</dt><dd>construction efficiency, 0.7; the remaining (1−a)·S is growth respiration</dd>
+    <dt>f_leaf, f_stem, f_root</dt><dd>allocation fractions summing to one, blended between C3 and C4 values by the modelled C3 fraction</dd>
+    <dt>τ_i</dt><dd>turnover times: leaf 1.5 yr, root 2 yr, stem 30 yr (C3) or 1 yr (C4)</dd>
+  </dl>
+
+  <p>Summing the four gives <span class="eq" style="display:inline;padding:2px 7px;border-left-width:1px;margin:0">d(ΣC)/dt = GPP − Ra − litter</span>,
+  with <em class="term">Ra = Rm + (1−a)S</em>. That identity is the conservation test: it closes only if growth
+  respiration is exactly the construction cost and allocation is neither double-counted nor
+  dropped.</p>
+
+  <h3>Why sugar never pins at zero</h3>
+
+  <p>The allocation <em class="term">rate</em>, not the fractions, regulates the sugar pool. Sugar is treated as a
+  buffer with a target set by standing live biomass, and drawn down through a smooth ramp:</p>
+
+  <div class="eq">C_sugar_target = c_nsc·(C_leaf + C_sap + C_root)
+x = C_sugar / C_sugar_target
+S = (C_sugar/τ_alloc)·g(x),        g(x) = xⁿ/(1 + xⁿ),  n = 3</div>
+
+  <p>Above target the ramp saturates and growth draws the pool down; below target growth stops
+  while maintenance continues. That is a proportional controller, so sugar oscillates seasonally
+  around its target rather than saturating or emptying — and it needs no hard clamp. Genuine
+  carbon starvation remains something the model can express rather than a numerical failure.</p>
+
+  <h3>Maintenance respiration</h3>
+
+  <p>This replaces a JULES-style term that respired <em class="term">prescribed constant</em> stem and root area
+  indices. With real pools, the pools are what respire:</p>
+
+  <div class="eq">Rm = g(C_sugar/C_sugar_ref)·[ f_T·(M_C·Rd + r_stem·C_sap) + f_T·r_root·C_root ]
+
+C_sap = C_stem/(1 + C_stem/C_sap_half)     <span class="cmt">living sapwood fraction</span>
+f_T   = Q10^((T − T_ref)/10)</div>
+
+  <p>Three choices carry weight here. The leaf term reuses <em class="term">Rd</em>, the dark respiration the
+  photosynthesis scheme already computes, which avoids double-counting it — it is already inside
+  net assimilation. The sapwood saturation is what stops a 20 kg C m⁻² tropical stem pool from
+  respiring itself to death, since living wood does not scale linearly with total wood. And the
+  leading ramp is a substrate limitation: respiration requires substrate, so it stops as the sugar
+  pool empties rather than driving it negative.</p>
+
+  <div class="callout">
+    <p class="lab">Measured, not assumed</p>
+    <p>That last term was added after the battery produced <strong>C_sugar = −0.075 kg C m⁻²</strong> at the
+    Sahara column, where GPP is zero all year and maintenance kept drawing on an empty pool.
+    Negative carbon is not a physical outcome. With the ramp, the pool floors at exactly zero and
+    vegetated sites move by at most one part in 10⁴.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================= RESPIRATION RESULT ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§2</span><h2>Respiration that a desert can switch off</h2></div>
+
+  <p>The scheme this replaces respired prescribed area indices, which do not vanish over bare
+  ground. Before the change, the two true desert columns reported <strong>0.813 g C m⁻² day⁻¹</strong> of
+  autotrophic respiration with zero photosynthesis and zero leaf area, all year — carbon emitted
+  that was never fixed, from a pool that did not exist. Two further sites respired more than they
+  assimilated, giving negative annual net production.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Site</th><th class="num">Ra before</th><th class="num">Ra after</th><th class="num">NPP/GPP before</th><th class="num">after</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>sahara / arabian</td><td class="num">0.813</td><td class="num">0.000</td><td class="num">n/a</td><td class="num">n/a</td><td><span class="pill ok">✓ resolved</span></td></tr>
+      <tr><td>alaska_north_slope</td><td class="num">1.068</td><td class="num">0.301</td><td class="num">−0.093</td><td class="num">0.691</td><td><span class="pill ok">✓ resolved</span></td></tr>
+      <tr><td>mojave_sw_us</td><td class="num">1.066</td><td class="num">0.402</td><td class="num">−0.024</td><td class="num">0.614</td><td><span class="pill ok">✓ resolved</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The prediction was recorded before the run: if respiration comes from the pools, desert Ra must
+  fall to zero, because the pools there equilibrate at zero. It does, exactly — and no site now
+  respires more than it assimilates.</p>
+
+  <h3>A parameter that was quietly inert</h3>
+
+  <p>The legacy scheme's temperature sensitivity ships at <code style="font-family:var(--mono);font-size:.86em">Q10 = 1.0</code>, so
+  <em class="term">f_T ≡ 1</em> and maintenance had no temperature response at all. Across a 38 K span —
+  Alaska at 262 K to the Sahel at 300 K, where Q10 = 2 predicts a 14× range — measured Ra varied
+  by ±3%. The carbon model therefore carries its own Q10 = 2.0, deliberately separate, so the
+  legacy scheme's behaviour is untouched and the change is visible rather than smuggled in.</p>
+</div>
+</section>
+
+<!-- ================= SOIL ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§3</span><h2>Closing the soil budget</h2></div>
+
+  <p>Soil organic carbon already existed as a prognostic variable but was pinned at its initial
+  condition: microbial respiration added CO₂ and consumed O₂ but never drew SOC down. The soil
+  carbon budget was open in exactly the way the plant budget had been.</p>
+
+  <div class="eq">dSOC/dt = I_litter(z) − Sm
+
+I_litter(z) = (L_leaf + L_stem)·s(z)/∫s  +  L_root·r(z)/∫r</div>
+
+  <p>Root litter follows the root profile; leaf and stem litter enter on a shallow exponential.
+  Each shape is normalised by its own column integral, so the integral of the input returns the
+  surface litter flux exactly, whatever the vertical discretisation.</p>
+
+  <div class="callout">
+    <p class="lab">Why the normalisation is load-bearing</p>
+    <p>On the standard column, a 5 cm e-folding depth against a 5 cm top layer leaves the raw shape
+    integrating to <strong>0.892</strong>. An un-normalised input would have delivered 11% less carbon to the
+    soil than the canopy shed — silently. The test asserts both that the column integral returns the
+    litter flux to round-off <em>and</em> that the raw shape does not integrate to one, so the
+    normalisation cannot be dropped without a failure.</p>
+  </div>
+
+  <p>Across the battery, SOC drifts between −4.7% and +0.3% over two years with mixed signs — the
+  signature of a system near balance rather than a systematic bias — and heterotrophic respiration
+  stays within 3% of its baseline everywhere. The respiration ratio tracks the SOC ratio nearly
+  one-to-one, which confirms the feedback is live where SOC was previously frozen.</p>
+</div>
+</section>
+
+<!-- ================= EQUILIBRIUM ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§4</span><h2>Equilibrium, reached offline</h2></div>
+
+  <p>Stem carbon turns over on a 30-year timescale and soil carbon on centuries, so no coupled run
+  reaches steady state. Because the coupling is one-way, the pool equations can be integrated alone
+  against a recorded driver series — GPP, leaf respiration, canopy temperature, C3 fraction — for
+  centuries in seconds rather than node-hours.</p>
+
+  <p>Two independent methods agree. A 600-year explicit integration and a direct steady-state
+  solution match to <strong>ratio 1.000</strong> on all structural pools under constant drivers. The direct
+  solution is not closed-form: at equilibrium the pools are linear in the mean allocation rate,
+  but maintenance respiration depends on the sapwood it builds, so the rate is a scalar fixed point
+  solved by bisection.</p>
+
+  <div class="eq">C_i* = a·f_i·S̄·τ_i          <span class="cmt">linear in the mean allocation rate</span>
+S̄  = GPP − Rm(S̄)          <span class="cmt">fixed point: Rm depends on the pools it builds</span></div>
+</div>
+
+<figure class="wide">
+  <div class="figbox">
+    <p class="figtitle">Equilibrium live carbon against biome targets</p>
+    <p class="figsub">Offline spinup, 500 years, driven by per-site ERA5 records. Shaded bands are the target ranges from the model specification.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--good)"></i> inside target</span>
+      <span><i class="swatch" style="background:var(--critical)"></i> outside target</span>
+      <span><i class="swatch" style="background:var(--ink-3)"></i> no target specified</span>
+      <span><i class="swatch band"></i> target range</span>
+    </div>
+    <div id="fig-cveg"></div>
+  </div>
+  <figcaption><b>Tropical and temperate forests land where they should; grasslands do not.</b>
+  Two grassland columns reach 10–15 kg C m⁻², an order of magnitude above target, while two boreal
+  forests fall below theirs. That combination — forests under-built and grasslands over-built at the
+  same time — is the specific symptom the specification named as the point at which constant
+  allocation fractions have to be abandoned.</figcaption>
+</figure>
+
+<div class="col">
+  <p>The pools also say <em class="term">what</em> the carbon is. Stem dominates everywhere, which is why the
+  grassland result is not a matter of target definitions:</p>
+</div>
+
+<figure class="wide">
+  <div class="figbox">
+    <p class="figtitle">Pool composition at equilibrium</p>
+    <p class="figsub">kg C m⁻². Stacked in allocation order; stem is the dominant pool at every vegetated site.</p>
+    <div class="legend" id="leg-pools"></div>
+    <div id="fig-pools"></div>
+  </div>
+  <figcaption><b>A temperate grassland carrying more wood than a boreal forest.</b>
+  Pampas holds 13.6 kg C m⁻² of stem — comparable to Borneo rainforest and 6.5× central Siberia.
+  That statement does not depend on how the total-biomass target is defined, and it is precisely the
+  quantity a woody-biomass observational product measures.</figcaption>
+</figure>
+</section>
+
+<!-- ================= THE LIMIT ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§5</span><h2>Where a no-PFT formulation stops</h2></div>
+
+  <p>Because equilibrium stem carbon is linear in turnover time, the battery states plainly what
+  turnover time each site would need to hit its target. The answer is physically coherent — and it
+  is where the approach runs out.</p>
+</div>
+
+<figure class="wide">
+  <div class="figbox">
+    <p class="figtitle">Required stem turnover time against mean annual temperature</p>
+    <p class="figsub">Bars span the turnover time that would place each site inside its target range. Forests fall on a clean temperature relationship; grasslands do not lie on it.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--s1)"></i> forest</span>
+      <span><i class="swatch" style="background:var(--s2)"></i> grassland</span>
+    </div>
+    <div id="fig-tau"></div>
+  </div>
+  <figcaption><b>At the same temperature, two sites need turnover times 14× apart.</b>
+  Ozark forest (282.5 K) needs 14–42 years; the US Great Plains grassland (282.2 K) needs 1–3.
+  Among forests alone the relationship is clean and physical — boreal trees hold wood for a
+  century, tropical trees for decades — but no function of temperature can separate a warm forest
+  from a warm grassland, because the distinction is growth form, not climate.</figcaption>
+</figure>
+
+<div class="col">
+  <p>Scaling turnover time by mean annual temperature, <code style="font-family:var(--mono);font-size:.86em">τ_stem · q^((T_ref − MAT)/10)</code>
+  with q = 2 and T_ref = 283 K, fixes the cold end completely and leaves the warm end untouched:</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Site</th><th class="num">MAT (K)</th><th class="num">τ effective</th><th class="num">cVeg before</th><th class="num">after</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>central_siberia</td><td class="num">264.7</td><td class="num">107 yr</td><td class="num">2.48</td><td class="num">7.52</td><td><span class="pill ok">✓ 5–15</span></td></tr>
+      <tr><td>canada_boreal</td><td class="num">269.6</td><td class="num">76 yr</td><td class="num">4.71</td><td class="num">10.71</td><td><span class="pill ok">✓ 5–15</span></td></tr>
+      <tr><td>fennoscandia</td><td class="num">275.9</td><td class="num">49 yr</td><td class="num">5.93</td><td class="num">9.07</td><td><span class="pill ok">✓ 5–15</span></td></tr>
+      <tr><td>ozark_us</td><td class="num">282.5</td><td class="num">31 yr</td><td class="num">12.19</td><td class="num">12.59</td><td><span class="pill ok">✓ 5–15</span></td></tr>
+      <tr><td>amazon_central</td><td class="num">298.2</td><td class="num">30 yr</td><td class="num">18.66</td><td class="num">18.66</td><td><span class="pill ok">✓ 10–20</span></td></tr>
+      <tr><td>pampas_argentina</td><td class="num">291.1</td><td class="num">30 yr</td><td class="num">14.81</td><td class="num">14.81</td><td><span class="pill bad">✗ 0.3–1</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>An effective turnover of 107 years at central Siberia is a real boreal number rather than a
+  fitted one, and the scaling is flat above the reference temperature so warm sites are untouched
+  by construction. But grasslands are warm, so nothing reaches them.</p>
+
+  <p>This is now in the model, driven by a running mean of air temperature the carbon model carries
+  itself with two years of memory. Adding that fifth prognostic variable leaves GPP and leaf area
+  index <strong>bit-identical</strong> across all 20 sites, and the coupled run shifts cold sites in
+  temperature order while moving warm sites by exactly zero.</p>
+
+  <div class="callout">
+    <p class="lab">What the coupled battery cannot show</p>
+    <p>The table above is an <em>equilibrium</em> result. Over the two years a coupled column run
+    spans, stem carbon is set by growth rather than turnover — <span style="font-family:var(--mono);font-size:.86em">τ(1−e<sup>−t/τ</sup>)</span>
+    differs by only <strong>2.4%</strong> between 107 and 30 years. The battery confirms the model still
+    runs, that the one-way coupling still holds exactly, and that the multiplier lands where it
+    should; it does not and cannot demonstrate the biomass change itself. A green 20-site run is
+    not evidence for the fix.</p>
+  </div>
+
+  <h3>Precipitation does not rescue it either</h3>
+
+  <p>The obvious second climate axis fails for a specific and instructive reason. Among the four
+  sites that matter, <strong>the wettest is a grassland and the two driest are forests</strong>:</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Site</th><th>Biome</th><th class="num">MAP (m yr⁻¹)</th></tr></thead>
+    <tbody>
+      <tr><td>pampas_argentina</td><td>grassland</td><td class="num">0.928</td></tr>
+      <tr><td>us_great_plains</td><td>grassland</td><td class="num">0.699</td></tr>
+      <tr><td>canada_boreal</td><td>boreal forest</td><td class="num">0.567</td></tr>
+      <tr><td>central_siberia</td><td>boreal forest</td><td class="num">0.450</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Any woody fraction that increases with precipitation therefore suppresses the boreal forests
+  2–3× harder than the grassland it is meant to fix. Measured: it bought one grassland site and cost
+  one forest site, while cutting central Siberia's stem pool from 2.07 to 0.20 kg C m⁻².</p>
+
+  <div class="callout">
+    <p class="lab">The honest limit</p>
+    <p>Pampas is a fire- and grazing-maintained grassland sitting in a climate that would support
+    forest. That is not a climate fact, so no function of mean annual temperature and precipitation
+    can encode it.</p>
+    <p><strong>Soil properties were tested next and do not carry it either.</strong> Sand, coarse
+    fragments and porosity all overlap between grassland and forest. Organic matter separates them
+    by 10% — but the US Great Plains grassland and a central European forest have near-identical
+    sand fractions (0.162 vs 0.161); a boreal forest that must stay woody sits only 16% above pampas;
+    and tundra, which has no trees, carries the <em>highest</em> organic matter of the whole
+    temperate–boreal group. Organic matter is tracking cold, wet, slow decomposition — peat — not
+    woodiness.</p>
+    <p>So across both climate and soil, nothing available separates a disturbance-maintained
+    grassland from a forest in the same climate on the same soil. This is a real property of the
+    problem rather than a gap in the search: the distinction is fire and grazing history. A
+    PFT-free model can capture the cold-forest end and the arid end well; it over-builds
+    fire-maintained grassland, and that limitation should be documented rather than tuned away.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================= OBSERVATIONS ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§6</span><h2>Against observed woody biomass</h2></div>
+
+  <p>The equilibrium woody pool can be compared with satellite and inventory biomass products
+  directly. Six are available: XuSaatchi, Thurner, ESACCI, GEOCARBON, Saatchi2011 and USForest.</p>
+
+  <p>They disagree with each other by a <strong>median factor of 3.4×</strong> at these sites — Ozark
+  ranges from 2.1 to 7.0 kg C m⁻² depending on which product you ask, central Europe from 3.7 to
+  15.6. So a comparison against any single product largely measures which product was chosen. The
+  model is scored against the observational <em>range</em> instead.</p>
+</div>
+
+<figure class="wide">
+  <div class="figbox">
+    <p class="figtitle">Modelled woody carbon against the spread of six observational products</p>
+    <p class="figsub">Bars span the range across products; the marker is the model. Only the woody pool is compared, as the products are woody-biomass estimates.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--good)"></i> model inside observational range</span>
+      <span><i class="swatch" style="background:var(--critical)"></i> outside</span>
+      <span><i class="swatch" style="background:var(--ink-3)"></i> observational spread</span>
+    </div>
+    <div id="fig-obs"></div>
+  </div>
+  <figcaption><b>Forests and true deserts sit within observational uncertainty; dry and herbaceous
+  systems do not.</b> The model falls inside the range at 10 of 20 sites, including all three tropical
+  rainforests, both true deserts, and two of three boreal forests. Every robust failure — Mojave,
+  Pampas, ne China, Iberia, Cerrado, Sahel — is dry, seasonal or herbaceous, which is the same
+  woody-allocation limit described above, now confirmed against six independent products rather
+  than inferred from one.</figcaption>
+</figure>
+
+<div class="col">
+  <div class="callout">
+    <p class="lab">A caution about tuning</p>
+    <p>With a 3.4× median spread between products, most of the apparent bias in any single
+    comparison is observational rather than model error. Two further confounds push the same way: a
+    0.5° cell is roughly 50 km and mixes cropland and pasture into what the model treats as natural
+    vegetation, and the products differ in whether they include coarse roots. Tuning allocation
+    parameters to close a gap of this kind would be fitting the model to a dataset choice.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================= DISTURBANCE ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§7</span><h2>What the residual actually is</h2></div>
+
+  <p>The failures listed above share a description — dry, seasonal, herbaceous — but a description is
+  not a diagnosis. Two questions decide what the residual means, and both have answers.</p>
+
+  <h3>The error is entirely wood</h3>
+
+  <p>Splitting the equilibrium into its pools is the first test. At Pampas the model carries
+  <strong>0.94 kg C m⁻² of leaf and root</strong> — inside the 0.3–1.0 range expected of temperate
+  grassland — and then grows 10.6 kg C m⁻² of stem on top of it. The herbaceous part of the answer is
+  right. Only the wood is wrong.</p>
+
+  <p>This settles a fair objection to §6. The observational products measure <em>woody</em> biomass,
+  and over grassland they read near zero partly by construction, so scoring stem carbon against them
+  might have been unfair to the model. It was not: total vegetation carbon is 12× the target as well,
+  and every part of the excess is stem.</p>
+</div>
+
+<figure class="wide">
+  <div class="figbox">
+    <p class="figtitle">Herbaceous carbon is right; wood is not</p>
+    <p class="figsub">Equilibrium pools, with the observed woody range for comparison. Climate at right.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--s1)"></i>leaf + root</span>
+      <span><i class="swatch" style="background:var(--s2)"></i>stem (wood)</span>
+      <span><i class="swatch band"></i>observed woody range, 6 products</span>
+    </div>
+    <div id="fig-dist"></div>
+  </div>
+  <figcaption><b>The model does not fail at biomass; it fails at deciding where wood belongs.</b>
+  Leaf and root carbon sit within a factor of about 1.5 of each other across every site here, forest
+  and grassland alike, and grassland values land in the expected range. The stem pool is what
+  separates a correct site from an incorrect one — and at Pampas, Cerrado, the Great Plains and
+  ne China it is built where observations show almost none.</figcaption>
+</figure>
+
+<div class="col">
+  <h3>The climate is not the problem</h3>
+
+  <p>The second test asks whether the model is misreading the climate. It is not. Pampas is
+  <strong>warmer than central Europe and nearly as wet</strong> — 17.9 °C and 915 mm against 9.3 °C
+  and 1056 mm — and central Europe is a genuine forest. Cerrado receives 1437 mm, which is
+  climatically rainforest territory. Any model that predicts woody biomass from temperature, water
+  and light <em>should</em> put trees at both.</p>
+
+  <p>They have no trees because of <strong>fire</strong> — Cerrado is the textbook fire-maintained
+  savanna — and because of <strong>grazing and cultivation</strong>: Pampas, the Great Plains and the
+  Songnen plain are among the most heavily converted landscapes on Earth. None of that is in the
+  model, and none of it is inferable from climate.</p>
+
+  <div class="callout">
+    <p class="lab">Why two earlier negative results were really one</p>
+    <p>Mean annual precipitation could not separate grassland from forest, and neither could soil
+    texture, organic matter or hydraulic conductivity. Read together with the above, that stops
+    looking like two unlucky choices of predictor. The information that distinguishes these sites
+    from forest is not in the climate and not in the soil, because it is in the disturbance
+    regime — so no predictor drawn from either could have worked.</p>
+  </div>
+
+  <p>That yields a limitation precise enough to be useful rather than an apology: <strong>this model
+  simulates climate-potential woody biomass, and is not given the disturbance information that
+  determines where that potential is realised.</strong> It is a statement about a missing input, not
+  a miscalibrated parameter, and it predicts exactly where the model will be wrong — which is a
+  claim that can be checked rather than assumed.</p>
+</div>
+</section>
+
+<!-- ================= VERIFICATION ================= -->
+<section>
+<div class="col">
+  <div class="stage-head"><span class="stage-num">§8</span><h2>How it is checked</h2></div>
+
+  <p>The one-way coupling makes the central claim falsifiable, and it is tested rather than
+  asserted. A battery run with the carbon model is diffed site-by-site against the same run without
+  it: GPP and leaf area index come out <strong>bit-identical</strong> at all 20 sites under both LAI
+  models — a relative difference of exactly zero, not merely within tolerance. The comparison tool
+  was itself checked against a deliberately perturbed input, so a checker that always passes could
+  not go unnoticed.</p>
+
+  <p>Alongside that, the test suite asserts carbon conservation to round-off from a non-trivial pool
+  state; that autotrophic respiration is exactly the sum of its maintenance and growth parts; that
+  respiration vanishes when every pool is empty, which the scheme it replaces structurally cannot
+  do; and that litter reaching the soil integrates to the flux the canopy shed.</p>
+
+  <p>Several defects surfaced only because the whole battery was run rather than the sites that had
+  already worked. Eleven of twenty columns returned non-finite pools on the first full sweep — every
+  seasonal, cold or arid one — traced not to instability but to a canopy-temperature diagnostic
+  that is deliberately masked where there is no leaf area. The driver record had inherited a
+  plotting convention; the coupled model was unaffected throughout.</p>
+</div>
+
+<footer class="col">
+  <p>Model source: <code style="font-family:var(--mono)">src/standalone/Vegetation/biomass.jl</code>,
+  <code style="font-family:var(--mono)">src/integrated/soil_canopy_carbon_interactions.jl</code>.
+  Specification and harness under <code style="font-family:var(--mono)">experiments/integrated/prognostic_carbon/</code>.
+  Figures are drawn from the committed 20-site battery output.</p>
+</footer>
+
+</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const SITES = [
+    // name, biome, cVeg, leaf, stem, root, MAT, MAP, targetLo, targetHi (null = not gated)
+    ["congo_basin","tropical rainforest",20.50,0.677,18.681,0.910,297.5,1.502,10,20],
+    ["amazon_central","tropical rainforest",18.66,0.621,16.968,0.833,298.2,2.438,10,20],
+    ["borneo","tropical rainforest",16.49,0.554,14.984,0.741,299.1,3.750,10,20],
+    ["n_australia_savanna","tropical savanna",15.18,0.528,13.749,0.703,299.7,1.551,null,null],
+    ["pampas_argentina","temperate grassland",14.81,0.458,13.550,0.628,291.1,0.928,0.3,1],
+    ["cerrado_brazil","tropical savanna",13.46,0.451,12.233,0.605,297.8,1.442,null,null],
+    ["central_europe","temperate forest",13.17,0.584,11.570,0.776,282.4,1.037,5,15],
+    ["iberia","mediterranean",12.70,0.503,11.329,0.694,287.3,0.563,null,null],
+    ["ozark_us","temperate forest",12.19,0.499,10.819,0.666,282.5,1.064,5,15],
+    ["us_great_plains","temperate grassland",10.11,0.425,8.920,0.578,282.2,0.699,0.3,1],
+    ["california_vaira","mediterranean",9.11,0.403,7.993,0.566,280.1,0.543,null,null],
+    ["ne_china","temperate forest",7.77,0.367,6.715,0.513,275.7,0.510,5,15],
+    ["fennoscandia","boreal forest",5.93,0.306,5.048,0.416,275.9,0.733,5,15],
+    ["canada_boreal","boreal forest",4.71,0.236,4.012,0.325,269.6,0.567,5,15],
+    ["mojave_sw_us","desert",2.71,0.165,2.230,0.230,280.8,0.240,0,1],
+    ["central_siberia","boreal forest",2.48,0.134,2.066,0.183,264.7,0.450,5,15],
+    ["alaska_north_slope","tundra",1.07,0.057,0.891,0.075,262.2,0.428,null,null],
+    ["sahel","tropical savanna",0.42,0.027,0.348,0.048,300.4,0.216,null,null],
+    ["sahara","desert",0.00,0,0,0,296.0,0.033,0,1],
+    ["arabian","desert",0.00,0,0,0,299.5,0.056,0,1]
+  ];
+
+  const tip = document.getElementById("tip");
+  function showTip(html, ev) {
+    tip.innerHTML = html;
+    tip.style.opacity = "1";
+    const pad = 14;
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    const r = tip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = ev.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = ev.clientY - r.height - pad;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hideTip() { tip.style.opacity = "0"; }
+
+  const NS = "http://www.w3.org/2000/svg";
+  function el(n, a) {
+    const e = document.createElementNS(NS, n);
+    for (const k in a) e.setAttribute(k, a[k]);
+    return e;
+  }
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  // ---------- Figure 1: cVeg vs target ----------
+  function drawCVeg() {
+    const host = document.getElementById("fig-cveg");
+    host.textContent = "";
+    const W = Math.max(760, host.clientWidth || 900), rowH = 25,
+          mL = 152, mR = 58, mT = 8, mB = 34;
+    const H = mT + SITES.length * rowH + mB;
+    const maxV = 21;
+    const x = v => mL + (v / maxV) * (W - mL - mR);
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img",
+      "aria-label": "Equilibrium live carbon by site against biome target ranges" });
+
+    for (let g = 0; g <= 20; g += 5) {
+      svg.appendChild(el("line", { x1: x(g), x2: x(g), y1: mT, y2: mT + SITES.length * rowH, class: "gridline" }));
+      const t = el("text", { x: x(g), y: H - 14, class: "tick", "text-anchor": "middle" });
+      t.textContent = g; svg.appendChild(t);
+    }
+    const xl = el("text", { x: (mL + W - mR) / 2, y: H - 1, class: "tick", "text-anchor": "middle" });
+    xl.textContent = "equilibrium cVeg  (kg C m⁻²)"; svg.appendChild(xl);
+
+    SITES.forEach((s, i) => {
+      const [name, biome, cv, , , , mat, map, lo, hi] = s;
+      const y = mT + i * rowH;
+      if (lo !== null) {
+        svg.appendChild(el("rect", { x: x(lo), y: y + 3, width: Math.max(2, x(hi) - x(lo)), height: rowH - 8,
+          fill: css("--band"), rx: 2 }));
+      }
+      const inBand = lo !== null && cv >= lo && cv <= hi;
+      const fill = lo === null ? css("--ink-3") : (inBand ? css("--good") : css("--critical"));
+      const bw = Math.max(cv > 0 ? 2 : 0, x(cv) - mL);
+      const bar = el("rect", { x: mL, y: y + 6, width: bw, height: rowH - 14, fill: fill, rx: 3, class: "hoverable", tabindex: "0" });
+      const lab = el("text", { x: mL - 10, y: y + rowH / 2 + 4, class: "sitelab", "text-anchor": "end" });
+      lab.textContent = name.replace(/_/g, " ");
+      const val = el("text", { x: mL + bw + 8, y: y + rowH / 2 + 4, class: "val" });
+      val.textContent = cv.toFixed(2);
+      const msg = `<b>${name.replace(/_/g, " ")}</b><br>${biome}<br>` +
+        `cVeg <span class="tv">${cv.toFixed(2)}</span> kg C m⁻²<br>` +
+        (lo === null ? "no target specified" : `target <span class="tv">${lo}–${hi}</span> — ${inBand ? "inside" : "outside"}`) +
+        `<br>MAT <span class="tv">${mat}</span> K · MAP <span class="tv">${map}</span> m yr⁻¹`;
+      bar.addEventListener("mousemove", e => showTip(msg, e));
+      bar.addEventListener("mouseleave", hideTip);
+      bar.addEventListener("focus", e => showTip(msg, { clientX: mL + bw, clientY: y + 60 }));
+      bar.addEventListener("blur", hideTip);
+      svg.appendChild(bar); svg.appendChild(lab); svg.appendChild(val);
+    });
+    svg.appendChild(el("line", { x1: mL, x2: mL, y1: mT, y2: mT + SITES.length * rowH, class: "axis" }));
+    host.appendChild(svg);
+  }
+
+  // ---------- Figure 2: pool composition ----------
+  const POOL_SITES = ["congo_basin","amazon_central","borneo","pampas_argentina","central_europe",
+                      "ozark_us","us_great_plains","ne_china","fennoscandia","canada_boreal","central_siberia","alaska_north_slope"];
+  function drawPools() {
+    const host = document.getElementById("fig-pools");
+    host.textContent = "";
+    const rows = POOL_SITES.map(n => SITES.find(s => s[0] === n));
+    const W = Math.max(760, host.clientWidth || 900), rowH = 28,
+          mL = 152, mR = 62, mT = 6, mB = 34;
+    const H = mT + rows.length * rowH + mB;
+    const maxV = 21;
+    const x = v => mL + (v / maxV) * (W - mL - mR);
+    const cols = [css("--s1"), css("--s2"), css("--s3"), css("--s4")];
+    const names = ["stem", "root", "leaf", "sugar"];
+
+    const leg = document.getElementById("leg-pools");
+    leg.textContent = "";
+    names.forEach((n, i) => {
+      const sp = document.createElement("span");
+      sp.innerHTML = `<i class="swatch" style="background:${cols[i]}"></i> C_${n}`;
+      leg.appendChild(sp);
+    });
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img",
+      "aria-label": "Equilibrium carbon pool composition by site" });
+    for (let g = 0; g <= 20; g += 5) {
+      svg.appendChild(el("line", { x1: x(g), x2: x(g), y1: mT, y2: mT + rows.length * rowH, class: "gridline" }));
+      const t = el("text", { x: x(g), y: H - 14, class: "tick", "text-anchor": "middle" });
+      t.textContent = g; svg.appendChild(t);
+    }
+    const xl = el("text", { x: (mL + W - mR) / 2, y: H - 1, class: "tick", "text-anchor": "middle" });
+    xl.textContent = "kg C m⁻²"; svg.appendChild(xl);
+
+    rows.forEach((s, i) => {
+      const [name, biome, cv, leaf, stem, root] = s;
+      // sugar not stored per-site; it is ~1-2% of cVeg — derive as remainder
+      const sugar = Math.max(0, cv - leaf - stem - root);
+      const parts = [stem, root, leaf, sugar];
+      const y = mT + i * rowH;
+      let acc = 0;
+      parts.forEach((p, j) => {
+        if (p <= 0) { acc += p; return; }
+        const x0 = x(acc), x1 = x(acc + p);
+        const w = Math.max(1, x1 - x0 - 2); // 2px surface gap between segments
+        const r = el("rect", { x: x0, y: y + 6, width: w, height: rowH - 14, fill: cols[j], rx: 2, class: "hoverable", tabindex: "0" });
+        const msg = `<b>${name.replace(/_/g, " ")}</b><br>${biome}<br>C_${names[j]} <span class="tv">${p.toFixed(2)}</span> kg C m⁻²<br>` +
+          `${(100 * p / cv).toFixed(0)}% of cVeg <span class="tv">${cv.toFixed(2)}</span>`;
+        r.addEventListener("mousemove", e => showTip(msg, e));
+        r.addEventListener("mouseleave", hideTip);
+        r.addEventListener("focus", e => showTip(msg, { clientX: x1, clientY: y + 60 }));
+        r.addEventListener("blur", hideTip);
+        svg.appendChild(r);
+        acc += p;
+      });
+      const lab = el("text", { x: mL - 10, y: y + rowH / 2 + 4, class: "sitelab", "text-anchor": "end" });
+      lab.textContent = name.replace(/_/g, " ");
+      const val = el("text", { x: x(acc) + 8, y: y + rowH / 2 + 4, class: "val" });
+      val.textContent = cv.toFixed(1);
+      svg.appendChild(lab); svg.appendChild(val);
+    });
+    svg.appendChild(el("line", { x1: mL, x2: mL, y1: mT, y2: mT + rows.length * rowH, class: "axis" }));
+    host.appendChild(svg);
+  }
+
+  // ---------- Figure 3: required tau vs MAT ----------
+  const TAU = [
+    // name, MAT, lo, hi, class
+    ["central_siberia", 264.7, 72, 217, "forest"],
+    ["canada_boreal",   269.6, 37, 112, "forest"],
+    ["ne_china",        275.7, 22, 67,  "forest"],
+    ["fennoscandia",    275.9, 30, 89,  "forest"],
+    ["central_europe",  282.4, 13, 39,  "forest"],
+    ["ozark_us",        282.5, 14, 42,  "forest"],
+    ["congo_basin",     297.5, 16, 32,  "forest"],
+    ["amazon_central",  298.2, 18, 35,  "forest"],
+    ["borneo",          299.1, 20, 40,  "forest"],
+    ["us_great_plains", 282.2, 1,  3,   "grassland"],
+    ["pampas_argentina",291.1, 1,  2,   "grassland"]
+  ];
+  function drawTau() {
+    const host = document.getElementById("fig-tau");
+    host.textContent = "";
+    const W = Math.max(760, host.clientWidth || 900), H = 372,
+          mL = 62, mR = 22, mT = 14, mB = 52;
+    const xMin = 261, xMax = 302;
+    const x = v => mL + ((v - xMin) / (xMax - xMin)) * (W - mL - mR);
+    const yMax = 230;
+    const y = v => mT + (1 - v / yMax) * (H - mT - mB);
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img",
+      "aria-label": "Required stem turnover time against mean annual temperature" });
+
+    for (let g = 0; g <= 200; g += 50) {
+      svg.appendChild(el("line", { x1: mL, x2: W - mR, y1: y(g), y2: y(g), class: "gridline" }));
+      const t = el("text", { x: mL - 9, y: y(g) + 4, class: "tick", "text-anchor": "end" });
+      t.textContent = g; svg.appendChild(t);
+    }
+    for (let g = 265; g <= 300; g += 5) {
+      const t = el("text", { x: x(g), y: H - 28, class: "tick", "text-anchor": "middle" });
+      t.textContent = g; svg.appendChild(t);
+    }
+    const xl = el("text", { x: (mL + W - mR) / 2, y: H - 8, class: "tick", "text-anchor": "middle" });
+    xl.textContent = "mean annual temperature  (K)"; svg.appendChild(xl);
+    const yl = el("text", { x: 14, y: mT + (H - mT - mB) / 2, class: "tick", "text-anchor": "middle",
+      transform: `rotate(-90 14 ${mT + (H - mT - mB) / 2})` });
+    yl.textContent = "required τ_stem  (yr)"; svg.appendChild(yl);
+
+    TAU.forEach(([name, mat, lo, hi, cls]) => {
+      const col = cls === "forest" ? css("--s1") : css("--s2");
+      const g = el("g", { class: "hoverable", tabindex: "0" });
+      g.appendChild(el("line", { x1: x(mat), x2: x(mat), y1: y(lo), y2: y(hi), stroke: col, "stroke-width": 2, "stroke-linecap": "round" }));
+      g.appendChild(el("circle", { cx: x(mat), cy: y(lo), r: 4, fill: col, stroke: css("--surface"), "stroke-width": 2 }));
+      g.appendChild(el("circle", { cx: x(mat), cy: y(hi), r: 4, fill: col, stroke: css("--surface"), "stroke-width": 2 }));
+      const msg = `<b>${name.replace(/_/g, " ")}</b><br>${cls}<br>MAT <span class="tv">${mat}</span> K<br>` +
+        `needs τ_stem <span class="tv">${lo}–${hi}</span> yr<br>current: <span class="tv">30</span> yr`;
+      g.addEventListener("mousemove", e => showTip(msg, e));
+      g.addEventListener("mouseleave", hideTip);
+      g.addEventListener("focus", e => showTip(msg, { clientX: x(mat), clientY: y(hi) }));
+      g.addEventListener("blur", hideTip);
+      svg.appendChild(g);
+    });
+
+    // annotate the collision at ~282 K
+    const ann = el("text", { x: x(282.4) + 12, y: y(60), class: "val", "text-anchor": "start" });
+    ann.textContent = "forest and grassland at the same temperature";
+    ann.setAttribute("fill", css("--ink-3"));
+    svg.appendChild(ann);
+    svg.appendChild(el("line", { x1: x(282.3), x2: x(282.3), y1: y(46), y2: y(1),
+      stroke: css("--ink-3"), "stroke-width": 1, "stroke-dasharray": "3 3" }));
+
+    // current constant
+    svg.appendChild(el("line", { x1: mL, x2: W - mR, y1: y(30), y2: y(30), stroke: css("--accent"), "stroke-width": 1.5, "stroke-dasharray": "6 4" }));
+    const cl = el("text", { x: W - mR - 4, y: y(30) - 7, class: "val", "text-anchor": "end" });
+    cl.textContent = "current constant τ_stem = 30 yr";
+    cl.setAttribute("fill", css("--accent"));
+    svg.appendChild(cl);
+
+    svg.appendChild(el("line", { x1: mL, x2: mL, y1: mT, y2: y(0), class: "axis" }));
+    svg.appendChild(el("line", { x1: mL, x2: W - mR, y1: y(0), y2: y(0), class: "axis" }));
+    host.appendChild(svg);
+  }
+
+  // ---------- Figure 4: model vs observational spread ----------
+  const OBS = [
+    // name, zone, model, obs_lo, obs_hi   (calibrated LAI artifact, job 6976879)
+    ["congo_basin","tropics",17.88,16.31,42.93],
+    ["amazon_central","tropics",16.73,5.97,23.88],
+    ["borneo","tropics",14.79,13.95,43.61],
+    ["central_europe","temperate",11.71,3.70,15.56],
+    ["central_siberia","boreal",6.87,4.70,13.90],
+    ["fennoscandia","boreal",8.40,4.08,8.77],
+    ["california_vaira","temperate",5.45,0.00,9.30],
+    ["sahel","savanna",0.00,0.00,0.13],
+    ["sahara","arid",0.00,0.00,0.01],
+    ["arabian","arid",0.00,0.00,0.05],
+    ["n_australia_savanna","savanna",7.56,0.70,7.02],
+    ["canada_boreal","boreal",9.69,4.00,8.64],
+    ["alaska_north_slope","boreal",3.23,0.00,2.09],
+    ["ozark_us","temperate",10.95,2.08,7.03],
+    ["us_great_plains","grassland",8.70,0.05,5.06],
+    ["iberia","temperate",4.70,0.74,2.50],
+    ["mojave_sw_us","arid",0.50,0.10,0.20],
+    ["cerrado_brazil","savanna",10.20,2.17,3.28],
+    ["ne_china","boreal",9.46,0.10,1.54],
+    ["pampas_argentina","grassland",10.63,0.00,1.22]
+  ];
+  function drawObs() {
+    const host = document.getElementById("fig-obs");
+    if (!host) return;
+    host.textContent = "";
+    const W = Math.max(760, host.clientWidth || 900), rowH = 25,
+          mL = 152, mR = 66, mT = 8, mB = 34;
+    const H = mT + OBS.length * rowH + mB;
+    const maxV = 45;
+    const x = v => mL + (v / maxV) * (W - mL - mR);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img",
+      "aria-label": "Modelled woody carbon against the spread of six observational products" });
+
+    for (let g = 0; g <= 45; g += 10) {
+      svg.appendChild(el("line", { x1: x(g), x2: x(g), y1: mT, y2: mT + OBS.length * rowH, class: "gridline" }));
+      const tk = el("text", { x: x(g), y: H - 14, class: "tick", "text-anchor": "middle" });
+      tk.textContent = g; svg.appendChild(tk);
+    }
+    const xl = el("text", { x: (mL + W - mR) / 2, y: H - 1, class: "tick", "text-anchor": "middle" });
+    xl.textContent = "woody carbon  (kg C m⁻²)"; svg.appendChild(xl);
+
+    OBS.forEach((s, i) => {
+      const [name, zone, m, lo, hi] = s;
+      const y = mT + i * rowH + rowH / 2;
+      const inside = m >= lo && m <= hi;
+      // observational spread
+      svg.appendChild(el("line", { x1: x(lo), x2: x(Math.max(hi, lo + 0.05)), y1: y, y2: y,
+        stroke: css("--ink-3"), "stroke-width": 5, "stroke-linecap": "round", opacity: "0.45" }));
+      // model marker, ringed against the surface so it reads over the bar
+      const mk = el("circle", { cx: x(m), cy: y, r: 5,
+        fill: inside ? css("--good") : css("--critical"),
+        stroke: css("--surface"), "stroke-width": 2, class: "hoverable", tabindex: "0" });
+      const msg = `<b>${name.replace(/_/g, " ")}</b><br>${zone}<br>` +
+        `model <span class="tv">${m.toFixed(2)}</span> kg C m⁻²<br>` +
+        `observed <span class="tv">${lo.toFixed(2)}–${hi.toFixed(2)}</span> (6 products)<br>` +
+        (inside ? "inside the observational range"
+                : `outside by <span class="tv">${(m > hi ? m / Math.max(hi, 0.01) : Math.max(lo, 0.01) / Math.max(m, 0.01)).toFixed(1)}×</span>`);
+      mk.addEventListener("mousemove", e => showTip(msg, e));
+      mk.addEventListener("mouseleave", hideTip);
+      mk.addEventListener("focus", e => showTip(msg, { clientX: x(m), clientY: y + 40 }));
+      mk.addEventListener("blur", hideTip);
+      svg.appendChild(mk);
+      const lab = el("text", { x: mL - 10, y: y + 4, class: "sitelab", "text-anchor": "end" });
+      lab.textContent = name.replace(/_/g, " ");
+      svg.appendChild(lab);
+      const vv = el("text", { x: W - mR + 8, y: y + 4, class: "val" });
+      vv.textContent = m.toFixed(1);
+      svg.appendChild(vv);
+    });
+    svg.appendChild(el("line", { x1: mL, x2: mL, y1: mT, y2: mT + OBS.length * rowH, class: "axis" }));
+    host.appendChild(svg);
+  }
+
+  // name, MAT (C), MAP (mm/yr), leaf+root, stem, obs_lo, obs_hi
+  const DIST = [
+    ["amazon central", 25.0, 2286, 1.43, 16.73, 5.97, 23.88],
+    ["central europe",  9.3, 1056, 1.32, 11.71, 3.70, 15.56],
+    ["cerrado brazil", 24.7, 1437, 0.92, 10.20, 2.17,  3.28],
+    ["pampas argentina", 17.9, 915, 0.94, 10.63, 0.00, 1.22],
+    ["us great plains",  9.0,  751, 0.92,  8.70, 0.05, 5.06],
+    ["ne china",         2.5,  479, 0.77,  9.46, 0.10, 1.54],
+  ];
+
+  function drawDist() {
+    const host = document.getElementById("fig-dist");
+    if (!host) return;
+    host.textContent = "";
+    const W = Math.max(780, host.clientWidth || 940),
+          rowH = 46, barH = 13, gap = 2,
+          mL = 138, mR = 168, mT = 10, mB = 34;
+    const H = mT + DIST.length * rowH + mB;
+    const maxV = 25;
+    const x = v => mL + (v / maxV) * (W - mL - mR);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img",
+      "aria-label": "Equilibrium leaf-plus-root and stem carbon at six sites, with observed woody range and site climate" });
+
+    for (let g = 0; g <= maxV; g += 5) {
+      svg.appendChild(el("line", { x1: x(g), x2: x(g), y1: mT, y2: mT + DIST.length * rowH, class: "gridline" }));
+      const tk = el("text", { x: x(g), y: H - 14, class: "tick", "text-anchor": "middle" });
+      tk.textContent = g; svg.appendChild(tk);
+    }
+    const xl = el("text", { x: (mL + W - mR) / 2, y: H - 1, class: "tick", "text-anchor": "middle" });
+    xl.textContent = "carbon  (kg C m⁻²)"; svg.appendChild(xl);
+
+    DIST.forEach((s, i) => {
+      const [name, mat, map, herb, stem, lo, hi] = s;
+      const yTop = mT + i * rowH + 5;
+      const over = stem > hi;
+
+      // observed woody range, drawn behind the stem bar it refers to
+      const yS = yTop + barH + gap;
+      svg.appendChild(el("rect", { x: x(lo), y: yS - 3, width: Math.max(x(hi) - x(lo), 2), height: barH + 6,
+        fill: css("--band"), stroke: css("--rule-strong"), "stroke-width": 1, rx: 2 }));
+
+      // leaf + root
+      svg.appendChild(el("rect", { x: mL, y: yTop, width: Math.max(x(herb) - mL, 2), height: barH,
+        fill: css("--s1"), rx: 3 }));
+      // stem
+      svg.appendChild(el("rect", { x: mL, y: yS, width: Math.max(x(stem) - mL, 2), height: barH,
+        fill: css("--s2"), rx: 3, stroke: css("--surface"), "stroke-width": 1 }));
+
+      const lab = el("text", { x: mL - 10, y: yTop + barH + 4, class: "sitelab", "text-anchor": "end" });
+      lab.textContent = name; svg.appendChild(lab);
+
+      // direct labels: identity never rests on colour alone
+      const v1 = el("text", { x: x(herb) + 7, y: yTop + barH - 2, class: "val" });
+      v1.textContent = herb.toFixed(2); svg.appendChild(v1);
+      const v2 = el("text", { x: x(stem) + 7, y: yS + barH - 2, class: "val",
+        fill: over ? css("--critical") : css("--ink-2") });
+      v2.textContent = stem.toFixed(1) + (over ? `  (${(stem / Math.max(hi, 0.01)).toFixed(1)}× over)` : "");
+      svg.appendChild(v2);
+
+      const clim = el("text", { x: W - 8, y: yTop + barH + 4, class: "val", "text-anchor": "end" });
+      clim.textContent = `${mat.toFixed(1)} °C · ${map} mm`;
+      svg.appendChild(clim);
+    });
+    svg.appendChild(el("line", { x1: mL, x2: mL, y1: mT, y2: mT + DIST.length * rowH, class: "axis" }));
+    host.appendChild(svg);
+  }
+
+  function drawAll() { drawCVeg(); drawPools(); drawTau(); drawObs(); drawDist(); }
+  drawAll();
+
+  let t = null;
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(drawAll, 160); });
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener && mq.addEventListener("change", drawAll);
+  new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
