@@ -83,6 +83,33 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   against the 23:47 walltime — roughly 50 min of margin. Watch it, but it should
   land. `checkpoint.txt` goes `started` → `completed`; that is the cheap way to
   count finished members without parsing logs.
+- **⚠ MEMBER 3 CRASHED — iteration 1 of stage 1 (2026-07-31 ~20:35).**
+  `member_003` died with **signal 11 (SIGSEGV), core dumped**, on node
+  `deg0069`, at 90 % complete after 47 min of healthy running
+  (`estimated_sypd` ~83, `percent_complete` rising normally right up to the
+  crash). Its `checkpoint.txt` is stuck at `started` while its PBS job is gone —
+  that mismatch, job absent but checkpoint not `completed`, is the signature of
+  a crashed member.
+  **This is almost certainly transient/hardware, not the parameters.** A bad
+  parameter set produces NaN or a solver failure, not a segfault after 47
+  minutes at normal throughput.
+  **It is handled, and iteration 1 will still complete:**
+    - `observation_map.jl:65-70` wraps member processing in try/catch and calls
+      `fill_g_ens_col!(..., NaN)` on failure, logging "Error processing member
+      $m, filling observation map entry with NaNs". So it degrades rather than
+      crashing the orchestrator.
+    - EKP's `TransformUnscented` defaults to
+      `failure_handler_method = SampleSuccGauss()`
+      (`EnsembleKalmanProcess.jl:123-129`); `run_calibration.jl` passes only
+      `scheduler`, so that default applies and the update is conditioned on the
+      successful particles.
+    - 1 failure in 21 is ~4.8 %.
+  **WHAT TO WATCH:** if further members segfault in later iterations, especially
+  on different nodes, it stops being transient and becomes a real defect worth
+  reporting rather than absorbing. Count crashed members per iteration via the
+  checkpoint/job mismatch above. Losing a sigma point degrades the unscented
+  covariance estimate, so several failures in one iteration would make that
+  iteration's update untrustworthy even though EKP will not error.
 - **calibrated parameters:** —
 - **committed to `toml/default_parameters.toml`:** no
 - **queue status (2026-07-31 11:57, iteration 2):** still `Q` after 1 h 08 m

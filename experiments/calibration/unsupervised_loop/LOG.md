@@ -314,3 +314,45 @@ worse work than acting on new information.
 **Next.** Watch `6970028`. When it exits cleanly, verify iteration 1's output
 (members present, no all-NaN/all-zero GPP, loss finite) BEFORE submitting chunk 2
 with `N_ITERATIONS=2`. The point of chunking is that each step is checkable.
+
+## 2026-07-31 — iteration 12: first real failure — member 3 segfaulted
+
+Wave 1 finished. **5 of 6 members completed; `member_003` crashed.**
+
+**How it was spotted.** All of `run_1_1`…`run_1_6` had left the queue, but only
+five `checkpoint.txt` files read `completed`. Member 3's still read `started`.
+Job gone + checkpoint not `completed` is the signature of a crashed member, and
+it is cheaper to check than parsing logs.
+
+**What happened.** The last line of `member_003/model_log.txt`:
+
+    deg0069.hsn.de.hpc.ucar.edu: rank 0 died from signal 11 and dumped core
+
+SIGSEGV at 90 % complete, after 47 minutes of entirely healthy running —
+`estimated_sypd` ~83, `percent_complete` climbing normally, `wall_time_per_step`
+steady at ~29.7 ms right up to the crash. **This is transient or hardware, not
+the parameters.** A bad parameter set gives NaN or a solver failure; it does not
+segfault after 47 good minutes at full throughput.
+
+**It is handled, and I verified that rather than assuming it.** Two layers:
+
+1. `observation_map.jl:65-70` wraps `process_member_data!` in try/catch and
+   calls `fill_g_ens_col!(g_ens_builder, m, NaN)` on failure. So the orchestrator
+   degrades instead of dying.
+2. EKP's `TransformUnscented` defaults to
+   `failure_handler_method = SampleSuccGauss()`
+   (`EnsembleKalmanProcess.jl:123-129`). `run_calibration.jl` overrides only
+   `scheduler`, so that default is in force and the update is conditioned on the
+   successful particles.
+
+One failure in 21 is ~4.8 %, so iteration 1 should produce a valid update.
+
+**What I will watch.** Losing a sigma point degrades the unscented covariance
+estimate. EKP will not error on several failures, so "it completed" is not
+evidence the update is sound. If more members segfault — particularly on
+different nodes — this stops being transient and becomes a defect to report
+rather than absorb.
+
+**Timing improved.** GPU concurrency rose from 6 to 15; all remaining members
+(7-21) are now running and should finish ~22:15, comfortably inside the 23:47
+walltime. The earlier "20-40 min of margin" worry has receded.
