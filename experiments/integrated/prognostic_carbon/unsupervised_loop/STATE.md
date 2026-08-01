@@ -1144,6 +1144,34 @@ precipitation did. Check the direction on the battery before building on it.
 Candidate predictors already in `soil.parameters`: sand/clay fraction, porosity,
 hydraulic conductivity, and the soil depth of the column.
 
+## τ_stem(MAT) is in the model and verified (2026-08-01, job 6976081)
+
+Commit `e2fc0ea34`. 20/20 sites, **RULE 1 PASSES at all 20** — GPP and LAI
+bit-identical to `baseline_prognostic_lai.tsv` with a fifth prognostic variable
+(`T_annual`) added. Committed as `harness/stage5_tau_mat.tsv`.
+
+The coupled model behaves as designed: warm sites untouched, cold sites shifted
+slightly and in temperature order.
+
+| site | MAT (K) | C_stem shift |
+|---|---|---|
+| central_siberia | 264.7 | +1.5% |
+| canada_boreal | 269.6 | +1.2% |
+| fennoscandia | 275.9 | +0.9% |
+| ne_china | 275.7 | +0.6% |
+| ozark_us | 282.5 | **+0.0%** |
+
+**What this battery does NOT show, and cannot.** Over two years from empty pools
+`C_stem` is set by growth, not turnover: `τ(1−e^{−t/τ})` gives 1.981 at τ = 107 yr
+against 1.935 at τ = 30 yr, a **2.4% ceiling**. The observed 0.6–1.5% sits under
+that ceiling because the 2-year running mean has not fully converged either. **The
+boreal fix — central_siberia 2.48 → 7.52 — is an equilibrium result verified
+offline, not something this battery demonstrates.** Do not present a green
+20-site battery as confirmation of it.
+
+`T_annual` and the turnover multiplier are now dumped per site, so the mechanism
+is checkable directly rather than inferred from pools that cannot show it.
+
 ## Soil properties tested (2026-08-01) — they do not carry the signal either
 
 Ran the same ordering check on SoilGrids composition *before* wiring anything
