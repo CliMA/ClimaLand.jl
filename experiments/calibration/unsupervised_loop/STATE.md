@@ -754,7 +754,39 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   simply too narrow, and the parameters will pin. **If they are still ≥95 % at
   iteration 3-5, report it as a mis-specified prior — do NOT widen the bounds
   mid-run.**
-- **calibrated parameters:** — (not final; iteration 1 of 5 done)
+- **ITERATION 2 COMPLETE (2026-08-01 16:36).** Chunk 2 ran in 1 h 16 m; 11/11
+  members, zero segfaults. Chunk 3 (`6978126`) submitted 16:40. G ensembles still
+  `(40424, 11)` with 0 NaN and finite fraction 1.0.
+
+  | parameter | it.1 | it.2 | it.3 | bounds | % of range (it.3) |
+  |---|---|---|---|---|---|
+  | optimal_lai_z | 14.92 | 9.326 | 20.28 | 1–40 | 49 % |
+  | optimal_lai_z_c4 | 14.92 | 36.45 | 31.04 | 1–40 | 77 % |
+  | optimal_lai_sigma | 0.9293 | 0.4933 | 0.8209 | 0.1–3.0 | 25 % |
+  | optimal_lai_sigma_c4 | 0.9293 | 2.734 | 2.349 | 0.1–3.0 | 78 % |
+  | optimal_lai_alpha | 0.0685 | 0.1869 | 0.1661 | 0.01–0.3 | 54 % |
+
+- **The C4 bound concern has RECEDED.** `z_c4` 91 % → 77 %, `sigma_c4` 91 % →
+  78 %. Same pattern as `canopy_z_0b_coeff` at stage 1, which is why it was worth
+  not calling it pinned after one step. Keep watching, but on current evidence
+  the borrowed C3 priors are not obviously too narrow.
+
+- **⚠ THE MISFIT INCREASED: 0.2229 → 0.3154 (+41 %).** Unlike stage 1, this
+  number IS meaningful — `lai.jl` uses `minibatch_size = 1` over a single sample
+  range, so both values score the SAME data. So this is a real rise in
+  misfit, not a change of scoring set.
+  Not yet acting on it. Two points are not a trend, EKI misfit can rise
+  transiently while `DataMisfitController` adapts its step, and the parameters
+  are still swinging hard (`z` 9.3 → 20.3, `sigma` 0.49 → 0.82), which is
+  consistent with a large early step rather than divergence.
+  **Decision rule for the remaining iterations:** if the misfit is still above
+  the iteration-1 value of 0.223 at iteration 5, that is a genuine negative
+  result and must be reported as such, NOT papered over. The knobs the prompt
+  offers, in order, would be `NOISE_SCALARS["lai"]` (currently 0.5; raise toward
+  1.0 if the fit is overfitting seasonal amplitude at the cost of timing) and
+  then the spinup. Any such change gets its own commit and PR note explaining
+  why — and is a next-run decision, not a mid-run one.
+- **calibrated parameters:** — (not final; iteration 2 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **notes:** —
 
