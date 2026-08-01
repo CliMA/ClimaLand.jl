@@ -412,5 +412,32 @@ for FT in (Float32, Float64)
               length(ClimaLand.auxiliary_vars(wrapped))
         @test wrapped.height == zhou.height
         @test wrapped.rooting_depth == zhou.rooting_depth
+
+        # The wrapper must expose the wrapped model's diagnostics too. Anything
+        # dispatching on the biomass model silently selects a default when a
+        # wrapper is introduced, and here that surfaces as the output_vars
+        # assertion in default_diagnostics rejecting a legitimate variable.
+        zhou_diags, wrapped_diags = String[], String[]
+        canopy_for_diag = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;),
+            biomass,
+        )
+        ClimaLand.Diagnostics.add_diagnostics!(
+            zhou_diags,
+            canopy_for_diag,
+            zhou,
+        )
+        ClimaLand.Diagnostics.add_diagnostics!(
+            wrapped_diags,
+            canopy_for_diag,
+            wrapped,
+        )
+        @test !isempty(zhou_diags)
+        @test all(d -> d in wrapped_diags, zhou_diags)
+        @test "fc3" in wrapped_diags
     end
 end

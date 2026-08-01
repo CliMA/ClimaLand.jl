@@ -448,6 +448,17 @@ function add_diagnostics!(
     append!(diagnostics, ["a0d", "a0a", "a0c3", "a0c4", "pra", "fc3"])
     return nothing
 end
+# The carbon model wraps an LAI model rather than replacing it, so it must
+# forward: without this the wrapped model's diagnostics silently disappear,
+# and requesting one fails the output_vars assertion in default_diagnostics.
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::PrognosticCarbonModel,
+)
+    add_diagnostics!(diagnostics, model, subcomponent.lai_model)
+    return nothing
+end
 
 ## Possible diagnostics for standalone models
 """
