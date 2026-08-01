@@ -786,7 +786,48 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   1.0 if the fit is overfitting seasonal amplitude at the cost of timing) and
   then the spinup. Any such change gets its own commit and PR note explaining
   why — and is a next-run decision, not a mid-run one.
-- **calibrated parameters:** — (not final; iteration 2 of 5 done)
+- **ITERATION 3 COMPLETE (2026-08-01 17:50).** Chunk 3 ran in 1 h 10 m; 11/11
+  members reached `completed` and there were no segfaults — but see the crash
+  below. Chunk 4 (`6978373`) submitted 17:53.
+  Misfit: `[0.2229, 0.3154, 0.2233]` — **the rise reversed**. Iteration 3 is back
+  to essentially the iteration-1 value, so the +41 % at iteration 2 was a
+  transient large step, as suspected, not divergence. It is now FLAT rather than
+  decreasing, which is its own question for iterations 4-5.
+
+  | parameter | it.2 | it.3 | it.4 | bounds |
+  |---|---|---|---|---|
+  | optimal_lai_z | 9.326 | 20.28 | 27.55 | 1–40 |
+  | optimal_lai_z_c4 | 36.45 | 31.04 | **8.17** | 1–40 |
+  | optimal_lai_sigma | 0.4933 | 0.8209 | 1.062 | 0.1–3.0 |
+  | optimal_lai_sigma_c4 | 2.734 | 2.349 | 1.570 | 0.1–3.0 |
+  | optimal_lai_alpha | 0.1869 | 0.1661 | 0.1676 | 0.01–0.3 |
+
+  **The C4 parameters are oscillating violently**, not converging: `z_c4` has gone
+  14.9 → 36.5 → 31.0 → 8.2 (a 74 % drop in the last step), `sigma_c4`
+  0.93 → 2.73 → 2.35 → 1.57. Only `optimal_lai_alpha` looks settled (0.1661 →
+  0.1676, +1 %). With 5 iterations configured this is very unlikely to converge.
+
+- **⚠ A MEMBER CRASHED WITH A `DomainError`, AND THIS ONE IS NOT TRANSIENT.**
+  Iteration 3's G ensemble has **1 NaN column of 11** (finite fraction 0.909);
+  the orchestrator logged `Error processing member 6, filling observation map
+  entry with NaNs`. Its `model_log.txt` (41 MB of repeated output) contains:
+
+      ERROR: a DomainError was thrown during kernel execution on thread ...
+      Error: ClimaLand simulation crashed.
+
+  Parameters were `z = 20.28, z_c4 = 31.20, sigma = 0.8208, sigma_c4 = 2.351,
+  alpha = 0.1895` — **all inside the prior bounds.**
+  This is CATEGORICALLY DIFFERENT from stage 1's `member_003`, which segfaulted
+  once on a bad node and whose data turned out valid. This is deterministic: a
+  parameter combination the optimal-LAI model cannot evaluate, reached by the
+  EKI while exploring its own prior. A tell worth remembering — **member 6
+  finished conspicuously EARLY** (it was the only one complete while ten still
+  ran), because it crashed rather than finished.
+  Handled for now (NaN column + `SampleSuccGauss`), but it is a real robustness
+  finding to REPORT: with only 11 sigma points, losing one degrades the unscented
+  covariance, and the violent C4 oscillation above may partly be a consequence.
+  **Watch iterations 4-5 for recurrence, and record which parameter sets crash.**
+- **calibrated parameters:** — (not final; iteration 3 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **notes:** —
 
