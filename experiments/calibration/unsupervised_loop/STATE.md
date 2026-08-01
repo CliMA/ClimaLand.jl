@@ -523,7 +523,7 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 2 — rebuild prognostic-LAI initial conditions
 
-- **status:** running — long run submitted 2026-08-01 09:35
+- **status:** **done** (2026-08-01 13:20)
 - **PBS job:** `6973822.desched1`, queue `gpu` (`main`), **12 h walltime**,
   `select=1:ncpus=4:ngpus=1`, via the new
   `experiments/long_runs/long_run_gpu.pbs` wrapper:
@@ -603,8 +603,12 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 - **required diagnostics:** `lai`, `a0a`, `pra`, `olf0`, `olvpd`, `olgsl`
 - **PBS job ids:** —
 - **run output:** —
-- **new artifact path:** —
-- **`~/.julia/artifacts/Overrides.toml` verified:** no
+- **new artifact path:** `/glade/derecho/scratch/arenchon/artifacts_local/optimal_lai_inputs_calibrated/optimal_lai_inputs.nc`
+  (the previous local IC at `.../optimal_lai_inputs/` is UNTOUCHED, and the
+  pre-edit `Overrides.toml` is backed up under
+  `/glade/derecho/scratch/arenchon/claude/Overrides.toml.bak-*`, so this is
+  revertible by editing one line back)
+- **`~/.julia/artifacts/Overrides.toml` verified:** **yes** — `ClimaLand.Artifacts.optimal_lai_initial_conditions_path()` resolves to the rebuilt file and it exists
 - **pre-flight done 2026-07-31 (iteration 5), while stage 1 was queued —
   machinery verified, no compute used:**
   - All six IC diagnostics are defined: `lai` comes from the base `CanopyModel`
@@ -640,6 +644,41 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   confirms those three diagnostics are new on this branch and were added for the
   IC rebuild — so no earlier run can substitute for stage 2's, even though the
   directory is full of superficially similar output.
+- **STAGE 2 RESULT (2026-08-01 13:20).** The 10-year run produced all six IC
+  diagnostics with 120 monthly steps each. IC built by
+  `/glade/derecho/scratch/arenchon/claude/build_optimal_lai_ic.jl`.
+
+  | field | rebuilt | existing IC | note |
+  |---|---|---|---|
+  | lai_init | mean 0.578, max 5.34 | mean 0.502, max 5.83 | comparable |
+  | a0_annual | mean 276, max 628 | mean 126, max 479 | higher — calibrated GPP |
+  | precip_annual | mean 3.302e4 | mean 3.281e4 | **within 0.6 %** |
+  | vpd_gs | mean 1455 | mean 630 | higher |
+  | gsl | mean 182, min 0.21 | mean 193, min 30 | see floor note |
+  | f0 | mean 0.457 | mean 0.428 | comparable |
+
+  **The `precip_annual` means agree to 0.6 %.** That is an independent check on
+  the unit conversion — a raw write would have been ~4.7 orders of magnitude out,
+  so this confirms the ρ_liq/M_H2O factor end to end.
+
+- **Two judgement calls, both deliberate:**
+  1. **NaN fill over zero-vegetation cells.** `a0a` and `olvpd` were NaN on 6921
+     land cells — 6843 of them in lat −90..−60, i.e. Antarctica, and EVERY one
+     with `lai < 0.01`. Potential GPP is undefined with no vegetation and
+     `vpd_gs = VPDA0/A0` is 0/0. The reader ingests values directly, so a NaN
+     would propagate into the model state; the runtime `Ao_annual_safe` guards
+     protect the computation, not the IC. Filled `a0_annual = 0` (physically
+     right, and the stock file's minimum is also 0), and `vpd_gs`/`f0` with the
+     median of their finite values — with A0 = 0 those cells are inert, so the
+     values cannot affect the solution and only need to be finite and safe in a
+     denominator. All six fields are now finite over all 22420 land cells.
+  2. **`gsl` is NOT floored at 30 days**, even though the stock file's own
+     description advertises "Minimum GSL = 30.0 days" and ours reaches 0.21.
+     `optimal_lai.jl:224-231` puts `GSL` in the NUMERATOR of Eq. 20 and guards
+     the denominator with `Ao_annual_safe`/`fAPAR_max_safe`, commenting that
+     "m ~ 0 naturally" as A0 → 0. So the floor is a generation-time choice in the
+     stock file, not a model requirement — and imposing it would overwrite the
+     model's own equilibrium, which is the entire point of rebuilding the IC.
 - **notes:** —
 
 ## Stage 3 — prognostic LAI
