@@ -1586,3 +1586,16 @@ Great Plains, and the Songnen plain).
 - The honest statement of the limitation is therefore sharp: *this model
   simulates climate-potential woody biomass, and is not given the disturbance
   information that determines where that potential is realised.*
+
+### `.gitignore` traps `*html` (found 2026-08-01)
+
+`.gitignore` line 5 is `*html`, to keep generated docs out of the tree. The
+artifact source `model_description.html` therefore **silently failed to commit
+for the whole session** — `git add -A <dir> && git commit` reported success every
+time because other files in the same commit had changed, so nothing looked
+wrong. It is now tracked via `git add -f`.
+
+**Rule:** when a commit is supposed to include a specific file, verify with
+`git ls-files <path>` or `git show HEAD:<path>`, not by the absence of an error.
+This is the same class of failure as the `.replace()` that silently no-opped —
+an operation that reports success while doing nothing.
