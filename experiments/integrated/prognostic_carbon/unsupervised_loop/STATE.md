@@ -1668,3 +1668,25 @@ are the cost, and they are a **fixed setup** cost rather than per-step. If the
 GPU solve is even ~20× the CPU rate, 1° × 2 yr lands near 1.5 h of solve and the
 whole job fits comfortably, which is why this is worth measuring rather than
 abandoning.
+
+### `ngpus=1` does not put ClimaLand on the GPU (2026-08-01, iteration 44)
+
+GPU smoke `6978388` was allocated a GPU and still reported
+`device = ClimaComms.CPUSingleThreaded()`. It paid ~30 min of CUDA
+precompilation and would then have solved at exactly the CPU rate.
+
+`ClimaComms.device_type()` reads **`CLIMACOMMS_DEVICE`**, default `"CPU"`; with
+one Julia thread that resolves to `CPUSingleThreaded`. A PBS `ngpus` request has
+no effect on its own. Verified in
+`ClimaComms/*/src/devices.jl` rather than inferred.
+
+**This also invalidates the earlier "CPU is infeasible" framing.** That number
+was measured on *one core*. `CLIMACOMMS_DEVICE=CPU` with `julia -t N` selects
+`CPUMultiThreaded`, which was never tried.
+
+`run_global_driver.pbs` now takes `DEVICE` (`CPU`/`CUDA`) and `JULIA_THREADS`,
+sets `CLIMACOMMS_DEVICE`, and passes `-t` to Julia. Smoke `6978474` resubmitted
+with `DEVICE=CUDA`.
+
+**Rule:** the run must state its own device, and that line must be read. Every
+performance conclusion so far rested on a configuration nobody had confirmed.

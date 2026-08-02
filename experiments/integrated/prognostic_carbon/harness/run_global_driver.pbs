@@ -41,6 +41,15 @@ CONF=$PC_SCRATCH/global_${PBS_JOBNAME}.conf
 [[ -f "$CONF" ]] || CONF=$PC_SCRATCH/global.conf
 [[ -f "$CONF" ]] && { echo "CONF $CONF"; source "$CONF"; } || echo "CONF none (defaults)"
 
+# ClimaComms picks the device from CLIMACOMMS_DEVICE, which defaults to "CPU" -
+# allocating a GPU through PBS does nothing by itself. With one Julia thread,
+# "CPU" resolves to CPUSingleThreaded, i.e. the whole global model on one core.
+#   DEVICE=CUDA  + ngpus=1        -> GPU
+#   DEVICE=CPU   + JULIA_THREADS=N -> CPUMultiThreaded
+DEVICE="${DEVICE:-CPU}"
+JULIA_THREADS="${JULIA_THREADS:-1}"
+export CLIMACOMMS_DEVICE="$DEVICE"
+
 export GLOBAL_OUTDIR="$RUNROOT/drivers"
 export START="${START:-2008-03-01}"
 export STOP="${STOP:-2010-03-01}"
@@ -48,10 +57,10 @@ export DT="${DT:-900.0}"
 export NLAT="${NLAT:-180}"
 export NLON="${NLON:-360}"
 
-echo "GLOBAL start=$START stop=$STOP dt=$DT outdir=$GLOBAL_OUTDIR"
+echo "GLOBAL start=$START stop=$STOP dt=$DT device=$DEVICE threads=$JULIA_THREADS outdir=$GLOBAL_OUTDIR"
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
 
-if "$JULIA" --project="$REPO/.buildkite" "$HARNESS/global_driver.jl" \
+if "$JULIA" --project="$REPO/.buildkite" -t "$JULIA_THREADS" "$HARNESS/global_driver.jl" \
     >"$RUNROOT/global_driver.log" 2>&1; then
     echo PASS >"$RUNROOT/.status"
     echo "GLOBAL_OK $RUNROOT"
