@@ -1127,3 +1127,25 @@ normalises it back out. If that holds, `NOISE_SCALARS` is not the lever the
 `lai.jl` docstring claims ("tighten it -> 0.25 to pull harder on peak-LAI
 magnitude"), and that docstring should be corrected. The accumulated-Δt schedule
 can still diverge later, so do not conclude from iteration 1 alone.
+
+### Crash rate tracks `alpha` across experiments — independent confirmation
+
+| experiment | crashes / member-runs | rate | alpha range reached |
+|---|---|---|---|
+| A (5 params, 4 yr) | 1 / 77 | 1.3 % | 0.135 – 0.210 |
+| B (3 params, 4 yr) | 3 / 28 | **10.7 %** | **0.233 – 0.242** |
+| C (1 yr, noise 0.25) | 0 / 22 | 0 % | 0.188 |
+
+B crashes ~8x more often than A, and B is the run that pushes `alpha` highest.
+The correlation therefore holds BETWEEN experiments, not only within individual
+failures, which is much stronger evidence than the three-case table above.
+
+**Working conclusion: `optimal_lai_alpha` above roughly 0.19 (τ ≲ 5 days) risks a
+`DomainError` in a GPU kernel.** The prior allows up to 0.3, and every
+calibration drives alpha upward from 0.0701, so the optimiser reliably walks into
+the unsafe region. Two independent fixes, both worth doing:
+1. Guard the expression that faults (find it with `CUDA_LAUNCH_BLOCKING=1` — NOT
+   by reading the deferred stack trace, which points at the diagnostics writer).
+2. Until then, cap the `optimal_lai_alpha` prior at ~0.18 so the ensemble cannot
+   reach the unsafe region. This costs little: no run has settled above 0.19
+   anyway, and it would have prevented all four crashes seen so far.
