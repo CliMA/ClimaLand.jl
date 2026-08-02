@@ -1043,3 +1043,33 @@ inherited from the unconverged single-year run. B started with a worse misfit
 (0.387 vs A's 0.231) partly for that reason, so a worse loss for B does NOT show
 the split was useful — it may only show the frozen values are poor. Judge on
 RMSE/bias.
+
+**Experiment A fit result — no improvement either.** Measured on
+`iteration_004/member_001` (u[4]), 24 months 2016-12..2018-11:
+
+| configuration | RMSE unmasked | RMSE masked | bias unmasked | bias masked |
+|---|---|---|---|---|
+| default params | 1.046 | 0.941 | +0.225 | +0.081 |
+| single-year calibrated | 0.926 | **0.885** | +0.081 | −0.098 |
+| experiment A, 4 years | 0.912 | 0.895 | +0.036 | −0.146 |
+
+Masked RMSE is marginally WORSE than the single-year run and the masked bias is
+worse. Everything is within ~1.5 % on RMSE. Parameter trajectory and fit agree:
+four years bought nothing.
+
+### A pattern worth acting on: every calibration drives the masked bias negative
+
++0.081 (default) → −0.098 (single year) → −0.146 (four years). Calibration
+systematically pushes LAI DOWN on natural vegetation. `z` rises 15 → 20-27 in
+every run, and larger `z` means lower peak LAI (see the prior docstring), so this
+is the optimiser trading one large over-prediction against a widespread mild
+under-prediction — which pure squared error rewards.
+
+**Implication: the bias is not a tuning failure, it is what the objective asks
+for.** No parameter search will remove it while the loss is unpenalised squared
+error. Options, if unbiasedness on natural vegetation matters as much as RMSE:
+add an explicit bias penalty to the objective; weight cells by observed LAI so
+high-LAI regions are not sacrificed; or score seasonal amplitude and phase
+separately so amplitude errors cannot be paid for with a mean offset.
+This is a DIFFERENT problem from the z-sigma ridge: the ridge governs whether
+parameters are identifiable, this governs where the optimum sits.
