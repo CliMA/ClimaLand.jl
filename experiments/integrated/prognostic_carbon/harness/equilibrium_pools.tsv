@@ -1,23 +1,23 @@
-# Offline equilibrium pools, kg C m-2, 400 yr, battery 6976879 (calibrated LAI artifact).
-# Seed values for the offline-vs-coupled drift check: a coupled run started here should not drift.
+# Offline equilibrium pools, kg C m-2, 400 yr, battery 6979917 (post precipitation-limit).
+# Seed values for the offline-vs-coupled drift check.
 site	biome	C_sugar	C_leaf	C_stem	C_root	cVeg
-amazon_central	tropical_rainforest	0.2327	0.6143	16.733	0.8229	18.4029
-congo_basin	tropical_rainforest	0.2236	0.6461	17.8779	0.8692	19.6169
-borneo	tropical_rainforest	0.208	0.5486	14.792	0.733	16.2815
+amazon_central	tropical_rainforest	0.234	0.5997	14.5613	0.9231	16.3181
+congo_basin	tropical_rainforest	0.2256	0.6143	13.042	1.0879	14.9699
+borneo	tropical_rainforest	0.2083	0.5433	14.0498	0.767	15.5685
 sahel	tropical_savanna_C4	0.0	0.0	0.0	0.0	0.0
-cerrado_brazil	tropical_savanna_C4	0.1582	0.3939	10.1956	0.5343	11.282
-n_australia_savanna	tropical_savanna_C4	0.1581	0.3343	7.5559	0.4492	8.4975
+cerrado_brazil	tropical_savanna_C4	0.1574	0.3782	7.5038	0.6693	8.7087
+n_australia_savanna	tropical_savanna_C4	0.1558	0.3219	5.7698	0.5342	6.7817
 sahara	desert	0.0	0.0	0.0	0.0	0.0
 arabian	desert	0.0	0.0	0.0	0.0	0.0
-mojave_sw_us	desert	0.033	0.0398	0.4988	0.0535	0.6251
-ozark_us	temperate_deciduous_forest	0.1997	0.4844	10.9469	0.6443	12.2753
-central_europe	temperate_deciduous_forest	0.236	0.5713	11.712	0.754	13.2733
-ne_china	temperate_deciduous_forest	0.165	0.3223	9.4601	0.452	10.3995
-us_great_plains	temperate_grassland_C4	0.174	0.3946	8.7041	0.5341	9.8068
-pampas_argentina	temperate_grassland	0.1568	0.3893	10.6339	0.5462	11.7263
-california_vaira	mediterranean	0.1252	0.246	5.4512	0.3466	6.1689
-iberia	mediterranean	0.1313	0.2838	4.6995	0.3942	5.5088
-central_siberia	boreal_forest	0.1228	0.1289	6.8687	0.176	7.2964
-canada_boreal	boreal_forest	0.1507	0.2268	9.6873	0.3087	10.3735
-fennoscandia	boreal_forest	0.1741	0.3116	8.3978	0.4205	9.304
-alaska_north_slope	tundra	0.0692	0.0512	3.2294	0.0678	3.4177
+mojave_sw_us	desert	0.0185	0.0438	0.069	0.1061	0.2375
+ozark_us	temperate_deciduous_forest	0.2018	0.468	6.8395	0.9048	8.4141
+central_europe	temperate_deciduous_forest	0.2416	0.5555	7.2441	1.0551	9.0964
+ne_china	temperate_deciduous_forest	0.151	0.3106	2.4596	0.772	3.6932
+us_great_plains	temperate_grassland_C4	0.1701	0.3772	4.0476	0.8258	5.4208
+pampas_argentina	temperate_grassland	0.155	0.3661	5.6007	0.7932	6.915
+california_vaira	mediterranean	0.1112	0.2398	1.8688	0.5734	2.7932
+iberia	mediterranean	0.1144	0.2733	1.4662	0.6445	2.4984
+central_siberia	boreal_forest	0.0987	0.1308	1.7389	0.3152	2.2836
+canada_boreal	boreal_forest	0.1388	0.2229	3.1702	0.5283	4.0601
+fennoscandia	boreal_forest	0.1692	0.3052	3.8392	0.655	4.9686
+alaska_north_slope	tundra	0.0396	0.0552	0.6754	0.1374	0.9077

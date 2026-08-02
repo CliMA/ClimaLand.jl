@@ -70,46 +70,14 @@ function read_driver_record(path)
     return cols
 end
 
-"""
-    woody_fraction(MAP, half, n)
+# The model's own allocation and turnover helpers, used directly rather than
+# reimplemented. These scripts exist to reproduce what ClimaLand does, and a
+# second copy of a formula is a second thing to keep in step: the offline
+# `tau_stem_scale` had already lost the model's MAX_TAU_STEM_SCALE cap, which
+# silently inflated woody carbon in columns colder than about -23 C.
+const woody_fraction = ClimaLand.Canopy.woody_fraction
+const tau_stem_scale = ClimaLand.Canopy.tau_stem_scale
 
-Fraction of the structural allocation that goes to stem, as a function of mean
-annual precipitation (m yr^-1). A saturating ramp: dry columns build almost no
-wood, wet ones approach the full `f_stem`.
-
-Mean annual precipitation is the classic climate control on maximum woody cover
-(Sankaran et al. 2005), it is already carried as a trailing integral by the LAI
-model, and it is emphatically **not** a plant functional type - which is the
-constraint MODEL.md §2.3 imposes on this fallback.
-
-`half = 0` disables the mechanism and recovers the constant-`f_stem` behaviour,
-so the same code path serves both and the sweep can compare them directly.
-"""
-function woody_fraction(MAP, half, n)
-    half <= 0 && return one(MAP)
-    x = max(MAP, zero(MAP)) / half
-    xn = x^n
-    return xn / (1 + xn)
-end
-
-"""
-    tau_stem_scale(MAT, T_ref_tau, q)
-
-Multiplier on stem turnover time as a function of mean annual temperature.
-Cold columns hold their wood longer - boreal trees live for centuries where
-temperate ones live decades - so τ_stem rises toward the cold as
-`q^((T_ref_tau - MAT)/10)`, and is flat above `T_ref_tau`.
-
-MAT is a *climate* mean over the whole record, not the instantaneous
-temperature: stem longevity is a property of where a plant grows, not of the
-weather on a given day.
-
-`q = 1` disables the mechanism and recovers constant τ_stem exactly.
-"""
-function tau_stem_scale(MAT, T_ref_tau, q)
-    q <= 1 && return one(MAT)
-    return q^(max(T_ref_tau - MAT, zero(MAT)) / 10)
-end
 
 """
     step_pools(pools, drivers, i, params, dt)
