@@ -1,0 +1,18 @@
+# Reconnaissance for the fire/land-use option. NO model change was made.
+# GFED4.1S burned area (ILAMB, 0.5 deg, 240 monthly records) sampled at every
+# land column of the global equilibrium map (job 6978605), binned by OBSERVED
+# woody carbon (XuSaatchi).
+#
+# excess_per_cell = model_mean - obs_mean (kg C m-2); total_excess = n * excess.
+obs_bin	n_cells	obs_mean	model_mean	ratio	excess_per_cell	total_excess	pct_of_all_excess	mean_burnt_area_pct
+obs<0.5	3708	0.12	3.34	26.8	3.22	11940	15.7	0.164
+0.5-2	2996	1.23	7.98	6.5	6.75	20223	26.5	0.395
+2-5	4392	3.35	10.87	3.2	7.52	33028	43.4	0.303
+5-10	1432	6.65	13.31	2.0	6.66	9537	12.5	0.170
+>10	691	14.25	16.34	1.1	2.09	1444	1.9	0.060
+#
+# Burned area is NON-monotonic: it peaks in the 0.5-2 bin and is low in the
+# driest bin, because true desert has no fuel. Fire cannot explain the arid end.
+# But the bins where burned area peaks (0.5-5) carry 70% of all excess carbon,
+# while the driest bin carries only 16% - the ratio metric overweights arid
+# cells where the absolute carbon involved is small.

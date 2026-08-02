@@ -1923,3 +1923,37 @@ earlier. Re-checked rather than assumed:
 
 Also confirmed idle-state facts: no non-loop comments on PR #1834, no open
 checklist items in `MODEL.md`, and no jobs of this loop's in the queue.
+
+### Fire reconnaissance — before committing to option A (2026-08-02, iteration 57)
+
+**No model change made.** This tests whether the fire option would work, the same
+way precipitation and soil properties were tested before being adopted or
+rejected.
+
+`GFED4.1S` burned area is already on this system
+(`ILAMB/DATA/burntArea/GFED4.1S/burntArea.nc`, 0.5°, 240 monthly records), so
+option A needs no new download.
+
+Sampling it at every land column of the global map, binned by observed biomass:
+
+| obs bin | n | ratio | excess/cell | % of all excess | mean burnt area |
+|---|---|---|---|---|---|
+| < 0.5 | 3708 | 26.8× | 3.22 | **15.7%** | 0.164% |
+| 0.5–2 | 2996 | 6.5× | 6.75 | 26.5% | **0.395%** |
+| 2–5 | 4392 | 3.2× | 7.52 | **43.4%** | 0.303% |
+| 5–10 | 1432 | 2.0× | 6.66 | 12.5% | 0.170% |
+| > 10 | 691 | 1.1× | 2.09 | 1.9% | 0.060% |
+
+**Burned area is non-monotonic.** It peaks at 0.5–2 and falls in the driest bin —
+true desert has no fuel. **Fire cannot explain the arid end**, so option A is not
+a complete fix, and my earlier phrasing overstated it.
+
+**But it is well targeted.** The bins where burned area peaks (0.5–5) carry
+**70% of all excess carbon**, while the driest bin carries **16%**. The *ratio*
+metric overweights arid cells where the absolute carbon at stake is small; on an
+absolute basis the savanna and grassland belt dominates, and that is exactly
+where fire is most active.
+
+**Refined recommendation:** option A addresses ~70% of the absolute excess. The
+remaining arid 16% is a separate mechanism — most likely water limitation on
+allocation rather than disturbance — and should not be attributed to fire.
