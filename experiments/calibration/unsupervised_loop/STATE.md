@@ -1454,3 +1454,70 @@ Read the other way, it also says where the remaining error lives: **96 % of it i
 in C3-dominated cells**, so any future lever — reparameterisation, a bias term, a
 higher peak-LAI ceiling — should be aimed at temperate/boreal/tropical-forest C3
 vegetation and judged there.
+
+### ⭐ Where the remaining LAI error actually lives — and why no scalar can reach it (2026-08-02)
+
+`lai_mse_decomp.jl` partitions the masked LAI MSE exactly. Per cell, over the
+12-month cycle,
+
+```
+MSE = (mu_s - mu_o)^2  +  (sd_s - sd_o)^2  +  2*sd_s*sd_o*(1 - r)
+       mean offset          amplitude             phase/shape
+```
+
+and the area-weighted mean of each term over cells partitions the total. Run on
+the calibrated 5-parameter member (`calibration_stage3_lai/iteration_005/member_001`),
+spinup year trimmed:
+
+| term | share of global masked MSE |
+|---|---|
+| **mean offset** | **73.7 %** |
+| amplitude | 14.6 % |
+| phase / shape | 11.8 % |
+
+and splitting the mean-offset term once more:
+
+| | share of global masked MSE |
+|---|---|
+| globally **uniform** offset (−0.114) | **1.3 %** |
+| **spatial pattern** of the offset | **72.4 %** |
+
+By class: C3-dominated 95.2 %, C4-dominated 4.8 % — the area-weighted version of
+the 95.7/4.3 split found unweighted above, so that conclusion is not an artifact
+of the weighting.
+
+**Three things follow, and together they close the question.**
+
+1. **The plateau is explained.** `z`, `sigma` and `alpha` are global scalars: they
+   translate or reshape the whole LAI field at once. 72 % of the error is the
+   *spatial pattern* of the annual mean being wrong cell by cell. No setting of
+   three or five global numbers can remove a spatial-pattern error, which is why
+   five configurations land within 0.7 % of each other and why the ~0.885 floor
+   held against more data, fewer parameters, and a different noise scalar.
+2. **"Add a bias term to the objective" is withdrawn.** The globally uniform
+   offset is **1.3 %** of the MSE. Penalising it perfectly would take the pooled
+   RMSE from 0.998 to 0.991. It was a reasonable guess from the −0.098 masked
+   bias; the decomposition says that bias is a thin global film over a large
+   spatial-pattern error, not the error itself.
+3. **The reparameterisation is worth doing for convergence, not for skill.**
+   Fitting `log(z·sigma)` / `log(z/sigma)` should end the period-2 limit cycle,
+   because it puts the +0.86 ridge on a coordinate axis. But the ridge direction
+   is a global rescaling of LAI, and global rescaling is the 1.3 % term. Expect a
+   cleaner, stable inversion at the same RMSE. Do not sell it as an accuracy fix.
+
+**The lever that is left, and the size of the prize.** Removing the uniform offset
+buys 0.7 %. Removing the spatial-pattern offset would take the pooled RMSE from
+0.998 to **0.52** — that is where the entire remaining opportunity is. Getting it
+requires the parameters that set mean LAI to *vary in space*, or the fields that
+already do (`A0_annual` from the P-model, the aridity index that sets `f0`) to be
+more accurate. Zhou et al. treat `z`, the leaf construction and maintenance cost,
+as a plant-functional-type property; ClimaLand currently carries one C3 value and
+one C4 value for the whole globe. Making `z` per-PFT — a spatially varying field
+built the same way `pft_blend` already blends C3 and C4 — is the change that
+addresses the 72 %, and it is a model change, not a calibration setting.
+
+**A note on the RMSE level in this table.** The partition needs the *pooled*
+cell-month RMSE (0.998) to be exact; the leaderboard reports the *mean over
+months of each month's RMSE* (0.885). Mean-of-square-roots is below
+square-root-of-mean, so the two differ by construction and neither is wrong. Read
+the shares here, not the level, and keep quoting 0.885 as the headline.

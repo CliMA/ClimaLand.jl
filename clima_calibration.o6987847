@@ -1,0 +1,25 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2448 at Sun Aug  2 04:08:35 PM MDT 2026
+  config:     lai_tied_c4.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_tied_c4
+  n_iterations cap: 3
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+[ Info: The number of samples is 4
+[ Info: Noise scalars: Dict("lai" => 0.5)
+┌ Warning: Overwriting the file experiments/calibration/land_observation_vector_lai_tied_c4.jld2 to generate the vector of observations
+└ @ Main ~/GitHub/ClimaLand.jl/experiments/calibration/generate_observations.jl:309
+┌ Info: preprocess_single_obs_var[lai] date range
+│   first_date = 2000-01-01T00:00:00
+│   last_date = 2020-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
