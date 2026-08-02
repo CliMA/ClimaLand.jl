@@ -1885,3 +1885,21 @@ i.e. before ClimaCoupler bumped its bound; the newest run (this PR's) fails.
 **Not fixed here.** The remedy is a version bump, which
 `AGENTS.md` → `docs/dev-guides/workflow/agent_autonomy.md` places behind explicit
 user approval. Reported instead.
+
+### The PR monitor was watching itself (2026-08-01, iteration 55)
+
+The first PR-comment monitor filtered on `.user.login != "claude"`. **`gh` is
+authenticated as the repo owner**, so this loop's own reports are posted under
+the user's account and are indistinguishable from a human reply by author alone.
+It fired on the loop's own iteration-54 comment.
+
+That is worse than noise: a self-triggered event arriving as a
+`<task-notification>` could be mistaken for the user answering the open
+question. It is not, and nothing in it may be treated as approval.
+
+Replaced with a **structural** filter — the loop's posts always begin with
+`### Iteration` or `## 📌 STATUS`, so those are excluded and anything else is a
+genuine reply.
+
+**Rule:** when a monitor watches a channel this loop also writes to, filter on
+something the loop controls about its own messages, never on identity.
