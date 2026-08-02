@@ -827,7 +827,48 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   finding to REPORT: with only 11 sigma points, losing one degrades the unscented
   covariance, and the violent C4 oscillation above may partly be a consequence.
   **Watch iterations 4-5 for recurrence, and record which parameter sets crash.**
-- **calibrated parameters:** — (not final; iteration 3 of 5 done)
+- **ITERATION 4 COMPLETE (2026-08-01 19:32).** 11/11 members, **no DomainError
+  crash** (0 in iteration 4), G ensemble clean again. Chunk 5 — the final
+  configured iteration — submitted 19:35. So the iteration-3 crash was a one-off
+  parameter combination, not a systematic failure.
+  **Misfit: `[0.2229, 0.3154, 0.2233, 0.2032]` — now the LOWEST of the run**, and
+  below the iteration-1 value. The stage-3 fit is genuinely improving. (Recall
+  this metric IS valid here: `minibatch_size = 1` over a single sample, so every
+  iteration scores the same data.)
+
+  | parameter | it.1 | it.2 | it.3 | it.4 | it.5 |
+  |---|---|---|---|---|---|
+  | optimal_lai_z | 14.92 | 9.326 | 20.28 | 27.55 | 21.02 |
+  | optimal_lai_z_c4 | 14.92 | 36.45 | 31.04 | 8.17 | **34.85** |
+  | optimal_lai_sigma | 0.9293 | 0.4933 | 0.8209 | 1.062 | 0.9361 |
+  | optimal_lai_sigma_c4 | 0.9293 | 2.734 | 2.349 | 1.570 | 1.992 |
+  | optimal_lai_alpha | 0.0685 | 0.1869 | 0.1661 | 0.1676 | 0.1260 |
+
+- **⚠ THE C4 PARAMETERS ARE NOT CONVERGING, AND THE LOSS IMPROVES ANYWAY.**
+  `optimal_lai_z_c4` has gone 14.9 → 36.5 → 31.0 → 8.2 → 34.9, traversing almost
+  its entire 1–40 prior range while the misfit falls. A parameter that can be
+  moved across its whole range without hurting the fit is not being identified by
+  the data.
+
+- **Tested a hypothesis for why, and REFUTED it.** I expected the
+  natural-vegetation mask to be the cause, since it drops cropland and much C4 is
+  maize. Measured instead: majority-C4 cells are **20.8 % of scored cells versus
+  18.6 % of all vegetated land**, and mean `fc3` over scored cells is 0.731
+  (C4 fraction 0.269). **The mask slightly ENRICHES C4 rather than removing it.**
+  Cropland removal is not the explanation, and it would have been an easy and
+  wrong thing to assert.
+
+- **Better-supported explanation: a degeneracy between `z_c4` and `sigma_c4`.**
+  The two move TOGETHER across iterations — (36.5, 2.73), (31.0, 2.35),
+  (8.2, 1.57) — which is what a compensating ridge looks like: raising one and
+  raising the other produce similar LAI, so the EKI slides along the ridge
+  instead of converging to a point. Both enter `compute_m` (Eq. 20) in the same
+  direction, which is a plausible mechanism.
+  **This is a finding to REPORT, not to tune away.** If it is a genuine
+  degeneracy, more iterations will not fix it; the C3/C4 split may need either an
+  independent constraint on C4 (a C4-specific target) or the two parameters tied
+  rather than free.
+- **calibrated parameters:** — (not final; iteration 4 of 5 done)
 - **committed to `toml/default_parameters.toml`:** no
 - **notes:** —
 
