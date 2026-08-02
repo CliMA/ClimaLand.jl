@@ -1232,3 +1232,18 @@ iteration 8 sits 18 % away. Any convergence check on this problem must compare
 iterations TWO apart, or track the cycle amplitude, not adjacent pairs.
 
 A's final crash tally: 1 in 88 member-runs (iteration 8 had one).
+
+### Experiment A FINAL FIT — a complete null result
+
+Measured on `iteration_008/member_001` (u[8], the HIGH state of the limit cycle:
+z = 24.09, sigma = 1.059), 24 months 2016-12..2018-11:
+
+| configuration | RMSE masked | bias masked | RMSE unmasked | bias unmasked |
+|---|---|---|---|---|
+| default params | 0.941 | +0.081 | 1.046 | +0.225 |
+| single-year, 5 iterations | **0.885** | −0.098 | 0.926 | +0.081 |
+| four-year, 8 iterations | **0.887** | −0.088 | 0.939 | +0.093 |
+
+**Four times the data and eight iterations instead of five land within 0.3 % of
+the single-year run.** A is a null result on the parameters (identical
+trajectory), on the loss, and now on the fit. Struck from the recommendations.
