@@ -183,10 +183,11 @@ function nearest(lons, lats, A, lon, lat)
     return A[i, j]
 end
 
-# `map_half` > 0 enables the precipitation-based woody fraction already in
-# offline_spinup.jl. It is off by default; this exists so the mechanism can be
-# tested against the whole map rather than the four sites the earlier sweep used.
-function main(dir; years = 400, map_half = 0.0)
+# `map_half` selects the precipitation-based woody fraction. `nothing` means
+# "use the model's own parameter", which is the only correct default: this script
+# exists to reproduce what the model does, and a hard-coded 0 would silently
+# disable a mechanism the model has enabled.
+function main(dir; years = 400, map_half = nothing)
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
     @info "reading monthly driver climatologies" dir vars
@@ -200,6 +201,8 @@ function main(dir; years = 400, map_half = 0.0)
 
     toml_dict = LP.create_toml_dict(FT)
     p = Canopy.PrognosticCarbonParameters(toml_dict)
+    mh = map_half === nothing ? p.map_half_woody : FT(map_half)
+    @info "woody fraction" map_half = mh n = p.n_map_woody
 
     C_stem = fill(FT(NaN), nlon, nlat)
     C_leaf = fill(FT(NaN), nlon, nlat)
@@ -235,7 +238,7 @@ function main(dir; years = 400, map_half = 0.0)
                 d,
                 p;
                 years,
-                map_half,
+                map_half = mh,
                 T_ref_tau = p.T_ref_τ_stem,
                 q_tau = p.q_τ_stem,
             )
@@ -250,8 +253,8 @@ function main(dir; years = 400, map_half = 0.0)
 
     out = joinpath(
         dir,
-        map_half > 0 ? "equilibrium_carbon_maphalf$(map_half).nc" :
-        "equilibrium_carbon.nc",
+        map_half === nothing ? "equilibrium_carbon.nc" :
+        "equilibrium_carbon_maphalf$(mh).nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
@@ -329,6 +332,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     main(
         ARGS[1];
         years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]),
-        map_half = mi === nothing ? 0.0 : parse(FT, ARGS[mi + 1]),
+        map_half = mi === nothing ? nothing : parse(FT, ARGS[mi + 1]),
     )
 end

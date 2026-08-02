@@ -1,31 +1,24 @@
 # Global equilibrium C_stem vs gridded ILAMB woody-biomass products.
-# Model: job 6978605 (2 yr global driver run, prognostic LAI, 1x1 deg output, CUDA),
-# integrated offline to 400-yr equilibrium at 22420 land columns.
+# Model: job 6978605 drivers, 400-yr offline equilibrium at 22420 land columns,
+# WITH the precipitation-limited woody fraction (map_half = 0.8 m/yr) now in the model.
+product	n_cells	model_mean	obs_mean	bias	spatial_r	bias_before	r_before
+XuSaatchi	15476	4.23	2.50	1.73	0.631	5.08	0.586
+Thurner	6408	4.25	3.46	0.79	0.510	6.48	0.349
+ESACCI	16164	4.06	3.89	0.16	0.623	3.38	0.556
+GEOCARBON	9798	6.22	7.93	-1.71	0.579	2.66	0.444
+Saatchi2011	5787	6.48	4.95	1.53	0.657	3.64	0.603
+USForest	1035	5.05	3.14	1.91	0.576	6.08	0.452
 #
-# Global summary (cells where the product has data):
-product	n_cells	model_mean	obs_mean	bias	spatial_r
-XuSaatchi	15476	7.58	2.50	5.08	0.586
-Thurner	6408	9.94	3.46	6.48	0.349
-ESACCI	16164	7.27	3.89	3.38	0.556
-GEOCARBON	9798	10.58	7.93	2.66	0.444
-Saatchi2011	5787	8.58	4.95	3.64	0.603
-USForest	1035	9.22	3.14	6.08	0.452
+# Every product improves in BOTH bias and spatial correlation.
 #
-# Binned by OBSERVED woody carbon. The error is not uniform: it is concentrated
-# entirely in cells the observations say carry little or no wood.
-product	obs_bin	n_cells	obs_mean	model_mean	model_over_obs
-XuSaatchi	obs<0.5	5827	0.09	2.38	25.8
-XuSaatchi	0.5-2	3067	1.22	7.98	6.5
-XuSaatchi	2-5	4435	3.34	10.87	3.3
-XuSaatchi	5-10	1452	6.64	13.34	2.0
-XuSaatchi	>10	695	14.24	16.34	1.1
-ESACCI	obs<0.5	7179	0.05	2.34	45.5
-ESACCI	0.5-2	2467	1.13	8.63	7.6
-ESACCI	2-5	2474	3.26	10.58	3.3
-ESACCI	5-10	2138	7.20	11.97	1.7
-ESACCI	>10	1906	19.07	14.51	0.8
-Saatchi2011	obs<0.5	589	0.11	1.35	12.0
-Saatchi2011	0.5-2	1365	1.40	4.09	2.9
-Saatchi2011	2-5	2193	3.31	7.80	2.4
-Saatchi2011	5-10	654	7.06	14.72	2.1
-Saatchi2011	>10	986	14.99	16.80	1.1
+# Binned model/observed by OBSERVED woody carbon, after the precipitation limit
+# (values before it in brackets):
+obs_bin	XuSaatchi	ESACCI	Saatchi2011
+obs<0.5	9.0 (25.8)	16.9 (45.5)	8.4 (12.0)
+0.5-2	3.3 (6.5)	3.6 (7.6)	2.0 (2.9)
+2-5	1.7 (3.3)	1.8 (3.3)	1.6 (2.4)
+5-10	1.4 (2.0)	1.0 (1.7)	1.6 (2.1)
+>10	1.0 (1.1)	0.6 (0.8)	1.0 (1.1)
+#
+# The residual is now concentrated in WET grassland and savanna, which water
+# limitation cannot reach because water is not what keeps them treeless.
