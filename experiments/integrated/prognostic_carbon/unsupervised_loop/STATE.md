@@ -1717,3 +1717,33 @@ Next: `global_equilibrium.jl <drivers/output_active>` on the production output.
 Note `read_monthly` requires >= 12 monthly records, so it cannot run on a
 40-day smoke — the production run is the first chance to exercise it on real
 driver data.
+
+### The output grid was not what I claimed (2026-08-01, iteration 46)
+
+I reported `nelements = (180, 360, 15)` as "the 1°×1° grid". **It is not.**
+`global_box_domain` hands `nelements` to `HybridBox` as `(nx, ny, nz)` with x
+spanning 360° of longitude and y spanning 180° of latitude, so ClimaLand's
+shipped default is **2° longitude × 0.5° latitude**. The smoke output confirmed
+it: `lon` 180 points at 2° spacing, `lat` 360 at 0.5°.
+
+Caught only by reading the coordinate *values*. The dimension names looked
+correct, and the discrepancy was visible solely because the other loop's global
+output has lon=360/lat=180.
+
+Severity, stated honestly: **not a transposition**. The coordinate arrays are
+self-consistent, so the map would have been positionally right. But it is the
+wrong sampling for comparison against 1° products and starves longitude.
+
+Fix: the writer now takes explicit `horizontal_pts` of 360 × 180. Constructing
+`NetCDFWriter` bare samples the model's element grid; ClimaLand's own
+`default_output_writer` passes `horizontal_pts` for exactly this reason.
+The **model** grid keeps the ClimaLand default — the other loop's runs use it,
+and changing it would decouple these drivers from their LAI calibration.
+Env knobs renamed `NELEM_LON`/`NELEM_LAT` so the ordering is not guessed again.
+
+Grid-check smoke `6978575`: **PASS**, `lon 360 @ 1° (-180..179)`,
+`lat 180 @ 1° (-90..89)`, 7 files, 22 420 land cells.
+Production resubmitted as **`6978605`**.
+
+**Rule:** verify a grid by its coordinate values, never by its dimension names
+or by the tuple that was passed in.
