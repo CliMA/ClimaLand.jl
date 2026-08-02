@@ -1521,3 +1521,54 @@ cell-month RMSE (0.998) to be exact; the leaderboard reports the *mean over
 months of each month's RMSE* (0.885). Mean-of-square-roots is below
 square-root-of-mean, so the two differ by construction and neither is wrong. Read
 the shares here, not the level, and keep quoting 0.885 as the headline.
+
+### The offset pattern is organised, and the ceiling is mostly slack (2026-08-02)
+
+Two follow-ups to the partition above.
+
+**Is the 72 % spatial-pattern term organised, or irreducible noise?** Organised:
+`cor(annual-mean offset, observed annual-mean LAI) = −0.52` over 8387 cells. The
+model **compresses the spatial dynamic range** of LAI — mildly too green where
+vegetation is sparse, badly too sparse where it is dense.
+
+| band | mean offset | MODIS mean LAI | share of the offset MSE |
+|---|---|---|---|
+| tropics | **−0.442** | 3.21 | **73.6 %** |
+| N temperate | +0.156 | 0.95 | 11.8 % |
+| S extratropics | +0.257 | 0.94 | 7.9 % |
+| N boreal | −0.142 | 0.85 | 6.7 % |
+
+By observed-LAI quintile, the top quintile (1.91–5.96) alone carries **57.4 %** of
+the offset error at a mean offset of −0.577; the bottom three quintiles are
+mildly *positive*. This is one coherent failure, not scattered noise, which is
+what makes a spatially varying parameter a plausible fix.
+
+**Is the energy-limited ceiling the thing clipping the tropics?** Only partly
+(`lai_ceiling.jl`, committed stage-3 `z`, long-run `a0a`):
+
+| band | A0_annual (mol m⁻² yr⁻¹) | ceiling LAI_max | MODIS | ceiling < obs |
+|---|---|---|---|---|
+| S extratropics | 411 | 4.67 | 0.80 | 0.3 % of cells |
+| tropics | 414 | 4.57 | 2.56 | **34.4 %** |
+| N temperate | 329 | 4.03 | 0.64 | 0.8 % |
+| N boreal | 142 | 2.07 | 0.82 | 0.5 % |
+
+Outside the tropics the cap is slack by a factor of ~5 and binds essentially
+nowhere; in the tropics it clips the densest third of cells. So simulated LAI is
+set almost everywhere by the steady-state Lambert-W solution, not by the cap, and
+`z` acts mainly through `m` in the dynamics rather than through `LAI_max`.
+
+That still leaves "lift the peak-LAI ceiling" as the one *targeted* lever on the
+list: it would act only where the cap binds, which is exactly the tropical third
+holding 74 % of the offset error. But it is not free — the cap enters `compute_m`
+(Eq. 20) even when slack, so lowering `z` to raise it perturbs the seasonal
+dynamics everywhere.
+
+**Structural point worth stating plainly.** When energy-limited,
+`LAI_max = (1/k)·[ln(k·A0) − ln(z)]`, so `z` shifts the ceiling by a *constant*
+(−1/k = −2.0 m² m⁻² per e-fold of `z`) at every point on Earth. The ceiling's
+spatial pattern is inherited entirely from `A0_annual`. This is an algebraic
+restatement of the empirical finding above: the LAI parameters cannot move the
+spatial pattern, so the pattern error is inherited from the P-model's potential
+GPP and from the water-limit inputs. **Improving LAI RMSE past ~0.885 is a stage-1
+and input-field problem, not a stage-3 one.**
