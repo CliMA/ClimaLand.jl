@@ -1345,3 +1345,36 @@ objective is ~0.885.
 
 C's marginal 0.002 edge over the baseline is far inside the run-to-run spread and
 should not be read as the noise scalar helping.
+
+### B at iteration 7 — same orbit, ~20 % tighter
+
+| | z alternation | amplitude |
+|---|---|---|
+| A (5 params) | 20.48 ↔ 24.09 | 3.6 |
+| B (3 params) | 21.76 ↔ 24.66 | 2.9 |
+
+B oscillates period-2 exactly as A does, with amplitude ~20 % smaller and the
+misfit alternating with it (0.349 / 0.335 / 0.350). Removing `z_c4` and
+`sigma_c4` shrinks the cycle but does not break it — which is what should happen
+if the driver is the remaining `z`↔`sigma` ridge, since that pair is still free.
+
+### Experiment D launched — reversing the split, not freezing it
+
+`configs/lai_tied_c4.jl` with `TIE_C4_TO_C3=1`, output
+`.../calibration_stage3_lai_tied_c4`, chunked to 8 iterations. The hook in
+`models/snowy_land.jl` writes a per-member override setting
+`optimal_lai_z_c4 = optimal_lai_z` and `optimal_lai_sigma_c4 =
+optimal_lai_sigma`, so `pft_blend` returns the C3 value at every column and the
+split has no effect. Verified against a real member file (z 24.711 → z_c4
+24.711).
+
+**D vs B isolates tie-versus-freeze.** B froze C4 at 14.6 / 1.4, values inherited
+from an unconverged run, while z and sigma moved away from them. D has no split
+at all, which is the model's documented default.
+
+**Expectation recorded before the result: D will not improve RMSE.** Every
+calibrated variant sits in 0.883-0.887 and the dominant ridge is untouched by
+anything C4. The question D answers is whether the split can be dropped at NO
+COST — two fewer parameters, four fewer sigma points, one less degenerate
+direction, same skill. A flat RMSE would still make it a worthwhile
+simplification.
