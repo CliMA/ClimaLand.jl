@@ -1102,3 +1102,28 @@ so losing 2 in iteration 2 is 29 % of the ensemble against 9 % for an 11-member
 run. Fewer parameters means fewer sigma points means each crash costs more — an
 unintended downside of the reduced-parameter design, and a reason to read B's
 covariance with caution.
+
+### Experiment C, iteration 1 — and a caution about comparing misfits
+
+C's misfit is 0.4453 against the baseline's 0.2229 — almost exactly 2x. That is
+arithmetic, not a worse fit: the misfit is normalised by the covariance, so
+halving the variance (0.5 -> 0.25) doubles it for an IDENTICAL residual.
+**Misfit values are not comparable across noise settings.** Do not read C's
+higher loss as a regression.
+
+The parameter step is nearly unchanged from the baseline:
+
+| | baseline (0.5) | C (0.25) |
+|---|---|---|
+| z | 9.326 | 8.837 |
+| sigma | 0.4933 | 0.4835 |
+| alpha | 0.1869 | 0.1877 |
+| z_c4 | 36.45 | 37.54 |
+
+**Hypothesis to check at iterations 2-5: the noise scalar may be largely a
+no-op here**, because `DataMisfitController` sets its step from the misfit
+magnitude, so scaling the covariance scales the misfit and the controller
+normalises it back out. If that holds, `NOISE_SCALARS` is not the lever the
+`lai.jl` docstring claims ("tighten it -> 0.25 to pull harder on peak-LAI
+magnitude"), and that docstring should be corrected. The accumulated-Δt schedule
+can still diverge later, so do not conclude from iteration 1 alone.
