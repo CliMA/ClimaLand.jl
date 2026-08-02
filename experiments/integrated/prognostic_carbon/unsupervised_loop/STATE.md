@@ -1690,3 +1690,30 @@ with `DEVICE=CUDA`.
 
 **Rule:** the run must state its own device, and that line must be read. Every
 performance conclusion so far rested on a configuration nobody had confirmed.
+
+### GPU works, and production is cheap (2026-08-01, iteration 45)
+
+Smoke `6978474` with `DEVICE=CUDA`: **`device = ClimaComms.CUDADevice()`
+confirmed in the log**, `PASS`, all 7 driver files written.
+
+| | CPU (1 core) | GPU |
+|---|---|---|
+| setup to solve | ~10 min | ~9 min (warm), ~30 min cold-CUDA |
+| solve rate at 1° | **< 0.34 days/min** | **~10 days/min** |
+| 730-day solve | > 28.7 h | **~1.2 h** |
+
+**~29× speedup**, so the 1° × 2 yr production run costs about 1.5 h end to end
+and fits the develop queue with room to spare. No coarsening needed — the map
+stays at the same resolution as the ILAMB products. The `NLAT`/`NLON` lever
+remains available but is not being used.
+
+The CUDA precompile penalty is **one-time**: the first CUDA job paid ~30 min,
+the second reached the domain in ~4 min because the depot cache was then warm.
+
+Production submitted as **`6978555`** (2008-03-01 → 2010-03-01, 1°, CUDA).
+Superseded CPU smoke `6978215` was killed.
+
+Next: `global_equilibrium.jl <drivers/output_active>` on the production output.
+Note `read_monthly` requires >= 12 monthly records, so it cannot run on a
+40-day smoke — the production run is the first chance to exercise it on real
+driver data.
