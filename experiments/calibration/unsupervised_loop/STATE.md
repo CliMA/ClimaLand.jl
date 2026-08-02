@@ -1073,3 +1073,32 @@ high-LAI regions are not sacrificed; or score seasonal amplitude and phase
 separately so amplitude errors cannot be paid for with a mean offset.
 This is a DIFFERENT problem from the z-sigma ridge: the ridge governs whether
 parameters are identifiable, this governs where the optimum sits.
+
+### ⚠ The `DomainError` crash is reproducible and correlates with high `alpha`
+
+Three occurrences so far, all `DomainError` on the SAME GPU thread/block
+(156,1,1)/(25,1,1), i.e. the same grid cell:
+
+| run | z | z_c4 | sigma | sigma_c4 | alpha |
+|---|---|---|---|---|---|
+| stage 3 single-year, it3 member 6 | 20.28 | 31.20 | 0.8208 | 2.351 | **0.1895** |
+| experiment B, it2 member 3 | 13.26 | (fixed) | 0.6452 | (fixed) | **0.2322** |
+| experiment B, it2 member 4 | 13.26 | (fixed) | 0.6297 | (fixed) | **0.2416** |
+
+All parameter sets are INSIDE the priors. The common factor is elevated `alpha`
+(the LAI acclimation rate, τ = 1 day / alpha, so 0.24 is τ ≈ 4 days — very fast).
+
+**The stack trace does NOT point at the cause.** It surfaces in
+`interpolate!` / `_collect_interpolated_values!` inside the ClimaDiagnostics
+NetCDF writer, but the `CUDA/exceptions.jl:39` and `synchronization.jl` frames
+show this is a DEFERRED kernel exception: the fault happened in an earlier
+kernel and is only reported at the next synchronisation, which happens to be the
+diagnostics remap. Anyone debugging this should NOT start in the writer. Re-run
+the failing parameter set with `CUDA_LAUNCH_BLOCKING=1`, or reproduce on CPU, to
+get the true frame.
+
+**This hurt experiment B disproportionately.** B has only 7 members (3 params),
+so losing 2 in iteration 2 is 29 % of the ensemble against 9 % for an 11-member
+run. Fewer parameters means fewer sigma points means each crash costs more — an
+unintended downside of the reduced-parameter design, and a reason to read B's
+covariance with caution.
