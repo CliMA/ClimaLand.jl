@@ -1817,3 +1817,27 @@ while the coupled run sees two particular years of weather.
 **`DRIFT OK` — the global map stands on a verified integrator, not an assumed
 one.** (Four cold sites were still running at the time of reading; they are the
 ones with the largest `τ_stem` and so the slowest to move.)
+
+### Pre-review pass (2026-08-01, iteration 52)
+
+**Drift check finished 20/20** (worst `canada_boreal` −2.4%). Test suite green
+under both Float32 and Float64. Docs `@docs` entries present for all new types.
+
+Two things the diff review turned up:
+
+1. **The PR base is `ar/climate_responsive_lai_inputs`, not `main`.** Reviewing
+   with `git diff main...HEAD` shows the *base branch's* work (`pmodel.jl`,
+   `optimal_lai.jl`, `time_integrated_variables.jl`) as if it were this PR's.
+   Always diff against the actual base: **90 commits, 55 files**.
+2. **A 1.7 MB binary was in the PR.** `land_observation_vector_lai.jld2.bak_premaskfix`
+   entered via a broad `git add -A` in `6b51c2807`, an otherwise
+   documentation-only commit. Nothing references it, and every sibling in that
+   directory — including the file it backs up — is untracked, so the repo
+   deliberately keeps these out of version control. Removed from the index only;
+   the file is untouched on disk.
+
+**Rule:** scope `git add` to the directory being worked on. `git add -A` from the
+repo root sweeps in whatever else happens to be sitting there — and on a shared
+workstation that is not nothing.
+
+No debug leftovers (`println`, `@show`, `TODO`) in the `src/` diff.
