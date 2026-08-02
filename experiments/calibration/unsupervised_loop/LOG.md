@@ -521,3 +521,57 @@ still swinging.
 
 **Next.** Chunks 6-9. At iteration 9: check convergence, then write the final
 parameters to `toml/default_parameters.toml` at 3 s.f. and move to stage 2.
+
+## 2026-08-01 — final: leaderboard comparison and the degeneracy report
+
+All three stages are finished. Produced the prescribed-vs-prognostic LAI
+leaderboard comparison and a written report, published as an artifact and linked
+from the PR's opening comment.
+
+**Leaderboard RMSE, last-iteration member 1 of each stage** (member 1 is the
+central sigma point of a `TransformUnscented` ensemble, i.e. the calibrated
+mean — verified against the stored ensemble means for both stages):
+
+| variable | prescribed | prognostic | change |
+|---|---|---|---|
+| lhf | 8.45 | 8.01 | −5 % |
+| shf | 11.2 | 11.0 | −2 % |
+| er | 1.34 | 1.32 | −1 % |
+| lwu | 6.08 | 6.73 | +11 % |
+| swu | 8.98 | 9.94 | +11 % |
+| nee | 0.961 | 1.08 | +12 % |
+| gpp | 0.85 | 1.31 | **+54 %** |
+| lai | — | 0.674 | natural vegetation only |
+
+Prognostic LAI slightly improves the turbulent fluxes and respiration and costs
+radiation and carbon, GPP most. That is the expected direction: LAI error goes
+straight into absorbed radiation and therefore GPP, while the turbulent fluxes
+are buffered by the surface energy balance.
+
+**Masking.** The cropland+fire mask is applied to `lai` for BOTH its map and its
+RMSE, so the plotted field and the reported number cover the same cells — the
+same cells stage 3 was calibrated on. Other variables keep the leaderboard's
+standard masking, because stage 1 fitted the fluxes globally and scoring them on
+natural vegetation would report a number for something never fitted.
+
+**Three plotting attempts, and the reason is worth keeping.**
+`heatmap2D_on_globe!` places its colorbar at `(row, col+1)` of whatever grid it
+is handed, so tiling four maps across adjacent top-level columns makes each
+colorbar overwrite the next map — the figure renders with only the first column
+visible. The RMSE and bias numbers were correct throughout; only the layout was
+wrong. The fix is what `leaderboard.jl:299` already does: give every map its own
+nested `GridLayout` so its colorbar stays inside it.
+Also re-learned the hard way: launching a long job with a bare `&` inside a Bash
+call dies with the shell. Use the harness's background mode.
+
+**The report** (artifact, linked from the PR) covers the leaderboard, the
+degeneracy analysis, and six ranked suggestions. The headline recommendation is
+not about priors at all: `lai.jl` calibrates against a SINGLE annual cycle
+(`sample_date_ranges` has one entry, `minibatch_size = 1`) where stage 1 used 16
+years. Fitting five parameters to one year is weakly constrained and makes any
+ridge trivial to slide along. After that, reparameterising onto
+`log(z·sigma)` / `log(z/sigma)` is what actually makes the inversion well-posed.
+
+**Pipeline complete.** Stage 1 committed; stage 2 done and verified; stage 3 ran
+to completion with an 11 % better loss but unidentified parameters, deliberately
+not committed. Stopping the loop.
