@@ -2078,3 +2078,43 @@ and `P_annual` are declared locally.
 
 **Do not simply lower `map_half` to hide this.** That trades global bias back for
 boreal accuracy without addressing why the predictor is wrong.
+
+### Aridity rejected on the evidence (2026-08-02, iteration 61)
+
+The proposed fix for the boreal regression was to replace mean annual
+precipitation with the aridity index P/PET, on the reasoning that cold columns
+are dry in millimetres but not water-limited. **Tested before implementing, and
+it fails.**
+
+Using a transparent temperature-driven PET proxy at all 20 sites and sorting by
+P/PET:
+
+| site | P/PET | observed woody |
+|---|---|---|
+| alaska_north_slope | **2.89** (highest) | **0.00–2.09** (tundra) |
+| borneo | 2.72 | 13.9–43.6 |
+| central_siberia | 2.36 | 4.70–13.9 |
+| amazon_central | 1.70 | 5.97–23.88 |
+| **congo_basin** | **1.12** (low) | **16.3–42.9** (highest biomass) |
+| pampas_argentina | 1.04 | 0.00–1.22 |
+| sahel | 0.12 | 0.00–0.13 |
+
+**It orders wrongly at both ends.** The highest-aridity-index site is tundra with
+almost no wood, and one of the highest-biomass sites sits in the lower half of
+the index. An aridity ramp would grant tundra full woody allocation and penalise
+tropical rainforest — worse than the raw-MAP ramp it was meant to replace.
+
+Caveat kept deliberately: the PET proxy is crude (temperature-driven, ignoring
+radiation and humidity). But the two failures are driven by temperature
+dominating evaporative demand, which is true of real PET as well, so a better PET
+would not reverse them.
+
+**Consequence.** This is negative result #2 confirmed a third time, now in its
+strongest form: **no single climate predictor tested — precipitation, soil
+properties, or aridity — separates boreal forest from warm grassland.** The
+MAP ramp buys a large global improvement at a real boreal cost, and that trade
+is now known to be structural rather than a bad parameter choice.
+
+Left as it stands: the ramp is on, 12/20 sites inside, global bias several-fold
+better, boreal under-predicted and documented. Lowering `map_half` would trade
+back along the same axis, not escape it.
