@@ -1799,3 +1799,21 @@ every area-weighted statistic.
 **Honest consequence: the global picture is worse than the 20-site sample
 suggested.** 10/20 sites inside range was a biome-balanced sample; the world is
 not biome-balanced, and grassland, savanna and cropland dominate it.
+
+### The offline integrator reproduces the coupled model (2026-08-01, iteration 50)
+
+The whole global map came from `step_pools`, never from ClimaLand actually
+carrying those pools — an assumption the observational comparisons could not
+have caught. Battery `6978850` seeds each site at its own 400-year offline
+equilibrium via `SEED_FROM_TSV` and asks whether the coupled model holds it.
+
+**16/16 completed sites hold to within 2.3% over 2 years.** Worst `ne_china`
+−2.3%; tropical forests −0.4%; deserts exactly 0.
+
+Drift is uniformly small and *negative*, which is the expected signature rather
+than a worry: the seeded state is the equilibrium of the recycled climatology,
+while the coupled run sees two particular years of weather.
+
+**`DRIFT OK` — the global map stands on a verified integrator, not an assumed
+one.** (Four cold sites were still running at the time of reading; they are the
+ones with the largest `τ_stem` and so the slowest to move.)
