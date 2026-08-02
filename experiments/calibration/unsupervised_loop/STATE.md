@@ -1396,3 +1396,30 @@ at both ends on a live member (`iteration_001/member_001`):
 So `LP.create_toml_dict` applied the second override file and D genuinely has no
 C3/C4 split. `log_params_<member>.toml` is the file to check for this in general:
 it records the resolved parameter set rather than the requested one.
+
+### Experiment B COMPLETE (8/8) — two fewer parameters costs nothing
+
+Final: masked RMSE **0.8886**, bias **−0.0827** (u[8], 24 months 2016-12..2018-11).
+B ended in the same period-2 orbit, misfit alternating 0.350 / 0.335 across four
+iterations.
+
+| configuration | free params | RMSE masked | bias masked |
+|---|---|---|---|
+| default | — | 0.941 | +0.081 |
+| single-year | 5 | 0.885 | −0.098 |
+| A — 4 years | 5 | 0.887 | −0.088 |
+| **B — 3 params, C4 frozen** | **3** | 0.889 | **−0.083** |
+| C — noise 0.25 | 5 | **0.883** | −0.089 |
+
+**All five calibrated variants sit inside 0.883-0.889 — a 0.7 % spread.**
+
+**B is the useful result even though its RMSE is flat.** Dropping `z_c4` and
+`sigma_c4` costs +0.5 % RMSE, which is inside the run-to-run spread, and gives the
+SMALLEST bias magnitude of any calibrated run (−0.083 vs −0.088 to −0.098). Two
+fewer parameters, four fewer sigma points per iteration, and one less degenerate
+direction, for no measurable loss of skill. That is a simplification worth taking
+on its own terms.
+
+Caveat on B specifically: it froze C4 at 14.6 / 1.4, values inherited from an
+unconverged run, so "no cost" here is "no cost even with C4 held at arbitrary
+values". D tests the cleaner version, where C4 tracks the calibrated C3.
