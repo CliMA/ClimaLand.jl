@@ -183,7 +183,10 @@ function nearest(lons, lats, A, lon, lat)
     return A[i, j]
 end
 
-function main(dir; years = 400)
+# `map_half` > 0 enables the precipitation-based woody fraction already in
+# offline_spinup.jl. It is off by default; this exists so the mechanism can be
+# tested against the whole map rather than the four sites the earlier sweep used.
+function main(dir; years = 400, map_half = 0.0)
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
     @info "reading monthly driver climatologies" dir vars
@@ -232,6 +235,7 @@ function main(dir; years = 400)
                 d,
                 p;
                 years,
+                map_half,
                 T_ref_tau = p.T_ref_τ_stem,
                 q_tau = p.q_τ_stem,
             )
@@ -244,7 +248,11 @@ function main(dir; years = 400)
     nland = count(isfinite, C_stem)
     @info "equilibrated" nland years
 
-    out = joinpath(dir, "equilibrium_carbon.nc")
+    out = joinpath(
+        dir,
+        map_half > 0 ? "equilibrium_carbon_maphalf$(map_half).nc" :
+        "equilibrium_carbon.nc",
+    )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
         NCDatasets.defDim(ds, "lat", nlat)
@@ -317,5 +325,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
     isempty(ARGS) &&
         error("usage: julia -t auto global_equilibrium.jl <driver_outdir>")
     yi = findfirst(==("--years"), ARGS)
-    main(ARGS[1]; years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]))
+    mi = findfirst(==("--map-half"), ARGS)
+    main(
+        ARGS[1];
+        years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]),
+        map_half = mi === nothing ? 0.0 : parse(FT, ARGS[mi + 1]),
+    )
 end

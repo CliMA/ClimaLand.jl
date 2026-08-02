@@ -1,0 +1,16 @@
+# Global sweep of the precipitation-based woody fraction, OFFLINE only.
+# w(MAP) = x^n/(1+x^n), x = MAP/map_half, applied to f_stem; the remainder goes
+# to roots. map_half in m/yr. Model: job 6978605 drivers, 400-yr equilibrium at
+# 22420 land columns. NOT yet ported into the model.
+map_half	XuS_model_mean	XuS_bias	XuS_r	ESACCI_bias	ESACCI_r	Saatchi_bias	Saatchi_r
+0.0	7.58	5.08	0.586	3.38	0.556	3.64	0.603
+0.2	7.02	4.52	0.602	2.84	0.575	3.42	0.610
+0.4	5.99	3.49	0.621	1.85	0.601	2.88	0.627
+0.6	5.02	2.53	0.630	0.92	0.616	2.22	0.643
+0.8	4.23	1.73	0.631	0.16	0.623	1.53	0.657
+1.2	3.09	0.59	0.624	-0.93	0.625	0.28	0.670
+#
+# Binned model/observed ratio (XuSaatchi), off vs map_half = 0.8:
+# obs<0.5  25.8x -> 9.0x ; 0.5-2  6.5x -> 3.3x ; 2-5  3.3x -> 1.7x
+# 5-10      2.0x -> 1.4x ; >10    1.1x -> 1.0x
+# Every bin improves and forests are not sacrificed.

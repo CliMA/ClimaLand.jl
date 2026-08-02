@@ -1957,3 +1957,74 @@ where fire is most active.
 **Refined recommendation:** option A addresses ~70% of the absolute excess. The
 remaining arid 16% is a separate mechanism — most likely water limitation on
 allocation rather than disturbance — and should not be attributed to fire.
+
+---
+
+## Correction: precipitation works globally, and I under-sold it (2026-08-02, iteration 58)
+
+**This partially supersedes negative result #2** ("precipitation cannot separate
+them"). That conclusion came from four sites and the *specific* grassland/forest
+conflict, and it is still true there. **I over-generalised it.** Tested on 22 420
+cells, a precipitation-based woody fraction is a strong global predictor.
+
+`w(MAP) = x^n/(1+x^n)`, `x = MAP/map_half`, scaling `f_stem`; the remainder goes
+to roots. Already implemented in `offline_spinup.jl` as `woody_fraction`; **not
+yet in the model**.
+
+| map_half (m/yr) | XuSaatchi bias | ESACCI bias | mean spatial r |
+|---|---|---|---|
+| off | +5.08 | +3.38 | 0.582 |
+| 0.4 | +3.49 | +1.85 | 0.616 |
+| **0.8** | **+1.73** | **+0.16** | **0.637** |
+| 1.2 | +0.59 | −0.93 | 0.640 |
+
+**Bias and spatial correlation improve together** — the improvement is not bought
+by flattening the field.
+
+Binned (XuSaatchi), off → `map_half = 0.8`:
+`<0.5` 25.8×→**9.0×**, `0.5–2` 6.5×→**3.3×**, `2–5` 3.3×→**1.7×**,
+`5–10` 2.0×→**1.4×**, `>10` 1.1×→**1.0×**. **Every bin improves; forests are not
+sacrificed.**
+
+### Two mechanisms, two regions — a coherent story
+
+At `map_half = 0.8` the sites split cleanly:
+
+| site | off | 0.8 | verdict | MAP |
+|---|---|---|---|---|
+| us_great_plains | 7.51 | 3.29 | **INSIDE** | 751 mm |
+| ne_china | 8.22 | 2.89 | 1.9× over | 479 mm |
+| central_siberia | 10.59 | 4.80 | **INSIDE** | — |
+| central_europe | 11.51 | 5.67 | **INSIDE** | 1056 mm |
+| amazon_central | 15.51 | 14.15 | **INSIDE** | 2286 mm |
+| **pampas_argentina** | 7.15 | **3.22** | still 2.6× over | **915 mm** |
+| **cerrado_brazil** | 12.55 | **9.37** | still 2.9× over | **1437 mm** |
+| congo_basin | 19.55 | 15.53 | 1.1× *under* | — |
+
+The MAP ramp fixes the **arid/semi-arid** over-build. The **wet** grassland and
+savanna cases — pampas and cerrado — survive it, and those are exactly the
+high-burned-area systems from the GFED probe. So:
+
+- **water limitation → arid end**, fixable with a predictor already in the model;
+- **fire / land use → wet savanna and grassland**, needs GFED (user decision).
+
+This matches the burned-area probe, where burnt fraction peaked in the 0.5–2 bin
+and was low in true desert.
+
+### Why this is within remit to port
+
+Rule 2 permits variation with mean annual temperature or precipitation *once
+constants demonstrably fail*, which was established earlier. **MAP is already
+carried by the model** (`precip_annual`, and the `pra` diagnostic in m/yr), so
+this is not a new input — unlike GFED, which is, and stays blocked.
+
+`τ_stem(MAT)` was ported under the same clause.
+
+**Caveat before porting:** `congo_basin` is already 1.1× *under* at 0.8, so the
+value must not be pushed higher without watching the wet-forest end. 0.8 is the
+conservative choice; 1.2 drives ESACCI negative.
+
+**Port design:** the carbon model must not depend on `precip_annual`, which only
+exists under the Zhou LAI model — it has to work under prescribed LAI too. Mirror
+`T_annual`: give the carbon model its own `P_annual` `RunningMean`, as was done
+for temperature for exactly this reason.
