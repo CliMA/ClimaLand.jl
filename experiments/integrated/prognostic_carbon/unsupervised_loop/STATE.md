@@ -1647,3 +1647,24 @@ Two viable routes, and the choice is being measured rather than guessed:
 2. **Coarsen to 2°** (`NLAT=90 NLON=180`) — 4× fewer columns, ~4.6 h solve, fits
    the develop queue. Costs resolution but still tests spatial pattern, since
    biome gradients are far broader than 2°.
+
+**Refined CPU cost** (measured < 31 simulated days in 73 min of solve, so
+< 0.42 days/min at 1°, `CPUSingleThreaded` — the model runs on one core, BLAS
+aside, which is the real reason it is slow):
+
+| grid | 2 yr | 1 yr |
+|---|---|---|
+| 1° | > 28.7 h — infeasible | > 14.3 h — infeasible |
+| 2° | > 7.2 h — needs a 12 h queue | > 3.6 h — fits develop |
+| 3° | > 3.2 h — fits develop | > 1.6 h — fits develop |
+
+A 1-year run is not equivalent: it supplies 12 months, but they are the model's
+*first* year, before LAI and soil moisture have spun up. The battery discards
+its first year for exactly this reason, so production stays at 2 years.
+
+GPU smoke `6978388`: at 22 min it had not yet created `global_driver.log`,
+meaning it was still inside `Pkg.instantiate()` — the CUDA precompile failures
+are the cost, and they are a **fixed setup** cost rather than per-step. If the
+GPU solve is even ~20× the CPU rate, 1° × 2 yr lands near 1.5 h of solve and the
+whole job fits comfortably, which is why this is worth measuring rather than
+abandoning.
