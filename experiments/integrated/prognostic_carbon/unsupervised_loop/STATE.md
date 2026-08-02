@@ -1903,3 +1903,23 @@ genuine reply.
 
 **Rule:** when a monitor watches a channel this loop also writes to, filter on
 something the loop controls about its own messages, never on identity.
+
+### STEP 0 re-check while idle (2026-08-01, iteration 56)
+
+The other loop has calibration jobs running (`run_2_9/10/11` on the GPU queue),
+which is exactly the situation that produced a false 33% rule-1 "violation"
+earlier. Re-checked rather than assumed:
+
+- `Overrides.toml` **unchanged** — both hashes still point where STATE.md
+  recorded them.
+- **The path alone is not enough**: the artifact directory could be rewritten in
+  place under a stable path. Checked contents too —
+  `optimal_lai_inputs.nc` last modified **08-01 13:07**, i.e. *before* every run
+  the results rest on: battery `6976879` (~15:09), global driver `6978605`
+  (19:24–20:00), drift battery `6978850` (~22:00). Nothing in the artifact
+  modified after 19:00.
+
+**All published results sit on one artifact version.** Nothing is stale.
+
+Also confirmed idle-state facts: no non-loop comments on PR #1834, no open
+checklist items in `MODEL.md`, and no jobs of this loop's in the queue.
