@@ -183,8 +183,12 @@ function spinup(
     years = 400,
     dt = SECONDS_PER_DAY,
     pools0 = (FT(0), FT(0), FT(0), FT(0)),
-    map_half = 0.0,
-    map_n = 2.0,
+    # Default to the model's own parameter, not to zero. These offline tools
+    # exist to reproduce what the model does; a default that silently disables a
+    # mechanism the model has enabled would make every comparison wrong in a way
+    # that looks like model error.
+    map_half = p.map_half_woody,
+    map_n = p.n_map_woody,
     T_ref_tau = 0.0,
     q_tau = 1.0,
 )

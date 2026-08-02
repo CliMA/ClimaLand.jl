@@ -2028,3 +2028,53 @@ conservative choice; 1.2 drives ESACCI negative.
 exists under the Zhou LAI model — it has to work under prescribed LAI too. Mirror
 `T_annual`: give the carbon model its own `P_annual` `RunningMean`, as was done
 for temperature for exactly this reason.
+
+---
+
+## MAP ramp ported — and it trades one failure for another (2026-08-02, iteration 60)
+
+Battery `6979917`, 20/20. **`RULE1 PASS`, `rel_diff = 0.0` exactly** — adding the
+`P_annual` state and rewriting the allocation left GPP and LAI bit-identical.
+
+`offline_spinup.jl` now defaults `map_half`/`map_n` to the **model's own
+parameters** rather than to zero. A default that silently disables a mechanism
+the model has enabled would have made every offline comparison wrong in a way
+that looks like model error.
+
+### Sites: 10/20 → **12/20** inside, but the failure mode moved
+
+Fixed: `us_great_plains`, `iberia`, `california_vaira`, `n_australia_savanna`,
+`ozark_us` all now inside.
+
+**New regression at the cold end:**
+
+| site | pre | post | verdict |
+|---|---|---|---|
+| central_siberia | 6.87 (inside) | **1.74** | 2.7× **below** |
+| canada_boreal | 9.69 (1.1× over) | **3.17** | 1.3× **below** |
+| fennoscandia | 8.40 (inside) | **3.84** | 1.1× below |
+| congo_basin | 17.88 (inside) | 13.04 | 1.3× below |
+
+**This is negative result #2 reasserting itself**, and it is the same ordering
+problem as before: boreal forest is dry in absolute precipitation yet carries
+wood, so a raw-MAP ramp suppresses it. Global statistics improved anyway because
+the binning is by observed biomass, and boreal cells sit in bins that stayed
+healthy (5–10 → 1.4×, >10 → 1.0×) — a genuine site-vs-global disagreement, not a
+contradiction.
+
+Still over at the wet end: `pampas_argentina` 4.6×, `cerrado_brazil` 2.3× — the
+fire/land-use cases, untouched as expected.
+
+### The principled fix is aridity, not precipitation
+
+Cold columns are dry in millimetres but not water-*limited*: evaporative demand
+is low. The physically right predictor is the **aridity index P/PET**, not P.
+The model already computes `PET_annual` for the Zhou aridity index, and it is
+still a climate mean, so rule 2 permits it.
+
+It would need its own running mean in the carbon model — `precip_annual` and
+`PET_annual` both live only under the Zhou LAI model, the same reason `T_annual`
+and `P_annual` are declared locally.
+
+**Do not simply lower `map_half` to hide this.** That trades global bias back for
+boreal accuracy without addressing why the predictor is wrong.
