@@ -1325,3 +1325,23 @@ between the two orbit states (0.912 vs 0.887) IS confounded, because those
 members scored different periods (2014-16 vs 2016-18). Do not quote it as the
 cost of the cycle. Isolating that still needs both parameter sets run over one
 common period.
+
+### Experiment C COMPLETE (5/5) — and the RMSE cluster
+
+C's final member scored the SAME period as the single-year baseline
+(2017-12..2018-11), so this is a clean like-for-like comparison:
+
+| configuration | RMSE masked | bias masked | RMSE unmasked | bias unmasked |
+|---|---|---|---|---|
+| default parameters | 0.941 | +0.081 | 1.046 | +0.225 |
+| calibrated, 1 yr, noise 0.5 | 0.885 | −0.098 | 0.926 | +0.081 |
+| A — 4 years | 0.887 | −0.088 | 0.939 | +0.093 |
+| **C — noise 0.25** | **0.883** | **−0.089** | 0.930 | +0.091 |
+
+**Every calibrated variant lands between 0.883 and 0.887 — under 0.5 % apart.**
+Calibration is worth ~6 % against the 0.941 default; nothing reachable from the
+config moves it beyond that. The achievable masked RMSE for this model and
+objective is ~0.885.
+
+C's marginal 0.002 edge over the baseline is far inside the run-to-run spread and
+should not be read as the noise scalar helping.
