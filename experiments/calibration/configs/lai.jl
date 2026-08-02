@@ -89,17 +89,22 @@ function get_calibration_prior()
         EKP.constrained_gaussian("optimal_lai_sigma", 0.939, 0.3, 0.1, 3.0),
         EKP.constrained_gaussian("optimal_lai_sigma_c4", 0.939, 0.3, 0.1, 3.0),
         # alpha is a bounded rate; σ kept clear of the bounds.
-        # Upper bound 0.18, not 0.3: members crash with a GPU DomainError at
-        # parameter sets INSIDE the old prior, and the crash rate tracks alpha
-        # (1/88 member-runs at alpha <= 0.21, 3/28 at 0.233-0.242, 0/22 at
-        # 0.188). Every calibration drives alpha up from 0.0701, so the
-        # optimiser reliably walks into the unsafe region. No run has settled
-        # above 0.19, so this costs nothing and would have prevented all four
-        # crashes observed. Remove the cap once the faulting expression is
-        # guarded — reproduce it with CUDA_LAUNCH_BLOCKING=1, NOT from the
-        # stack trace, which reports a deferred kernel exception at the next
+        # Do not cap this to dodge the GPU DomainError that kills the occasional
+        # member. Over 275 member-runs across five stage-3 configurations, 7
+        # crashed (2.5 %) and alpha does not separate them: crashes occur at
+        # alpha as low as 0.122, successes as high as 0.234, and the per-member
+        # crash rate is flat (0 % below 0.10, then 2.4 / 2.1 / 1.4 % through
+        # 0.21). The one elevated bin, 3/19 above 0.21, comes entirely from a
+        # single experiment which crashed 3/11 there while two others crashed
+        # 0/8 — so it is confounded with configuration, not attributable to
+        # alpha. A 0.18 cap would have prevented 4 of the 7 crashes while
+        # excluding 84 of 268 successful member-runs, and since every
+        # calibration settles at alpha 0.18-0.21 it would bind on the posterior
+        # and silently truncate the answer. The fix is to guard the faulting
+        # expression: reproduce with CUDA_LAUNCH_BLOCKING=1, NOT from the stack
+        # trace, which reports a deferred kernel exception at the next
         # synchronisation and points misleadingly at the diagnostics writer.
-        EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.18),
+        EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.3),
     ]
     return EKP.combine_distributions(priors)
 end

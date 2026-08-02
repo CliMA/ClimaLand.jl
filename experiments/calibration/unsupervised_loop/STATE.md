@@ -1614,3 +1614,50 @@ strictly better than anything a calibration could find:
 Keep quoting 0.998 → 0.905 as the realistic upper bound on stratification, and
 reserve 0.52 for what it is: the value of a perfect per-cell correction, i.e. an
 upper bound on everything, not a target.
+
+### ❌ The alpha cap was wrong, and is reverted (2026-08-02)
+
+D's iteration 3 lost `member_007` to the GPU `DomainError` at **alpha = 0.1788** —
+*below* the 0.18 cap I added to `lai.jl`, and the **lowest** alpha in that
+ensemble. That prompted a proper census: `crash_params.jl` reads the EKI
+g-matrix of all five stage-3 runs, marks every member whose column is entirely
+non-finite, and maps it back to the parameters actually run.
+
+**275 member-runs, 7 crashed (2.5 %).**
+
+| | z | sigma | alpha |
+|---|---|---|---|
+| crashed (n=7) | 13.3 – 28.3 | 0.63 – 1.11 | **0.122 – 0.242** |
+| succeeded (n=268) | 6.7 – 28.8 | 0.44 – 1.62 | **0.027 – 0.234** |
+
+The ranges overlap almost completely. Crash rate by per-member alpha:
+
+| alpha | crashes / runs | rate |
+|---|---|---|
+| 0.00 – 0.10 | 0 / 57 | 0.0 % |
+| 0.10 – 0.15 | 2 / 82 | 2.4 % |
+| 0.15 – 0.18 | 1 / 48 | 2.1 % |
+| 0.18 – 0.21 | 1 / 69 | 1.4 % |
+| 0.21 – 0.30 | 3 / 19 | 15.8 % |
+
+and that last bin is **confounded**: all three crashes are `lai_noc4split`
+(3/11 there), while `lai_multiyear` and `lai_tied_c4` crashed 0/5 and 0/3 above
+0.21.
+
+**Where my earlier statistic went wrong.** I binned by each iteration's
+*ensemble-mean* alpha and attributed that iteration's crashes to it. Members
+inside one iteration span a wide alpha range, so the mean is the wrong
+covariate. Per member, the association largely disappears.
+
+**What follows.** A 0.18 cap prevents 4 of 7 crashes and excludes **84 of 268
+successful member-runs** — 31 % of the parameter space that demonstrably works.
+Worse, every calibration settles at alpha 0.18–0.21, so the cap *binds on the
+posterior*: it is not a safety rail, it is an accidental modelling choice that
+silently truncates the answer. Reverted to 0.3, with the census recorded in the
+prior's comment.
+
+The crash remains real and unexplained at 2.5 % of members. `SampleSuccGauss`
+absorbs it; the actual fix is still to guard the faulting expression, which needs
+`CUDA_LAUNCH_BLOCKING=1` to locate — the stack trace points at the
+ClimaDiagnostics writer, which is where the deferred kernel exception surfaces,
+not where it is raised.
