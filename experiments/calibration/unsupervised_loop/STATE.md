@@ -1149,3 +1149,37 @@ the unsafe region. Two independent fixes, both worth doing:
 2. Until then, cap the `optimal_lai_alpha` prior at ~0.18 so the ensemble cannot
    reach the unsafe region. This costs little: no run has settled above 0.19
    anyway, and it would have prevented all four crashes seen so far.
+
+### Experiment C RESULT — the noise scalar is very nearly a no-op
+
+| | baseline (0.5) | C (0.25) | ratio |
+|---|---|---|---|
+| misfit it1 | 0.2229 | 0.4453 | 2.00x |
+| misfit it2 | 0.3174 | 0.6329 | 1.99x |
+| z at it3 | 20.28 | 19.27 | −5 % |
+| sigma at it3 | 0.8209 | 0.8012 | −2 % |
+| alpha at it3 | 0.1661 | 0.1713 | +3 % |
+
+The misfit scales by exactly the variance ratio while the parameters move by
+under 5 %. `DataMisfitController` sets its timestep from the misfit magnitude, so
+scaling the covariance uniformly is normalised back out and the trajectory is
+essentially unchanged.
+
+**`NOISE_SCALARS` is therefore not the lever `lai.jl`'s docstring claims.** That
+docstring says "tighten it (-> 0.25) to pull harder on peak-LAI magnitude" and
+should be corrected: with an adaptive-timestep scheduler, a uniform variance
+rescaling changes almost nothing. It would still matter for the RELATIVE
+weighting between several targets (as in stage 1's four variables), just not for
+a single-target calibration like this one.
+
+### Running score: three config knobs tested, three null results
+
+| lever | experiment | effect on the calibration |
+|---|---|---|
+| more data (1 yr -> 4 yr) | A | none — trajectory identical to 3 s.f.; masked RMSE 0.895 vs 0.885 |
+| tighter noise (0.5 -> 0.25) | C | none — misfit rescales, parameters move <5 % |
+| fewer parameters (5 -> 3) | B | inconclusive so far, and hampered by a 10.7 % crash rate |
+
+Nothing reachable from the config moves LAI RMSE. The binding constraints are
+the z-sigma ridge (identifiability) and the model's peak-LAI ceiling (bias), and
+both need a change to the model or the objective, not to settings.
