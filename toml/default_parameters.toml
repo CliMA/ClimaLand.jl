@@ -1002,3 +1002,20 @@ type = "float"
 description = "Slope (mol^-1 m^2 yr) mapping the leaf cost z down where annual potential GPP A0 is high, raising the energy-limited cap 1-z/(k*A0) in the most-productive forests while leaving temperate/boreal (A0 below ~220) unchanged. Default 0.0 = uniform z. Targets the wet-tropical LAI deficit vs MODIS without over-shooting other biomes; derived from A0, no PFT."
 tag = "OptimalLAIModel"
 
+["carbon_map_half_woody"]
+value = 0.8
+type = "float"
+description = "Mean annual precipitation (m yr^-1) at which the woody allocation fraction reaches half its maximum. Chosen from a global sweep against six biomass products: it cuts the mean bias several-fold while spatial correlation rises, and leaves the wet-forest end essentially unchanged. Set to 0 to disable the water limitation on stem allocation."
+tag = "PrognosticCarbonParameters"
+
+["carbon_n_map_woody"]
+value = 2.0
+type = "float"
+description = "Sharpness of the precipitation ramp on woody allocation. Larger values make the transition from herbaceous to woody more abrupt."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_MAP"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale (s) of the running-mean precipitation used as mean annual precipitation, 2 years. Matches carbon_tau_MAT so both climate means filter the seasonal cycle identically."
+tag = "PrognosticCarbonParameters"

@@ -358,6 +358,29 @@ for FT in (Float32, Float64)
     # Stem turnover lengthens toward the cold. The mean annual temperature this
     # reads is seeded from air temperature at initialisation; left at zero it
     # would be 0 K and the scaling q^((T_ref-MAT)/10) would start at 2^28.
+    @testset "Woody allocation scales with mean annual precipitation, FT = $FT" begin
+        p_c = biomass.parameters
+        h, n = p_c.map_half_woody, p_c.n_map_woody
+        # Half its maximum exactly at map_half, by construction.
+        @test Canopy.woody_fraction(h, h, n) ≈ FT(0.5) atol = FT(1e-6)
+        # Monotone in precipitation, and bounded by (0, 1).
+        @test Canopy.woody_fraction(FT(0), h, n) == FT(0)
+        @test Canopy.woody_fraction(FT(0.1), h, n) <
+              Canopy.woody_fraction(FT(1.0), h, n) <
+              Canopy.woody_fraction(FT(5.0), h, n) <
+              FT(1)
+        # A wet column keeps essentially all of its woody allocation, so the
+        # ramp cannot quietly suppress forests.
+        @test Canopy.woody_fraction(FT(3.0), h, n) > FT(0.9)
+        # half <= 0 disables the mechanism exactly, which is what lets the
+        # constant-allocation control be run through the same code path.
+        @test Canopy.woody_fraction(FT(0.2), FT(0), n) == FT(1)
+        @test Canopy.woody_fraction(FT(0), FT(0), n) == FT(1)
+        # Negative precipitation cannot arise physically, but a running sum can
+        # dip below zero transiently; it must not produce a negative fraction.
+        @test Canopy.woody_fraction(FT(-1), h, n) == FT(0)
+    end
+
     @testset "Stem turnover scales with mean annual temperature, FT = $FT" begin
         p_c = biomass.parameters
         @test Canopy.tau_stem_scale(FT(283), p_c.T_ref_τ_stem, p_c.q_τ_stem) ==
@@ -441,10 +464,10 @@ for FT in (Float32, Float64)
         zhou_vars = ClimaLand.prognostic_vars(zhou)
         wrapped_vars = ClimaLand.prognostic_vars(wrapped)
         @test all(v -> v in wrapped_vars, zhou_vars)
-        # The wrapper adds exactly the four pools plus its own mean annual
-        # temperature; naming them beats a magic count, which silently needs
-        # editing every time a state variable is added.
-        added = (:C_sugar, :C_leaf, :C_stem, :C_root, :T_annual)
+        # The wrapper adds exactly the four pools plus its own climate means;
+        # naming them beats a magic count, which silently needs editing every
+        # time a state variable is added.
+        added = (:C_sugar, :C_leaf, :C_stem, :C_root, :T_annual, :P_annual)
         @test all(v -> v in wrapped_vars, added)
         @test length(wrapped_vars) == length(zhou_vars) + length(added)
         @test isempty(setdiff(wrapped_vars, (zhou_vars..., added...)))

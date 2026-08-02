@@ -849,6 +849,12 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     T_ref_τ_stem::FT
     "Memory timescale (s) of the running-mean air temperature used as MAT"
     τ_MAT::FT
+    "Mean annual precipitation at which woody allocation is half its maximum (m yr^-1); 0 disables the ramp"
+    map_half_woody::FT
+    "Sharpness of the precipitation ramp on woody allocation (dimensionless)"
+    n_map_woody::FT
+    "Memory timescale of the running-mean precipitation used as mean annual precipitation (s)"
+    τ_MAP::FT
     "Q10 temperature sensitivity of maintenance respiration (-)"
     Q10::FT
     "Reference temperature for the Q10 factor (K)"
@@ -885,6 +891,9 @@ function PrognosticCarbonParameters(
     q_τ_stem = toml_dict["carbon_tau_stem_q"],
     T_ref_τ_stem = toml_dict["carbon_tau_stem_T_ref"],
     τ_MAT = toml_dict["carbon_tau_MAT"],
+    map_half_woody = toml_dict["carbon_map_half_woody"],
+    n_map_woody = toml_dict["carbon_n_map_woody"],
+    τ_MAP = toml_dict["carbon_tau_MAP"],
     Q10 = toml_dict["carbon_Q10"],
     T_ref = toml_dict["carbon_T_ref"],
 )
@@ -910,6 +919,9 @@ function PrognosticCarbonParameters(
         q_τ_stem,
         T_ref_τ_stem,
         τ_MAT,
+        map_half_woody,
+        n_map_woody,
+        τ_MAP,
         Q10,
         T_ref,
     )
@@ -982,6 +994,15 @@ function PrognosticCarbonModel{FT}(
         ClimaLand.TimeIntegratedVariable{FT}(;
             name = :T_annual,
             reduction = ClimaLand.RunningMean(parameters.τ_MAT),
+        ),
+        # Mean annual precipitation, declared here for the same reason as
+        # T_annual: the optimal-LAI model carries its own `precip_annual`, but
+        # the carbon model must also work under prescribed LAI, where that state
+        # does not exist. Kept in m yr^-1 so it can be compared with
+        # `map_half_woody` directly.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :P_annual,
+            reduction = ClimaLand.RunningSum(FT(365 * 86400), parameters.τ_MAP),
         ),
     )
     args = (lai_model, parameters, rooting_depth, height, tiv)
@@ -1114,6 +1135,27 @@ const MAX_TAU_STEM_SCALE = 10
 function tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
     q <= 1 && return one(FT)
     return min(q^(max(T_ref - MAT, zero(FT)) / 10), FT(MAX_TAU_STEM_SCALE))
+end
+
+"""
+    woody_fraction(MAP::FT, half::FT, n::FT) where {FT}
+
+Fraction of the structural allocation that may go to stem, as a saturating
+function of mean annual precipitation: `x^n / (1 + x^n)` with `x = MAP/half`.
+
+Dry columns build almost no wood and wet ones approach the full `f_stem`.
+Whatever stem gives up goes to roots, so the three fractions still sum to one.
+
+Mean annual precipitation is the classic climate control on maximum woody cover
+(Sankaran et al. 2005), and it is a *climate* mean rather than a plant
+functional type, which is what the no-PFT constraint requires. `half <= 0`
+disables the ramp and recovers constant allocation.
+"""
+function woody_fraction(MAP::FT, half::FT, n::FT) where {FT}
+    half <= 0 && return one(FT)
+    x = max(MAP, zero(FT)) / half
+    xn = x^n
+    return xn / (1 + xn)
 end
 
 """
@@ -1296,6 +1338,7 @@ function ClimaLand.make_compute_exp_tendency(
     lai_tendency! =
         ClimaLand.make_compute_exp_tendency(component.lai_model, canopy)
     (; a, f_leaf_c3, f_stem_c3, f_leaf_c4, f_stem_c4) = component.parameters
+    (; map_half_woody, n_map_woody) = component.parameters
     tivs = component.time_integrated_vars
     M_C = FT(0.012011)  # kg C per mol
     function compute_exp_tendency!(dY, Y, p, t)
@@ -1311,9 +1354,16 @@ function ClimaLand.make_compute_exp_tendency(
             a *
             pft_free_blend(fractional_c3, f_leaf_c3, f_leaf_c4) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_leaf
+        # Stem allocation is scaled by the climate-derived woody fraction: dry
+        # columns cannot hold wood however much sugar they fix.
         @. dY.canopy.biomass.C_stem =
             a *
             pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4) *
+            woody_fraction(
+                Y.canopy.biomass.P_annual,
+                map_half_woody,
+                n_map_woody,
+            ) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_stem
         # Mean annual temperature, relaxing toward air temperature.
         @. dY.canopy.biomass.T_annual = apply_time_reduction(
@@ -1321,13 +1371,27 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.T_annual,
             tivs.T_annual.reduction,
         )
+        # Mean annual precipitation. P_liq/P_snow are negative-downward volume
+        # fluxes (m/s), so negate for a positive total in m yr^-1.
+        @. dY.canopy.biomass.P_annual = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow),
+            Y.canopy.biomass.P_annual,
+            tivs.P_annual.reduction,
+        )
 
-        # f_root is the remainder, so the three fractions sum to one exactly.
+        # f_root takes whatever leaf and stem do not, including the stem
+        # allocation the water limitation withheld, so the three fractions sum
+        # to one exactly at every column.
         @. dY.canopy.biomass.C_root =
             a *
             (
                 1 - pft_free_blend(fractional_c3, f_leaf_c3, f_leaf_c4) -
-                pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4)
+                pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4) *
+                woody_fraction(
+                    Y.canopy.biomass.P_annual,
+                    map_half_woody,
+                    n_map_woody,
+                )
             ) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_root
     end

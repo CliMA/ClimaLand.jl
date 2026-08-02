@@ -450,6 +450,17 @@ function set_canopy_component_initial_conditions!(
     # zero it would be 0 K, and the stem-turnover scaling q^((T_ref - MAT)/10)
     # would start at 2^28 - the pools would never recover from the first step.
     Y.canopy.biomass.T_annual .= p.drivers.T
+    # Seed the mean annual precipitation too. Left at zero, the woody fraction
+    # is zero and no stem carbon accumulates until the running sum has filled,
+    # which takes as long as its memory timescale. Where the optimal-LAI model
+    # sits underneath it already carries the same quantity in molar units, so
+    # reuse it rather than spinning a second copy up from nothing.
+    if hasproperty(Y.canopy.biomass, :precip_annual)
+        ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
+        @. Y.canopy.biomass.P_annual = Y.canopy.biomass.precip_annual / ρ_m_liq
+    else
+        Y.canopy.biomass.P_annual .= FT(0)
+    end
     Y.canopy.biomass.C_sugar .= FT(0)
     Y.canopy.biomass.C_leaf .= FT(0)
     Y.canopy.biomass.C_stem .= FT(0)
