@@ -1747,3 +1747,55 @@ Production resubmitted as **`6978605`**.
 
 **Rule:** verify a grid by its coordinate values, never by its dimension names
 or by the tuple that was passed in.
+
+---
+
+## STAGE 5b COMPLETE — the global map, and what it shows (2026-08-01, iteration 48)
+
+Production `6978605` PASS: 2-yr global run, prognostic LAI, carbon off (one-way
+coupling), 1°×1° output, 24 monthly records, ~73 min of GPU solve.
+`global_equilibrium.jl` equilibrated **22 420 land columns in 2 min 25 s**.
+
+### The map is consistent with the single-column battery
+
+`check_map_vs_sites.jl`: **17/20 sites within a factor of two.** The three that
+are not are explained entirely by driver differences between a 1° cell and a
+point column — **not** by the map pipeline:
+
+| site | GPP global/column | C_stem map/battery |
+|---|---|---|
+| n_australia_savanna | 0.53 | 0.30 |
+| alaska_north_slope | 2.47 | 2.81 |
+| mojave_sw_us | 0.0 (cell is barren) | 0.0 |
+| amazon_central | 1.03 | 0.93 |
+| central_europe | 1.10 | 0.98 |
+
+C_stem tracks GPP nearly one-for-one, which is what a correct pipeline should
+do. Mojave's cell differs by **14 K** from the column — roughly 2 km of terrain
+in a 1° cell spanning Death Valley to the Sierra. Sampling, not code.
+
+### The decisive result: the model gets forests right and invents the rest
+
+Binning ~20 000 cells by *observed* woody carbon:
+
+| observed | XuSaatchi | ESACCI | Saatchi2011 |
+|---|---|---|---|
+| **> 10** (real forest) | **1.1×** | **0.8×** | **1.1×** |
+| 5–10 | 2.0× | 1.7× | 2.1× |
+| 2–5 | 3.3× | 3.3× | 2.4× |
+| 0.5–2 | 6.5× | 7.6× | 2.9× |
+| **< 0.5** (no wood) | **25.8×** | **45.5×** | **12.0×** |
+
+**Monotone in all three products.** Where observations show forest the model is
+within 20%; where they show no wood it overshoots by one to one-and-a-half
+orders of magnitude. The site-level disturbance diagnosis is now confirmed on
+~20 000 cells instead of four sites.
+
+It also explains the moderate spatial correlation (r = 0.35–0.60) and the global
+mean bias (model 7.3–10.6 vs observed 2.5–7.9): more than half of the vegetated
+land surface sits in the two lowest bins, so the treeless-land error dominates
+every area-weighted statistic.
+
+**Honest consequence: the global picture is worse than the 20-site sample
+suggested.** 10/20 sites inside range was a biome-balanced sample; the world is
+not biome-balanced, and grassland, savanna and cropland dominate it.
