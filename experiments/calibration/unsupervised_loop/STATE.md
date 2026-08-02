@@ -1572,3 +1572,45 @@ restatement of the empirical finding above: the LAI parameters cannot move the
 spatial pattern, so the pattern error is inherited from the P-model's potential
 GPP and from the water-limit inputs. **Improving LAI RMSE past ~0.885 is a stage-1
 and input-field problem, not a stage-3 one.**
+
+### ❌ Correction to my own framing: "spatially varying z" is worth far less than 0.52 (2026-08-02)
+
+The entry above quotes pooled RMSE 0.998 → **0.52** as the prize for removing the
+spatial-pattern offset, and points at a per-PFT `z` as the way to get it. The
+arithmetic is right but the attribution was not: 0.52 is what removing the
+pattern *entirely* would give, which requires a free constant per grid cell. A
+per-PFT parameter has of order ten groups, not eight thousand.
+
+`lai_stratification.jl` bounds each grouping properly. Every row is an **oracle**
+— each group gets its own constant fitted directly to the offsets, which is
+strictly better than anything a calibration could find:
+
+| grouping | groups | removes | pooled RMSE |
+|---|---|---|---|
+| one global `z` (status quo) | 1 | 0.0 % | 0.998 |
+| C3 / C4 | 2 | 1.5 % | 0.992 |
+| 4 latitude bands | 4 | 8.9 % | 0.965 |
+| 5 observed-LAI classes | 5 | 11.9 % | 0.954 |
+| latitude × LAI class | 20 | 24.3 % | 0.905 |
+
+**What this changes.**
+
+1. **The per-PFT `z` recommendation is demoted.** Twenty oracle groups reach
+   0.905, roughly 9 %. Ten PFT classes would reach less, and a real calibration
+   less again. Worth doing on physical grounds — `z` genuinely is a PFT property —
+   but it is not the answer to the RMSE question, and I should not have implied it
+   was.
+2. **A fourth independent verdict on the C3/C4 split.** Even fitting the two
+   constants *optimally to the residuals themselves* removes 1.5 % of the pattern,
+   0.6 % of RMSE. The split cannot be rescued by better calibration; there is
+   almost no between-pathway signal in the offsets to begin with.
+3. **The error is fine-scale.** Three quarters of the pattern survives a
+   twenty-group stratification, so it lives at grid scale, not at biome scale.
+   That points squarely at the *input fields* — `A0_annual` from the P-model,
+   precipitation, the aridity index behind `f0` — rather than at any parameter
+   grouping. It strengthens the "stage-1 and input-field problem" conclusion while
+   removing the parameter-stratification escape route.
+
+Keep quoting 0.998 → 0.905 as the realistic upper bound on stratification, and
+reserve 0.52 for what it is: the value of a perfect per-cell correction, i.e. an
+upper bound on everything, not a target.
