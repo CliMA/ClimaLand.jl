@@ -1279,3 +1279,28 @@ behaviour; it is NOT evidenced by A's period-2 cycle specifically.
 **To separate them properly** would need both parameter sets run over the SAME
 period — one forward run each, no calibration. Worth doing before anyone quotes
 a limit-cycle cost.
+
+### Experiment C, 4 iterations — the noise scalar is a no-op, established
+
+| iteration | C misfit (noise 0.25) | baseline x 2 | ratio |
+|---|---|---|---|
+| 1 | 0.4453 | 0.4457 | 2.00 |
+| 2 | 0.6329 | 0.6308 | 2.01 |
+| 3 | 0.4529 | 0.4466 | 2.01 |
+| 4 | 0.4019 | 0.4064 | 1.99 |
+
+`z` at iteration 5: 21.27 (C) vs 21.02 (baseline), 1.2 % apart after four
+updates. `sigma`: 0.9536 vs 0.936, 1.9 % apart.
+
+**The misfit scales by exactly the variance ratio at EVERY iteration while the
+parameters track to within a couple of percent.** Halving `NOISE_SCALARS["lai"]`
+does nothing except renumber the loss, because `DataMisfitController` sets its
+step from the misfit magnitude and divides the rescaling back out. Established
+over four iterations, not inferred from one.
+
+**Concrete fix: correct the `lai.jl` docstring.** It currently reads "Loosen it
+(-> 1.0+) if EKI overfits the seasonal amplitude at the expense of timing;
+tighten it (-> 0.25) to pull harder on peak-LAI magnitude." Neither is true for a
+SINGLE-target calibration under an adaptive-timestep scheduler. The scalar still
+matters for the RELATIVE weighting between several targets, which is how stage 1
+uses it across four variables — so the fix is to scope the advice, not delete it.
