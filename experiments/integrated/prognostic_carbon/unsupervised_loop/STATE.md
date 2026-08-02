@@ -2147,3 +2147,21 @@ the model's definitions and cannot drift again.
 
 Known and documented: boreal forest under-predicted; wet savanna
 (`pampas`, `cerrado`) still over — the GFED case, blocked on the user.
+
+### Published numbers re-derived on the final code (2026-08-02, iteration 64)
+
+Two figures in the PR predated later fixes, so they were re-computed rather than
+assumed to carry over:
+
+- **12/20 sites inside the observational range** — first computed before the
+  `tau_stem_scale` cap reached the offline harness. Unchanged, as expected: no
+  battery site is colder than the −23 °C threshold where the cap binds.
+- **17/20 map-vs-battery agreement** — first computed on the pre-port map.
+  Unchanged on the current map and the regenerated seeds.
+
+Every number in the PR status comment and the results page now comes from the
+code as committed.
+
+**The loop is idle by design from here.** Both remaining levers need the user:
+the GFED fire/land-use input, and the ClimaLand 1.11 version bump. Iterations
+without those should verify nothing has regressed and stop, not invent tasks.
