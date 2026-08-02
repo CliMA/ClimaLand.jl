@@ -1860,3 +1860,28 @@ the fire/land-use input wakes this loop immediately rather than on a heartbeat.
 **Do not manufacture work from here.** The next substantive step requires a new
 model input, which is a user decision. Iterations without that decision should
 verify nothing has regressed and stop, not invent tasks.
+
+### CI: the downstream ClimaCoupler failure is not this PR's (2026-08-01, iteration 54)
+
+`gh pr checks 1834` shows **`downstream ClimaCoupler.jl` failing on both 1.10 and
+1.12**. Every other check passes (ci 1.10/1.12 on ubuntu and windows, docs).
+
+Diagnosed, not assumed:
+
+```
+ERROR: empty intersection between ClimaLand@1.10.3 and project compatibility 1.11.0-1
+```
+
+- **ClimaCoupler.jl `Project.toml` pins `ClimaLand = "1.11"`.**
+- **ClimaLand is at `1.10.3` on `main`, on the base branch, and here** — identical
+  in all three.
+- **This PR does not touch `Project.toml`** (`git diff <base>...HEAD -- Project.toml`
+  is empty).
+
+So the check fails for *any* ClimaLand branch until ClimaLand's version is
+bumped to 1.11. Other PRs that show a pass ran at lower (older) GitHub run IDs,
+i.e. before ClimaCoupler bumped its bound; the newest run (this PR's) fails.
+
+**Not fixed here.** The remedy is a version bump, which
+`AGENTS.md` → `docs/dev-guides/workflow/agent_autonomy.md` places behind explicit
+user approval. Reported instead.
