@@ -683,7 +683,7 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
 
 ## Stage 3 — prognostic LAI
 
-- **status:** running — chunk 1 submitted 2026-08-01 13:33 (`6976711`)
+- **status:** **complete, but NOT converged — parameters deliberately NOT written to the TOML.** See the verdict below.
 - **config:** `experiments/calibration/configs/lai.jl`
 - **ensemble:** 11 (5 params, TransformUnscented)
 - **validity mask built for this grid:** **yes** — built 2026-08-01 13:30 from
@@ -868,8 +868,60 @@ All heavy output lives under `/glade/derecho/scratch/arenchon/claude/`.
   degeneracy, more iterations will not fix it; the C3/C4 split may need either an
   independent constraint on C4 (a C4-specific target) or the two parameters tied
   rather than free.
-- **calibrated parameters:** — (not final; iteration 4 of 5 done)
-- **committed to `toml/default_parameters.toml`:** no
+- **STAGE 3 FINISHED ALL 5 ITERATIONS (2026-08-01 20:40).** Every iteration
+  11/11 members except iteration 3 (one `DomainError` crash, absorbed as a NaN
+  column). Final misfit series: **`[0.2229, 0.3154, 0.2233, 0.2032, 0.1984]`** —
+  falling steadily over the last three iterations and ending at the best value of
+  the run, **11 % better than iteration 1**. This metric is valid here
+  (`minibatch_size = 1`, one sample, same data every iteration).
+
+  | parameter | it.1 | it.2 | it.3 | it.4 | it.5 | **final** | bounds |
+  |---|---|---|---|---|---|---|---|
+  | optimal_lai_z | 14.92 | 9.326 | 20.28 | 27.55 | 21.02 | **24.29** | 1–40 |
+  | optimal_lai_z_c4 | 14.92 | 36.45 | 31.04 | 8.17 | 34.85 | **14.61** | 1–40 |
+  | optimal_lai_sigma | 0.9293 | 0.4933 | 0.8209 | 1.062 | 0.9361 | **1.053** | 0.1–3.0 |
+  | optimal_lai_sigma_c4 | 0.9293 | 2.734 | 2.349 | 1.570 | 1.992 | **1.398** | 0.1–3.0 |
+  | optimal_lai_alpha | 0.0685 | 0.1869 | 0.1661 | 0.1676 | 0.1260 | **0.1295** | 0.01–0.3 |
+
+- **VERDICT: the loss improved but the parameters are NOT identified. They are
+  NOT being written to `toml/default_parameters.toml`.**
+  `optimal_lai_z_c4` visited 14.9 → 36.5 → 31.0 → 8.2 → 34.9 → 14.6, i.e. most of
+  its 1–40 prior range, while the misfit fell monotonically over the last three
+  steps. A parameter that can be moved across its whole range without hurting the
+  fit has not been determined by the data, and the final value is an arbitrary
+  point on a ridge rather than an optimum. Writing it as a model default would
+  present a partial failure as a success, which the rules explicitly forbid. The
+  existing defaults are left in place; the numbers above are recorded here and in
+  the PR for a human to act on.
+
+- **QUANTIFIED THE DEGENERACY (this is the substantive finding).**
+  Within the FINAL ensemble (11 members):
+
+  | pair | Pearson r |
+  |---|---|
+  | `optimal_lai_z` ↔ `optimal_lai_sigma` | **+0.860** |
+  | `optimal_lai_z_c4` ↔ `optimal_lai_sigma_c4` | +0.452 |
+  | `optimal_lai_z` ↔ `optimal_lai_z_c4` | −0.438 |
+
+  Across-iteration correlation of the ensemble MEANS: `z`↔`sigma` **+0.875**,
+  `z_c4`↔`sigma_c4` **+0.822**, `sigma`↔`sigma_c4` −0.774, `sigma_c4`↔`alpha`
+  +0.822.
+  Final ensemble spreads: `z` CV **1.1 %**, `sigma` CV **0.7 %**,
+  `sigma_c4` 5.3 %, `alpha` 7.1 %, `z_c4` **19.8 %**.
+
+  **Read:** the ensemble is very tight (CV ~1 %) yet its mean wanders by a factor
+  of three between iterations. Tight spread + wandering mean + r ≈ +0.87 between
+  `z` and `sigma` is a RIDGE: the data constrains a combination of the two, not
+  each separately. Both enter `compute_m` (Eq. 20) in the same direction —
+  `m = (sigma * GSL * LAI_max) / (A0_annual * fAPAR_max)` with `z` setting
+  `LAI_max` — so raising either produces nearly the same LAI. The C4 pair shows
+  the same structure and is worse identified because C4 is a minority of the
+  scored cells.
+  **More iterations will not fix this.** It is structural, not a convergence
+  problem.
+- **calibrated parameters:** recorded above; **deliberately NOT committed**
+- **committed to `toml/default_parameters.toml`:** **no — and this is the correct
+  outcome, not an omission.**
 - **notes:** —
 
 ---
