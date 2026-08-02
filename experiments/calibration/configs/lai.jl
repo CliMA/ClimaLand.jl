@@ -32,12 +32,17 @@ Units are (m^2 m^-2)^2.
 0.5 corresponds to an observation σ ≈ 0.7 m^2 m^-2, a reasonable combined
 MODIS-retrieval + model-structural error for seasonal LAI (typical range 0-6).
 
-This is a tuning knob, not a measured quantity. Loosen it (-> 1.0+) if EKI
-overfits the seasonal amplitude at the expense of timing; tighten it (-> 0.25) to
-pull harder on peak-LAI magnitude. With the C3/C4 split below there are five
-parameters rather than three, so there is more freedom to overfit; if the
-posterior collapses onto extreme z/sigma values, loosen this before widening the
-priors.
+⚠ MEASURED TO BE A NO-OP FOR THIS CONFIG. Halving it to 0.25 scaled the misfit
+by exactly the variance ratio at every iteration (2.00, 2.01, 2.01, 1.99) while
+the parameters tracked the 0.5 run to within 1-2 %, and the final masked LAI RMSE
+was 0.883 against 0.885. `DataMisfitController` sets its timestep from the misfit
+magnitude, so uniformly rescaling the covariance is divided straight back out.
+
+The scalar DOES matter for the RELATIVE weighting between several targets — that
+is how `sifgpp_lhf_shf_lwu_rosetta.jl` uses it across four variables. It does not
+give a lever on amplitude-versus-timing in a SINGLE-target calibration under an
+adaptive-timestep scheduler. Do not reach for it here expecting one; the binding
+constraint is the z-sigma degeneracy, not the assumed observation error.
 """
 const NOISE_SCALARS = Dict("lai" => 0.5)
 
@@ -84,7 +89,17 @@ function get_calibration_prior()
         EKP.constrained_gaussian("optimal_lai_sigma", 0.939, 0.3, 0.1, 3.0),
         EKP.constrained_gaussian("optimal_lai_sigma_c4", 0.939, 0.3, 0.1, 3.0),
         # alpha is a bounded rate; σ kept clear of the bounds.
-        EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.3),
+        # Upper bound 0.18, not 0.3: members crash with a GPU DomainError at
+        # parameter sets INSIDE the old prior, and the crash rate tracks alpha
+        # (1/88 member-runs at alpha <= 0.21, 3/28 at 0.233-0.242, 0/22 at
+        # 0.188). Every calibration drives alpha up from 0.0701, so the
+        # optimiser reliably walks into the unsafe region. No run has settled
+        # above 0.19, so this costs nothing and would have prevented all four
+        # crashes observed. Remove the cap once the faulting expression is
+        # guarded — reproduce it with CUDA_LAUNCH_BLOCKING=1, NOT from the
+        # stack trace, which reports a deferred kernel exception at the next
+        # synchronisation and points misleadingly at the diagnostics writer.
+        EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.18),
     ]
     return EKP.combine_distributions(priors)
 end
