@@ -1378,3 +1378,21 @@ anything C4. The question D answers is whether the split can be dropped at NO
 COST — two fewer parameters, four fewer sigma points, one less degenerate
 direction, same skill. A flat RMSE would still make it a worthwhile
 simplification.
+
+### D's tie verified END-TO-END, not just written
+
+A written override file does not prove the model used it, and a silently-dropped
+override would have made D an accidental rerun of B with C4 at the TOML defaults —
+producing an identical-looking null result for the wrong reason. So it was checked
+at both ends on a live member (`iteration_001/member_001`):
+
+- `c4_tied_to_c3.toml` (what the hook wrote): `z_c4 = 14.739379042179387`,
+  `sigma_c4 = 0.9064918137557405`
+- `parameters.toml` (what the calibration wrote): `z = 14.739379042179387`,
+  `sigma = 0.9064918137557405`
+- **`log_params_1.toml` (what the model ACTUALLY used): `z_c4 =
+  14.739379042179387`, `sigma_c4 = 0.9064918137557405`** — identical.
+
+So `LP.create_toml_dict` applied the second override file and D genuinely has no
+C3/C4 split. `log_params_<member>.toml` is the file to check for this in general:
+it records the resolved parameter set rather than the requested one.
