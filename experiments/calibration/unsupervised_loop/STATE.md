@@ -1208,3 +1208,27 @@ and remains the one untested idea with a mechanism behind it.
 B's crashes all fell in iterations 2-3 (2 then 1, none since), tracking alpha's
 early peak at 0.233 and its settling to 0.104 — consistent with the alpha
 threshold above.
+
+### Experiment A COMPLETE (8/8) — the EKI is in a PERIOD-2 LIMIT CYCLE
+
+| iteration | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|
+| z | 20.43 | 24.54 | 20.48 | 24.09 | 20.29 |
+| sigma | 0.9229 | 1.069 | 0.9176 | 1.059 | 0.9126 |
+| z_c4 | 36.62 | 17.64 | 37.77 | 23.95 | 37.64 |
+| misfit | 0.2107 | 0.2012 | 0.2116 | 0.2002 | — |
+
+The parameters alternate between two states (z ≈ 20.3 ↔ 24.3, sigma ≈ 0.91 ↔
+1.06) and **the misfit alternates with them** (0.211 ↔ 0.200). Two points on the
+ridge with almost identical loss; the filter orbits between them.
+
+**This is a much sharper diagnosis than "it does not converge".** A limit cycle
+means MORE ITERATIONS CANNOT HELP — it is a closed orbit, not slow convergence.
+Stage 1's `DataMisfitController` terminated on its own; here nothing stops it.
+
+⚠ **It also breaks the obvious convergence test.** "Check the last two iterations
+agree" would be FOOLED: iterations 7 and 9 agree to 1 % (20.48, 20.29) while
+iteration 8 sits 18 % away. Any convergence check on this problem must compare
+iterations TWO apart, or track the cycle amplitude, not adjacent pairs.
+
+A's final crash tally: 1 in 88 member-runs (iteration 8 had one).
