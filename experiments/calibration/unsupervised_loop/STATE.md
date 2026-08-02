@@ -1183,3 +1183,28 @@ a single-target calibration like this one.
 Nothing reachable from the config moves LAI RMSE. The binding constraints are
 the z-sigma ridge (identifiability) and the model's peak-LAI ceiling (bias), and
 both need a change to the model or the objective, not to settings.
+
+### Experiment B, iteration 4 — the first non-null result, but partial
+
+| | A (5 params) | B (3 params) |
+|---|---|---|
+| `z` range visited | 7.75 – 27.44 (span 19.7) | 13.26 – 25.9 (span **12.6**) |
+| `sigma` range | 0.47 – 1.065 (span 0.60) | 0.630 – 1.064 (span **0.43**) |
+| misfit | 0.231 / 0.317 / 0.239 / 0.205 | 0.387 / 0.484 / 0.358 / 0.337 |
+
+**Dropping the C3/C4 split damps the oscillation by roughly 35 %.** That is the
+first lever of the three to show any effect on the calibration's behaviour.
+
+**But it does not converge.** B's `z` still moved −15 % in the last step
+(25.9 → 22.01) and `alpha` is now its loosest parameter (CV 12.4 %). This is what
+the correlation analysis predicted: the DOMINANT ridge is `z`↔`sigma`
+(r = +0.86), so removing `z_c4`/`sigma_c4` eliminates a secondary degeneracy and
+leaves the primary one untouched.
+
+**Conclusion so far: worth doing for stability, not sufficient on its own.** The
+reparameterisation onto `log(z·sigma)` / `log(z/sigma)` targets the actual ridge
+and remains the one untested idea with a mechanism behind it.
+
+B's crashes all fell in iterations 2-3 (2 then 1, none since), tracking alpha's
+early peak at 0.233 and its settling to 0.104 — consistent with the alpha
+threshold above.
