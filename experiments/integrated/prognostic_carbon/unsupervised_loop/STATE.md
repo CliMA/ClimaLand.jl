@@ -2118,3 +2118,32 @@ is now known to be structural rather than a bad parameter choice.
 Left as it stands: the ramp is on, 12/20 sites inside, global bias several-fold
 better, boreal under-predicted and documented. Lowering `map_half` would trade
 back along the same axis, not escape it.
+
+### Verification chain re-closed after the port (2026-08-02, iteration 63)
+
+Both the model and the offline integrator changed, so the pre-port drift result
+no longer covered the current code. Battery `6980414`, seeded from the post-port
+equilibria: **`DRIFT OK`, 20/20 within 2.4%**, worst `canada_boreal` −2.4%,
+deserts exactly 0 — the same small negative signature as before.
+
+Also fixed on the way: the offline harness had its own `tau_stem_scale` **without
+the model's `MAX_TAU_STEM_SCALE` cap**, so the global map used an uncapped stem
+turnover below about −23 °C. Re-running with the cap honoured changed **no scored
+statistic** — those columns are colder than any cell the products cover — so the
+bug was real but immaterial. `woody_fraction` and `tau_stem_scale` now resolve to
+the model's definitions and cannot drift again.
+
+**Full state, all verified against the current code:**
+
+| check | result |
+|---|---|
+| rule 1 (GPP/LAI unchanged) | `rel_diff = 0.0` exactly, 20/20 |
+| offline vs coupled | 20/20 within 2.4% |
+| map vs single-column battery | 17/20 within 2× (rest is 1° cell vs point) |
+| tests | green, Float32 and Float64 |
+| sites inside observed range | **12/20** |
+| global bias | improved in all six products |
+| global spatial *r* | improved in all six products |
+
+Known and documented: boreal forest under-predicted; wet savanna
+(`pampas`, `cerrado`) still over — the GFED case, blocked on the user.
