@@ -1423,3 +1423,34 @@ on its own terms.
 Caveat on B specifically: it froze C4 at 14.6 / 1.4, values inherited from an
 unconverged run, so "no cost" here is "no cost even with C4 held at arbitrary
 values". D tests the cleaner version, where C4 tracks the calibrated C3.
+
+### Why the C3/C4 split cannot pay for itself — the error budget (2026-08-02)
+
+`lai_by_pathway.jl` splits the masked LAI error by the model's own C3 fraction
+(`fc3` diagnostic from the long run, C4-dominated := fc3 < 0.5), accumulating over
+every month rather than over the annual mean:
+
+| run | C3-dominated (fc3≥0.5) | C4-dominated (fc3<0.5) |
+|---|---|---|
+| 5-param, split active | RMSE 0.891, bias −0.071 | RMSE 0.367, bias −0.152 |
+| B, 3-param, C4 frozen | RMSE 0.894, bias −0.049 | RMSE 0.363, bias −0.154 |
+
+Two things follow.
+
+1. **C4 cells are already the well-fit part of the domain.** Their RMSE is 0.37
+   against 0.89 for C3 — they are 20.8 % of the masked cells but only **4.3 % of
+   the total squared error**. The split spends 2 of 5 free parameters on the
+   corner of the domain that contributes least to the objective, so EKI has almost
+   no gradient with which to identify them. This is the mechanism behind the null
+   result, not a coincidence alongside it.
+2. **Removing the split moves the C4 fit by 1 %** (0.3666 → 0.3628) and slightly
+   *improves* the C3 bias (−0.071 → −0.049). Nothing is being given up.
+
+This is independent of D. D asks whether tying C4 to a calibrated C3 beats
+freezing it at inherited values; the budget above says neither choice can matter
+much, because the C4 residual is small in the first place.
+
+Read the other way, it also says where the remaining error lives: **96 % of it is
+in C3-dominated cells**, so any future lever — reparameterisation, a bias term, a
+higher peak-LAI ceiling — should be aimed at temperate/boreal/tropical-forest C3
+vegetation and judged there.

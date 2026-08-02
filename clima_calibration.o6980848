@@ -1,0 +1,122 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2433 at Sun Aug  2 07:02:39 AM MDT 2026
+  config:     lai_noc4split.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split
+  n_iterations cap: 4
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+[ Info: The number of samples is 4
+[ Info: Noise scalars: Dict("lai" => 0.5)
+┌ Warning: Overwriting the file experiments/calibration/land_observation_vector_lai_noc4split.jld2 to generate the vector of observations
+└ @ Main ~/GitHub/ClimaLand.jl/experiments/calibration/generate_observations.jl:309
+┌ Info: preprocess_single_obs_var[lai] date range
+│   first_date = 2000-01-01T00:00:00
+│   last_date = 2020-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: Initializing ensemble Kalman process of type TransformUnscented
+│ Number of ensemble members: 7
+│ Localization: NoLocalization
+│ Failure handler: SampleSuccGauss
+│ Scheduler: DataMisfitController
+└ Accelerator: DefaultAccelerator
+┌ Info: Initializing calibration
+│   n_iterations = 4
+│   ensemble_size = 7
+└   output_dir = "/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split"
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##0#bounded##1"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##2#bounded##3"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##4#bounded##5"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+[ Info: Iteration 4
+[ Info: Running member 1
+[ Info: Running member 2
+[ Info: Running member 3
+[ Info: Running member 4
+[ Info: Running member 5
+[ Info: Running member 6
+[ Info: Running member 7
+┌ Warning: qstat failed for job 6980865.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980865.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980866.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980866.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980868.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980868.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980870.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980870.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+[ Info: Ensemble member 1 complete
+[ Info: Ensemble member 2 complete
+[ Info: Ensemble member 3 complete
+[ Info: Ensemble member 4 complete
+[ Info: Ensemble member 5 complete
+[ Info: Ensemble member 6 complete
+[ Info: Ensemble member 7 complete
+[ Info: Completed iteration 4, updating ensemble
+[ Info: Processing member 1: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_001/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 2: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_002/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 3: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_003/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 4: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_004/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 5: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_005/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 6: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_006/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 7: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_004/member_007/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Iteration 4 (T=6.753781361105072)
+┌ Info: Covariance-weighted error: 0.3366935638898145
+│ Covariance trace: 0.011501523533504542
+└ Covariance trace ratio (current/previous): 1.142767676311393
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+Orchestrator finished at Sun Aug  2 08:11:02 AM MDT 2026

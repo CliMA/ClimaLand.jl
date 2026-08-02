@@ -1,0 +1,112 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2436 at Sat Aug  1 08:49:08 AM MDT 2026
+  config:     sifgpp_lhf_shf_lwu_rosetta.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy
+  n_iterations cap: 9
+
+[75776] signal 15: Terminated
+in expression starting at none:0
+
+[59538] signal 15: Terminated
+in expression starting at none:1
+__futex_abstimed_wait_common at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+crc32c_sse42 at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/crc32c.c:112
+ijl_task_get_next at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/scheduler.c:523
+ijl_restore_system_image at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/staticdata.c:4512
+_finish_jl_init_ at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/init.c:580
+ijl_init_ at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/init.c:776
+jl_repl_entrypoint at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/jlapi.c:1132
+main at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/cli/loader_exe.c:58
+__libc_start_call_main at /lib64/libc.so.6 (unknown line)
+__libc_start_main at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+unknown function (ip: (nil)) at (unknown file)
+Allocations: 0 (Pool: 0; Big: 0); GC: 0
+poptask at ./task.jl:1216
+wait at ./task.jl:1228
+#wait#398 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:185
+profile_printing_listener at ./Base.jl:332
+#start_profile_listener##0 at ./Base.jl:352
+jfptr_YY.start_profile_listenerYY.YY.0_2252.1 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/julia.h:2391 [inlined]
+start_task at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/task.c:1249
+unknown function (ip: (nil)) at (unknown file)
+epoll_pwait at /lib64/libc.so.6 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1404
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/scheduler.c:457
+poptask at ./task.jl:1216
+wait at ./task.jl:1228
+#wait#398 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+wait_readnb at ./stream.jl:416
+read at ./stream.jl:963
+unknown function (ip: 0x14d3a5dd6b32) at (unknown file)
+read at ./process.jl:480
+#collect_artifacts#48 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:888
+collect_artifacts at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:874 [inlined]
+#check_artifacts_downloaded#90 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:1081
+check_artifacts_downloaded at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:1080 [inlined]
+#is_package_downloaded#219 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:2724 [inlined]
+is_package_downloaded at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:2720 [inlined]
+#26 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:218 [inlined]
+_all at ./anyall.jl:197
+#all#758 at ./reducedim.jl:992 [inlined]
+all at ./reducedim.jl:992 [inlined]
+#is_instantiated#21 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:218
+is_instantiated at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/Operations.jl:198 [inlined]
+#instantiate#281 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/API.jl:1323
+instantiate at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/API.jl:1271 [inlined]
+#instantiate#280 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/API.jl:1270
+instantiate at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/share/julia/stdlib/v1.12/Pkg/src/API.jl:1270
+unknown function (ip: 0x14d3a5dddaaf) at (unknown file)
+jl_apply at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/julia.h:2391 [inlined]
+do_call at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/interpreter.c:123
+eval_value at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/interpreter.c:243
+eval_stmt_value at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/interpreter.c:194 [inlined]
+eval_body at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/interpreter.c:707
+jl_interpret_toplevel_thunk at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/interpreter.c:898
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/toplevel.c:1035
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/toplevel.c:975
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/toplevel.c:975
+ijl_toplevel_eval at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/toplevel.c:1047
+ijl_toplevel_eval_in at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/toplevel.c:1092
+eval at ./boot.jl:489
+exec_options at ./client.jl:283
+_start at ./client.jl:550
+jfptr__start_38203.1 at /glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/julia.h:2391 [inlined]
+true_main at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/jlapi.c:971
+jl_repl_entrypoint at /cache/build/tester-amdci4-14/julialang/julia-release-1-dot-12/src/jlapi.c:1139
+main at julia (unknown line)
+__libc_start_call_main at /lib64/libc.so.6 (unknown line)
+__libc_start_main at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at julia
+unknown function (ip: (nil)) at (unknown file)
+Allocations: 21613728 (Pool: 21609062; Big: 4666); GC: 18
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+Precompiling packages...
+   9108.5 ms  ✓ ProfileCanvas
+  40618.6 ms  ✓ MCMCChains
+   2284.3 ms  ✓ AdvancedMH → AdvancedMHMCMCChainsExt
+  67208.2 ms  ✓ DataFrames
+  29644.6 ms  ✓ CalibrateEmulateSample
+  63177.3 ms  ✓ GeometryOps → GeometryOpsDataFramesExt
+  63717.1 ms  ✓ BangBang → BangBangDataFramesExt
+  63744.2 ms  ✓ ClimaLand → SNOTELScraperExt
+  8 dependencies successfully precompiled in 141 seconds. 723 already precompiled.

@@ -1,0 +1,185 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2435 at Sat Aug  1 07:33:31 PM MDT 2026
+  config:     lai.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai
+  n_iterations cap: 5
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+Precompiling packages...
+   5586.2 ms  ✓ MLDataDevices → GPUArraysSparseArraysExt
+   6100.6 ms  ✓ AbstractGPs
+   4345.2 ms  ✓ NCDatasets → NCDatasetsMPIExt
+   9229.8 ms  ✓ Tullio → TullioCUDAExt
+   9326.5 ms  ✓ CUDA → EnzymeCoreExt
+   9303.1 ms  ✓ MPI → CUDAExt
+  10116.2 ms  ✓ Zygote → ZygoteCUDAExt
+  13574.4 ms  ✓ ProfileCanvas
+  14983.8 ms  ✓ Flux
+  10907.6 ms  ✓ ManifoldsBase → ManifoldsBaseMakieExt
+  15909.8 ms  ✓ ClimaCoreMakie
+  20791.3 ms  ✓ RandomFeatures
+  24984.1 ms  ✓ Flux → FluxMPIExt
+  27533.6 ms  ✓ ClimaLand → ConstrainedNeuralModelExt
+  50220.3 ms  ✓ MCMCChains
+   2080.2 ms  ✓ AdvancedMH → AdvancedMHMCMCChainsExt
+  75623.8 ms  ✓ DataFrames
+  23308.5 ms  ✓ CalibrateEmulateSample
+  64302.6 ms  ✓ GeometryOps → GeometryOpsDataFramesExt
+  64654.2 ms  ✓ BangBang → BangBangDataFramesExt
+  64888.2 ms  ✓ ClimaLand → SNOTELScraperExt
+  21 dependencies successfully precompiled in 148 seconds. 710 already precompiled.
+Precompiling packages...
+   1625.6 ms  ✓ SymbolicIndexingInterface → SymbolicIndexingInterfacePrettyTablesExt
+   8517.0 ms  ✓ ProfileCanvas
+   8823.4 ms  ✓ Sixel
+  26996.1 ms  ✓ MCMCChains
+   2099.9 ms  ✓ AdvancedMH → AdvancedMHMCMCChainsExt
+  49706.5 ms  ✓ CalibrateEmulateSample
+  87417.7 ms  ✓ CUDA
+  80223.0 ms  ✓ Atomix → AtomixCUDAExt
+  80543.7 ms  ✓ Tullio → TullioCUDAExt
+  80761.1 ms  ✓ MPI → CUDAExt
+  80827.9 ms  ✓ ClimaTimeSteppers → ClimaTimeSteppersBenchmarkToolsExt
+  81006.5 ms  ✓ CUDA → EnzymeCoreExt
+  81248.6 ms  ✓ CUDA → ChainRulesCoreExt
+  81290.3 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  81360.8 ms  ✓ NNlib → NNlibCUDAExt
+  81569.3 ms  ✓ ClimaInterpolations → ClimaInterpolationsCUDAExt
+  81671.2 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  81622.6 ms  ✓ Zygote → ZygoteCUDAExt
+  81998.2 ms  ✓ MLDataDevices → CUDAExt
+  82101.6 ms  ✓ MultiBroadcastFusion → MultiBroadcastFusionCUDAExt
+  82072.1 ms  ✓ ClimaComms → ClimaCommsCUDAExt
+  82290.3 ms  ✓ CUDA → SpecialFunctionsExt
+  10080.7 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+ 213658.3 ms  ✓ Makie
+ 193742.2 ms  ✓ ManifoldsBase → ManifoldsBaseMakieExt
+ 194851.7 ms  ✓ GeoJSON → GeoJSONMakieExt
+ 195010.3 ms  ✓ GeometryOps → GeometryOpsMakieExt
+ 195409.9 ms  ✓ GeoInterface → GeoInterfaceMakieExt
+ 195364.1 ms  ✓ ClimaAnalysis → ClimaAnalysisMakieExt
+ 197883.1 ms  ✓ EnsembleKalmanProcesses → EnsembleKalmanProcessesMakieExt
+ 198363.2 ms  ✓ ClimaCalibrate → ClimaCalibrateMakieExt
+ 199833.1 ms  ✓ ClimaCoreMakie
+  11700.2 ms  ✓ GeoMakie
+   6701.2 ms  ✓ ClimaAnalysis → ClimaAnalysisGeoMakieExt
+ 246046.0 ms  ✓ CairoMakie
+  11504.7 ms  ✓ ClimaLand → LandSimulationVisualizationExt
+  36 dependencies successfully precompiled in 483 seconds. 695 already precompiled.
+[ Info: The number of samples is 1
+[ Info: Noise scalars: Dict("lai" => 0.5)
+┌ Warning: Overwriting the file experiments/calibration/land_observation_vector_lai.jld2 to generate the vector of observations
+└ @ Main ~/GitHub/ClimaLand.jl/experiments/calibration/generate_observations.jl:309
+┌ Info: preprocess_single_obs_var[lai] date range
+│   first_date = 2000-01-01T00:00:00
+│   last_date = 2020-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: Initializing ensemble Kalman process of type TransformUnscented
+│ Number of ensemble members: 11
+│ Localization: NoLocalization
+│ Failure handler: SampleSuccGauss
+│ Scheduler: DataMisfitController
+└ Accelerator: DefaultAccelerator
+┌ Info: Initializing calibration
+│   n_iterations = 5
+│   ensemble_size = 11
+└   output_dir = "/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai"
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##0#bounded##1"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##2#bounded##3"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##4#bounded##5"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+[ Info: Iteration 5
+[ Info: Running member 1
+[ Info: Running member 2
+[ Info: Running member 3
+[ Info: Running member 4
+[ Info: Running member 5
+[ Info: Running member 6
+[ Info: Running member 7
+[ Info: Running member 8
+[ Info: Running member 9
+[ Info: Running member 10
+[ Info: Running member 11
+┌ Warning: qstat failed for job 6978711.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+[ Info: Ensemble member 1 complete
+[ Info: Ensemble member 2 complete
+[ Info: Ensemble member 3 complete
+[ Info: Ensemble member 4 complete
+[ Info: Ensemble member 5 complete
+[ Info: Ensemble member 6 complete
+[ Info: Ensemble member 7 complete
+[ Info: Ensemble member 8 complete
+[ Info: Ensemble member 9 complete
+[ Info: Ensemble member 10 complete
+[ Info: Ensemble member 11 complete
+[ Info: Completed iteration 5, updating ensemble
+[ Info: Processing member 1: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_001/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 2: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_002/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 3: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_003/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 4: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_004/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 5: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_005/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 6: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_006/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 7: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_007/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 8: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_008/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 9: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_009/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 10: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_010/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 11: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai/iteration_005/member_011/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Iteration 5 (T=7.084144254681057)
+┌ Info: Covariance-weighted error: 0.198412548498143
+│ Covariance trace: 0.04297237755597528
+└ Covariance trace ratio (current/previous): 0.7113813361310658
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+Orchestrator finished at Sat Aug  1 08:40:38 PM MDT 2026

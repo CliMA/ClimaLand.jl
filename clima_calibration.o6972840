@@ -1,0 +1,236 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2433 at Sat Aug  1 07:27:10 AM MDT 2026
+  config:     sifgpp_lhf_shf_lwu_rosetta.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy
+  n_iterations cap: 8
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+Precompiling packages...
+   7948.1 ms  ✓ ProfileCanvas
+  41157.8 ms  ✓ MCMCChains
+   2219.6 ms  ✓ AdvancedMH → AdvancedMHMCMCChainsExt
+  66958.6 ms  ✓ DataFrames
+  30415.3 ms  ✓ CalibrateEmulateSample
+  62237.5 ms  ✓ GeometryOps → GeometryOpsDataFramesExt
+  62628.8 ms  ✓ BangBang → BangBangDataFramesExt
+  62652.4 ms  ✓ ClimaLand → SNOTELScraperExt
+  8 dependencies successfully precompiled in 139 seconds. 723 already precompiled.
+Precompiling packages...
+   1740.8 ms  ✓ SymbolicIndexingInterface → SymbolicIndexingInterfacePrettyTablesExt
+   7521.5 ms  ✓ ProfileCanvas
+  25382.6 ms  ✓ MCMCChains
+   2021.4 ms  ✓ AdvancedMH → AdvancedMHMCMCChainsExt
+  79425.1 ms  ✓ CUDA
+  54303.2 ms  ? CalibrateEmulateSample
+  76655.5 ms  ✓ CUDA → ChainRulesCoreExt
+  76867.3 ms  ✓ Atomix → AtomixCUDAExt
+  77644.8 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  79677.9 ms  ✓ MLDataDevices → CUDAExt
+  79732.7 ms  ✓ ClimaTimeSteppers → ClimaTimeSteppersBenchmarkToolsExt
+  80113.8 ms  ✓ CUDA → EnzymeCoreExt
+  80297.6 ms  ✓ MultiBroadcastFusion → MultiBroadcastFusionCUDAExt
+  80309.6 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  80261.7 ms  ✓ Zygote → ZygoteCUDAExt
+  80356.0 ms  ✓ MPI → CUDAExt
+  80302.2 ms  ✓ NNlib → NNlibCUDAExt
+  80366.9 ms  ✓ Tullio → TullioCUDAExt
+  80744.4 ms  ✓ ClimaComms → ClimaCommsCUDAExt
+  80886.6 ms  ✓ CUDA → SpecialFunctionsExt
+  78500.3 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+  80933.2 ms  ✓ ClimaInterpolations → ClimaInterpolationsCUDAExt
+  21 dependencies successfully precompiled in 165 seconds. 709 already precompiled.
+  1 dependencies failed but may be precompilable after restarting julia
+  1 dependency had output during precompilation:
+┌ CalibrateEmulateSample
+│  ┌ Warning: The call to compilecache failed to create a usable precompiled cache file for MCMCChains [c7f686f2-ff18-58e9-bc7b-31028e88f75d]
+│  │   exception = Required dependency Base.PkgId(Base.UUID("08abe8d2-0d0c-5749-adfa-8a2ac140af0d"), "PrettyTables") failed to load from a cache file.
+│  └ @ Base loading.jl:2697
+└  
+[ Info: The number of samples is 16
+[ Info: Noise scalars: Dict("shf" => 100.0, "lhf" => 100.0, "sif_gpp" => 0.6, "lwu" => 25.0)
+┌ Warning: Overwriting the file experiments/calibration/land_observation_vector_sifgpp_lhf_shf_lwu.jld2 to generate the vector of observations
+└ @ Main ~/GitHub/ClimaLand.jl/experiments/calibration/generate_observations.jl:309
+┌ Info: preprocess_single_obs_var[sif_gpp] date range
+│   first_date = 2002-01-01T00:00:00
+│   last_date = 2020-12-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: preprocess_single_obs_var[lhf] date range
+│   first_date = 1979-01-01T00:00:00
+│   last_date = 2024-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: preprocess_single_obs_var[shf] date range
+│   first_date = 1979-01-01T00:00:00
+│   last_date = 2024-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: preprocess_single_obs_var[lwu] date range
+│   first_date = 1979-01-01T00:00:00
+│   last_date = 2024-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: Initializing ensemble Kalman process of type TransformUnscented
+│ Number of ensemble members: 21
+│ Localization: NoLocalization
+│ Failure handler: SampleSuccGauss
+│ Scheduler: DataMisfitController
+└ Accelerator: DefaultAccelerator
+┌ Info: Initializing calibration
+│   n_iterations = 8
+│   ensemble_size = 21
+└   output_dir = "/glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy"
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##0#bounded##1"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##2#bounded##3"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##4#bounded##5"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded_below##0#bounded_below##1"{Int64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded_below##2#bounded_below##3"{Int64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded_below##4#bounded_below##5"{Int64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+[ Info: Iteration 8
+[ Info: Running member 1
+[ Info: Running member 2
+[ Info: Running member 3
+[ Info: Running member 4
+[ Info: Running member 5
+[ Info: Running member 6
+[ Info: Running member 7
+[ Info: Running member 8
+[ Info: Running member 9
+[ Info: Running member 10
+[ Info: Running member 11
+[ Info: Running member 12
+[ Info: Running member 13
+[ Info: Running member 14
+[ Info: Running member 15
+[ Info: Running member 16
+[ Info: Running member 17
+[ Info: Running member 18
+[ Info: Running member 19
+[ Info: Running member 20
+[ Info: Running member 21
+┌ Warning: qstat failed for job 6972867.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6972867.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6972868.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6972868.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6972869.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+[ Info: Ensemble member 12 complete
+[ Info: Ensemble member 13 complete
+[ Info: Ensemble member 14 complete
+[ Info: Ensemble member 15 complete
+[ Info: Ensemble member 16 complete
+[ Info: Ensemble member 17 complete
+[ Info: Ensemble member 18 complete
+[ Info: Ensemble member 19 complete
+[ Info: Ensemble member 20 complete
+[ Info: Ensemble member 21 complete
+[ Info: Ensemble member 1 complete
+[ Info: Ensemble member 2 complete
+[ Info: Ensemble member 3 complete
+[ Info: Ensemble member 4 complete
+[ Info: Ensemble member 5 complete
+[ Info: Ensemble member 6 complete
+[ Info: Ensemble member 7 complete
+[ Info: Ensemble member 8 complete
+[ Info: Ensemble member 9 complete
+[ Info: Ensemble member 10 complete
+[ Info: Ensemble member 11 complete
+[ Info: Completed iteration 8, updating ensemble
+[ Info: Processing member 1: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_001/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 2: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_002/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 3: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_003/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 4: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_004/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 5: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_005/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 6: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_006/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 7: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_007/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 8: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_008/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 9: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_009/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 10: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_010/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 11: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_011/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 12: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_012/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 13: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_013/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 14: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_014/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 15: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_015/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 16: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_016/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 17: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_017/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 18: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_018/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 19: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_019/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 20: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_020/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+[ Info: Processing member 21: /glade/derecho/scratch/arenchon/claude/calibration_stage1_gpp_energy/iteration_008/member_021/global_diagnostics/output_active
+[ Info: Short names: ["sif_gpp", "lhf", "shf", "lwu"]
+┌ Warning: Termination condition of scheduler `DataMisfitController` has been exceeded, returning `true` from `update_ensemble!` and preventing futher updates
+│  Set on_terminate="continue" in `DataMisfitController` to ignore termination
+└ @ EnsembleKalmanProcesses ~/.julia/packages/EnsembleKalmanProcesses/1ArOR/src/LearningRateSchedulers.jl:287
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+Orchestrator finished at Sat Aug  1 08:47:46 AM MDT 2026

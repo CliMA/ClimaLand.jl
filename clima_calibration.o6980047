@@ -1,0 +1,219 @@
+
+Lmod is automatically replacing "intel/2025.2.1" with "gcc/14.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.32     2) hdf5/1.14.6     3) netcdf/4.9.3
+
+The following have been reloaded with a version change:
+  1) ncarcompilers/1.1.0 => ncarcompilers/1.2.0
+
+Orchestrator starting on dec2435 at Sun Aug  2 02:15:03 AM MDT 2026
+  config:     lai_noc4split.jl
+  output dir: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split
+  n_iterations cap: 1
+    Updating registry at `~/.julia/registries/General.toml`
+     Project No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Project.toml`
+    Manifest No packages added to or removed from `~/GitHub/ClimaLand.jl/.buildkite/Manifest-v1.12.toml`
+Precompiling packages...
+    Manopt Being precompiled by another machine (hostname: dec2434, pid: 122195, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/Manopt/h1Pdc_uxBfG.ji.pidfile)
+    CUDA Being precompiled by another machine (hostname: dec2434, pid: 123724, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/CUDA/oWw5k_uxBfG.ji.pidfile)
+   2367.9 ms  ✓ Graphs → GraphsSharedArraysExt
+   1996.5 ms  ✓ NNlib → NNlibFFTWExt
+   2342.4 ms  ✓ NNlib → NNlibEnzymeCoreExt
+   2907.8 ms  ✓ MLDataDevices → OneHotArraysExt
+   3596.3 ms  ✓ MLDataDevices → MLUtilsExt
+    Flux Being precompiled by another machine (hostname: dec2434, pid: 122488, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/Flux/QdkVy_uxBfG.ji.pidfile)
+   4134.5 ms  ✓ Manifolds → ManifoldsRecursiveArrayToolsExt
+   4206.3 ms  ✓ Manifolds → ManifoldsRecipesBaseExt
+   4092.7 ms  ✓ GPUArrays → JLD2Ext
+   3622.3 ms  ✓ Manifolds → ManifoldsNLsolveExt
+   4304.8 ms  ✓ MLDataDevices → GPUArraysSparseArraysExt
+   7061.6 ms  ✓ AbstractGPs
+   6954.5 ms  ? ClimaCalibrate
+   9860.5 ms  ✓ Sixel
+    Makie Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/Makie/iZ1Bl_uxBfG.ji.pidfile)
+   9989.9 ms  ✓ ProfileCanvas
+  10512.0 ms  ✓ Manopt
+   1673.6 ms  ✓ Manopt → ManoptRecursiveArrayToolsExt
+   1920.2 ms  ✓ Manopt → ManoptLRUCacheExt
+   2297.3 ms  ✓ Manopt → ManoptManifoldsExt
+   2858.9 ms  ✓ Manopt → ManoptLineSearchesExt
+    CalibrateEmulateSample Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/CalibrateEmulateSample/wHuja_uxBfG.ji.pidfile)
+  23069.5 ms  ✓ Flux
+    ConstrainedNeuralModelExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ConstrainedNeuralModelExt/2EQzu_uxBfG.ji.pidfile)
+  18462.9 ms  ✓ ClimaCalibrate → ClimaCalibrateClimaAnalysisExt
+  10717.4 ms  ✓ ClimaLand → ConstrainedNeuralModelExt
+  50397.4 ms  ✓ CUDA
+    ChainRulesCoreExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ChainRulesCoreExt/S7fZn_uxBfG.ji.pidfile)
+    SpecialFunctionsExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/SpecialFunctionsExt/9h4VD_uxBfG.ji.pidfile)
+    ClimaInterpolationsCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaInterpolationsCUDAExt/W0dfP_uxBfG.ji.pidfile)
+    MultiBroadcastFusionCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/MultiBroadcastFusionCUDAExt/VlQ70_uxBfG.ji.pidfile)
+    ArrayInterfaceCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ArrayInterfaceCUDAExt/NVvya_uxBfG.ji.pidfile)
+    EnzymeCoreExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/EnzymeCoreExt/10xBC_uxBfG.ji.pidfile)
+    AtomixCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/AtomixCUDAExt/B0Tg4_uxBfG.ji.pidfile)
+    LinearOperatorsCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/LinearOperatorsCUDAExt/6oIL2_uxBfG.ji.pidfile)
+    ClimaCommsCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaCommsCUDAExt/Ub6sB_uxBfG.ji.pidfile)
+    CUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/CUDAExt/DN91M_uxBfG.ji.pidfile)
+    CUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/CUDAExt/HrViO_uxBfG.ji.pidfile)
+    ClimaTimeSteppersBenchmarkToolsExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaTimeSteppersBenchmarkToolsExt/6Ze17_uxBfG.ji.pidfile)
+    TullioCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/TullioCUDAExt/daCYO_uxBfG.ji.pidfile)
+    ZygoteCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ZygoteCUDAExt/y6rkS_uxBfG.ji.pidfile)
+    NNlibCUDAExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/NNlibCUDAExt/Ieugx_uxBfG.ji.pidfile)
+   8734.3 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+  10212.9 ms  ✓ CUDA → ChainRulesCoreExt
+  12905.6 ms  ✓ NNlib → NNlibCUDAExt
+  12909.8 ms  ✓ Zygote → ZygoteCUDAExt
+  12913.1 ms  ✓ Tullio → TullioCUDAExt
+  12917.4 ms  ✓ ClimaTimeSteppers → ClimaTimeSteppersBenchmarkToolsExt
+  12931.4 ms  ✓ MPI → CUDAExt
+  12934.6 ms  ✓ MLDataDevices → CUDAExt
+  12941.4 ms  ✓ ClimaComms → ClimaCommsCUDAExt
+  12946.5 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  12952.5 ms  ✓ Atomix → AtomixCUDAExt
+  12957.7 ms  ✓ CUDA → EnzymeCoreExt
+  12964.2 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  12968.3 ms  ✓ MultiBroadcastFusion → MultiBroadcastFusionCUDAExt
+  12975.2 ms  ✓ ClimaInterpolations → ClimaInterpolationsCUDAExt
+  12986.1 ms  ✓ CUDA → SpecialFunctionsExt
+  66049.4 ms  ✓ CalibrateEmulateSample
+ 281866.2 ms  ✓ Makie
+    GeoInterfaceMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/GeoInterfaceMakieExt/NgRzN_uxBfG.ji.pidfile)
+    ManifoldsBaseMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ManifoldsBaseMakieExt/nk5SU_uxBfG.ji.pidfile)
+    GeoJSONMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/GeoJSONMakieExt/qc5rs_uxBfG.ji.pidfile)
+    GeometryOpsMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/GeometryOpsMakieExt/QyXkg_uxBfG.ji.pidfile)
+    CairoMakie Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/CairoMakie/9mSey_uxBfG.ji.pidfile)
+    ClimaCoreMakie Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaCoreMakie/KYn35_uxBfG.ji.pidfile)
+    ClimaAnalysisMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaAnalysisMakieExt/f8SMe_uxBfG.ji.pidfile)
+    EnsembleKalmanProcessesMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/EnsembleKalmanProcessesMakieExt/cdGBM_uxBfG.ji.pidfile)
+    ClimaCalibrateMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaCalibrateMakieExt/GWTXA_uxBfG.ji.pidfile)
+  11213.7 ms  ✓ ManifoldsBase → ManifoldsBaseMakieExt
+  11679.1 ms  ✓ GeoInterface → GeoInterfaceMakieExt
+  14407.7 ms  ✓ GeometryOps → GeometryOpsMakieExt
+  14235.3 ms  ✓ ClimaCalibrate → ClimaCalibrateMakieExt
+  14240.8 ms  ✓ EnsembleKalmanProcesses → EnsembleKalmanProcessesMakieExt
+  14247.6 ms  ✓ ClimaAnalysis → ClimaAnalysisMakieExt
+  14267.3 ms  ✓ ClimaCoreMakie
+  14415.2 ms  ✓ GeoJSON → GeoJSONMakieExt
+    GeoMakie Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/GeoMakie/GuQif_uxBfG.ji.pidfile)
+  10605.7 ms  ✓ GeoMakie
+    ClimaAnalysisGeoMakieExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/ClimaAnalysisGeoMakieExt/DTTCc_uxBfG.ji.pidfile)
+  10528.7 ms  ✓ ClimaAnalysis → ClimaAnalysisGeoMakieExt
+  65427.5 ms  ✓ CairoMakie
+    LandSimulationVisualizationExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/LandSimulationVisualizationExt/WIZwC_uxBfG.ji.pidfile)
+  11784.6 ms  ✓ ClimaLand → LandSimulationVisualizationExt
+  52 dependencies successfully precompiled in 378 seconds. 678 already precompiled.
+  1 dependencies failed but may be precompilable after restarting julia
+  1 dependency had output during precompilation:
+┌ ClimaCalibrate
+│  ┌ Warning: The call to compilecache failed to create a usable precompiled cache file for DistributionsTestExt [ffbe0ea5-a612-5ff7-aaf5-cac02eef3019]
+│  │   exception = Invalid input in module list: expected Base64.
+│  └ @ Base loading.jl:2697
+└  
+Precompiling packages...
+    RecursiveArrayToolsReverseDiffExt Being precompiled by another machine (hostname: dec2434, pid: 115979, pidfile: /glade/u/home/arenchon/.julia/compiled/v1.12/RecursiveArrayToolsReverseDiffExt/Y9IO5_uxBfG.ji.pidfile)
+  10175.0 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsReverseDiffExt
+  1 dependency successfully precompiled in 15 seconds. 730 already precompiled.
+[ Info: The number of samples is 4
+[ Info: Noise scalars: Dict("lai" => 0.5)
+┌ Info: preprocess_single_obs_var[lai] date range
+│   first_date = 2000-01-01T00:00:00
+│   last_date = 2020-10-01T00:00:00
+└   eltype(time_arr) = Dates.DateTime
+┌ Info: Initializing ensemble Kalman process of type TransformUnscented
+│ Number of ensemble members: 7
+│ Localization: NoLocalization
+│ Failure handler: SampleSuccGauss
+│ Scheduler: DataMisfitController
+└ Accelerator: DefaultAccelerator
+┌ Info: Initializing calibration
+│   n_iterations = 1
+│   ensemble_size = 7
+└   output_dir = "/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split"
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##0#bounded##1"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##2#bounded##3"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.ParameterDistributions.var"#bounded##4#bounded##5"{Float64, Float64}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+[ Info: Iteration 1
+[ Info: Running member 1
+[ Info: Running member 2
+[ Info: Running member 3
+[ Info: Running member 4
+[ Info: Running member 5
+[ Info: Running member 6
+[ Info: Running member 7
+┌ Warning: qstat failed for job 6980092.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980092.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980093.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980093.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980094.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980094.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+┌ Warning: qstat failed for job 6980095.desched1; assuming job is running
+└ @ ClimaCalibrate.Backend ~/.julia/packages/ClimaCalibrate/esYRb/src/backends/pbs.jl:125
+[ Info: Ensemble member 5 complete
+[ Info: Ensemble member 6 complete
+[ Info: Ensemble member 7 complete
+[ Info: Ensemble member 1 complete
+[ Info: Ensemble member 2 complete
+[ Info: Ensemble member 3 complete
+[ Info: Ensemble member 4 complete
+[ Info: Completed iteration 1, updating ensemble
+[ Info: Processing member 1: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_001/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 2: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_002/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 3: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_003/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 4: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_004/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 5: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_005/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 6: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_006/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Processing member 7: /glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_noc4split/iteration_001/member_007/global_diagnostics/output_active
+[ Info: Short names: ["lai"]
+[ Info: Iteration 0 (prior)
+[ Info: Covariance trace: 0.9216247677094197
+[ Info: Iteration 1 (T=0.6681478976191403)
+┌ Info: Covariance-weighted error: 0.3867312018465532
+│ Covariance trace: 0.010191989802625472
+└ Covariance trace ratio (current/previous): 0.011058719513318155
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.var"#failsafe_update#FailureHandler##21"{EnsembleKalmanProcesses.var"#succ_gauss_analysis!#FailureHandler##18"}.
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+┌ Warning: Attempting to store EnsembleKalmanProcesses.Localizers.var"#Localizer##0#Localizer##1".
+│ JLD2 only stores functions by name.
+│  This may not be useful for anonymous functions.
+└ @ JLD2 ~/.julia/packages/JLD2/ADycq/src/data/writing_datatypes.jl:447
+Orchestrator finished at Sun Aug  2 04:10:53 AM MDT 2026
