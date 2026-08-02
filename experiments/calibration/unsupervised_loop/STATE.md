@@ -1304,3 +1304,24 @@ tighten it (-> 0.25) to pull harder on peak-LAI magnitude." Neither is true for 
 SINGLE-target calibration under an adaptive-timestep scheduler. The scalar still
 matters for the RELATIVE weighting between several targets, which is how stage 1
 uses it across four variables — so the fix is to scope the advice, not delete it.
+
+### Period-2 oscillation: the correction above was itself too strong
+
+B at iteration 6 also oscillates period-2 (z 22.01 → 24.71 → 21.76; sigma
+0.9578 → 1.068 → 0.9475; misfit 0.349 / 0.335), with amplitude ~20 % smaller
+than A's (z swing 3.0 vs 3.8) — consistent with the C4 parameters having been
+removed.
+
+**The decisive case is the SINGLE-YEAR run: 1 sample, `minibatch_size = 1`, so
+ONE batch and identical data every iteration — and it oscillated period-2 anyway**
+(z 20.28 → 27.55 → 21.02 → 24.29). Minibatch alternation cannot explain that.
+
+So period-2 appears in all three runs regardless of batch count, and the
+parsimonious cause is the EKI dynamics overshooting along a flat direction — the
+original attribution. The earlier correction over-swung.
+
+**What stands from that correction, and still matters:** the RMSE difference
+between the two orbit states (0.912 vs 0.887) IS confounded, because those
+members scored different periods (2014-16 vs 2016-18). Do not quote it as the
+cost of the cycle. Isolating that still needs both parameter sets run over one
+common period.
