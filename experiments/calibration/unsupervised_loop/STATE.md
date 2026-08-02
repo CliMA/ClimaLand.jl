@@ -1247,3 +1247,35 @@ z = 24.09, sigma = 1.059), 24 months 2016-12..2018-11:
 **Four times the data and eight iterations instead of five land within 0.3 % of
 the single-year run.** A is a null result on the parameters (identical
 trajectory), on the loss, and now on the fit. Struck from the recommendations.
+
+### CORRECTION to the limit-cycle explanation
+
+I attributed experiment A's period-2 oscillation to the z-sigma ridge. That was
+overreach, and measuring the two states exposed why.
+
+**The two orbit states cover DIFFERENT YEARS.** A member simulates only its own
+minibatch window (`models/snowy_land.jl:171`), so:
+
+| state | parameters | period scored | RMSE masked | bias masked |
+|---|---|---|---|---|
+| u[7] "low" | z 20.48, sigma 0.9176 | 2014-12..2016-11 | 0.9120 | −0.0966 |
+| u[8] "high" | z 24.09, sigma 1.059 | 2016-12..2018-11 | 0.8874 | −0.0876 |
+
+The 2.8 % RMSE gap is therefore CONFOUNDED between the parameter difference and
+the period difference. It does not isolate the cost of the limit cycle, and
+should not be quoted as such.
+
+**And A has 4 samples at `minibatch_size = 2`, i.e. exactly 2 batches that
+alternate.** Its period-2 cycle coincides exactly with that alternation, so
+minibatch alternation explains A's oscillation at least as well as the ridge
+does. The two cannot be separated from A alone.
+
+**What survives.** The SINGLE-YEAR run has 1 sample and 1 batch — identical data
+every iteration — and still oscillated (z 20.28 → 27.55 → 21.02 → 24.29). That
+oscillation cannot be minibatch-driven, so it IS ridge-driven. The ridge is real
+and is evidenced by the correlation structure (r = +0.86) and the single-year
+behaviour; it is NOT evidenced by A's period-2 cycle specifically.
+
+**To separate them properly** would need both parameter sets run over the SAME
+period — one forward run each, no calibration. Worth doing before anyone quotes
+a limit-cycle cost.
