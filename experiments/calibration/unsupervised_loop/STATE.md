@@ -959,3 +959,55 @@ None recorded.
   annoying: empty output is indistinguishable from "no jobs running", so an
   iteration that trusts it would resubmit a job that is already queued.
   `loop_prompt.md` has been corrected.
+
+---
+
+## Stage 3 follow-up — experiments to improve LAI RMSE and bias
+
+**Measured baselines** (leaderboard method: mean over months of area-weighted
+`ClimaAnalysis.global_rmse` / `global_bias`; matched years 2017-18). Validated
+against ClimaLand's own leaderboard, whose LAI RMSE curve runs 0.806-1.059 and
+reproduces the unmasked numbers exactly.
+
+| configuration | RMSE unmasked | RMSE masked | bias unmasked | bias masked |
+|---|---|---|---|---|
+| default optimal-LAI params | 1.046 | 0.941 | +0.225 | +0.081 |
+| single-year calibrated (u[5]) | 0.926 | **0.885** | +0.081 | **−0.098** |
+
+So the single-year calibration cut RMSE 6 % masked / 11.5 % unmasked and cut the
+unmasked bias by ~64 %, but OVERSHOT the masked bias from +0.081 to −0.098. On
+natural vegetation the uncalibrated model was already nearly unbiased.
+
+⚠ **Two measurement traps, both of which caught me:**
+1. RMSE of the ANNUAL-MEAN field (~0.674) is ~25 % lower than the mean of
+   per-month RMSEs (0.885) because monthly errors partly cancel. The leaderboard
+   uses the per-month form. Always say which is quoted.
+2. `iteration_00N/member_001` is the mean of u[N], i.e. the SECOND-TO-LAST
+   ensemble — not the final calibrated parameters u[N+1]. The 0.885 above is for
+   u[5] (`z_c4` = 35.0), while the committed values are u[6] (`z_c4` = 14.6).
+   The committed set's RMSE is UNMEASURED; it needs one forward run.
+
+### Experiment A — more data (running)
+
+`configs/lai_multiyear.jl`, output
+`/glade/derecho/scratch/arenchon/claude/calibration_stage3_lai_multiyear`,
+chunked the same way (`N_ITERATIONS=1,2,…`). First chunk `6979038`.
+Four annual cycles (2015-2018) at `minibatch_size = 2`, `n_iterations = 8`
+(four full epochs). Priors, noise scalar, spinup and masks IDENTICAL to
+`lai.jl`, so this isolates the effect of the target's information content.
+Confirmed live: "The number of samples is 4", members span ~3 years, so the cost
+is ~1.6x per member rather than 4x — `minibatcher_over_samples` batches
+CONSECUTIVE samples and `models/snowy_land.jl:171` spans only the minibatch.
+
+**What it tests.** Whether the ridge (`z`↔`sigma` r = +0.86; `z_c4` roaming most
+of its 1-40 range while the loss fell) is a DATA problem or a STRUCTURAL one.
+- If `z_c4` pins down with four years → data. Extend further.
+- If it still roams → structural degeneracy. Next experiment: drop the C3/C4
+  split so `z_c4`/`sigma_c4` stop being free, or reparameterise onto
+  `log(z·sigma)` / `log(z/sigma)`.
+
+**Judge it on RMSE and bias, not the EKI loss.** The single-year run cut its loss
+11 % while masked RMSE fell only 6 % and masked bias got worse — the normalised
+misfit and the leaderboard metric are different functionals and decouple on a
+ridge. Use `/glade/derecho/scratch/arenchon/claude/lai_compare.jl`, which takes a
+simdir and reports both, masked and unmasked.
