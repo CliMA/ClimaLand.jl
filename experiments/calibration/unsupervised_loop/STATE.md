@@ -1011,3 +1011,35 @@ of its 1-40 range while the loss fell) is a DATA problem or a STRUCTURAL one.
 misfit and the leaderboard metric are different functionals and decouple on a
 ridge. Use `/glade/derecho/scratch/arenchon/claude/lai_compare.jl`, which takes a
 simdir and reports both, masked and unmasked.
+
+### Experiment A RESULT — more data does NOT help (2026-08-02)
+
+**Falsified my own top recommendation.** Quadrupling the target from one annual
+cycle to four reproduced the single-year trajectory almost exactly, including the
+pathology:
+
+| iteration | z single / multi | sigma single / multi | z_c4 single / multi | misfit single / multi |
+|---|---|---|---|---|
+| 2 | 9.33 / 7.75 | 0.493 / 0.47 | 36.45 / 39.27 | 0.315 / 0.317 |
+| 3 | 20.28 / 21.02 | 0.821 / 0.825 | 31.04 / 36.19 | 0.223 / 0.239 |
+| 4 | 27.55 / 27.44 | 1.062 / 1.065 | 8.17 / 15.09 | 0.203 / 0.205 |
+| 5 | 21.02 / 20.43 | 0.936 / 0.923 | 34.85 / 36.62 | 0.198 / — |
+
+`z` and `sigma` agree to three significant figures at every iteration, and
+`z_c4` still swings 15.09 → 36.62. Four times the observations changed neither
+the parameter path, the loss, nor the oscillation.
+
+**Therefore the z-sigma ridge is structural, not a data shortage.** "Calibrate
+against more years" was the top-ranked suggestion in the report; it is now
+falsified and should be struck from the recommendations. The remaining
+suggestions that address the ridge itself — reparameterising onto
+`log(z·sigma)` / `log(z/sigma)`, fixing one of the pair from theory, or dropping
+the C3/C4 split — are unaffected, and are the ones worth pursuing.
+
+**Experiment B** (`configs/lai_noc4split.jl`, output
+`.../calibration_stage3_lai_noc4split`) tests the last of those. ⚠ Caveat it
+must be read with: `z_c4` and `sigma_c4` are FROZEN at 14.6 / 1.4, values
+inherited from the unconverged single-year run. B started with a worse misfit
+(0.387 vs A's 0.231) partly for that reason, so a worse loss for B does NOT show
+the split was useful — it may only show the frozen values are poor. Judge on
+RMSE/bias.
