@@ -603,6 +603,7 @@ function update_biomass!(
     @. p.canopy.biomass.f0 = f0_from_aridity(
         Y.canopy.biomass.PET_annual,
         Y.canopy.biomass.precip_annual,
+        component.parameters.f0_max,
     )
     @. p.canopy.biomass.vpd_gs =
         Y.canopy.biomass.VPDA0_annual / max(Y.canopy.biomass.A0_annual, eps(FT))

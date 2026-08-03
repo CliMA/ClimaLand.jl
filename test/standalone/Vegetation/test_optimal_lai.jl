@@ -28,6 +28,7 @@ using ClimaCore
             @test params.z ≈ FT(15.0)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
             # C3/C4 competition is on by default.

@@ -19,11 +19,11 @@ main
   growing-season length from a trailing-year count of growing days, and the C3 fraction from
   a C3/C4 competition on the per-pathway potential GPP (switchable off with
   `optimal_lai_online_c3c4 = 0`). Adds five time-integrated variables to `Y`, seeded so each
-  starts at the artifact value it replaces. Also splits the leaf cost `z` and the
-  square-wave departure `sigma` by photosynthetic pathway, drops soil-moisture stress from
+  starts at the artifact value it replaces. Also drops soil-moisture stress from
   the potential GPP (water limitation now enters once, through `f0·P/A0`), sets
-  `optimal_lai_z` to 15.0 (was 21.4), and adds the `a0c3_annual`, `a0c4_annual` and
-  `fractional_c3` diagnostics. Only affects runs using prognostic LAI
+  `optimal_lai_z` to 15.0 (was 21.4), renames `optimal_lai_f0` to `optimal_lai_f0_max`
+  (it now sets the peak of the aridity curve rather than a constant `f0`), and adds the
+  `a0c3_annual`, `a0c4_annual` and `fractional_c3` diagnostics. Only affects runs using prognostic LAI
   (`ZhouOptimalLAIModel`). PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 - ![][badge-💥breaking] `ZhouOptimalLAIModel` no longer takes the `optimal_lai_inputs`
   NamedTuple: its growing-season length, VPD and `f0` are derived from the simulated

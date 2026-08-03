@@ -61,7 +61,7 @@ where:
 - $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹)
 - $c_a$ is the ambient CO₂ partial pressure (Pa). Conversion: 400 ppm at 101325 Pa ≈ 40 Pa
 - $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), from stomatal optimization
-- $f_0$ is the fraction of annual precipitation available to plants (dimensionless), varies with aridity
+- $f_0$ is the fraction of annual precipitation available to plants (dimensionless). It varies with the aridity index $AI$ as $f_0 = f_{0,max} \exp(-0.604 \ln^2(AI/1.9))$, peaking at $f_{0,max}$ at the energy–water transition
 
 ## Daily Steady-State LAI
 
@@ -112,7 +112,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 | Leaf construction cost | $z$ | mol CO₂ m⁻² yr⁻¹ | 12.227 | Unit cost of building and maintaining leaves |
 | LAI dynamics parameter | $\sigma$ | - | 1.1 | Departure from square-wave dynamics |
 | Smoothing factor | $\alpha$ | - | 0.067 | Controls LAI response time (~15 days) |
-| Precipitation fraction | $f_0$ | - | 0.65 | Fraction of precipitation used by plants |
+| Peak precipitation fraction | $f_{0,max}$ | - | 0.65 | Fraction of precipitation used by plants at the energy–water transition |
 
 ## Drivers
 

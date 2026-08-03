@@ -124,10 +124,10 @@ type = "float"
 description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
 tag = "OptimalLAIModel"
 
-["optimal_lai_f0"]
+["optimal_lai_f0_max"]
 value = 0.65
 type = "float"
-description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
+description = "Peak fraction of annual precipitation available for transpiration (dimensionless), reached at the energy-water limitation transition (aridity index 1.9). The fraction used is f0 = f0_max*exp(-0.604*ln^2(AI/1.9)); Zhou et al. (2025) fit f0_max = 0.65."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tau_long_term"]

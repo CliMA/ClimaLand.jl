@@ -24,11 +24,11 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
-    """Fraction of annual precipitation available for transpiration (dimensionless, 0-1).
-    Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition.
-    In arid regions, f0 can be lower: f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index.
-    Default value 0.65 assumes optimal water use efficiency."""
-    f0::FT
+    """Peak fraction of annual precipitation available for transpiration (dimensionless,
+    0-1), reached at the energy-water limitation transition. The fraction actually used,
+    `f0 = f0_max * exp(-0.604 * ln^2(AI/1.9))` with `AI` the aridity index, falls off
+    toward both extremes; Zhou et al. (2025) fit `f0_max = 0.65`. See `f0_from_aridity`."""
+    f0_max::FT
     """Long-term memory timescale (s) of the A0 and precipitation running-mean annual
     totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
     filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
@@ -55,7 +55,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         z = FT(toml_dict["optimal_lai_z"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
-        f0 = FT(toml_dict["optimal_lai_f0"]),
+        f0_max = FT(toml_dict["optimal_lai_f0_max"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
         online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
     )
@@ -374,16 +374,20 @@ function compute_L_steady_target(
 end
 
 """
-    f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+    f0_from_aridity(PET_annual::FT, precip_annual::FT, f0_max::FT) where {FT}
 
 Climate-responsive fraction of precipitation available for transpiration
-(Zhou et al. 2025): `f0 = 0.65·exp(−0.604·ln²(AI/1.9))` with aridity index
-`AI = PET_annual/precip_annual`. Peaks at 0.65 at the energy–water transition
+(Zhou et al. 2025): `f0 = f0_max·exp(−0.604·ln²(AI/1.9))` with aridity index
+`AI = PET_annual/precip_annual`. Peaks at `f0_max` at the energy–water transition
 (AI = 1.9) and declines toward both the arid and humid extremes.
 """
-function f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+function f0_from_aridity(
+    PET_annual::FT,
+    precip_annual::FT,
+    f0_max::FT,
+) where {FT}
     AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
-    return FT(0.65) * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
+    return f0_max * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
 end
 
 """
