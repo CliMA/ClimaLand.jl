@@ -97,13 +97,22 @@ function get_calibration_prior()
         # 0.21). The one elevated bin, 3/19 above 0.21, comes entirely from a
         # single experiment which crashed 3/11 there while two others crashed
         # 0/8 — so it is confounded with configuration, not attributable to
-        # alpha. A 0.18 cap would have prevented 4 of the 7 crashes while
+        # alpha. The failure itself is a negative-real sqrt/log/^ inside a
+        # kernel — the device message "This operation requires a complex input
+        # to return a complex result" is CUDA.jl's override of
+        # Base.Math.throw_complex_domainerror — and the obvious optimal-LAI
+        # candidates are ruled out (lambertw0's branch-point sqrt is exactly 0
+        # at its guard, and compute_LAI_max's log is clamped), so it is probably
+        # not in this model at all. A 0.18 cap would have prevented 4 of the 7 crashes while
         # excluding 84 of 268 successful member-runs, and since every
         # calibration settles at alpha 0.18-0.21 it would bind on the posterior
         # and silently truncate the answer. The fix is to guard the faulting
-        # expression: reproduce with CUDA_LAUNCH_BLOCKING=1, NOT from the stack
-        # trace, which reports a deferred kernel exception at the next
-        # synchronisation and points misleadingly at the diagnostics writer.
+        # expression: run a failing member with CUDA_LAUNCH_BLOCKING=1 AND
+        # -g2. The first makes the exception surface at the launch that caused
+        # it rather than at the next synchronisation; the second is what
+        # actually yields a device stacktrace. Do not work from the host trace,
+        # which points at the ClimaDiagnostics writer, where the deferred
+        # exception surfaces rather than where it is raised.
         EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.3),
     ]
     return EKP.combine_distributions(priors)

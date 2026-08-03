@@ -1661,3 +1661,42 @@ absorbs it; the actual fix is still to guard the faulting expression, which need
 `CUDA_LAUNCH_BLOCKING=1` to locate — the stack trace points at the
 ClimaDiagnostics writer, which is where the deferred kernel exception surfaces,
 not where it is raised.
+
+### The `DomainError` is a negative-real `sqrt`/`log`/`^`, and probably not in the LAI code (2026-08-02)
+
+Reading the crash context in `iteration_003/member_007/model_log.txt` (lines
+70–96 only — these logs are ~38 MB, never read one whole) gives the message that
+earlier summaries omitted:
+
+```
+ERROR: a DomainError was thrown during kernel execution on thread (173, 1, 1) in block (52, 1, 1).
+This operation requires a complex input to return a complex result
+Stacktrace not available, run Julia on debug level 2 for more details (by passing -g2 to the executable).
+```
+
+That second line is not generic. It is CUDA.jl's device override of
+`Base.Math.throw_complex_domainerror` (`CUDA/src/device/quirks.jl:21`), which in
+Base is raised **only** by `sqrt`, `log`, `log2`, `log10`, `log1p` and `^` when
+handed a negative real (`base/math.jl:686` and neighbours). So the fault is one
+of those functions on a negative argument inside a kernel — not an out-of-range
+index, not a NaN, not the diagnostics writer where the trace surfaces.
+
+**The obvious candidate in the optimal-LAI code is cleared.**
+`_lambertw0_initial_guess` computes `p = sqrt(2*(ℯ*x + 1))` on the branch
+`x < -0.32`, which would throw if `x` were below −1/e. `lambertw0` guards with
+`x < T(MINARG)`, `MINARG = -inv(ℯ)`, and I checked the rounding at the boundary
+rather than assuming: at `x == T(MINARG)` the argument is **exactly 0** in both
+Float64 and Float32, and no admitted float within 200 ulps of the boundary makes
+it negative. `compute_LAI_max`'s `log(1 - fAPAR_max_safe)` is clamped to
+`[eps, 1]`. Neither can be the source.
+
+That fits the crash census: no optimal-LAI parameter predicts the failure because
+the faulting expression is most likely **not in `optimal_lai.jl`** at all. The
+stack frames above the writer mention soil `infiltration`, which is a better lead
+than anything in the canopy.
+
+**Correction to the debugging instruction.** I have been recommending
+`CUDA_LAUNCH_BLOCKING=1`. That is right for making the exception surface at the
+launch that caused it instead of at the next synchronisation, but it does not
+give a location. The log itself names the missing piece: run the member with
+**`-g2`** to get a device stacktrace. Use both.
