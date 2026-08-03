@@ -112,22 +112,10 @@ type = "float"
 description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation"
 tag = "OptimalLAIModel"
 
-["optimal_lai_z_c4"]
-value = 12.227
-type = "float"
-description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation; effective z = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z."
-tag = "OptimalLAIModel"
-
 ["optimal_lai_sigma"]
 value = 1.1
 type = "float"
 description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation"
-tag = "OptimalLAIModel"
-
-["optimal_lai_sigma_c4"]
-value = 1.1
-type = "float"
-description = "Departure-from-square-wave sigma for C4 vegetation; effective sigma = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
