@@ -2207,3 +2207,27 @@ little cold non-forest; the map has a great deal, so the site view flattered it.
 **Not ported.** `q_map` stays in the harness at its disabled default. This is the
 fourth predictor tested and rejected for the boreal/grassland conflict, after
 precipitation at site level, soil properties and aridity.
+
+### Global RMSE and bias, and the observational floor (2026-08-03, iteration 67)
+
+Reported bias and spatial correlation all along but never RMSE, so it was
+computed rather than estimated. Full table in `harness/global_skill.tsv`.
+
+**bias −1.71 … +1.91 (median ≈ +1.2); RMSE 2.81 … 6.87 (median ≈ 4.8) kg C m⁻².**
+
+Three things that change how these should be read:
+
+1. **The error is pattern, not offset.** Centred RMSE is within a few percent of
+   RMSE for every product. ESACCI is the clearest case: bias +0.16, RMSE 5.35,
+   cRMSE 5.35 — removing the bias buys nothing. Reducing bias is not the lever.
+2. **RMSE is comparable to the observed spatial standard deviation.** Against
+   XuSaatchi (4.31 vs σ 3.38) and Thurner (2.81 vs 2.24) the model is *worse*
+   than a constant field; against ESACCI, GEOCARBON and USForest it is better.
+   Consistent with *r* ≈ 0.5–0.66, i.e. 25–43% of variance explained.
+3. **There is an observational floor.** Product-vs-product RMSE on overlapping
+   cells has a **median of 4.38**, range 2.2–8.3. The model's median RMSE ≈ 4.8
+   is only slightly above the observations' own median disagreement.
+
+**Consequence for tuning:** pushing RMSE much below ~4 would be fitting to a
+chosen product rather than to reality. This is the same reason the site score is
+against the multi-product *range* rather than any one dataset.

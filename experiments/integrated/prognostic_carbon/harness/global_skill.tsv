@@ -1,0 +1,29 @@
+# Global skill of the equilibrium woody-carbon map, kg C m-2.
+# Model: drivers from job 6978605, 400-yr offline equilibrium, 22420 land columns,
+# precipitation-limited woody allocation (map_half = 0.8 m/yr) as shipped.
+# bias   = mean(model) - mean(obs)          on cells where the product has data
+# RMSE   = sqrt(mean((model-obs)^2))
+# cRMSE  = RMSE with the bias removed       (pattern error alone)
+# obs_sd = spatial standard deviation of the observations
+# wbias  = area-weighted (cos-latitude) bias
+product	n_cells	bias	RMSE	cRMSE	obs_sd	wbias	spatial_r
+XuSaatchi	15476	1.73	4.31	3.95	3.38	2.02	0.631
+Thurner	6408	0.79	2.81	2.70	2.24	0.84	0.510
+ESACCI	16164	0.16	5.35	5.35	6.75	0.21	0.623
+GEOCARBON	9798	-1.71	6.87	6.66	8.14	-1.88	0.579
+Saatchi2011	5787	1.53	5.31	5.09	5.08	1.53	0.657
+USForest	1035	1.91	4.28	3.82	4.51	1.82	0.576
+#
+# Observation-vs-observation RMSE on overlapping cells - the irreducible floor:
+pair	n_cells	RMSE
+XuSaatchi-Thurner	6707	2.20
+XuSaatchi-ESACCI	17113	4.38
+XuSaatchi-GEOCARBON	10426	7.49
+XuSaatchi-Saatchi2011	6143	3.17
+Thurner-ESACCI	6857	3.42
+Thurner-GEOCARBON	5836	3.43
+Thurner-Saatchi2011	257	2.78
+ESACCI-GEOCARBON	10590	6.25
+ESACCI-Saatchi2011	6373	5.80
+GEOCARBON-Saatchi2011	4538	8.30
+# median obs-vs-obs RMSE = 4.38; model median RMSE = ~4.8
