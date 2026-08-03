@@ -2378,3 +2378,20 @@ Correct binned model/observed on the recalibrated base:
 | 2–5 | 1.6× | 1.9× | 3.1× |
 | 0.5–2 | 3.2× | 4.3× | 3.4× |
 | < 0.5 | 9.1× | 18.8× | 8.3× |
+
+### Rule 1 verified on the recalibrated base (2026-08-03, iteration 76)
+
+`RULE1 PASS`, `rel_diff = 0.0` at all 20 sites, batteries `6998436` (CARBON=1,
+pool Ra) vs `6999124`+`7000389` (CARBON=0). `baseline_prognostic_lai.tsv`
+replaced with the recalibrated CARBON=0 summary.
+
+**A failure mode worth naming.** The first CARBON=0 arm **died mid-run** and
+presented as `pass=16 fail=0` — which reads like partial success. It was not: the
+four cold sites had *no `.status` at all*, the job output stopped abruptly after
+`california_vaira` with no `BATTERY_DONE`, and the job had left the queue. The
+same four ran fine in the CARBON=1 arm on identical parameters, so it was an
+infrastructure failure rather than a code fault; resubmitting them alone with
+`NPAR=4` succeeded 4/4.
+
+**Rule:** `pass=N fail=0` is not success unless `N` equals the expected count
+*and* the summary file exists. Absence of a FAIL is not evidence of a pass.
