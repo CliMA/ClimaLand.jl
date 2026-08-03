@@ -403,12 +403,12 @@ function set_canopy_component_initial_conditions!(
     Y.canopy.biomass.precip_annual .= ic.precip_annual
     Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
 
-    # Invert f0 = 0.65 exp(-0.604 ln²(AI/1.9)) for the aridity index, so the online
+    # Invert f0 = f0_max exp(-0.604 ln²(AI/1.9)) for the aridity index, so the online
     # f0 starts at the artifact value. f0 is symmetric in ln(AI/1.9); take the arid
     # branch, which is where the artifact f0 was fit.
-    AI_seed = @. FT(1.9) * exp(
-        sqrt(max(log(FT(0.65) / max(ic.f0, eps(FT))), FT(0)) / FT(0.604)),
-    )
+    f0_max = model.parameters.f0_max
+    AI_seed = @. FT(1.9) *
+       exp(sqrt(max(log(f0_max / max(ic.f0, eps(FT))), FT(0)) / FT(0.604)))
     Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
     # vpd_gs is recovered as VPDA0_annual / A0_annual.
     Y.canopy.biomass.VPDA0_annual .= ic.vpd_gs .* Y.canopy.biomass.A0_annual

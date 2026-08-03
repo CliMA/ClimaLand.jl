@@ -28,17 +28,11 @@ using ClimaCore
             @test params.z ≈ FT(15.0)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
-            # C3/C4 two-PFT leaf-cost/shape params (#1815); default equals the C3
-            # value so pft_blend is a no-op until tuned.
-            @test params.z_c4 isa FT
-            @test params.sigma_c4 isa FT
-            @test params.z_c4 ≈ FT(15.0)
-            @test params.sigma_c4 ≈ FT(0.939)
 
-            # C3/C4 competition is on by default; z is uniform in A0 by default.
+            # C3/C4 competition is on by default.
             @test params.online_c3c4 ≈ FT(1)
-            @test params.z_a0 ≈ FT(0)
 
             @test eltype(params) == FT
         end

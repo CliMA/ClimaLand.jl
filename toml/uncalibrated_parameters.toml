@@ -109,25 +109,13 @@ tag = "OptimalLAIModel"
 ["optimal_lai_z"]
 value = 12.227
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation"
-tag = "OptimalLAIModel"
-
-["optimal_lai_z_c4"]
-value = 12.227
-type = "float"
-description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation; effective z = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z."
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
 value = 1.1
 type = "float"
-description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation"
-tag = "OptimalLAIModel"
-
-["optimal_lai_sigma_c4"]
-value = 1.1
-type = "float"
-description = "Departure-from-square-wave sigma for C4 vegetation; effective sigma = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma."
+description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
@@ -136,10 +124,10 @@ type = "float"
 description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
 tag = "OptimalLAIModel"
 
-["optimal_lai_f0"]
+["optimal_lai_f0_max"]
 value = 0.65
 type = "float"
-description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
+description = "Peak fraction of annual precipitation available for transpiration (dimensionless), reached at the energy-water limitation transition (aridity index 1.9). The fraction used is f0 = f0_max*exp(-0.604*ln^2(AI/1.9)); Zhou et al. (2025) fit f0_max = 0.65."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tau_long_term"]
@@ -744,9 +732,4 @@ type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
 
-["optimal_lai_z_a0"]
-value = 0.0
-type = "float"
-description = "Slope (mol^-1 m^2 yr) mapping the leaf cost z down where annual potential GPP A0 is high, raising the energy-limited cap 1-z/(k*A0) in the most-productive forests while leaving temperate/boreal (A0 below ~220) unchanged. Default 0.0 = uniform z. Targets the wet-tropical LAI deficit vs MODIS without over-shooting other biomes; derived from A0, no PFT."
-tag = "OptimalLAIModel"
 

@@ -18,23 +18,17 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Light extinction coefficient (dimensionless), typically 0.5"""
     k::FT
-    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation, globally fitted as 12.227 mol m^-2 yr^-1"""
+    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1), globally fitted as 12.227 mol m^-2 yr^-1"""
     z::FT
-    """Leaf cost `z` for C4 vegetation. The effective cost is blended by the dynamic
-    C3 fraction, `z_eff = fc3·z + (1-fc3)·z_c4` (see `pft_blend`); default equals `z`."""
-    z_c4::FT
-    """Dimensionless parameter representing departure from square-wave LAI dynamics for C3 vegetation, globally fitted as 0.771"""
+    """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
     sigma::FT
-    """Departure-from-square-wave `sigma` for C4 vegetation. Blended by the dynamic C3
-    fraction, `sigma_eff = fc3·sigma + (1-fc3)·sigma_c4` (see `pft_blend`); default equals `sigma`."""
-    sigma_c4::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
-    """Fraction of annual precipitation available for transpiration (dimensionless, 0-1).
-    Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition.
-    In arid regions, f0 can be lower: f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index.
-    Default value 0.65 assumes optimal water use efficiency."""
-    f0::FT
+    """Peak fraction of annual precipitation available for transpiration (dimensionless,
+    0-1), reached at the energy-water limitation transition. The fraction actually used,
+    `f0 = f0_max * exp(-0.604 * ln^2(AI/1.9))` with `AI` the aridity index, falls off
+    toward both extremes; Zhou et al. (2025) fit `f0_max = 0.65`. See `f0_from_aridity`."""
+    f0_max::FT
     """Long-term memory timescale (s) of the A0 and precipitation running-mean annual
     totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
     filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
@@ -43,11 +37,6 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
     photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
     online_c3c4::FT
-    """Slope (mol^-1 m^2 yr) mapping the leaf-cost `z` down where potential GPP `A0` is
-    high, so the energy cap `1-z/(k*A0)` rises in the most-productive (tropical-forest)
-    regions without changing temperate/boreal. Default 0.0 = uniform `z`. See
-    `a0_mapped_z`."""
-    z_a0::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -64,45 +53,13 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     return OptimalLAIParameters{FT}(
         k = FT(toml_dict["optimal_lai_k"]),
         z = FT(toml_dict["optimal_lai_z"]),
-        z_c4 = FT(toml_dict["optimal_lai_z_c4"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
-        sigma_c4 = FT(toml_dict["optimal_lai_sigma_c4"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
-        f0 = FT(toml_dict["optimal_lai_f0"]),
+        f0_max = FT(toml_dict["optimal_lai_f0_max"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
         online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
-        z_a0 = FT(toml_dict["optimal_lai_z_a0"]),
     )
 end
-
-"""
-    a0_mapped_z(z, A0_annual, z_a0)
-
-Map the leaf-cost parameter `z` down where the annual potential GPP `A0_annual` is high,
-so the energy-limited cap `1 - z/(k*A0)` rises in the most-productive forests. Diagnosis
-(PR #1815): the wet-tropical (Amazon/Congo) LAI deficit is capped by BOTH the water term
-AND the energy term sitting just below MODIS, and a uniform `z` low enough to lift the
-tropical cap over-shoots temperate/savanna. This makes `z` productivity-aware instead —
-`z_eff = max(z - z_a0·max(A0 - A0_ref, 0), 1)` — leaving temperate/boreal (A0 ≲ A0_ref)
-unchanged. `z_a0 = 0` is a no-op. Derived from A0 the model already tracks; no PFTs.
-"""
-function a0_mapped_z(z::FT, A0_annual::FT, z_a0::FT) where {FT}
-    A0_ref = FT(220)   # mol CO2 m^-2 yr^-1 — ~temperate A0; below this, z unchanged
-    excess = max(A0_annual - A0_ref, zero(FT))
-    return max(z - z_a0 * excess, one(FT))
-end
-
-"""
-    pft_blend(fractional_c3, v_c3, v_c4)
-
-Linearly blend a C3 and a C4 parameter value by the (dynamic) C3 fraction:
-`fractional_c3·v_c3 + (1-fractional_c3)·v_c4`. Used to give the optimal-LAI leaf cost
-`z` and square-wave departure `sigma` distinct C3/C4 values (a "two-PFT" C3/C4 split)
-without an external PFT map — `fractional_c3` is the model's own C3/C4 competition
-field. Branchless/GPU-safe; a no-op when `v_c3 == v_c4`.
-"""
-pft_blend(fractional_c3::FT, v_c3::FT, v_c4::FT) where {FT} =
-    fractional_c3 * v_c3 + (one(FT) - fractional_c3) * v_c4
 
 """
     compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
@@ -417,16 +374,20 @@ function compute_L_steady_target(
 end
 
 """
-    f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+    f0_from_aridity(PET_annual::FT, precip_annual::FT, f0_max::FT) where {FT}
 
 Climate-responsive fraction of precipitation available for transpiration
-(Zhou et al. 2025): `f0 = 0.65·exp(−0.604·ln²(AI/1.9))` with aridity index
-`AI = PET_annual/precip_annual`. Peaks at 0.65 at the energy–water transition
+(Zhou et al. 2025): `f0 = f0_max·exp(−0.604·ln²(AI/1.9))` with aridity index
+`AI = PET_annual/precip_annual`. Peaks at `f0_max` at the energy–water transition
 (AI = 1.9) and declines toward both the arid and humid extremes.
 """
-function f0_from_aridity(PET_annual::FT, precip_annual::FT) where {FT}
+function f0_from_aridity(
+    PET_annual::FT,
+    precip_annual::FT,
+    f0_max::FT,
+) where {FT}
     AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
-    return FT(0.65) * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
+    return f0_max * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
 end
 
 """

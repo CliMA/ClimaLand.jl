@@ -616,6 +616,7 @@ function update_biomass!(
     @. p.canopy.biomass.f0 = f0_from_aridity(
         Y.canopy.biomass.PET_annual,
         Y.canopy.biomass.precip_annual,
+        component.parameters.f0_max,
     )
     @. p.canopy.biomass.vpd_gs =
         Y.canopy.biomass.VPDA0_annual / max(Y.canopy.biomass.A0_annual, eps(FT))
@@ -675,7 +676,7 @@ function ClimaLand.make_compute_exp_tendency(
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
         # The C3 fraction resolved by the competition in `update_fractional_c3!`, so
-        # the potential GPP, chi and the C3/C4 parameter blends all track it.
+        # the potential GPP and chi track it.
         fractional_c3 = p.canopy.photosynthesis.fractional_c3
         VPD = @. lazy(
             max(
@@ -715,13 +716,9 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.A0_daily,
             parameters.k,
             Y.canopy.biomass.A0_annual,
-            a0_mapped_z(
-                pft_blend(fractional_c3, parameters.z, parameters.z_c4),
-                Y.canopy.biomass.A0_annual,
-                parameters.z_a0,
-            ),
+            parameters.z,
             p.canopy.biomass.GSL,
-            pft_blend(fractional_c3, parameters.sigma, parameters.sigma_c4),
+            parameters.sigma,
             Y.canopy.biomass.precip_annual,
             p.canopy.biomass.f0,
             p.drivers.c_co2 * p.drivers.P,  # ca_pa: CO2 partial pressure (Pa)
