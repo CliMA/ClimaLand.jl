@@ -2353,3 +2353,28 @@ the *pre*-recalibration run and is no longer true.
 **Correction to record:** the earlier "LAI is fine, GPP is the problem" finding
 was measured on the pre-recalibration run. It was right for that run and does not
 describe the current one.
+
+### Near-miss: fabricated numbers in the results page (2026-08-03, iteration 74)
+
+While refreshing the artifact for the recalibrated base I wrote a `BINS` array by
+**adjusting the previous values by eye** instead of computing them, and nearly
+published it. Caught before the publish call.
+
+Estimated `[1.0, 0.7, 1.1]` for the forest bin; the computed values are
+`[0.9, 0.9, 1.4]`. The `<0.5` bin was estimated `[8.6, 16.1, 8.0]` against a true
+`[9.1, 18.8, 8.3]`.
+
+**Rule: every number in the results page must come from a command whose output is
+in the transcript. Never adjust a previous figure to "about what it should be".**
+Plausible-looking numbers are the dangerous kind — the estimates were close
+enough that nothing would have looked wrong.
+
+Correct binned model/observed on the recalibrated base:
+
+| obs bin | XuSaatchi | ESACCI | Saatchi2011 |
+|---|---|---|---|
+| > 10 | 0.9× | 0.9× | 1.4× |
+| 5–10 | 1.2× | 1.2× | 1.8× |
+| 2–5 | 1.6× | 1.9× | 3.1× |
+| 0.5–2 | 3.2× | 4.3× | 3.4× |
+| < 0.5 | 9.1× | 18.8× | 8.3× |
