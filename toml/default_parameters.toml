@@ -107,7 +107,7 @@ description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z"]
-value = 15.0
+value = 24.3
 type = "float"
 description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
