@@ -1740,3 +1740,43 @@ band to stay inside — and it raises the priority of the guard, since no prior
 choice can avoid a ~2.5 % per-member failure rate. It also means a *repeat* of
 the same parameter set may well succeed, so resubmitting a failed iteration is a
 legitimate recovery, not a gamble on different numbers.
+
+## ✅ Experiment D COMPLETE — the follow-up is finished (2026-08-03)
+
+D ran all 8 iterations (`lai_tied_c4.jl` with `TIE_C4_TO_C3=1`), final misfit
+0.3347, `z` = 22.0, `sigma` = 0.987, `alpha` = 0.0895. Measured at
+`iteration_008/member_001` (u[8]) — `iteration_009` exists but holds only the
+next parameter set with no members run, the same convention B was measured under.
+
+**Masked RMSE 0.8888, bias −0.0886** (unmasked 0.9457 / +0.0889).
+
+| configuration | free params | RMSE masked | bias masked |
+|---|---|---|---|
+| default | — | 0.941 | +0.081 |
+| single-year | 5 | 0.885 | −0.098 |
+| A — 4 years | 5 | 0.887 | −0.088 |
+| B — 3 params, C4 frozen | 3 | 0.889 | −0.083 |
+| C — noise 0.25 | 5 | 0.883 | −0.089 |
+| **D — 3 params, C4 tied to calibrated C3** | **3** | **0.889** | **−0.089** |
+
+**D lands on B to three decimal places** (0.8888 vs 0.8886). The distinction D was
+built to test — C4 *tied to the calibrated C3* rather than *frozen at inherited
+values* — makes no measurable difference, which is precisely what the pathway
+error budget predicted: C4-dominated cells carry 4.3 % of the squared error, so
+whatever the C4 parameters do is invisible in the total. The prediction recorded
+before D ran ("D will not improve RMSE; it should confirm the split can be
+dropped entirely") is confirmed.
+
+**Verdict on the C3/C4 split: drop it.** Four independent lines now agree —
+B (freeze) and D (tie) both cost nothing, the pathway budget says C4 is 4.3 % of
+the error, and an oracle C3/C4 stratification fitted directly to the residuals
+removes only 1.5 % of the spatial pattern. Two parameters and four sigma points
+are being spent for no return.
+
+**Final position on LAI skill.** All five calibrated variants sit in
+0.883–0.889 — a 0.7 % spread. Calibration is worth ~6 % against the 0.941
+default; no configuration choice moves it further, because 72 % of the masked MSE
+is spatial pattern in the annual mean and `z`/`sigma`/`alpha` are global scalars
+that cannot reach it. Improving LAI past ~0.885 is a stage-1 and input-field
+problem (`A0_annual`, precipitation, the aridity index behind `f0`), not a
+stage-3 one.
