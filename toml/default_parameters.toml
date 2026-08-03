@@ -109,25 +109,13 @@ tag = "OptimalLAIModel"
 ["optimal_lai_z"]
 value = 24.3
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation. Calibrated against MODIS LAI (Yuan et al. 2017)."
-tag = "OptimalLAIModel"
-
-["optimal_lai_z_c4"]
-value = 14.6
-type = "float"
-description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation. The effective z is blended by the dynamic C3 fraction: z_eff = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z (no C3/C4 split until tuned)."
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
 value = 1.05
 type = "float"
-description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation. Calibrated against MODIS LAI (Yuan et al. 2017)."
-tag = "OptimalLAIModel"
-
-["optimal_lai_sigma_c4"]
-value = 1.4
-type = "float"
-description = "Departure-from-square-wave sigma for C4 vegetation. The effective sigma is blended by the dynamic C3 fraction: sigma_eff = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma (no C3/C4 split until tuned)."
+description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]

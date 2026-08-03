@@ -18,16 +18,10 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Light extinction coefficient (dimensionless), typically 0.5"""
     k::FT
-    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation, globally fitted as 12.227 mol m^-2 yr^-1"""
+    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1), globally fitted as 12.227 mol m^-2 yr^-1"""
     z::FT
-    """Leaf cost `z` for C4 vegetation. The effective cost is blended by the dynamic
-    C3 fraction, `z_eff = fc3·z + (1-fc3)·z_c4` (see `pft_blend`); default equals `z`."""
-    z_c4::FT
-    """Dimensionless parameter representing departure from square-wave LAI dynamics for C3 vegetation, globally fitted as 0.771"""
+    """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
     sigma::FT
-    """Departure-from-square-wave `sigma` for C4 vegetation. Blended by the dynamic C3
-    fraction, `sigma_eff = fc3·sigma + (1-fc3)·sigma_c4` (see `pft_blend`); default equals `sigma`."""
-    sigma_c4::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
     """Fraction of annual precipitation available for transpiration (dimensionless, 0-1).
@@ -64,9 +58,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     return OptimalLAIParameters{FT}(
         k = FT(toml_dict["optimal_lai_k"]),
         z = FT(toml_dict["optimal_lai_z"]),
-        z_c4 = FT(toml_dict["optimal_lai_z_c4"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
-        sigma_c4 = FT(toml_dict["optimal_lai_sigma_c4"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
         f0 = FT(toml_dict["optimal_lai_f0"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
@@ -91,18 +83,6 @@ function a0_mapped_z(z::FT, A0_annual::FT, z_a0::FT) where {FT}
     excess = max(A0_annual - A0_ref, zero(FT))
     return max(z - z_a0 * excess, one(FT))
 end
-
-"""
-    pft_blend(fractional_c3, v_c3, v_c4)
-
-Linearly blend a C3 and a C4 parameter value by the (dynamic) C3 fraction:
-`fractional_c3·v_c3 + (1-fractional_c3)·v_c4`. Used to give the optimal-LAI leaf cost
-`z` and square-wave departure `sigma` distinct C3/C4 values (a "two-PFT" C3/C4 split)
-without an external PFT map — `fractional_c3` is the model's own C3/C4 competition
-field. Branchless/GPU-safe; a no-op when `v_c3 == v_c4`.
-"""
-pft_blend(fractional_c3::FT, v_c3::FT, v_c4::FT) where {FT} =
-    fractional_c3 * v_c3 + (one(FT) - fractional_c3) * v_c4
 
 """
     compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)

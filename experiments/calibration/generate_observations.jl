@@ -36,13 +36,6 @@ include("observation_utils.jl")
 const MODEL_LAI_VALIDITY_MASK_PATH =
     joinpath(@__DIR__, "model_lai_validity_mask.jld2")
 
-# Path to the natural-vegetation mask produced by
-# build_natural_vegetation_mask.jl. The optimal-LAI model has no crops, no land
-# management and no fire, so cells dominated by those processes are excluded
-# from the LAI target. Applies to `lai` only: the stage-1 flux targets are
-# calibrated over all land.
-const NATURAL_VEG_MASK_PATH = joinpath(@__DIR__, "natural_vegetation_mask.jld2")
-
 """
     apply_model_validity_mask(var, short_name)
 
@@ -59,28 +52,6 @@ function apply_model_validity_mask(var, short_name)
         "  julia --project=.buildkite experiments/calibration/build_model_lai_validity_mask.jl <reference_simdir>",
     )
     mask_var = JLD2.load_object(MODEL_LAI_VALIDITY_MASK_PATH)
-    mask_fn =
-        ClimaAnalysis.generate_lonlat_mask(mask_var, NaN, 1.0; threshold = 0.5)
-    return mask_fn(var)
-end
-
-"""
-    apply_natural_vegetation_mask(var, short_name)
-
-For the `lai` target, drop cells that are not natural undisturbed vegetation:
-CLM natural-vegetation landunit fraction below `NATVEG_MIN_PCT`, or a GFED4.1s
-mean annual burned fraction above `BURNED_MAX_PCT_PER_YEAR` (see
-build_natural_vegetation_mask.jl). No-op for other variables. Errors if the mask
-file is missing rather than silently calibrating over croplands.
-"""
-function apply_natural_vegetation_mask(var, short_name)
-    short_name == "lai" || return var
-    isfile(NATURAL_VEG_MASK_PATH) || error(
-        "Natural-vegetation mask not found at $NATURAL_VEG_MASK_PATH. " *
-        "Generate it first with:\n" *
-        "  julia --project=.buildkite experiments/calibration/build_natural_vegetation_mask.jl",
-    )
-    mask_var = JLD2.load_object(NATURAL_VEG_MASK_PATH)
     mask_fn =
         ClimaAnalysis.generate_lonlat_mask(mask_var, NaN, 1.0; threshold = 0.5)
     return mask_fn(var)
@@ -257,10 +228,6 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     # the model returns as NaN leak NaNs into the G ensemble and the UKI update
     # (see MODEL_LAI_VALIDITY_MASK_PATH above). No-op for non-lai targets.
     var = apply_model_validity_mask(var, short_name)
-
-    # Restrict the LAI target to natural, undisturbed vegetation — the only
-    # thing the optimal-LAI model represents. No-op for non-lai targets.
-    var = apply_natural_vegetation_mask(var, short_name)
 
     # To prevent double counting along the longitudes since -180 and 180 degrees
     # are the same point

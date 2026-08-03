@@ -23,18 +23,13 @@ using ClimaCore
             @test params.tau_long_term isa FT
 
             # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI in #1794; headline config promoted in #1815)
+            # against MODIS LAI in #1794; headline config promoted in #1815;
+            # z/sigma/alpha recalibrated in #1832)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(15.0)
-            @test params.sigma ≈ FT(0.939)
-            @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.z ≈ FT(24.3)
+            @test params.sigma ≈ FT(1.05)
+            @test params.alpha ≈ FT(0.13)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
-            # C3/C4 two-PFT leaf-cost/shape params (#1815); default equals the C3
-            # value so pft_blend is a no-op until tuned.
-            @test params.z_c4 isa FT
-            @test params.sigma_c4 isa FT
-            @test params.z_c4 ≈ FT(15.0)
-            @test params.sigma_c4 ≈ FT(0.939)
 
             # C3/C4 competition is on by default; z is uniform in A0 by default.
             @test params.online_c3c4 ≈ FT(1)

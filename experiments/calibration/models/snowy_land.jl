@@ -76,7 +76,7 @@ function setup_model(
         # (Zhou et al. 2025), driven by the P-model potential GPP (PModel is the
         # CanopyModel default photosynthesis). LAI is a time-integrated variable
         # in `Y`, advanced every timestep by the time-stepper, so the optimal-LAI
-        # parameters (optimal_lai_z/z_c4/sigma/sigma_c4/alpha/k) shape `lai`.
+        # parameters (optimal_lai_z/sigma/alpha/k) shape `lai`.
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             surface_domain,
             (;
@@ -193,34 +193,8 @@ function ClimaCalibrate.forward_model(
 
     calibrate_params_path =
         ClimaCalibrate.parameter_path(output_dir, iteration, member)
-    override_files = [calibrate_params_path]
-
-    # TIE_C4_TO_C3 removes the optimal-LAI C3/C4 split by making the C4
-    # parameters follow their C3 counterparts, so `pft_blend` returns the C3
-    # value everywhere and the split has no effect. This is not the same as
-    # simply not calibrating `z_c4`/`sigma_c4`, which leaves them frozen at
-    # whatever the TOML holds while `z`/`sigma` move away from them.
-    # Written as an extra override file rather than by mutating the member's
-    # parameter file, so what the calibration wrote stays untouched and the tie
-    # is visible on disk.
-    if haskey(ENV, "TIE_C4_TO_C3")
-        params = TOML.parsefile(calibrate_params_path)
-        tied = Dict{String, Any}()
-        for (c3, c4) in (
-            "optimal_lai_z" => "optimal_lai_z_c4",
-            "optimal_lai_sigma" => "optimal_lai_sigma_c4",
-        )
-            haskey(params, c3) && (tied[c4] = params[c3])
-        end
-        if !isempty(tied)
-            tie_path =
-                joinpath(dirname(calibrate_params_path), "c4_tied_to_c3.toml")
-            open(io -> TOML.print(io, tied), tie_path, "w")
-            push!(override_files, tie_path)
-        end
-    end
-
-    toml_dict = LP.create_toml_dict(FT, override_files = override_files)
+    toml_dict =
+        LP.create_toml_dict(FT, override_files = [calibrate_params_path])
 
     model = setup_model(
         FT,
