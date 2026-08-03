@@ -107,19 +107,31 @@ description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z"]
-value = 24.3
+value = 15.0
 type = "float"
 description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation. Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
+["optimal_lai_z_c4"]
+value = 15.0
+type = "float"
+description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation. The effective z is blended by the dynamic C3 fraction: z_eff = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z (no C3/C4 split until tuned)."
+tag = "OptimalLAIModel"
+
 ["optimal_lai_sigma"]
-value = 1.05
+value = 0.939
 type = "float"
 description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation. Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
+["optimal_lai_sigma_c4"]
+value = 0.939
+type = "float"
+description = "Departure-from-square-wave sigma for C4 vegetation. The effective sigma is blended by the dynamic C3 fraction: sigma_eff = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma (no C3/C4 split until tuned)."
+tag = "OptimalLAIModel"
+
 ["optimal_lai_alpha"]
-value = 0.13
+value = 0.0701
 type = "float"
 description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory. Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
@@ -448,19 +460,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.366
+value = 0.43
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 24.9
+value = 91.1
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 8.89
+value = 5.36
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -514,7 +526,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.0251
+value = 0.028
 type = "float"
 description = "1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -764,25 +776,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.0823
+value = 0.349
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.073
+value = 0.0444
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0416
+value = 0.0573
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.07
+value = 0.0726
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
