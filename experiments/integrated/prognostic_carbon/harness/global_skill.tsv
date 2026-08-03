@@ -6,13 +6,16 @@
 # cRMSE  = RMSE with the bias removed       (pattern error alone)
 # obs_sd = spatial standard deviation of the observations
 # wbias  = area-weighted (cos-latitude) bias
-product	n_cells	bias	RMSE	cRMSE	obs_sd	wbias	spatial_r
-XuSaatchi	15476	1.73	4.31	3.95	3.38	2.02	0.631
-Thurner	6408	0.79	2.81	2.70	2.24	0.84	0.510
-ESACCI	16164	0.16	5.35	5.35	6.75	0.21	0.623
-GEOCARBON	9798	-1.71	6.87	6.66	8.14	-1.88	0.579
-Saatchi2011	5787	1.53	5.31	5.09	5.08	1.53	0.657
-USForest	1035	1.91	4.28	3.82	4.51	1.82	0.576
+product	n_cells	bias	spatial_r	bias_prev	r_prev
+# Recalibrated base (global driver 6998435). bias in kg C m-2.
+XuSaatchi	15475	1.51	0.614	1.73	0.631
+Thurner	6408	0.47	0.517	0.79	0.510
+ESACCI	16163	1.89	0.608	2.11	0.623
+GEOCARBON	9797	1.92	0.557	2.26	0.579
+Saatchi2011	5786	3.76	0.629	4.00	0.657
+USForest	1035	3.18	0.573	3.48	0.576
+#
+# GPP still 1.27-1.39x observed; LAI now 1.10-1.27x (was 0.98-1.14x before).
 #
 # Observation-vs-observation RMSE on overlapping cells, ALL CONVERTED TO CARBON.
 # An earlier version of this block compared four dry-biomass products as if they

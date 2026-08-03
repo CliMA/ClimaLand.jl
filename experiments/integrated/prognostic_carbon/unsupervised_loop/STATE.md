@@ -2309,3 +2309,47 @@ than I reported — which is the right context for the GPP recalibration.
 
 **Rule reinforced:** a derived statistic inherits every unit error in its
 inputs. The floor was wrong for exactly the same reason the biases were.
+
+---
+
+## The stage-1 recalibration does not fix the biomass overestimate (2026-08-03, iteration 73)
+
+Rebuilt on the recalibrated base: battery `6998436` 20/20, global driver
+`6998435` PASS, equilibrium map over 22 419 columns.
+
+**GPP is essentially unchanged and still far too high:**
+
+| vs | before | after |
+|---|---|---|
+| FLUXCOM | 1.40× | **1.39×** |
+| GBAF / FLUXNET-MTE | 1.29× | **1.28×** |
+| WECANN | 1.28× | **1.27×** |
+
+**LAI got worse**, having been close before:
+
+| vs | before | after |
+|---|---|---|
+| MODIS | 0.98× | **1.10×** |
+| AVHRR | 1.06× | **1.18×** |
+| AVH15C1 | 1.14× | **1.27×** |
+
+Spatial *r* for LAI also fell (0.81 → 0.78 against AVH15C1). Globally LAI +11%,
+GPP −1%. The increase is concentrated in seasonally dry vegetation: at the sites,
+`n_australia` LAI +117% and GPP +45%; `pampas` +84% / +22%; `cerrado` +65% / +12%.
+Closed-canopy sites barely moved (LAI ±1%, GPP −3 to −9%).
+
+**Biomass therefore did not improve.** Site score **12/20 → 11/20**; global bias
+improved slightly (XuSaatchi 1.73 → 1.51) while spatial correlation fell in five
+of six products.
+
+### Consequence — reopen `optimal_lai_z`
+
+`z` is the unit cost of constructing leaves, so **higher z ⇒ lower LAI**. LAI is
+now 10–27% too high, which is exactly the condition `z = 24.3` (the value on
+`ar/calibrate_lai_pipeline`) would counteract; the branch currently uses the
+base's 15.0. That choice was made when LAI looked unbiased — which was true of
+the *pre*-recalibration run and is no longer true.
+
+**Correction to record:** the earlier "LAI is fine, GPP is the problem" finding
+was measured on the pre-recalibration run. It was right for that run and does not
+describe the current one.
