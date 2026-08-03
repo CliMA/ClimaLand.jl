@@ -702,11 +702,7 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.A0_daily,
             parameters.k,
             Y.canopy.biomass.A0_annual,
-            a0_mapped_z(
-                parameters.z,
-                Y.canopy.biomass.A0_annual,
-                parameters.z_a0,
-            ),
+            parameters.z,
             p.canopy.biomass.GSL,
             parameters.sigma,
             Y.canopy.biomass.precip_annual,

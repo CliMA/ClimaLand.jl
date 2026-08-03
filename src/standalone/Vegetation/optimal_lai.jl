@@ -37,11 +37,6 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
     photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
     online_c3c4::FT
-    """Slope (mol^-1 m^2 yr) mapping the leaf-cost `z` down where potential GPP `A0` is
-    high, so the energy cap `1-z/(k*A0)` rises in the most-productive (tropical-forest)
-    regions without changing temperate/boreal. Default 0.0 = uniform `z`. See
-    `a0_mapped_z`."""
-    z_a0::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -63,25 +58,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         f0 = FT(toml_dict["optimal_lai_f0"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
         online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
-        z_a0 = FT(toml_dict["optimal_lai_z_a0"]),
     )
-end
-
-"""
-    a0_mapped_z(z, A0_annual, z_a0)
-
-Map the leaf-cost parameter `z` down where the annual potential GPP `A0_annual` is high,
-so the energy-limited cap `1 - z/(k*A0)` rises in the most-productive forests. Diagnosis
-(PR #1815): the wet-tropical (Amazon/Congo) LAI deficit is capped by BOTH the water term
-AND the energy term sitting just below MODIS, and a uniform `z` low enough to lift the
-tropical cap over-shoots temperate/savanna. This makes `z` productivity-aware instead —
-`z_eff = max(z - z_a0·max(A0 - A0_ref, 0), 1)` — leaving temperate/boreal (A0 ≲ A0_ref)
-unchanged. `z_a0 = 0` is a no-op. Derived from A0 the model already tracks; no PFTs.
-"""
-function a0_mapped_z(z::FT, A0_annual::FT, z_a0::FT) where {FT}
-    A0_ref = FT(220)   # mol CO2 m^-2 yr^-1 — ~temperate A0; below this, z unchanged
-    excess = max(A0_annual - A0_ref, zero(FT))
-    return max(z - z_a0 * excess, one(FT))
 end
 
 """

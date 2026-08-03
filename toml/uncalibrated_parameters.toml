@@ -732,9 +732,4 @@ type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
 
-["optimal_lai_z_a0"]
-value = 0.0
-type = "float"
-description = "Slope (mol^-1 m^2 yr) mapping the leaf cost z down where annual potential GPP A0 is high, raising the energy-limited cap 1-z/(k*A0) in the most-productive forests while leaving temperate/boreal (A0 below ~220) unchanged. Default 0.0 = uniform z. Targets the wet-tropical LAI deficit vs MODIS without over-shooting other biomes; derived from A0, no PFT."
-tag = "OptimalLAIModel"
 
