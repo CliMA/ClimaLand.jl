@@ -2231,3 +2231,65 @@ Three things that change how these should be read:
 **Consequence for tuning:** pushing RMSE much below ~4 would be fitting to a
 chosen product rather than to reality. This is the same reason the site score is
 against the multi-product *range* rather than any one dataset.
+
+---
+
+## ⚠️ UNIT ERROR: four products are dry biomass, not carbon (2026-08-03, iteration 68)
+
+**Found by comparing against the user's ILAMB leaderboard table.** Their
+GlobalCarbon benchmark is 364 Pg; my GEOCARBON read gave 774 Pg. 774 × 0.5 = 387,
+which is the signature of a missing biomass→carbon conversion.
+
+The unit test only asked whether the `units` string contained `"kg"`. It never
+read `long_name`, which is the only place the distinction appears:
+
+| product | units | long_name | carbon? |
+|---|---|---|---|
+| XuSaatchi | Mg ha⁻¹ | "annual **carbon** density…" | ✅ |
+| Thurner | kg m⁻² | "**Carbon** Mass in Vegetation" | ✅ |
+| ESACCI | Mg/ha | "Above-ground **biomass**" | ❌ ×0.5 |
+| GEOCARBON | Mg ha⁻¹ | "above_ground_**biomass**" | ❌ ×0.5 |
+| Saatchi2011 | kg m⁻² | "above- and below-ground live **biomass**" | ❌ ×0.5 |
+| USForest | kg /m2 | "Forest **Biomass**" | ❌ ×0.5 |
+
+Fixed with an explicit `CARBON_FRACTION` table in `compare_biomass.jl` and
+`global_equilibrium.jl`.
+
+### What was wrong
+
+| product | bias published | bias corrected |
+|---|---|---|
+| XuSaatchi | +1.73 | +1.73 (unchanged) |
+| Thurner | +0.79 | +0.79 (unchanged) |
+| ESACCI | **+0.16** | **+2.11** |
+| GEOCARBON | **−1.71** | **+2.26** |
+| Saatchi2011 | +1.53 | **+4.00** |
+| USForest | +1.91 | **+3.48** |
+
+**The model is biased high against all six**, +0.79 … +4.00, median ≈ +2.2. The
+claims "essentially unbiased against ESACCI" and "too low against GEOCARBON"
+were both artefacts of this bug.
+
+Site score stays 12/20 by coincidence but its composition changed: `congo_basin`,
+`canada_boreal` and `fennoscandia` move **inside**; `amazon_central` moves to
+1.2× above; only `central_siberia` is still below. **The boreal
+under-prediction was overstated** — it is one site, not three.
+
+Product spread is 4.0× (not 3.4×).
+
+### What is NOT affected
+
+- **Spatial correlation** — scaling observations by a constant cannot change *r*.
+  So the `map_half` improvement in *r*, and the `q_map` rejection, both stand.
+- **The XuSaatchi binned table and the three maps** — XuSaatchi is genuinely
+  carbon.
+- Rule 1, the drift check, the tests: nothing to do with observations.
+
+### Still to regenerate
+
+`global_skill.tsv` (obs-vs-obs floor mixes carbon and biomass — **invalid as
+computed**), `global_map_vs_obs.tsv`, `biomass_vs_obs.tsv`, the artifact's
+six-product summary and its ESACCI/Saatchi binned columns.
+
+**Rule:** for any observational product, read `long_name` and confirm whether it
+is carbon or dry matter. `units` alone cannot tell you.

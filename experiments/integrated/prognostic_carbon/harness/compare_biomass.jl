@@ -34,6 +34,28 @@ const PRODUCTS = [
 
 # netCDF classic missing-value sentinel. It is finite and not `missing`, so it
 # survives both checks and silently enters the mean as ~1e36 if not caught.
+
+# Carbon fraction of each product. Four of the six report **dry biomass**, not
+# carbon - readable only in `long_name`, not in `units`, which is how an earlier
+# version of this file got it wrong and made the model look unbiased against
+# ESACCI and too low against GEOCARBON. 0.5 is the standard woody carbon
+# fraction, and it reconciles GEOCARBON with the ILAMB benchmark total (774 Pg
+# as-read x 0.5 = 387 Pg, against ILAMB's 364 Pg).
+#   XuSaatchi   "annual carbon density ... live woody vegetation"  -> carbon
+#   Thurner     "Carbon Mass in Vegetation"                        -> carbon
+#   ESACCI      "Above-ground biomass"                             -> biomass
+#   GEOCARBON   "above_ground_biomass"                             -> biomass
+#   Saatchi2011 "above- and below-ground live biomass"             -> biomass
+#   USForest    "US 48-States and Alaska Forest Biomass"           -> biomass
+const CARBON_FRACTION = Dict(
+    "XuSaatchi" => 1.0,
+    "Thurner" => 1.0,
+    "ESACCI" => 0.5,
+    "GEOCARBON" => 0.5,
+    "Saatchi2011" => 0.5,
+    "USForest" => 0.5,
+)
+
 const SENTINEL = 1e30
 
 valid(x) = !ismissing(x) && isfinite(x) && abs(x) < SENTINEL
@@ -63,7 +85,7 @@ Time-mean observed woody carbon density (kg C m^-2) at the nearest grid cell.
 Returns NaN where the product has no data, which is the honest answer over
 desert and ice rather than a zero that would flatter the comparison.
 """
-function obs_at(path, lon, lat)
+function obs_at(name, path, lon, lat)
     ds = NCDatasets.NCDataset(path)
     try
         vn = first([
@@ -87,7 +109,8 @@ function obs_at(path, lon, lat)
         good = filter(valid, col)
         isempty(good) && return NaN
         # kg m^-2 stays; Mg ha^-1 becomes kg m^-2 by 0.1
-        f = occursin("kg", units) ? 1.0 : 0.1
+        # Mg ha^-1 -> kg m^-2 is 0.1; then dry biomass -> carbon where needed.
+        f = (occursin("kg", units) ? 1.0 : 0.1) * CARBON_FRACTION[name]
         return (sum(good) / length(good)) * f
     finally
         close(ds)
@@ -129,10 +152,10 @@ function main(runroot)
             q_tau = p.q_τ_stem,
         )
         obs = Float64[]
-        for (_, path) in PRODUCTS
+        for (nm, path) in PRODUCTS
             isfile(path) || continue
             v = try
-                obs_at(path, s.lon, s.lat)
+                obs_at(nm, path, s.lon, s.lat)
             catch
                 NaN
             end

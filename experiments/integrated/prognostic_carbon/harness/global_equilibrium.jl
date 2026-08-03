@@ -37,6 +37,28 @@ const PRODUCTS = [
 
 # netCDF classic missing-value sentinel: finite, and not `missing`, so it passes
 # both of the obvious checks and enters a mean as ~1e36 if not rejected here.
+
+# Carbon fraction of each product. Four of the six report **dry biomass**, not
+# carbon - readable only in `long_name`, not in `units`, which is how an earlier
+# version of this file got it wrong and made the model look unbiased against
+# ESACCI and too low against GEOCARBON. 0.5 is the standard woody carbon
+# fraction, and it reconciles GEOCARBON with the ILAMB benchmark total (774 Pg
+# as-read x 0.5 = 387 Pg, against ILAMB's 364 Pg).
+#   XuSaatchi   "annual carbon density ... live woody vegetation"  -> carbon
+#   Thurner     "Carbon Mass in Vegetation"                        -> carbon
+#   ESACCI      "Above-ground biomass"                             -> biomass
+#   GEOCARBON   "above_ground_biomass"                             -> biomass
+#   Saatchi2011 "above- and below-ground live biomass"             -> biomass
+#   USForest    "US 48-States and Alaska Forest Biomass"           -> biomass
+const CARBON_FRACTION = Dict(
+    "XuSaatchi" => 1.0,
+    "Thurner" => 1.0,
+    "ESACCI" => 0.5,
+    "GEOCARBON" => 0.5,
+    "Saatchi2011" => 0.5,
+    "USForest" => 0.5,
+)
+
 const SENTINEL = 1e30
 valid(x) = !ismissing(x) && isfinite(x) && abs(x) < SENTINEL
 
@@ -133,7 +155,7 @@ end
 
 Time-mean of an observational product on its own grid, in kg C m^-2.
 """
-function obs_grid(path)
+function obs_grid(name, path)
     ds = NCDatasets.NCDataset(path)
     try
         vn = first([
@@ -141,7 +163,9 @@ function obs_grid(path)
             occursin("cveg", lowercase(k))
         ])
         v = ds[vn]
-        f = occursin("kg", get(v.attrib, "units", "")) ? FT(1) : FT(0.1)
+        f =
+            (occursin("kg", get(v.attrib, "units", "")) ? FT(1) : FT(0.1)) *
+            FT(CARBON_FRACTION[name])
         lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
         lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
         A = as_lon_lat_time(ds, vn)
@@ -288,7 +312,7 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
     for (name, path) in PRODUCTS
         isfile(path) || continue
         olons, olats, O = try
-            obs_grid(path)
+            obs_grid(name, path)
         catch e
             @warn "could not read $name" exception = e
             continue
