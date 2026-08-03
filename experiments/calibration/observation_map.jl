@@ -69,10 +69,25 @@ function ClimaCalibrate.observation_map(
         end
     end
 
+    # A member that dies late writes a valid but truncated NetCDF — fewer time
+    # steps, no exception — so the `catch` above never fires and its column is
+    # left partly filled. Mark any such column failed so the EKP failure handler
+    # treats it like any other dead member, rather than leaving the matrix
+    # incomplete and losing the whole iteration to one bad member.
+    for m in 1:ensemble_size
+        missing_names = EnsembleBuilder.missing_short_names(g_ens_builder, m)
+        if !isempty(missing_names)
+            @error "Member $m produced incomplete data for $(join(sort!(collect(missing_names)), ", ")); filling observation map entry with NaNs"
+            EnsembleBuilder.fill_g_ens_col!(g_ens_builder, m, NaN)
+        end
+    end
+
     if EnsembleBuilder.is_complete(g_ens_builder)
         return EnsembleBuilder.get_g_ensemble(g_ens_builder)
     else
-        @error "G ensemble matrix is not completed. You may find it useful to call `EnsembleBuilder.missing_short_names(g_ens_builder, 1) or display g_ens_builder in the REPL"
+        error(
+            "G ensemble matrix is still incomplete after NaN-filling failed members. Call `EnsembleBuilder.missing_short_names(g_ens_builder, m)` or display g_ens_builder in the REPL",
+        )
     end
 end
 
