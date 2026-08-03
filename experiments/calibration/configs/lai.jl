@@ -88,31 +88,12 @@ function get_calibration_prior()
         EKP.constrained_gaussian("optimal_lai_z_c4", 15.0, 4.0, 1.0, 40.0),
         EKP.constrained_gaussian("optimal_lai_sigma", 0.939, 0.3, 0.1, 3.0),
         EKP.constrained_gaussian("optimal_lai_sigma_c4", 0.939, 0.3, 0.1, 3.0),
-        # alpha is a bounded rate; σ kept clear of the bounds.
-        # Do not cap this to dodge the GPU DomainError that kills the occasional
-        # member. Over 275 member-runs across five stage-3 configurations, 7
-        # crashed (2.5 %) and alpha does not separate them: crashes occur at
-        # alpha as low as 0.122, successes as high as 0.234, and the per-member
-        # crash rate is flat (0 % below 0.10, then 2.4 / 2.1 / 1.4 % through
-        # 0.21). The one elevated bin, 3/19 above 0.21, comes entirely from a
-        # single experiment which crashed 3/11 there while two others crashed
-        # 0/8 — so it is confounded with configuration, not attributable to
-        # alpha. The failure itself is a negative-real sqrt/log/^ inside a
-        # kernel — the device message "This operation requires a complex input
-        # to return a complex result" is CUDA.jl's override of
-        # Base.Math.throw_complex_domainerror — and the obvious optimal-LAI
-        # candidates are ruled out (lambertw0's branch-point sqrt is exactly 0
-        # at its guard, and compute_LAI_max's log is clamped), so it is probably
-        # not in this model at all. A 0.18 cap would have prevented 4 of the 7 crashes while
-        # excluding 84 of 268 successful member-runs, and since every
-        # calibration settles at alpha 0.18-0.21 it would bind on the posterior
-        # and silently truncate the answer. The fix is to guard the faulting
-        # expression: run a failing member with CUDA_LAUNCH_BLOCKING=1 AND
-        # -g2. The first makes the exception surface at the launch that caused
-        # it rather than at the next synchronisation; the second is what
-        # actually yields a device stacktrace. Do not work from the host trace,
-        # which points at the ClimaDiagnostics writer, where the deferred
-        # exception surfaces rather than where it is raised.
+        # alpha is a bounded rate; σ kept clear of the bounds. Do not narrow the
+        # upper bound to dodge the GPU DomainError that kills ~2.5 % of members:
+        # over 275 member-runs alpha does not separate the failures (crashes at
+        # 0.122, successes at 0.234), and since every calibration settles at
+        # 0.18-0.21 a cap there binds on the posterior. See the census and the
+        # crash diagnosis in unsupervised_loop/STATE.md.
         EKP.constrained_gaussian("optimal_lai_alpha", 0.0701, 0.03, 0.01, 0.3),
     ]
     return EKP.combine_distributions(priors)
