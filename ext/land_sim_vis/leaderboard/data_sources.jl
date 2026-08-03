@@ -74,6 +74,51 @@ function _preprocess_sim_var(var, ::Val{:hr})
     return var
 end
 
+"""
+    _water_mass_flux_to_mm_per_day(var)
+
+Convert a simulation water mass flux (`kg m^-2 s^-1`) to `mm / day`.
+"""
+_water_mass_flux_to_mm_per_day(var) =
+    ClimaAnalysis.units(var) != "kg m^-2 s^-1" ? var :
+    ClimaAnalysis.convert_units(
+        var,
+        "mm / day",
+        conversion_function = units -> units * 86400.0,
+    )
+
+"""
+    _water_volume_flux_to_mm_per_day(var)
+
+Convert a simulation water volume flux (`m^3` of water per `m^2` of ground per
+second, i.e. `m s^-1`) to `mm / day` using the density of liquid water.
+"""
+_water_volume_flux_to_mm_per_day(var) =
+    ClimaAnalysis.units(var) != "m s^-1" ? var :
+    ClimaAnalysis.convert_units(
+        var,
+        "mm / day",
+        conversion_function = units -> units * 1000.0 * 86400.0,
+    )
+
+_preprocess_sim_var(var, ::Val{:sr}) = _water_volume_flux_to_mm_per_day(var)
+_preprocess_sim_var(var, ::Val{:ssr}) = _water_volume_flux_to_mm_per_day(var)
+
+# `compute_canopy_transpiration!` returns a mass flux, so `m s^-1` in older
+# output denotes the same quantity as `kg m^-2 s^-1`.
+function _preprocess_sim_var(var, ::Val{:trans})
+    ClimaAnalysis.units(var) == "m s^-1" &&
+        (var = ClimaAnalysis.set_units(var, "kg m^-2 s^-1"))
+    return _water_mass_flux_to_mm_per_day(var)
+end
+
+# Precipitation is reported downward-positive; the partitioning ratios use its
+# magnitude.
+function _preprocess_sim_var(var, ::Val{:precip})
+    var = _water_mass_flux_to_mm_per_day(var)
+    return ClimaAnalysis.remake(var; data = abs.(var.data))
+end
+
 _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
@@ -149,6 +194,23 @@ const ERA5_TO_CLIMA_NAMES = [
     "msuwlwrf" => "lwu",
     "msuwswrf" => "swu",
 ]
+
+"""
+`ERA5_TO_CLIMA_NAMES` plus the runoff and evaporation the partitioning
+leaderboard needs; the default `era5_to_clima_names` of
+`compute_partitioning_leaderboard` and `create_partitioning_plots`.
+
+These are kept out of `ERA5_TO_CLIMA_NAMES` because the standard ERA5
+leaderboard draws a row per loaded variable the simulation also has, so adding
+them there would add rows to it.
+"""
+const ERA5_PARTITION_TO_CLIMA_NAMES = [
+    ERA5_TO_CLIMA_NAMES
+    "msror" => "sr"
+    "mssror" => "ssr"
+    "mer" => "et"
+]
+
 const STANDARD_UNITS = Dict("W m**-2" => "W m^-2", "W m-2" => "W m^-2")
 
 """
@@ -210,6 +272,28 @@ preprocess(::ERA5DataLoader, var, ::Val{:lhf}) =
     _preprocess_var(var; flip_sign = true)
 preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
 preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
+preprocess(::ERA5DataLoader, var, ::Val{:sr}) =
+    _preprocess_var(_era5_water_flux_to_mm_per_day(var))
+preprocess(::ERA5DataLoader, var, ::Val{:ssr}) =
+    _preprocess_var(_era5_water_flux_to_mm_per_day(var))
+# ERA5 evaporation is negative downward-positive; CliMA reports it positive.
+preprocess(::ERA5DataLoader, var, ::Val{:et}) =
+    _preprocess_var(_era5_water_flux_to_mm_per_day(var); flip_sign = true)
+
+"""
+    _era5_water_flux_to_mm_per_day(var)
+
+Convert an ERA5 water mass flux (`kg m**-2 s**-1`) to `mm / day`, matching the
+units the simulation water fluxes are preprocessed into.
+"""
+function _era5_water_flux_to_mm_per_day(var)
+    ClimaAnalysis.units(var) in ("kg m**-2 s**-1", "kg m^-2 s^-1") || return var
+    return ClimaAnalysis.convert_units(
+        var,
+        "mm / day",
+        conversion_function = units -> units * 86400.0,
+    )
+end
 
 function _preprocess_var(var; flip_sign = false)
     short_name = ClimaAnalysis.short_name(var)
@@ -380,18 +464,16 @@ containing observational data, and returns a masking function. The masking
 function is used to correctly normalize the global bias and global RMSE.
 """
 function get_mask_dict(data_loader::ERA5DataLoader)
-    # Dict for loading in masks
-    mask_dict = Dict{String, Any}()
-
+    # ERA5 is gap-free over land, so every variable uses the same ocean mask.
     make_mask_fn =
         (sim_var, obs_var) -> begin
             return ClimaAnalysis.apply_oceanmask
         end
 
-    mask_dict["shf"] = make_mask_fn
-    mask_dict["lhf"] = make_mask_fn
-    mask_dict["swu"] = make_mask_fn
-    mask_dict["lwu"] = make_mask_fn
+    mask_dict = Dict{String, Any}(
+        short_name => make_mask_fn for
+        short_name in available_vars(data_loader)
+    )
 
     @assert keys(mask_dict) == available_vars(data_loader)
     return mask_dict
