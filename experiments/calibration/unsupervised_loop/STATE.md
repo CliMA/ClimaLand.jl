@@ -1700,3 +1700,43 @@ than anything in the canopy.
 launch that caused it instead of at the next synchronisation, but it does not
 give a location. The log itself names the missing piece: run the member with
 **`-g2`** to get a device stacktrace. Use both.
+
+### ⭐ The crash is NOT parameter-determined — and one bad member was killing whole iterations (2026-08-02)
+
+D's chunk with `N_ITERATIONS=5` died outright: `update_ensemble!(ekp, nothing)`,
+a `MethodError`, after `observation_map.jl:75` logged "G ensemble matrix is not
+completed". No iteration was produced.
+
+**Cause 1 — two members wrote truncated output.** All seven members of iteration
+5 reported `checkpoint.txt = completed`, but `member_001` and `member_002` had
+**31 of 36** monthly time steps in `lai_1M_average.nc`. Both had hit the same
+GPU `DomainError`. `process_member_data!` does not throw on a short-but-valid
+NetCDF, so the existing `try/catch` never NaN-filled their columns, the builder
+stayed incomplete, and `observation_map` fell out of its `if` returning
+`nothing`. One or two dead members thus cost the entire iteration — exactly what
+`SampleSuccGauss` exists to prevent. Fixed in `325aab037`: any column with
+missing short names is NaN-filled before the completeness check, and a still-
+incomplete matrix now raises a clear error instead of returning `nothing`.
+
+**Cause 2, and it settles the alpha question — the crash is not deterministic in
+the parameters.**
+
+| member | z | sigma | alpha | outcome |
+|---|---|---|---|---|
+| 001 | 23.164587167583516 | 1.0357 | 0.1367 | **crashed** |
+| 002 | 23.425649461555658 | 1.0424 | 0.1395 | **crashed** |
+| 003 | 23.164587167583516 | 1.0406 | 0.1376 | completed |
+
+`member_001` and `member_003` carry the **identical** `z` — the same Float64 to
+all 17 digits — with sigma and alpha differing in the third decimal, and one
+crashed while the other finished. A parameter-space explanation cannot survive
+that. Combined with the earlier census (crashes from alpha 0.122 to 0.242,
+successes to 0.234), the fault is best read as **non-deterministic**: a race, an
+uninitialised read, or a value that only occasionally goes negative, not a region
+of parameter space the optimiser walks into.
+
+This independently vindicates reverting the alpha cap — there was never a safe
+band to stay inside — and it raises the priority of the guard, since no prior
+choice can avoid a ~2.5 % per-member failure rate. It also means a *repeat* of
+the same parameter set may well succeed, so resubmitting a failed iteration is a
+legitimate recovery, not a gamble on different numbers.
