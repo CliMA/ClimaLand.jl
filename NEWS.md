@@ -25,6 +25,18 @@ v1.11.1
   custom initial-condition function must call `set_canopy_biomass_initial_conditions!`.
   Adds the `pra` diagnostic and the `optimal_lai_tau_long_term` parameter.
   PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-✨feature] Add a leaderboard of the model's energy and water partitioning against
+  ERA5 (`Partitioning_leaderboard.png`), and zonal-mean, seasonal-cycle and
+  interannual-variability panels to the annual leaderboards.
+  PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
+- ![][badge-🚀performance] Resolve each leaderboard's land-sea mask once instead of on every
+  masked slice, taking a 19-year run of all leaderboards from ~40 min to ~8 min.
+  PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
+- ![][badge-🐛bugfix] Correct the units of the `trans` diagnostic from `m s^-1` to
+  `kg m^-2 s^-1`. PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
+- ![][badge-🔥behavioralΔ] Read single-site plotting data through `site_timeseries`, which works
+  with either output writer, and fix the `DictWriter` timestamps across a year boundary.
+  PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
 
 v1.11.0
 -----
