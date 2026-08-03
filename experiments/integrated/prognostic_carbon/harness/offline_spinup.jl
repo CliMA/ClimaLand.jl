@@ -159,12 +159,22 @@ function spinup(
     map_n = p.n_map_woody,
     T_ref_tau = 0.0,
     q_tau = 1.0,
+    # EXPERIMENTAL, offline only: let the precipitation half-point itself depend
+    # on mean annual temperature. A cold column needs less rain to hold wood
+    # because evaporative demand is lower, which is the one thing a raw-MAP ramp
+    # cannot express - it is why the ported ramp under-predicts boreal forest.
+    # `q_map = 1` disables it exactly and recovers the model's behaviour, so the
+    # offline tools still reproduce the model unless this is asked for.
+    q_map = 1.0,
+    T_ref_map = 288.15,
 )
     n = length(d["gpp"])
     # MAT is a climate mean over the record, evaluated once - not a per-step
     # quantity - because stem longevity reflects where a plant grows.
     MAT = haskey(d, "tair") ? sum(d["tair"]) / length(d["tair"]) : FT(0)
     tau_scale = tau_stem_scale(MAT, T_ref_tau, q_tau)
+    # Warmer => higher half-point => the same rainfall supports less wood.
+    map_half = map_half * q_map^((MAT - T_ref_map) / 10)
     pools = pools0
     steps = round(Int, years * n)
     acc = (; Ra = FT(0), litter = FT(0), GPP = FT(0), S = FT(0))

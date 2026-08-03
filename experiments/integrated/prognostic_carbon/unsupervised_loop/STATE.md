@@ -2165,3 +2165,45 @@ code as committed.
 **The loop is idle by design from here.** Both remaining levers need the user:
 the GFED fire/land-use input, and the ClimaLand 1.11 version bump. Iterations
 without those should verify nothing has regressed and stop, not invent tasks.
+
+---
+
+## f_stem(MAT, MAP) tested and REJECTED (2026-08-03, iteration 66)
+
+User-suggested: make the precipitation half-point temperature-dependent, as
+`τ_stem` already is, so cold columns hold wood at lower rainfall. Implemented
+**offline only** (`q_map`, `T_ref_map` in `spinup`, default `q_map = 1` so the
+offline tools still reproduce the model).
+
+**Sites: it is a trade, not a gain.** Count stays flat (10/18 at q = 1, 1.5 and
+2.0) because equal numbers move in and out:
+
+| | q=1.0 | q=2.0 | observed |
+|---|---|---|---|
+| central_siberia | 1.74 | **6.14 ✓** | 4.7–13.9 |
+| canada_boreal | 3.17 | **8.36 ✓** | 4.0–8.64 |
+| fennoscandia | 3.84 | **6.89 ✓** | 4.08–8.77 |
+| ozark_us | 6.84 ✓ | 8.59 ✗ | 2.08–7.03 |
+| us_great_plains | 4.05 ✓ | 5.78 ✗ | 0.05–5.06 |
+| borneo | 14.05 ✓ | 11.93 ✗ | 13.95–43.61 |
+| congo_basin | 13.04 | **7.65** | 16.31–42.93 |
+
+It fixes a 2.7× boreal deficit at the cost of several ~1.2× misses.
+
+**Globally it is a clear loss.** Spatial correlation falls **monotonically** in
+all three products, and bias worsens in two of three:
+
+| q_map | XuSaatchi *r* | ESACCI *r* | Saatchi *r* |
+|---|---|---|---|
+| **1.0** | **0.631** | **0.623** | **0.657** |
+| 1.5 | 0.566 | 0.543 | 0.592 |
+| 2.0 | 0.485 | 0.461 | 0.524 |
+
+**Why:** a temperature-shifted half-point raises woody allocation across the
+whole cold band, not just in real boreal forest — tundra, steppe and cropland
+gain wood they should not have. The site set has three boreal forests and
+little cold non-forest; the map has a great deal, so the site view flattered it.
+
+**Not ported.** `q_map` stays in the harness at its disabled default. This is the
+fourth predictor tested and rejected for the boreal/grassland conflict, after
+precipitation at site level, soil properties and aridity.

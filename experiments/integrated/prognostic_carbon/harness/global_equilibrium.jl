@@ -187,7 +187,7 @@ end
 # "use the model's own parameter", which is the only correct default: this script
 # exists to reproduce what the model does, and a hard-coded 0 would silently
 # disable a mechanism the model has enabled.
-function main(dir; years = 400, map_half = nothing)
+function main(dir; years = 400, map_half = nothing, q_map = 1.0)
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
     @info "reading monthly driver climatologies" dir vars
@@ -239,6 +239,7 @@ function main(dir; years = 400, map_half = nothing)
                 p;
                 years,
                 map_half = mh,
+                q_map,
                 T_ref_tau = p.T_ref_τ_stem,
                 q_tau = p.q_τ_stem,
             )
@@ -253,8 +254,8 @@ function main(dir; years = 400, map_half = nothing)
 
     out = joinpath(
         dir,
-        map_half === nothing ? "equilibrium_carbon.nc" :
-        "equilibrium_carbon_maphalf$(mh).nc",
+        (map_half === nothing && q_map == 1) ? "equilibrium_carbon.nc" :
+        "equilibrium_carbon_mh$(mh)_q$(q_map).nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
@@ -329,9 +330,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
         error("usage: julia -t auto global_equilibrium.jl <driver_outdir>")
     yi = findfirst(==("--years"), ARGS)
     mi = findfirst(==("--map-half"), ARGS)
+    qi = findfirst(==("--q-map"), ARGS)
     main(
         ARGS[1];
         years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]),
         map_half = mi === nothing ? nothing : parse(FT, ARGS[mi + 1]),
+        q_map = qi === nothing ? 1.0 : parse(FT, ARGS[qi + 1]),
     )
 end
