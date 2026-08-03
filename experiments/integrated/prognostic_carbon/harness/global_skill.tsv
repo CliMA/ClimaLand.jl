@@ -14,16 +14,22 @@ GEOCARBON	9798	-1.71	6.87	6.66	8.14	-1.88	0.579
 Saatchi2011	5787	1.53	5.31	5.09	5.08	1.53	0.657
 USForest	1035	1.91	4.28	3.82	4.51	1.82	0.576
 #
-# Observation-vs-observation RMSE on overlapping cells - the irreducible floor:
-pair	n_cells	RMSE
+# Observation-vs-observation RMSE on overlapping cells, ALL CONVERTED TO CARBON.
+# An earlier version of this block compared four dry-biomass products as if they
+# were carbon and reported a median of 4.38; corrected it is 2.88, i.e. the
+# products agree BETTER than was claimed and the model has more room to improve.
+pair	n_cells	RMSE_kgC_m2
 XuSaatchi-Thurner	6707	2.20
-XuSaatchi-ESACCI	17113	4.38
-XuSaatchi-GEOCARBON	10426	7.49
-XuSaatchi-Saatchi2011	6143	3.17
-Thurner-ESACCI	6857	3.42
-Thurner-GEOCARBON	5836	3.43
-Thurner-Saatchi2011	257	2.78
-ESACCI-GEOCARBON	10590	6.25
-ESACCI-Saatchi2011	6373	5.80
-GEOCARBON-Saatchi2011	4538	8.30
-# median obs-vs-obs RMSE = 4.38; model median RMSE = ~4.8
+XuSaatchi-ESACCI	17113	1.82
+XuSaatchi-GEOCARBON	10426	2.88
+XuSaatchi-Saatchi2011	6143	2.89
+Thurner-ESACCI	6857	2.21
+Thurner-GEOCARBON	5836	1.01
+Thurner-Saatchi2011	257	2.87
+ESACCI-GEOCARBON	10590	3.12
+ESACCI-Saatchi2011	6373	2.90
+GEOCARBON-Saatchi2011	4538	4.15
+# median obs-vs-obs RMSE = 2.88 (range 1.01-4.15)
+#
+# NOTE: the model skill block above this line is from the PRE-recalibration run
+# and is being regenerated on the recalibrated base (jobs 6998435 / 6998436).

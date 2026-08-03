@@ -2293,3 +2293,19 @@ six-product summary and its ESACCI/Saatchi binned columns.
 
 **Rule:** for any observational product, read `long_name` and confirm whether it
 is carbon or dry matter. `units` alone cannot tell you.
+
+### Observational floor corrected: 2.88, not 4.38 (2026-08-03, iteration 70)
+
+The obs-vs-obs RMSE block was computed before the biomass→carbon fix, comparing
+four dry-biomass products as if they were carbon. Recomputed with the correct
+carbon fractions: **median 2.88 kg C m⁻², range 1.01 (Thurner–GEOCARBON) to
+4.15 (GEOCARBON–Saatchi2011).**
+
+**This corrects a claim that flattered the model.** I wrote that the model's
+~4.8 RMSE was "only slightly above the observations' own median disagreement".
+Converting to carbon makes the products agree *better*, so the true floor is
+2.88 and the model sits clearly above it. There is more genuine room to improve
+than I reported — which is the right context for the GPP recalibration.
+
+**Rule reinforced:** a derived statistic inherits every unit error in its
+inputs. The floor was wrong for exactly the same reason the biases were.
