@@ -2418,3 +2418,38 @@ target product than by the one I had been using.
 **Rule:** score against the product the model was calibrated to, and say which
 product every ratio refers to. A bias number without its reference is not a
 result.
+
+### Final state at z = 24.3 (2026-08-03, iteration 83)
+
+Batteries `7002249` (CARBON=1) / `7002250` (CARBON=0), both 20/20.
+**`RULE1 PASS`, `rel_diff = 0.0` at all 20 sites.**
+
+| metric | z = 15 | z = 24.3 |
+|---|---|---|
+| GPP vs **GOSIF** (target) | 1.18× | **1.06×** |
+| LAI vs MODIS / AVHRR / AVH15C1 | 1.10 / 1.18 / 1.27× | **0.85 / 0.91 / 0.98×** |
+| biomass bias, XuSaatchi | +1.51 | **+0.96** |
+| biomass bias, GEOCARBON | +1.92 | **+1.15** |
+| biomass *r*, all six | — | improved or held |
+| **site score** | 11/20 | **10/20** |
+
+**The site count and the global metrics disagree, and the global metrics are the
+better evidence.** Twenty biome-balanced sites are a coarse, non-area-weighted
+sample; the map is 22 419 columns. The same divergence appeared when `q_map` was
+tested — there the sites looked neutral and the map showed a clear loss, and the
+map was right. Here the sites look slightly worse and the map shows a clear gain
+in every product.
+
+Binned model/observed at z = 24.3:
+
+| obs bin | XuSaatchi | ESACCI | Saatchi2011 |
+|---|---|---|---|
+| > 10 | 0.8× | 0.8× | 1.3× |
+| 5–10 | 1.1× | 1.0× | 1.6× |
+| 2–5 | 1.4× | 1.7× | 2.8× |
+| 0.5–2 | 2.8× | 3.7× | 3.1× |
+| < 0.5 | 7.6× | 15.7× | 7.6× |
+
+The shape is unchanged: forests right, an order of magnitude too much wood where
+observations show none. **Fixing the drivers did not touch the residual**, which
+is what the disturbance diagnosis predicted.
