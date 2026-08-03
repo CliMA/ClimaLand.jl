@@ -2395,3 +2395,26 @@ infrastructure failure rather than a code fault; resubmitting them alone with
 
 **Rule:** `pass=N fail=0` is not success unless `N` equals the expected count
 *and* the summary file exists. Absence of a FAIL is not evidence of a pass.
+
+### GOSIF is the right GPP reference, and z = 24.3 matches it (2026-08-03, iteration 82)
+
+Every earlier "GPP is too high" statement here was referenced to the
+FLUXCOM family (FLUXCOM, GBAF, FLUXNET-MTE, WECANN). The calibration target is
+**GOSIF-GPP v2**, which ships in the `inversion_nee` ClimaLand artifact
+(`derived_nee_gpp_er_rh_2002_2020.nc`, 1°, monthly, g C m⁻² month⁻¹) — hash
+`d400472ea191639cb1dafac41b09ce36383aee54`. That artifact also carries
+`fire_gfed5` and `fire_ct`, which bear on the outstanding fire question.
+
+| run | model | GOSIF | ratio | *r* |
+|---|---|---|---|---|
+| z = 15 (recalibrated) | 2.69 | 2.29 | 1.18× | 0.793 |
+| **z = 24.3** | 2.41 | 2.29 | **1.06×** | **0.801** |
+
+**`z = 24.3` therefore gives GPP within 6% of its own target**, and against
+GOSIF's wider coverage (15 087 cells vs FLUXCOM's 12 930) it looks better than
+the FLUXCOM comparison suggested. The change is justified more cleanly by the
+target product than by the one I had been using.
+
+**Rule:** score against the product the model was calibrated to, and say which
+product every ratio refers to. A bias number without its reference is not a
+result.
