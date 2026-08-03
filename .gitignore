@@ -40,3 +40,6 @@ docs/site/
 # committed for packages, but should be committed for applications that require a static
 # environment.
 Manifest.toml
+
+# PBS job logs, written into the submit directory by the calibration orchestrator
+clima_calibration.o*
