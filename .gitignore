@@ -43,3 +43,15 @@ Manifest.toml
 
 # PBS job logs, written into the submit directory by the calibration orchestrator
 clima_calibration.o*
+clima_long_run.o*
+.claude/
+.bashrc
+.bash_profile
+.gitconfig
+.profile
+.ripgreprc
+.zshrc
+.zprofile
+.idea
+.vscode
+.mcp.json
