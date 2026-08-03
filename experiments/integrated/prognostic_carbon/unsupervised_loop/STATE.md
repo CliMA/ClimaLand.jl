@@ -2453,3 +2453,54 @@ Binned model/observed at z = 24.3:
 The shape is unchanged: forests right, an order of magnitude too much wood where
 observations show none. **Fixing the drivers did not touch the residual**, which
 is what the disturbance diagnosis predicted.
+
+---
+
+## Fire: diagnosed, not prescribed — and an earlier recommendation retracted (2026-08-03, iteration 85)
+
+**Retraction.** I earlier recommended admitting a GFED fire/land-use dataset as a
+model input. That was wrong on this project's own terms: a prescribed burned-area
+map is exactly as unextrapolatable as a PFT map — it fits the present day and is
+wrong under any climate it was not observed in. ClimaLand has to generalise as
+part of a climate model, which is *why* PFTs are excluded. I should have applied
+that reasoning myself instead of needing it pointed out.
+
+**Diagnostic instead** (`harness/fire_diagnostic.tsv`): binning the z = 24.3 map
+by GFED4.1S burned area, the model's biomass is flat at 3.8–4.6 kg C m⁻² across
+every bin while the observations fall from 3.00 to 2.28. **The residual grows
+2.8× from the least- to the most-burnt bin.** The model is blind to fire and its
+error scales with fire.
+
+**On predictability**, which is the binding constraint: burned area rises steeply
+with MAT (6.0 → 25.1 °C) while MAP barely moves (856 → 1076 mm, non-monotonic).
+So fire covaries with climate but is not separable from temperature here — and
+that is *not* enough to justify `fire(MAT)`. `τ_stem` already uses MAT, and the
+`q_map(MAT)` test failed precisely by re-scaling a whole temperature band. A real
+scheme needs fuel load and fuel moisture — which is what prognostic biomass and
+litter provide.
+
+**So this PR is the prerequisite, not the fix.** The residual is now quantified
+and attributed rather than described, and the pools and litter fluxes a
+stochastic fire model needs are in place and verified.
+
+### Global live carbon pool at z = 24.3
+
+| pool | Pg C |
+|---|---|
+| C_stem (wood) | 540 |
+| C_root | 56 |
+| C_leaf | 29 |
+| **cVeg (total live)** | **635** |
+
+Plausible: published live-vegetation estimates cluster ~450–650 Pg C, and this is
+a *potential-vegetation* equilibrium with no land use, fire or harvest, so it
+should sit high. **Caveat: root carbon looks low** — 8.8% of the live pool, where
+~20–25% belowground is typical. The allocation fractions are global constants
+never tuned against belowground data, because no observational product
+constrained them.
+
+**Not yet answerable for the carbon-tracking goal:** global SOC (prognostic and
+verified at sites, but `soc`/`hr` were not among the seven global driver fields,
+so it is one extra diagnostic in a rerun, not new physics); permafrost
+protection; and wetland anoxia. Those are what "does permafrost SOC decrease,
+does wetland SOC accumulate" require.
