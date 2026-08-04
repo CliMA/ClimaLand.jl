@@ -95,10 +95,14 @@ function step_pools(
     map_half = 0.0,
     map_n = 2.0,
     tau_scale = 1.0,
+    w_scale = 1.0,
 )
     (C_sugar, C_leaf, C_stem, C_root) = pools
     MAP = haskey(d, "pra") ? d["pra"][i] : zero(FT)
-    w = woody_fraction(MAP, map_half, map_n)
+    # `w_scale` is an extra, externally supplied limit on woody allocation -
+    # used to test a candidate predictor offline before it becomes model code.
+    # 1 disables it exactly, so the harness still reproduces the model.
+    w = woody_fraction(MAP, map_half, map_n) * w_scale
     GPP = M_C * d["gpp"][i]
     Rd = M_C * d["rd"][i]
     T = d["ct"][i]
@@ -167,6 +171,7 @@ function spinup(
     # offline tools still reproduce the model unless this is asked for.
     q_map = 1.0,
     T_ref_map = 288.15,
+    w_scale = 1.0,
 )
     n = length(d["gpp"])
     # MAT is a climate mean over the record, evaluated once - not a per-step
@@ -181,7 +186,8 @@ function spinup(
     nacc = 0
     for k in 1:steps
         i = mod1(k, n)
-        pools, fl = step_pools(pools, d, i, p, dt; map_half, map_n, tau_scale)
+        pools, fl =
+            step_pools(pools, d, i, p, dt; map_half, map_n, tau_scale, w_scale)
         if k > steps - n  # last cycle only
             acc = (;
                 Ra = acc.Ra + fl.Ra,

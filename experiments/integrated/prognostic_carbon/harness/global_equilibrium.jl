@@ -215,12 +215,100 @@ end
 # "use the model's own parameter", which is the only correct default: this script
 # exists to reproduce what the model does, and a hard-coded 0 would silently
 # disable a mechanism the model has enabled.
+const PR_PATH = "/glade/campaign/cesm/community/lmwg/diag/ILAMB/DATA/pr/GPCCv2018/pr.nc"
+
+# The conventional threshold for a "dry" month in tropical ecology, and the ET
+# proxy in the standard maximum-cumulative-water-deficit definition.
+const DRY_MM_PER_MONTH = FT(100)
+
+"""
+    pr_climatology(path)
+
+Monthly precipitation climatology in mm/month on the product's own grid.
+"""
+function pr_climatology(path)
+    ds = NCDatasets.NCDataset(path)
+    try
+        lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
+        lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
+        v = ds["pr"]
+        units = get(v.attrib, "units", "")
+        A = as_lon_lat_time(ds, "pr")
+        nt = size(A, 3)
+        nyr = div(nt, 12)
+        clim = fill(FT(NaN), size(A, 1), size(A, 2), 12)
+        for m in 1:12
+            # Days in the month convert a rate to a monthly total; using 30 for
+            # every month would bias the dry-season count near the threshold.
+            dpm = FT(DAYS_IN_MONTH[m])
+            f =
+                occursin("mm d-1", units) ? dpm :
+                occursin("kg m-2 s-1", units) ? dpm * FT(86400) :
+                error("unhandled precipitation units '$units'")
+            for i in axes(A, 1), j in axes(A, 2)
+                s, n = FT(0), 0
+                for y in 0:(nyr - 1)
+                    x = A[i, j, y * 12 + m]
+                    valid(x) && (s += FT(x); n += 1)
+                end
+                n > 0 && (clim[i, j, m] = f * s / n)
+            end
+        end
+        return lons, lats, clim
+    finally
+        close(ds)
+    end
+end
+
+"""
+    annual_deficit(p)
+
+Total annual water deficit (mm): the monthly shortfall below the threshold,
+summed. Unlike MCWD this needs no running maximum and no memory of where the wet
+season started - it is a pointwise function of precipitation accumulated over a
+year, i.e. exactly the machinery `P_annual` already uses in the model. If it
+separates as well as MCWD, it is the form to implement.
+"""
+annual_deficit(p) = sum(max(DRY_MM_PER_MONTH - x, zero(FT)) for x in p)
+
+"Number of months below the dry threshold."
+dry_months(p) = count(<(DRY_MM_PER_MONTH), p)
+
+
+"""
+    annual_deficit_grid(lons, lats)
+
+Annual water deficit (mm) sampled onto the model grid. Kept here rather than in
+`check_seasonality.jl` so the diagnostic that evaluated this predictor and the
+equilibrium run that applies it cannot drift apart.
+"""
+function annual_deficit_grid(lons, lats)
+    plons, plats, P = pr_climatology(PR_PATH)
+    D = fill(FT(NaN), length(lons), length(lats))
+    for i in eachindex(lons), j in eachindex(lats)
+        p = ntuple(
+            m -> nearest(plons, plats, view(P, :, :, m), lons[i], lats[j]),
+            12,
+        )
+        all(valid, p) && (D[i, j] = annual_deficit(FT.(p)))
+    end
+    return D
+end
+
+# `deficit_half` (mm/yr) switches on the seasonality limit tested by
+# `check_seasonality.jl`: woody allocation is further reduced where the annual
+# water deficit is large, which is the one predictor found so far that separates
+# wet savanna from wet forest. Precipitation for it comes from GPCC, so this is a
+# feasibility test of the predictor, not of the model - a model-side version must
+# read ERA5 and be re-verified.
 function main(
     dir;
     years = 400,
     map_half = nothing,
     map_n = nothing,
     q_map = 1.0,
+    deficit_half = nothing,
+    deficit_n = 4.0,
 )
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
@@ -243,6 +331,9 @@ function main(
     # cells the observations say carry none.
     mn = map_n === nothing ? p.n_map_woody : FT(map_n)
     @info "woody fraction" map_half = mh n = mn
+    Dfield =
+        deficit_half === nothing ? nothing : annual_deficit_grid(lons, lats)
+    deficit_half === nothing || @info "seasonality limit" deficit_half deficit_n
 
     C_stem = fill(FT(NaN), nlon, nlat)
     C_leaf = fill(FT(NaN), nlon, nlat)
@@ -284,12 +375,20 @@ function main(
                 d[v][k] = x
             end
             any(v -> any(!isfinite, d[v]), vars) && continue
+            # Declines from 1 in an aseasonal climate toward 0 as the
+            # dry-season deficit grows, so a cell with forest rainfall delivered
+            # in five months is no longer treated as a forest cell.
+            ws = FT(1)
+            if Dfield !== nothing && isfinite(Dfield[i, j])
+                ws = 1 / (1 + (Dfield[i, j] / FT(deficit_half))^FT(deficit_n))
+            end
             pools, fl = spinup(
                 d,
                 p;
                 years,
                 map_half = mh,
                 map_n = mn,
+                w_scale = ws,
                 q_map,
                 T_ref_tau = p.T_ref_τ_stem,
                 q_tau = p.q_τ_stem,
@@ -313,9 +412,15 @@ function main(
 
     out = joinpath(
         dir,
-        (map_half === nothing && map_n === nothing && q_map == 1) ?
-        "equilibrium_carbon.nc" :
-        "equilibrium_carbon_mh$(mh)_n$(mn)_q$(q_map).nc",
+        (
+            map_half === nothing &&
+            map_n === nothing &&
+            q_map == 1 &&
+            deficit_half === nothing
+        ) ? "equilibrium_carbon.nc" :
+        deficit_half === nothing ?
+        "equilibrium_carbon_mh$(mh)_n$(mn)_q$(q_map).nc" :
+        "equilibrium_carbon_dh$(deficit_half)_dn$(deficit_n).nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
@@ -405,11 +510,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     mi = findfirst(==("--map-half"), ARGS)
     qi = findfirst(==("--q-map"), ARGS)
     ni = findfirst(==("--n-map"), ARGS)
+    di = findfirst(==("--deficit-half"), ARGS)
+    dni = findfirst(==("--deficit-n"), ARGS)
     main(
         ARGS[1];
         years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]),
         map_half = mi === nothing ? nothing : parse(FT, ARGS[mi + 1]),
         map_n = ni === nothing ? nothing : parse(FT, ARGS[ni + 1]),
         q_map = qi === nothing ? 1.0 : parse(FT, ARGS[qi + 1]),
+        deficit_half = di === nothing ? nothing : parse(FT, ARGS[di + 1]),
+        deficit_n = dni === nothing ? 4.0 : parse(FT, ARGS[dni + 1]),
     )
 end

@@ -2627,3 +2627,65 @@ localised: **the excess is concentrated in a small wet minority of the treeless
 cells, not spread across them.** Every climate predictor fails on exactly those
 cells by construction. The dry majority is already close and gets closer when the
 ramp is sharpened - it just cannot be seen in a bin mean.
+
+## Iteration 91+ — rainfall *seasonality* separates the cells that beat five predictors
+
+MAP is an annual total. The classical discriminator of the forest/savanna
+boundary is not the total but its distribution through the year: 1500 mm spread
+evenly supports closed forest, the same 1500 mm delivered in five months followed
+by a seven-month drought supports savanna. That had not been tested.
+
+`check_seasonality.jl` asks it as a contingency table **restricted to the cells
+the MAP ramp cannot reach** (MAP >= 0.8 m/yr), classifying by observed biomass:
+treeless is `< 0.5`, forest is `> 5`. Precipitation is GPCC, so the test is of
+the real world rather than of the forcing.
+
+| product | class | cells | dry months q25/50/75 | MCWD mm | annual deficit mm |
+|---|---|---|---|---|---|
+| XuSaatchi | treeless | 349 | 6/**8**/11 | 429/**701**/975 | 316/**476**/638 |
+| | forest | 1691 | 2/**4**/7 | 31/**175**/371 | 33/**168**/331 |
+| ESACCI | treeless | 810 | 7/**8**/11 | 451/**690**/1042 | 365/**531**/655 |
+| | forest | 1425 | 2/**4**/6 | 15/**161**/360 | 16/**156**/321 |
+| GEOCARBON | treeless | 303 | 6/**8**/9 | 500/**662**/1034 | 444/**552**/649 |
+| | forest | 1856 | 2/**4**/7 | 16/**171**/384 | 16/**169**/337 |
+
+**It separates, in all five products that have both classes.** Medians differ by
+4x in MCWD and 3x in annual deficit, and the interquartile ranges barely touch:
+treeless q25 is 429-500 mm MCWD against forest q75 of 371-384.
+
+Skill of the best single global cut (placed at the treeless median; a useless
+predictor puts the same share of both classes above it):
+
+| product | dry months | MCWD | annual deficit |
+|---|---|---|---|
+| XuSaatchi | 43 pts | 38 | **39** |
+| ESACCI | 46 pts | 36 | **43** |
+| GEOCARBON | 33 pts | 37 | **45** |
+| Saatchi2011 | 31 pts | 29 | 25 |
+| USForest | 43 pts | 41 | 34 |
+
+**Annual deficit is as good as MCWD**, better on the three largest products. That
+matters for implementability: MCWD needs a running maximum of a cumulative
+balance with hemisphere-aware phasing, while annual deficit is a running sum of a
+pointwise function of precipitation — the same machinery `P_annual` already uses.
+
+### Why this one is allowed
+
+Global constants (one half-point, one exponent), a pure function of a climate
+driver, no PFT, and it extrapolates in time under a changing climate, which is
+the stated reason PFTs are excluded. It is also the right *mechanism*: a long dry
+season both dries fuel for fire and limits tree establishment directly.
+
+### Caveat that must not be lost
+
+The offline test uses **GPCC** precipitation. A model-side implementation must
+compute the deficit from ERA5 and be re-verified from scratch. The offline
+`w_scale` hook exists only to evaluate the predictor before writing model code.
+
+### The known failure mode to watch
+
+The deficit as defined uses a fixed 100 mm/month reference and ignores
+temperature, so cold, dry, low-precipitation cells score a large deficit. Boreal
+forest is exactly that. This is the same trap that killed `q_map(MAT)`: it fixed
+the target band and wrecked everything else. **The `>10` and `5-10` bins are the
+test.** Sweeping `deficit_half` = 350 and 500 mm/yr with `n = 4`, job 7005914.

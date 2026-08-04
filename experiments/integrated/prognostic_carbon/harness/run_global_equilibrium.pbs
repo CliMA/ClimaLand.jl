@@ -39,6 +39,9 @@ THREADS="${THREADS:-64}"
 # own parameter", which writes equilibrium_carbon.nc; a list writes one
 # suffixed file per value and leaves the base file untouched.
 NMAP_LIST="${NMAP_LIST:-}"
+# Optional sweep over the seasonality (annual water deficit) half-point, mm/yr.
+DEFICIT_LIST="${DEFICIT_LIST:-}"
+DEFICIT_N="${DEFICIT_N:-4}"
 
 run_one() {  # $1 = extra args, $2 = tag
     LOG=$PC_SCRATCH/equilibrium_${PBS_JOBID:-local}${2}.log
@@ -52,9 +55,13 @@ run_one() {  # $1 = extra args, $2 = tag
     fi
 }
 
-if [[ -z "$NMAP_LIST" ]]; then
-    run_one "" ""
-else
+if [[ -n "$DEFICIT_LIST" ]]; then
+    for d in $DEFICIT_LIST; do
+        run_one "--deficit-half $d --deficit-n $DEFICIT_N" "_d$d"
+    done
+elif [[ -n "$NMAP_LIST" ]]; then
     for n in $NMAP_LIST; do run_one "--n-map $n" "_n$n"; done
+else
+    run_one "" ""
 fi
 echo EQUIL_DONE
