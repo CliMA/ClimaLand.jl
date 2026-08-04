@@ -22,12 +22,13 @@ using ClimaCore
             @test params.alpha isa FT
             @test params.tau_long_term isa FT
 
-            # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI in #1794; headline config promoted in #1815)
+            # Check expected values from default_parameters.toml. The leaf
+            # cost, leaf mass per area and LAI memory were recalibrated against
+            # MODIS LAI after #1794/#1815; k and f0_max are unchanged from them.
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(15.0)
-            @test params.sigma ≈ FT(0.939)
-            @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.z ≈ FT(29.2)
+            @test params.sigma ≈ FT(1.01)
+            @test params.alpha ≈ FT(0.202)  # ~5 days of memory
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
