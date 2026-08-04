@@ -250,6 +250,13 @@ if carbon_on
         (:C_leaf, "POOL_INIT_LEAF"),
         (:C_stem, "POOL_INIT_STEM"),
         (:C_root, "POOL_INIT_ROOT"),
+        # D_annual has to be seedable for the same reason the pools do, and it is
+        # easy to miss because it is not a pool. It fills over a 2-year memory
+        # from an aseasonal initial condition, so a drift run started at the
+        # offline equilibrium with D_annual at zero under-suppresses woody
+        # allocation for most of its length and grows wood it should not - which
+        # reads as offline/coupled disagreement when it is only spin-up.
+        (:D_annual, "POOL_INIT_DEFICIT"),
     )
         v = get(ENV, envname, "")
         isempty(v) && continue
