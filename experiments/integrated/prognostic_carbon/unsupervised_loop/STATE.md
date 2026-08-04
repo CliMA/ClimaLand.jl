@@ -3021,3 +3021,56 @@ Two further caveats to carry regardless:
 - USForest r *falls* at every dh here (0.575 -> 0.524/0.548/0.561) where it was
   flat under GPCC. That is a specific difference between the two precipitation
   sources, not noise.
+
+### The control lands: the confound is eliminated and the result is real
+
+Job 7007598, base on the **new** drivers with the limit off:
+
+| product | new-driver base | old-driver base |
+|---|---|---|
+| XuSaatchi | 0.96/0.614 | 0.96/0.614 |
+| Thurner | −0.35/0.537 | −0.35/0.537 |
+| ESACCI | 1.37/0.614 | 1.37/0.614 |
+| GEOCARBON | 1.15/0.572 | 1.15/0.572 |
+| Saatchi2011 | 3.23/0.633 | 3.23/0.633 |
+| USForest | 2.40/0.575 | 2.40/0.575 |
+
+**Identical.** The driver rerun is reproducible, so the sweep comparison is valid
+and the weaker model-side result is real, not an artefact of the rerun.
+
+### Why it is weaker — diagnosed, not guessed
+
+First hypothesis, that ERA5 damps rainfall seasonality, is **wrong**. Model vs
+GPCC annual deficit over 15 501 cells: spatial r = **0.941**, sd ratio **1.09**
+(the model is slightly *more* variable), mean 470 vs 502 mm. The fields agree.
+
+What matters is not the global agreement but whether the deficit still separates
+the classes the predictor exists to separate. Treeless minus forest median
+deficit, wet cells only:
+
+| product | model | GPCC | ratio |
+|---|---|---|---|
+| XuSaatchi | 160 | 185 | 0.86 |
+| ESACCI | 209 | 251 | 0.83 |
+| GEOCARBON | 402 | 388 | 1.04 |
+| Saatchi2011 | 146 | 119 | 1.23 |
+| **USForest** | **37** | **176** | **0.21** |
+
+Four of five hold. **USForest collapses to a fifth of the observational
+separation** - and USForest is precisely the product whose r *fell* at every dh
+in the model sweep (0.575 -> 0.524/0.548/0.561) while it was flat under GPCC.
+So the model's rainfall seasonality is serviceable almost everywhere and poor
+over the contiguous United States, where it barely distinguishes the dry plains
+from the eastern forests.
+
+That is a statement about ERA5's precipitation, not about the mechanism, and it
+is the kind of thing a global mean would never have shown: r = 0.941 looks like
+agreement right up until the separation is measured where it is needed.
+
+### Consequence for calibration
+
+All deficits sit ~15-20% lower in the wet cells (forest medians 93-106 mm against
+GPCC's 108-132), so `dh = 550` - the best of the first sweep and at its **edge**,
+with mean dr still rising - is probably still over-suppressing relative to the
+optimum. Extending to dh = 650, 750 (job 7007640). The committed TOML value of
+0.55 m is the GPCC calibration and should not be treated as final.
