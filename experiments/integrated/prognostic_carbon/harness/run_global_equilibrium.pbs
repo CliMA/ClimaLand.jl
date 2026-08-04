@@ -65,7 +65,7 @@ if [[ -n "$DEFICIT_LIST" ]]; then
         PET_FLAG=""
         [[ "${PET:-0}" == "1" ]] && PET_FLAG="--pet --pet-floor $f"
         for d in $DEFICIT_LIST; do
-            run_one "--deficit-half $d --deficit-n $DEFICIT_N $PET_FLAG" "_d${d}f${f}"
+            run_one "--deficit-half $d --deficit-n $DEFICIT_N $PET_FLAG ${EXTRA_ARGS:-}" "_d${d}f${f}"
         done
     done
 elif [[ -n "$NMAP_LIST" ]]; then

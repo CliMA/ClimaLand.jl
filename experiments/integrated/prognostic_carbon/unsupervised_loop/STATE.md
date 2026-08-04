@@ -3133,3 +3133,43 @@ memory and enters a pool with decadal turnover, so a coupled run must be many
 times longer than the memory before the limit means anything. Short coupled runs
 under-suppress by construction. The offline integrator equilibrates and does not
 have this problem, which is why the global map remains the primary evidence.
+
+### CORRECTION: the GPCC result is 5/6, not 6/6
+
+The two-month phase error paired GPCC precipitation with the model's temperature
+misaligned by two months in every `--pet` GPCC sweep. Recomputed with the
+rotation fixed, on the new drivers, floor 0.6, dh 550:
+
+| product | base | phase-corrected | change in r |
+|---|---|---|---|
+| XuSaatchi | 0.96/0.614 | 0.46/**0.644** | +0.030 |
+| Thurner | −0.35/0.537 | −0.78/**0.553** | +0.016 |
+| ESACCI | 1.37/0.614 | 0.89/**0.651** | +0.037 |
+| GEOCARBON | 1.15/0.572 | 0.48/**0.629** | +0.057 |
+| Saatchi2011 | 3.23/0.633 | 2.40/**0.677** | +0.044 |
+| USForest | 2.40/0.575 | 2.10/0.572 | **−0.003** |
+
+| | previously reported | corrected |
+|---|---|---|
+| r improved | **6/6** | **5/6** |
+| \|bias\| improved | 5/6 | 5/6 |
+| mean dr | **+0.0315** | **+0.0302** |
+
+**"Improves every product" was wrong and is withdrawn.** USForest sits a hair
+either side of zero (+0.001 uncorrected, −0.003 corrected), so the claim was
+never robust - it rested on a margin smaller than the error that produced it.
+This is the second time USForest has been the product that breaks a clean sweep,
+and both times for the same underlying reason: it is where the deficit separates
+the classes least.
+
+What does **not** change: the size of the gap between observed and model
+precipitation, which was the actual finding.
+
+| | r improved | mean dr |
+|---|---|---|
+| observed precipitation (GPCC) | 5/6 | **+0.0302** |
+| model precipitation (ERA5) | 4/6 | **+0.0103** |
+
+Still a factor of three, still attributed to the separation collapsing over the
+contiguous US. The conclusion survives the correction; one of its decorations
+did not.
