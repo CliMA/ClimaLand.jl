@@ -110,7 +110,13 @@ stage("LandModel constructed; setting up diagnostics")
 # and taking it from the model's own precipitation rather than from an
 # observational product is what lets the offline integrator reproduce what the
 # coupled model does instead of merely resembling it.
-driver_vars = ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra", "precip"]
+# `soc_int` and `hr` are not drivers of the pools - they are the dead-carbon side
+# of the budget, carried so a global live + dead total can be formed from one run.
+# `soc_int` rather than `soc`: the latter is depth-resolved on the subsurface
+# space, while this writer is configured on the surface, and `soc_int` is already
+# the kg C m^-2 quantity comparable with cVeg.
+driver_vars =
+    ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra", "precip", "soc_int", "hr"]
 # Output on a regular 1x1 degree lat-lon grid, which is what the ILAMB biomass
 # products use and what ERA5 aligns to. Constructing the writer without
 # `horizontal_pts` samples the model's own anisotropic element grid instead,

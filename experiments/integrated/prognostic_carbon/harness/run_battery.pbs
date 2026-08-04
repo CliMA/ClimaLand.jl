@@ -19,7 +19,7 @@
 #PBS -A UCIT0011
 #PBS -q develop
 #PBS -l walltime=05:00:00
-#PBS -l select=1:ncpus=8:mem=80GB
+#PBS -l select=1:ncpus=16:mem=160GB
 #PBS -j oe
 #PBS -m n
 #PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
