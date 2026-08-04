@@ -159,7 +159,7 @@ function main(path, driverdir = nothing)
             haskey(d, "heterotrophic respiration") && println(
                 rpad("Rh", 26),
                 rpad(round(d["heterotrophic respiration"], digits = 1), 10),
-                "Pg C/yr; compare with litterfall above",
+                "Pg C/yr; below litterfall means the soil is still gaining carbon",
             )
             veg2 = total(cVeg, area)
             haskey(d, "cSoil") && println(
@@ -195,14 +195,22 @@ Global soil carbon and heterotrophic respiration from the driver run.
 """
 function dead_carbon(dir, area)
     out = Dict{String, FT}()
-    for (v, scale, label) in (
-        ("soc_int", FT(1), "cSoil"),
-        ("hr", FT(365 * 86400), "heterotrophic respiration"),
-    )
+    # Unit conversion is read from the file, not assumed. `hr` is reported in
+    # mol CO2 m^-2 s^-1 like `gpp`, while `soc_int` is already kg C m^-2, and
+    # hard-coding either has now produced a wrong number three times in this
+    # harness (once here, giving a global Rh 50x too large to be physical).
+    for (v, label) in
+        (("soc_int", "cSoil"), ("hr", "heterotrophic respiration"))
         f = joinpath(dir, "$(v)_1M_average.nc")
         isfile(f) || continue
         ds = NCDatasets.NCDataset(f)
         try
+            units = get(ds[v].attrib, "units", "")
+            molar = occursin("mol", units) && !occursin("kg", units)
+            per_second = occursin("s^-1", units) || occursin("s-1", units)
+            scale =
+                (molar ? FT(0.012011) : FT(1)) *
+                (per_second ? FT(365 * 86400) : FT(1))
             dims = collect(NCDatasets.dimnames(ds[v]))
             A = Array(ds[v][ntuple(_ -> Colon(), length(dims))...])
             ti = findfirst(d -> lowercase(d) == "time", dims)

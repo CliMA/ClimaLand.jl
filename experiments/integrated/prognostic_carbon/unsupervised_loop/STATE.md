@@ -3217,3 +3217,56 @@ Slightly lower biomass across the board, consistent with slightly lower LAI, and
 spatial correlation essentially unchanged. **Every seasonality result must be
 re-derived against this base**, not the old one - the deficit sweep at
 dh = 450/550/650 is rerunning for exactly that reason.
+
+### The seasonality result survives the LAI recalibration
+
+Sweep against the **new** base (job 7010795):
+
+| dh | r up | \|bias\| down | mean dr |
+|---|---|---|---|
+| 450 | 4/6 | 5/6 | +0.0095 |
+| **550** | **4/6** | 5/6 | **+0.0117** |
+| 650 | 4/6 | 5/6 | +0.0100 |
+
+Still an interior optimum, still at the committed `carbon_deficit_half_woody =
+0.55` m, and slightly better than before the recalibration (+0.0117 against
++0.0103). The two products that do not improve in r are Thurner (−0.002,
+marginal) and USForest (−0.014) — the same pair, for the same reason.
+
+Global skill, kg C m-2:
+
+| | mean bias | mean RMSE | mean r |
+|---|---|---|---|
+| base | 1.37 | 3.71 | 0.592 |
+| + seasonality limit | **0.95** | **3.48** | **0.603** |
+
+### First live + dead budget
+
+| | | |
+|---|---|---|
+| cVeg | **568 Pg C** | offline equilibrium |
+| cSoil (1 m) | **2136 Pg C** | SoilGrids initial condition + 2 yr, **not** equilibrated |
+| GPP | 135.3 Pg C/yr | |
+| NPP = litterfall | 64.8 Pg C/yr | |
+| Rh | **33.5 Pg C/yr** | about half of litterfall |
+
+`Rh` well below litterfall says the soil pool is **gaining** carbon: the litter
+flux the canopy now supplies has not been balanced by decomposition, which is
+what a two-year run started from an observational SOC field should show. The two
+sides of the budget are therefore not on the same footing and the sum is printed
+with that attached rather than as a headline.
+
+Global 1 m SOC estimates cluster ~1500-1600 Pg C, so the SoilGrids initial
+condition at 2136 is high; that is a property of the initial condition, not of
+this model.
+
+### A unit error, and the fix that should stop the next one
+
+`hr` is reported in **mol CO2 m^-2 s^-1**, like `gpp`, and was being read as
+kg C — giving a global Rh of **2792 Pg C/yr**, about fifty times any physical
+value. Caught because it is absurd on its face.
+
+This is the third such error in this harness (`pra` read as a rate rather than
+an annual total; `gpp` read as kg C in a scratch check). `global_budget.jl` now
+derives the conversion from the file's own `units` attribute rather than a
+hard-coded constant, which removes the class rather than this instance.
