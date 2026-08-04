@@ -2901,3 +2901,76 @@ all six, and does the least harm to the one product that disagrees.
 
 This is a parameter choice a maintainer may reasonably take differently, so both
 are recorded rather than one being silently adopted.
+
+## Iteration 99+ — the model-side implementation, and two initial-condition bugs
+
+The seasonality limit is now in `biomass.jl`: three time-integrated variables
+(`P_month`, `T_month`, `D_annual`) and `seasonality_limit(D_annual)` multiplying
+woody allocation, with root taking whatever stem gives up.
+
+### RunningSum semantics, verified rather than assumed
+
+`apply_time_reduction(f, X, RunningSum(τ, τ_long)) = (f·τ - X)/τ_long`, so the
+steady state is `X = f·τ`. Therefore:
+
+- `P_month = RunningSum(30 d, 30 d)` of the precipitation rate -> 30-day total in m.
+- `D_annual = RunningSum(365 d, τ_MAP)` of `monthly_deficit / SECONDS_PER_MONTH`
+  -> `12.17 × mean monthly deficit`, i.e. the annual deficit in m.
+
+Both are what the offline calibration used. This eliminated the hypothesis that
+the accumulator semantics were wrong.
+
+### Three defects, two of which produced plausible wrong answers
+
+1. **Missing Jacobian registration.** New prognostic variables must be listed in
+   `implicit_timestepping.jl`'s `explicit_vars`. Hard failure at all 20 sites -
+   the harmless kind.
+
+2. **`D_annual` initialised to zero** makes `seasonality_limit` exactly 1 for as
+   long as its memory timescale. A 2-year run would have completed cleanly and
+   reported a model *without* the limit.
+
+3. **Overcorrecting (2) by seeding `P_month` from the instantaneous rate.**
+   Precipitation is zero at almost every instant, so every column started at the
+   maximum possible deficit. Measured effect: woody carbon suppressed **5x in the
+   Amazon, Congo and Borneo** - aseasonal rainforest the limit must not touch -
+   against 9.5x at Cerrado. Only 2x differentiation where ~10x was needed.
+
+   Caught by comparing against `battery_pc_recalE_7002249`, whose GPP and LAI are
+   bit-identical, which ruled out a confounded baseline and left the change
+   itself as the only cause.
+
+`P_month` now starts from the annual mean - assume aseasonal until the run
+observes otherwise. Short runs then under-suppress, which fails visibly rather
+than silently.
+
+### Rule 1 holds
+
+10/10 completed sites, GPP and LAI relative difference **exactly 0.00e+00**,
+including cerrado_brazil, sahel, n_australia_savanna, sahara, arabian and
+mojave_sw_us where the limit is most active. `Ra` differs, which is the one
+sanctioned exception (`CARBON_RA=1`).
+
+### Open: the limit currently has almost no effect in a 2-year coupled run
+
+With the corrected IC, C_stem ratios against the no-limit run are 1.00 in the
+tropics (correct) but also **0.98 at Cerrado** (not correct). Two explanations
+that C_stem cannot distinguish:
+
+- the mechanism is broken, or
+- `D_annual` has not filled. It starts at ~0 and grows with timescale
+  τ_MAP = 2 yr, while C_stem accumulates from zero over the same window, so early
+  growth under `limit ≈ 1` dominates the final pool.
+
+Arithmetic favours the second: a converged Cerrado should sit near 0.35x, a
+partially filled one near 0.59x, and the pool-weighting argument closes most of
+the remaining gap. **But this is exactly the inference that hid bugs 2 and 3.**
+Site runs now emit `P_annual`, `P_month`, `T_month`, `D_annual` and
+`seasonality_limit` directly, and an 8-year run over Cerrado, Amazon and
+N. Australia (job 7007356) will show whether `D_annual` accumulates at all.
+
+**Design tension to resolve, not hide:** τ_MAP = 2 yr is right for a *climate*
+predictor - the deficit should reflect climatology, not one year's weather - but
+it means short coupled runs cannot demonstrate the mechanism. The offline
+integrator equilibrates and does not have this problem, which is why the global
+map remains the primary evidence.
