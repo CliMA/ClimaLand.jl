@@ -3173,3 +3173,47 @@ precipitation, which was the actual finding.
 Still a factor of three, still attributed to the separation collapsing over the
 contiguous US. The conclusion survives the correction; one of its decorations
 did not.
+
+## Iteration 120+ — rebuild under the maintainer's LAI recalibration
+
+New parameters from the maintainer: `optimal_lai_z` 24.3 -> **29.2**,
+`optimal_lai_sigma` 0.939 -> **1.01**, `optimal_lai_alpha` 0.0701 -> **0.202**
+(LAI memory ~14 days -> ~5). Applied per-key with a post-condition check that
+exactly three lines changed and all 156 keys kept their order, after a bulk TOML
+edit earlier in this PR silently corrupted two unrelated parameters.
+
+`test_optimal_lai.jl` was pinning the base branch's `z = 15.0` and failing. It
+was right to: this PR had been carrying 24.3, a value derived here rather than
+calibrated. The test now pins the calibrated values.
+
+### Global drivers under the new parameters
+
+| | new (z=29.2) | previous (z=24.3) |
+|---|---|---|
+| GPP | **135.1 Pg C/yr** | 135.4 |
+| LAI vs MODIS | **0.81x** | 0.85x |
+| LAI vs AVHRR | **0.87x** | 0.91x |
+| LAI vs AVH15C1 | **0.94x** | 0.98x |
+
+**Global GPP is essentially unchanged and LAI is slightly lower**, despite large
+parameter changes. Worth flagging rather than assuming the calibration targeted
+the global mean - it may well target seasonal cycle, spatial pattern or site-level
+fit, none of which this table measures. Spatial r against the LAI products is
+0.76 / 0.79 / 0.77; there is no previous r recorded to compare against, so
+whether the *pattern* improved is not yet known.
+
+### Biomass base under the new drivers, no seasonality limit
+
+| product | bias | r | (previous base) |
+|---|---|---|---|
+| XuSaatchi | 0.87 | 0.610 | 0.96 / 0.614 |
+| Thurner | −0.49 | 0.543 | −0.35 / 0.537 |
+| ESACCI | 1.29 | 0.613 | 1.37 / 0.614 |
+| GEOCARBON | 1.03 | 0.572 | 1.15 / 0.572 |
+| Saatchi2011 | 3.18 | 0.630 | 3.23 / 0.633 |
+| USForest | 2.32 | 0.582 | 2.40 / 0.575 |
+
+Slightly lower biomass across the board, consistent with slightly lower LAI, and
+spatial correlation essentially unchanged. **Every seasonality result must be
+re-derived against this base**, not the old one - the deficit sweep at
+dh = 450/550/650 is rerunning for exactly that reason.
