@@ -170,11 +170,5 @@ These are properties of the current formulation, not bugs:
 
 ## API
 
-```@docs
-ClimaLand.Canopy.PrognosticCarbonModel
-ClimaLand.Canopy.PrognosticCarbonParameters
-ClimaLand.Canopy.woody_fraction
-ClimaLand.Canopy.seasonality_limit
-ClimaLand.Canopy.monthly_pet
-ClimaLand.Canopy.tau_stem_scale
-```
+See [Biomass](@ref) in the API reference for the model types, their constructors
+and the allocation functions.

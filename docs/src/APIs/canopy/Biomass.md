@@ -40,6 +40,10 @@ ClimaLand.Canopy.PrognosticCarbonModel{FT}(
 ClimaLand.Canopy.PrognosticCarbonParameters
 ClimaLand.Canopy.PrognosticCarbonParameters(toml_dict::CP.ParamDict)
 ClimaLand.Canopy.update_carbon_fluxes!
+ClimaLand.Canopy.woody_fraction
+ClimaLand.Canopy.seasonality_limit
+ClimaLand.Canopy.monthly_pet
+ClimaLand.Canopy.tau_stem_scale
 ClimaLand.Canopy.mask_biomass!(p, prognostic_land_components)
 ClimaLand.Canopy.mask_biomass!(
     p,
