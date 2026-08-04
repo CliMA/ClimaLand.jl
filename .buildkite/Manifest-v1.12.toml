@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "6ae0cd45ad2cb0a0b08a5c132eef50cb784c1c71"
+project_hash = "0ea2920b7d8e270eb765c22f105b4aa0709bb20f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "ec6be48a85c93d995563b84bff8a86bc98df45ce"
@@ -479,9 +479,9 @@ version = "3.2.0"
 
 [[deps.ClimaAnalysis]]
 deps = ["Artifacts", "Dates", "Interpolations", "NCDatasets", "NaNStatistics", "OrderedCollections", "Reexport", "Statistics", "Unitful"]
-git-tree-sha1 = "611225df08ea210d8c7a8f17063cc4ad4de745d3"
+git-tree-sha1 = "111ecb3fdc40344be32e5c2453392dfc18861e2f"
 uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
-version = "0.5.22"
+version = "0.5.23"
 weakdeps = ["GeoMakie", "Makie"]
 
     [deps.ClimaAnalysis.extensions]
@@ -489,14 +489,15 @@ weakdeps = ["GeoMakie", "Makie"]
     ClimaAnalysisMakieExt = "Makie"
 
 [[deps.ClimaCalibrate]]
-deps = ["ArnoldiMethod", "Dates", "Distributed", "EnsembleKalmanProcesses", "JLD2", "LinearAlgebra", "LinearMaps", "Logging", "OrderedCollections", "Random", "Reexport", "Statistics", "TOML", "YAML"]
-git-tree-sha1 = "70961a24ff7d6ecb527d4989ed5b267935ccb0cd"
+deps = ["ArnoldiMethod", "Dates", "Distributed", "EnsembleKalmanProcesses", "JLD2", "LinearAlgebra", "LinearMaps", "Logging", "OrderedCollections", "Reexport", "Statistics", "TOML", "YAML"]
+git-tree-sha1 = "27ced647f790d43ace5e0c7df20efad5ffb05f77"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
-version = "0.3.1"
-weakdeps = ["ClimaAnalysis", "NaNStatistics"]
+version = "0.4.0"
+weakdeps = ["ClimaAnalysis", "Makie", "NaNStatistics"]
 
     [deps.ClimaCalibrate.extensions]
     ClimaCalibrateClimaAnalysisExt = ["ClimaAnalysis", "NaNStatistics"]
+    ClimaCalibrateMakieExt = ["Makie"]
 
 [[deps.ClimaComms]]
 deps = ["Adapt", "Logging", "LoggingExtras"]

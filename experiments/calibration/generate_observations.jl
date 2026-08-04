@@ -65,39 +65,37 @@ function make_observation_vector(
     start_date = first(first(sample_date_ranges))
     obs_vars = preprocess_obs_vars(short_names, start_date, nelements)
 
+    # Flatten each variable into a `SampleCollection` with one sample (column)
+    # per date range. Each variable is built separately so that it can be
+    # given its own covariance scaling below.
+    sample_collections = map(obs_vars) do var
+        ClimaCalibrate.SampleBuilder.build_samples_by_times(
+            var,
+            sample_date_ranges;
+            FT = Float32,
+        )
+    end
+
     # Build per-variable covariance estimators
-    covar_estimators = Dict(
-        name => ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
+    covar_estimators = map(short_names) do name
+        ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
             scalar = noise_scalars[name],
             use_latitude_weights = true,
             min_cosd_lat = 0.1,
-        ) for name in short_names
-    )
-
-    observation_vector = map(sample_date_ranges) do (start_date, stop_date)
-        # Create a separate observation for each variable with its own scalar
-        per_var_obs = map(zip(short_names, obs_vars)) do (name, var)
-            ClimaCalibrate.ObservationRecipe.observation(
-                covar_estimators[name],
-                [var],
-                start_date,
-                stop_date,
-            )
-        end
-        # Combine into a single observation with block-diagonal covariance.
-        # EKP.combine_observations leaves metadata as Vector{Any}; re-type it
-        # so ClimaCalibrate's GEnsembleBuilder accepts it.
-        combined = EKP.combine_observations(per_var_obs)
-        typed_md =
-            Vector{ClimaAnalysis.Var.Metadata}(EKP.get_metadata(combined))
-        EKP.Observation(
-            EKP.get_samples(combined),
-            EKP.get_covs(combined),
-            EKP.get_inv_covs(combined),
-            EKP.get_names(combined),
-            EKP.get_indices(combined),
-            typed_md,
         )
+    end
+
+    observation_vector = map(eachindex(sample_date_ranges)) do i
+        # Create a separate observation for each variable with its own scalar,
+        # using the ith sample of each variable as the observation
+        per_var_obs = map(
+            covar_estimators,
+            sample_collections,
+        ) do estimator, collection
+            ClimaCalibrate.ObservationRecipe.observation(estimator, collection, i)
+        end
+        # Combine into a single observation with block-diagonal covariance
+        EKP.combine_observations(per_var_obs)
     end
     return observation_vector
 end
@@ -204,7 +202,6 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
         by = ClimaAnalysis.Index(),
     )
 
-    var = ClimaCalibrate.ObservationRecipe.change_data_type(var, Float32)
     var.attributes["short_name"] = short_name
     return var
 end
