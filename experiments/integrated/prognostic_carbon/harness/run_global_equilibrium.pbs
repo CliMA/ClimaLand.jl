@@ -44,7 +44,9 @@ DEFICIT_LIST="${DEFICIT_LIST:-}"
 DEFICIT_N="${DEFICIT_N:-4}"
 # PET=1 makes the deficit reference temperature-dependent instead of a fixed
 # 100 mm/month, so cold cells are not scored as water-stressed for being frozen.
-PET_FLAG=""; [[ "${PET:-0}" == "1" ]] && PET_FLAG="--pet"
+# PET_FLOOR interpolates between the two references: 0 is the pure temperature
+# ramp, 1 recovers the fixed 100 mm/month reference exactly.
+PET_FLAG=""; [[ "${PET:-0}" == "1" ]] && PET_FLAG="--pet --pet-floor ${PET_FLOOR:-0}"
 
 run_one() {  # $1 = extra args, $2 = tag
     LOG=$PC_SCRATCH/equilibrium_${PBS_JOBID:-local}${2}.log
@@ -59,8 +61,10 @@ run_one() {  # $1 = extra args, $2 = tag
 }
 
 if [[ -n "$DEFICIT_LIST" ]]; then
+    for PET_FLOOR in ${PET_FLOOR_LIST:-${PET_FLOOR:-0}}; do
     for d in $DEFICIT_LIST; do
-        run_one "--deficit-half $d --deficit-n $DEFICIT_N $PET_FLAG" "_d$d"
+        run_one "--deficit-half $d --deficit-n $DEFICIT_N $PET_FLAG" "_d${d}f${PET_FLOOR:-0}"
+    done
     done
 elif [[ -n "$NMAP_LIST" ]]; then
     for n in $NMAP_LIST; do run_one "--n-map $n" "_n$n"; done

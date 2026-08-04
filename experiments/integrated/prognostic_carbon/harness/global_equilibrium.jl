@@ -284,8 +284,9 @@ when the reason it is dry is that it is frozen. That is the same error that made
 should leave alone - so the reference has to carry temperature. The ramp is
 deliberately the crudest form with the right limits.
 """
-pet_month(T) =
-    DRY_MM_PER_MONTH * clamp((T - FT(273.15)) / FT(20), zero(FT), one(FT))
+pet_month(T, floor = zero(FT)) =
+    DRY_MM_PER_MONTH *
+    (floor + (1 - floor) * clamp((T - FT(273.15)) / FT(20), zero(FT), one(FT)))
 
 "Number of months below the dry threshold."
 dry_months(p) = count(<(DRY_MM_PER_MONTH), p)
@@ -298,7 +299,7 @@ Annual water deficit (mm) sampled onto the model grid. Kept here rather than in
 `check_seasonality.jl` so the diagnostic that evaluated this predictor and the
 equilibrium run that applies it cannot drift apart.
 """
-function annual_deficit_grid(lons, lats, tair = nothing)
+function annual_deficit_grid(lons, lats, tair = nothing, floor = zero(FT))
     plons, plats, P = pr_climatology(PR_PATH)
     D = fill(FT(NaN), length(lons), length(lats))
     for i in eachindex(lons), j in eachindex(lats)
@@ -314,7 +315,8 @@ function annual_deficit_grid(lons, lats, tair = nothing)
             t = ntuple(m -> tair[i, j, m], 12)
             all(valid, t) && (
                 D[i, j] = sum(
-                    max(pet_month(FT(t[m])) - pv[m], zero(FT)) for m in 1:12
+                    max(pet_month(FT(t[m]), floor) - pv[m], zero(FT))
+                    for m in 1:12
                 )
             )
         end
@@ -337,6 +339,7 @@ function main(
     deficit_half = nothing,
     deficit_n = 4.0,
     use_pet = false,
+    pet_floor = 0.0,
 )
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
@@ -361,9 +364,14 @@ function main(
     @info "woody fraction" map_half = mh n = mn
     Dfield =
         deficit_half === nothing ? nothing :
-        annual_deficit_grid(lons, lats, use_pet ? data["tair"] : nothing)
+        annual_deficit_grid(
+            lons,
+            lats,
+            use_pet ? data["tair"] : nothing,
+            FT(pet_floor),
+        )
     deficit_half === nothing ||
-        @info "seasonality limit" deficit_half deficit_n use_pet
+        @info "seasonality limit" deficit_half deficit_n use_pet pet_floor
 
     C_stem = fill(FT(NaN), nlon, nlat)
     C_leaf = fill(FT(NaN), nlon, nlat)
@@ -450,7 +458,7 @@ function main(
         ) ? "equilibrium_carbon.nc" :
         deficit_half === nothing ?
         "equilibrium_carbon_mh$(mh)_n$(mn)_q$(q_map).nc" :
-        "equilibrium_carbon_dh$(deficit_half)_dn$(deficit_n)$(use_pet ? "_pet" : "").nc",
+        "equilibrium_carbon_dh$(deficit_half)_dn$(deficit_n)$(use_pet ? "_pet$(pet_floor)" : "").nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
@@ -551,5 +559,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         deficit_half = di === nothing ? nothing : parse(FT, ARGS[di + 1]),
         deficit_n = dni === nothing ? 4.0 : parse(FT, ARGS[dni + 1]),
         use_pet = ("--pet" in ARGS),
+        pet_floor = (fi = findfirst(==("--pet-floor"), ARGS);
+        fi === nothing ? 0.0 : parse(FT, ARGS[fi + 1])),
     )
 end

@@ -2750,3 +2750,70 @@ Testing the fix (job 7006043): make the reference a temperature ramp,
 full tropical demand at 20 C. Sweeping dh = 300/450/600 with `--pet`. The
 acceptance test is now **Thurner's mid bins recovering without the tropical gains
 being given back**.
+
+### The temperature-corrected reference works, and reveals a real tradeoff
+
+Job 7006043, `pet_month(T) = 100 * clamp((T - 273.15)/20, 0, 1)`.
+
+Bias / spatial r:
+
+| product | base | PET dh=300 | **PET dh=450** | PET dh=600 | fixed dh=500 |
+|---|---|---|---|---|---|
+| XuSaatchi | +0.96/0.614 | +0.19/0.619 | **+0.55/0.637** | +0.75/0.631 | −0.26/**0.640** |
+| Thurner | −0.35/0.537 | −0.52/0.519 | **−0.40/0.533** | −0.37/0.536 | **−2.02**/0.484 |
+| ESACCI | +1.37/0.614 | +0.63/0.630 | **+0.98/0.641** | +1.17/0.634 | +0.20/**0.654** |
+| GEOCARBON | +1.15/0.572 | +0.02/0.606 | **+0.56/0.617** | +0.85/0.604 | −0.52/**0.659** |
+| Saatchi2011 | +3.23/0.633 | +1.39/0.640 | **+2.22/0.662** | +2.70/0.656 | +1.89/**0.706** |
+| USForest | +2.40/0.575 | +2.24/0.552 | +2.35/0.570 | +2.38/0.574 | +1.18/**0.583** |
+
+**The boreal fix works.** Thurner goes −2.02 -> −0.40, back to its base value of
+−0.35. So the diagnosis was right: the predictor was sound and the fixed
+reference was the defect.
+
+`dh = 450` is an **interior optimum in r** among the PET runs - 300 and 600 are
+both lower in every product - which is worth more than an endpoint that could
+just be a monotone trend running off the edge of the sweep.
+
+### But the fix works by giving up most of the correction
+
+XuSaatchi bins, model/observed:
+
+| obs bin | base | **PET dh=450** | fixed dh=500 |
+|---|---|---|---|
+| > 10 | 0.9 | 0.9 | 0.9 |
+| 5-10 | 1.2 | 1.2 | 1.0 |
+| 2-5 | 1.6 | 1.5 | 1.1 |
+| 0.5-2 | 3.3 | 2.9 | 2.1 |
+| **< 0.5** | **9.9** | **8.9** | **5.5** |
+
+and the `<0.5` dry|wet split: base 0.54\|6.79, PET450 0.50\|5.81, fixed 0.24\|4.59.
+Thurner's bins under PET450 are 0.8/0.9/1.1/1.8/3.4 - **identical to base**.
+
+cVeg: base 635, PET450 566, fixed500 478 Pg C.
+
+So PET450 protects the boreal by not suppressing cold cells **at all**, and the
+large gain of the fixed reference came substantially from suppressing cold *dry*
+treeless land - tundra and steppe - which is correct for those cells. It simply
+could not do that without also hitting boreal forest.
+
+**The two references bracket the answer rather than one being right.** What is
+needed is a reference that separates cold-dry-treeless from cold-moist-forested.
+Testing the one-parameter interpolation (job 7006093): `pet_floor` in the ramp,
+where 0 is the pure temperature ramp and 1 recovers the fixed reference exactly.
+Sweeping floor = 0.3, 0.6 at dh = 450, 550.
+
+### Transfer risk to a model-side implementation, quantified
+
+Model (ERA5-driven) precipitation against GPCC, over 15 501 land cells:
+
+| | |
+|---|---|
+| model MAP mean | 798.2 mm/yr |
+| GPCC MAP mean | 689.6 mm/yr |
+| bias | **+108.5 mm/yr (+15.7%)** |
+| spatial r | **0.879** |
+
+The *pattern* transfers well, so the predictor should survive the move to ERA5.
+The **half-point must be recalibrated, not copied**: the model is systematically
+wetter, so it will compute smaller deficits, and transplanting dh = 450 would
+under-suppress.
