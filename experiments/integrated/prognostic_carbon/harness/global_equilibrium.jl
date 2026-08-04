@@ -22,6 +22,8 @@
 include(joinpath(@__DIR__, "offline_spinup.jl"))
 
 import NCDatasets
+import Dates
+import Dates: month
 import ClimaLand.Parameters as LP
 import ClimaLand.Canopy
 
@@ -114,6 +116,28 @@ function month_of_year_index()
 end
 
 """
+    start_month_of(dir)
+
+Calendar month the driver run began in, from the `start_date.txt` sidecar
+`global_driver.jl` writes. The monthly NetCDFs carry no reference date - their
+time axis is plain seconds from an unrecorded origin - so record 1 is
+indistinguishable from January once the run is over, and only the sidecar says
+how far the climatology must be rotated.
+"""
+function start_month_of(dir)
+    f = joinpath(dir, "start_date.txt")
+    if isfile(f)
+        return month(Dates.DateTime(strip(read(f, String))[1:10], "yyyy-mm-dd"))
+    end
+    m = tryparse(Int, get(ENV, "DRIVER_START_MONTH", ""))
+    m === nothing || return m
+    @warn "no start_date.txt in $dir and DRIVER_START_MONTH unset; assuming a \
+           January start. If the run began in another month the climatology is \
+           phase-shifted against calendar months."
+    return 1
+end
+
+"""
     read_monthly(dir, var)
 
 Reads `<var>_1M_average.nc` and returns `(lons, lats, A)` with `A[lon, lat,
@@ -127,6 +151,18 @@ function read_monthly(dir, var)
     isfile(path) || error("missing driver file $path")
     ds = NCDatasets.NCDataset(path)
     try
+        # Record 1 is the run's FIRST month, not January. A driver run starting
+        # 2008-03-01 puts March at index 1, so a climatology indexed 1..12 is
+        # phase-shifted by however many months the run start is from January.
+        # Harmless for the equilibrium pools and the annual deficit, which pair
+        # model fields with each other and sum over a whole cycle - but wrong the
+        # moment a model month is compared with an observational one, which is
+        # exactly what the GPCC branch of annual_deficit_grid does.
+        # Record 1 is the run's FIRST month, not January. Harmless for the
+        # equilibrium pools and for a deficit built from model fields alone -
+        # both pair model months with each other and sum over a whole cycle -
+        # but wrong the moment a model month meets an observational one.
+        month_offset = start_month_of(dir) - 1
         lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
         lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
         raw = as_lon_lat_time(ds, var)
@@ -148,6 +184,8 @@ function read_monthly(dir, var)
                 clim[i, j, m] = n > 0 ? s / n : FT(NaN)
             end
         end
+        # Rotate so index 1 is January whatever month the run began in.
+        month_offset == 0 || (clim = clim[:, :, circshift(1:12, month_offset)])
         return lons, lats, clim
     finally
         close(ds)

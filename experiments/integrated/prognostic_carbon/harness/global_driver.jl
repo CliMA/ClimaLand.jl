@@ -136,6 +136,12 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics)
 @info "resolution" nelements = domain.nelements
 @info "driver vars" driver_vars
 
+# The monthly NetCDFs carry no reference date, so record 1 is indistinguishable
+# from January once the run is over. Record the start date next to them.
+open(joinpath(outdir, "start_date.txt"), "w") do io
+    println(io, Dates.format(start_date, "yyyy-mm-dd"))
+end
+
 stage("starting solve")
 solve!(simulation)
 
