@@ -104,7 +104,13 @@ model = LandModel{FT}(
 # global field is gigabytes of NetCDF for nothing. `tair` is carried because the
 # `ct` diagnostic is NaN-masked wherever there is no canopy and needs a fallback.
 stage("LandModel constructed; setting up diagnostics")
-driver_vars = ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra"]
+# `precip` is monthly precipitation, which `pra` is not: `pra` is the smoothed
+# 1-year total, so its twelve monthly values are nearly constant and carry no
+# seasonality at all. The water-deficit limit needs the within-year distribution,
+# and taking it from the model's own precipitation rather than from an
+# observational product is what lets the offline integrator reproduce what the
+# coupled model does instead of merely resembling it.
+driver_vars = ["gpp", "lai", "rd", "ct", "tair", "fc3", "pra", "precip"]
 # Output on a regular 1x1 degree lat-lon grid, which is what the ILAMB biomass
 # products use and what ERA5 aligns to. Constructing the writer without
 # `horizontal_pts` samples the model's own anisotropic element grid instead,

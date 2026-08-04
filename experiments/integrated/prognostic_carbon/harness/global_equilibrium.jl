@@ -299,7 +299,37 @@ Annual water deficit (mm) sampled onto the model grid. Kept here rather than in
 `check_seasonality.jl` so the diagnostic that evaluated this predictor and the
 equilibrium run that applies it cannot drift apart.
 """
-function annual_deficit_grid(lons, lats, tair = nothing, floor = zero(FT))
+function annual_deficit_grid(
+    lons,
+    lats,
+    tair = nothing,
+    floor = zero(FT),
+    model_precip = nothing,
+)
+    # Prefer the model's own precipitation when the driver run carried it: the
+    # coupled model computes the deficit from ERA5, and scoring an offline
+    # equilibrium against a GPCC-derived deficit would compare two different
+    # models. GPCC remains the fallback, and the honest one for asking whether
+    # the *predictor* is real rather than whether the model reproduces itself.
+    if model_precip !== nothing
+        D = fill(FT(NaN), length(lons), length(lats))
+        for i in eachindex(lons), j in eachindex(lats)
+            ok = true
+            d = zero(FT)
+            for m in 1:12
+                pm, tm = model_precip[i, j, m], tair[i, j, m]
+                if !(valid(pm) && valid(tm))
+                    ok = false
+                    break
+                end
+                # kg m^-2 s^-1 over a 30-day month -> m of water.
+                pmon = abs(FT(pm)) * FT(30 * 86400) / FT(1000)
+                d += max(pet_month(FT(tm), floor) / 1000 - pmon, zero(FT))
+            end
+            ok && (D[i, j] = d * 1000)  # report in mm to match the GPCC branch
+        end
+        return D
+    end
     plons, plats, P = pr_climatology(PR_PATH)
     D = fill(FT(NaN), length(lons), length(lats))
     for i in eachindex(lons), j in eachindex(lats)
@@ -340,15 +370,21 @@ function main(
     deficit_n = 4.0,
     use_pet = false,
     pet_floor = 0.0,
+    use_model_precip = true,
 )
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
+    # Optional: only driver runs made after the seasonality limit carry it.
+    extra = isfile(joinpath(dir, "precip_1M_average.nc")) ? ("precip",) : ()
     @info "reading monthly driver climatologies" dir vars
     data = Dict{String, Any}()
     lons = lats = nothing
-    for v in vars
+    for v in (vars..., extra...)
         lons, lats, data[v] = read_monthly(dir, v)
     end
+    isempty(extra) &&
+        @warn "no precip in this driver run; the deficit falls back to GPCC, \
+               which is not what the coupled model computes"
     nlon, nlat = length(lons), length(lats)
     @info "grid" nlon nlat threads = Threads.nthreads()
 
@@ -369,6 +405,8 @@ function main(
             lats,
             use_pet ? data["tair"] : nothing,
             FT(pet_floor),
+            (use_model_precip && haskey(data, "precip")) ? data["precip"] :
+            nothing,
         )
     deficit_half === nothing ||
         @info "seasonality limit" deficit_half deficit_n use_pet pet_floor
@@ -559,6 +597,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         deficit_half = di === nothing ? nothing : parse(FT, ARGS[di + 1]),
         deficit_n = dni === nothing ? 4.0 : parse(FT, ARGS[dni + 1]),
         use_pet = ("--pet" in ARGS),
+        use_model_precip = !("--gpcc-precip" in ARGS),
         pet_floor = (fi = findfirst(==("--pet-floor"), ARGS);
         fi === nothing ? 0.0 : parse(FT, ARGS[fi + 1])),
     )
