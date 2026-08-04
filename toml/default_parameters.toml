@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.59
+value = 0.591
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -107,33 +107,39 @@ description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z"]
-value = 21.4
+value = 29.2
 type = "float"
 description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 0.939
+value = 1.01
 type = "float"
-description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
+description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
-value = 0.0701
+value = 0.202
 type = "float"
 description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory. Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
-["optimal_lai_f0"]
+["optimal_lai_f0_max"]
 value = 0.65
 type = "float"
-description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
+description = "Peak fraction of annual precipitation available for transpiration (dimensionless), reached at the energy-water limitation transition (aridity index 1.9). The fraction used is f0 = f0_max*exp(-0.604*ln^2(AI/1.9)); Zhou et al. (2025) fit f0_max = 0.65."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tau_long_term"]
 value = 6.3072e7
 type = "float"
 description = "Long-term memory timescale (s) of the A0 and precipitation running-mean annual totals that set LAI_max and the steady-state LAI. Default 2 years (6.3072e7 s); a longer value filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle into the smoothed totals."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_c3c4"]
+value = 1.0
+type = "float"
+description = "Whether the C3 fraction (fractional_c3) is computed from the C3/C4 competition on the running-mean per-pathway potential GPP (1.0, default) or held fixed at the photosynthesis model's static value (0.0). The C4 GPP advantage (A0c4-A0c3)/A0c3 goes through a logistic to a C4 fraction, penalized by C3 tree-canopy shading (pyrealm/Lavergne, GPP-derived, no PFT)."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters
@@ -308,19 +314,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.43
+value = 0.366
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 91.1
+value = 24.9
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 5.36
+value = 8.89
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -374,7 +380,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.028
+value = 0.0251
 type = "float"
 description = "1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -489,7 +495,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.919
+value = 1.16
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -624,25 +630,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.349
+value = 0.0823
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0444
+value = 0.073
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0573
+value = 0.0416
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.0726
+value = 0.07
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
