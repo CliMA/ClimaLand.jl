@@ -3074,3 +3074,28 @@ GPCC's 108-132), so `dh = 550` - the best of the first sweep and at its **edge**
 with mean dr still rising - is probably still over-suppressing relative to the
 optimum. Extending to dh = 650, 750 (job 7007640). The committed TOML value of
 0.55 m is the GPCC calibration and should not be treated as final.
+
+### Model-side optimum bracketed at dh = 550, which is the committed value
+
+| dh | r up | \|bias\| down | mean dr |
+|---|---|---|---|
+| 350 | 3/6 | 5/6 | −0.0037 |
+| 450 | 4/6 | 5/6 | +0.0080 |
+| **550** | **4/6** | **5/6** | **+0.0103** |
+| 650 | 4/6 | 5/6 | +0.0093 |
+| 750 | 4/6 | 5/6 | +0.0072 |
+
+Interior optimum, so `carbon_deficit_half_woody = 0.55` m needs no change: the
+GPCC calibration transfers even though the model's deficits are 15-20% lower.
+The earlier expectation that a wetter model would need a lower half-point was
+wrong, and the sweep says so rather than the reasoning.
+
+At dh = 550 the two products that do not improve in r are **Thurner (−0.002,
+neutral)** and **USForest (−0.014)** — and USForest is exactly the product whose
+treeless/forest deficit separation collapses to a fifth under model
+precipitation. The failure is attributed, not just observed.
+
+**Honest summary of the model-side result:** spatial r improves in 4 of 6
+products and bias in 5 of 6, mean dr +0.0103 — about **a third** of the +0.0315
+the same configuration achieved with observed precipitation. The mechanism
+works; ERA5's rainfall seasonality over the contiguous US is what limits it.
