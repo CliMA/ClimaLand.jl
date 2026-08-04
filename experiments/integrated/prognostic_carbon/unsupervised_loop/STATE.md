@@ -3315,3 +3315,46 @@ row keyed to the old coordinate would have been compared against a run at the ne
 one, and `check_rule1.jl` would have reported a GPP and LAI difference that is a
 moved site rather than a rule-1 violation. With the row absent the site is
 skipped until its baseline is regenerated, which is the honest state.
+
+## Branch state: all known gates green
+
+| gate | result |
+|---|---|
+| rule 1 (GPP/LAI unchanged) | **PASS 30/30**, relative difference exactly 0.0 |
+| package test suite | **PASS**, 0 failures, Optimal LAI 242/242 |
+| formatter | clean |
+| docs | `SoilCarbonLitterInput` documented (would have failed `checkdocs = :exports`); new model page; no duplicate `@docs` |
+| unit tests for the new mechanism | `seasonality_limit`, `monthly_pet`, 5/5 each in Float32 and Float64 |
+| working tree | clean, everything pushed |
+
+Diff against the base branch: 23 files, ~1990 insertions.
+
+### What the model does now
+
+Four prognostic live-carbon pools wrapped around the LAI model, one-way coupled
+so rule 1 holds structurally rather than by care. Woody allocation is limited by
+two climate multipliers — mean annual precipitation, and the annual water deficit
+that carries rainfall *seasonality* — both global constants, no PFT anywhere.
+
+Global skill against six ILAMB products, kg C m-2:
+
+| | mean bias | mean RMSE | mean r |
+|---|---|---|---|
+| base | 1.37 | 3.71 | 0.592 |
+| + seasonality limit | **0.95** | **3.48** | **0.603** |
+
+Budget: cVeg 568 Pg C (equilibrium), cSoil 2136 Pg C (SoilGrids IC, not
+equilibrated), GPP 135.3, NPP = litterfall 64.8, Rh 33.5 Pg C/yr.
+
+### What it does not do, stated plainly
+
+1. **Disturbance is absent.** The residual sits in wet treeless cells whose
+   rainfall is forest rainfall. Five climate predictors failed on exactly those
+   cells before seasonality worked, and seasonality reaches many but not all.
+2. **SOC is not equilibrated and cannot be** from a two-year run against a
+   centuries-to-millennia turnover. The dead-carbon number is an observational
+   initial condition, not a model prediction.
+3. **The deficit inherits the forcing's rainfall seasonality**, which is good
+   almost everywhere and poor over the contiguous US — worth a factor of three in
+   the skill gain, measured rather than assumed.
+4. **Root allocation is unconstrained** by any gridded product.
