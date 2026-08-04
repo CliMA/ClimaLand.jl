@@ -578,22 +578,17 @@ end
 Creates the function with arguments (p,Y0,t0) that updates the cache
 `p` with initial values corresponding to Y0 and t0.
 
-We require a different method from the default for a model
-with a canopy but no snow. This is a close copy of
-the method for the CanopyModel, except unpacking `model.canopy` rather
-than using `model` directly.
+We require a different method from the default because the lake fraction
+must be set before the cache is updated.
 """
 function make_set_initial_cache(model::SoilCanopyModel)
     drivers = get_drivers(model)
     update_drivers! = make_update_drivers(drivers)
     update_cache! = make_update_cache(model)
-    canopy = model.canopy
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
         set_lake_fraction!(p, model)
         update_cache!(p, Y0, t0)
-        Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
-        Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
     end
     return set_initial_cache!
 end

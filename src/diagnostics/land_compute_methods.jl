@@ -203,7 +203,7 @@ function compute_stomatal_conductance!(
     conductance_model::PModelConductance,
 )
     (; Drel) = conductance_model.parameters
-    gs_co2 = p.canopy.photosynthesis.InstVars.gs_co2
+    gs_co2 = p.canopy.photosynthesis.instantaneous.gs_co2
     # Divide by LAI to get leaf level, approximately, and multiple by Drel to get for water instead of co2
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
@@ -285,10 +285,30 @@ end
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
 
-# Canopy - Optimal LAI model diagnostics
-@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_daily
+# Canopy - Optimal LAI model diagnostics: prognostic time-integrated variables in Y.
+@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_daily
 
-@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_annual
+@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_annual
+
+# precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
+# limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
+function compute_precip_annual!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    ρ_m_liq = LP.ρ_m_liq(get_canopy(land_model).earth_param_set)  # mol m^-3
+    if isnothing(out)
+        out = zeros(axes(Y.canopy.biomass.precip_annual))
+        fill!(field_values(out), NaN)
+        @. out = Y.canopy.biomass.precip_annual / ρ_m_liq
+        return out
+    else
+        @. out = Y.canopy.biomass.precip_annual / ρ_m_liq
+    end
+end
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
@@ -309,6 +329,7 @@ end
     LandModel,
 } get_Rd_canopy(p, get_canopy(land_model).photosynthesis)
 @diagnostic_compute "vcmax25" Union{CanopyModel, SoilCanopyModel, LandModel} get_Vcmax25_canopy(
+    Y,
     p,
     get_canopy(land_model).photosynthesis,
 )

@@ -77,7 +77,7 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
 
     # Get max photosynthesis rates
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    Vcmax25_leaf = get_Vcmax25_leaf(Y, p, canopy.photosynthesis)
     J_over_Jmax = get_J_over_Jmax(Y, p, canopy, canopy.photosynthesis)
 
     T_freeze = LP.T_freeze(earth_param_set)
