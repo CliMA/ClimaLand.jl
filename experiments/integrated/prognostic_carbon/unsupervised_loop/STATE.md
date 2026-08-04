@@ -3358,3 +3358,65 @@ equilibrated), GPP 135.3, NPP = litterfall 64.8, Rh 33.5 Pg C/yr.
    almost everywhere and poor over the contiguous US — worth a factor of three in
    the skill gain, measured rather than assumed.
 4. **Root allocation is unconstrained** by any gridded product.
+
+## Iteration 141 — is soil-carbon equilibrium even well-posed here?
+
+The open question was whether an offline soil integrator could give an equilibrium
+SOC the way `offline_spinup.jl` does for the live pools. Before building one, the
+decomposition kinetics decide whether the question has an answer.
+
+`microbe_source` is **Michaelis-Menten in substrate**, not first order:
+
+```
+Sx    = p_sx * Csom * D_liq * theta^3        (soluble substrate)
+R_sm  = Vmax(T) * Sx/(kM_sx + Sx) * MM_o2
+```
+
+With `p_sx` = 0.024, `D_liq` = 3.17, `kM_sx` = 0.0416 kg C m^-3:
+
+| Csom (kg C m^-3) | theta | MM_sx | regime |
+|---|---|---|---|
+| 5 | 0.20 | 0.07 | substrate-limited, ~first order |
+| 5 | 0.35 | 0.28 | intermediate |
+| 20 | 0.20 | 0.23 | intermediate |
+| 20 | 0.35 | 0.61 | intermediate |
+| 50 | 0.20 | 0.42 | intermediate |
+| 50 | 0.35 | **0.80** | approaching saturation |
+
+**The model lives in the intermediate regime.** Two consequences:
+
+1. **Equilibrium exists.** `R_sm` is strictly increasing in `Csom`, so there is a
+   stabilising feedback and `Sm(SOC) = litterfall` has a solution. An offline soil
+   integrator is therefore a well-posed thing to build.
+2. **But the response is strongly sublinear**, and in wet carbon-rich soil it is
+   nearly flat. Doubling SOC in a wet peat cell raises respiration by much less
+   than double. That is the right *qualitative* ingredient for peat accumulation -
+   together with the `MM_o2` oxygen limitation, it is why a wetland can hoard
+   carbon - and it is the mechanism behind the maintainer's "does SOC in wetland
+   accumulate" question.
+
+### A bound that needs no new run
+
+`Sm` is increasing and **concave** in SOC, so equilibrium requires SOC to rise by
+*more* than the flux ratio. A first-order extrapolation is therefore a rigorous
+lower bound:
+
+| | |
+|---|---|
+| current effective turnover, cSoil/Rh | 63.8 yr |
+| litterfall / Rh | 1.93 (> 1, so the soil is gaining) |
+| **SOC_eq** | **> 4132 Pg C** |
+| SoilGrids initial condition | 2136 Pg C |
+| observed 1 m SOC | ~1500-1600 Pg C |
+
+**So this soil configuration equilibrates to at least ~2.7x the observed global
+soil carbon**, and the true equilibrium is higher still because of the concavity.
+That is a statement about the soil model, which this PR did not touch, but it
+bears directly on the carbon-tracking goal: the live pools are close to
+observations while the dead pool would run away from them.
+
+Caveats held explicitly: `Rh` comes from a two-year run, `cSoil` is integrated to
+1 m while the pool is deeper, and `litterfall` is the live model's equilibrium
+rather than a transient. The *direction* is robust to all three - `litterfall`
+exceeds `Rh` by nearly a factor of two - but the number is a bound, not an
+estimate.
