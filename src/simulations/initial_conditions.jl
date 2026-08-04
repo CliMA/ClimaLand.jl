@@ -461,15 +461,22 @@ function set_canopy_component_initial_conditions!(
     else
         Y.canopy.biomass.P_annual .= FT(0)
     end
-    # Seed the monthly integrals from the current drivers, and the annual water
-    # deficit from the seeded monthly pair. Left at zero, D_annual would make the
-    # seasonality limit exactly 1 - no suppression at all - for as long as its
-    # memory timescale, so a run shorter than that would silently report the
-    # behaviour of a model without the limit.
+    # Seed the monthly integrals, and the annual water deficit from them. Both
+    # extremes are wrong and in opposite directions: left at zero, D_annual makes
+    # the seasonality limit exactly 1 - no suppression at all - for as long as
+    # its memory timescale. But seeding P_month from the *instantaneous*
+    # precipitation rate is worse, because it is zero at almost every instant, so
+    # every column starts at the maximum possible deficit and the limit starts
+    # near zero everywhere, suppressing wood in the aseasonal tropics.
+    #
+    # P_month is therefore seeded from the annual mean: the assumption is an
+    # aseasonal climate until the run observes otherwise. D_annual then fills in
+    # over its memory timescale as real dry seasons pass, so a coupled run
+    # shorter than that under-suppresses rather than over-suppresses - the
+    # direction that fails visibly against the observations rather than
+    # silently.
     Y.canopy.biomass.T_month .= p.drivers.T
-    @. Y.canopy.biomass.P_month =
-        -(p.drivers.P_liq + p.drivers.P_snow) *
-        ClimaLand.Canopy.SECONDS_PER_MONTH
+    @. Y.canopy.biomass.P_month = Y.canopy.biomass.P_annual / 12
     params = model.parameters
     @. Y.canopy.biomass.D_annual =
         12 * max(
