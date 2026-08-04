@@ -3420,3 +3420,46 @@ Caveats held explicitly: `Rh` comes from a two-year run, `cSoil` is integrated t
 rather than a transient. The *direction* is robust to all three - `litterfall`
 exceeds `Rh` by nearly a factor of two - but the number is a bound, not an
 estimate.
+
+### Drift check: 11/12 hold, and the twelfth is not an integrator disagreement
+
+With `D_annual` seeded alongside the pools, the coupled model holds the offline
+equilibrium at 11 of the first 12 sites (worst of those: iberia +9.3%).
+
+`n_australia_savanna` drifts **+93.6%** in C_stem. The new metrics identify the
+cause exactly, rather than leaving it as "the integrations disagree":
+
+| | seed (from the global cell) | coupled site run |
+|---|---|---|
+| `D_annual` | 0.803 m | **0.295 m** |
+| implied `seasonality_limit` | 0.18 | **0.92** |
+| `P_annual` | ~0.97 m/yr | **2.07 m/yr** |
+
+The site's own forcing is twice as wet and far less seasonal than the global grid
+cell at the same coordinate, so it equilibrates to much more wood than the seed.
+congo_basin, which held at −1.3%, agrees on both (`D_annual` 0.0002 seed against
+0.066 coupled, both effectively zero).
+
+**This is a limitation I introduced this iteration**, not a pre-existing one.
+Seeds used to come from a per-site offline spinup driven by that site's own
+record, so seed climate and run climate agreed by construction. Sampling the
+global map instead - necessary because the deficit needs a gridded precipitation
+climatology - breaks that guarantee wherever the two disagree.
+
+Site vs global mean annual precipitation over 15 sites: **median ratio 0.92**, so
+they usually agree well. Three do not:
+
+| site | site P | global P | ratio |
+|---|---|---|---|
+| sahel | 0.11 | 0.31 | **0.36** |
+| n_australia_savanna | 2.07 | 0.97 | **2.13** |
+| mojave_sw_us | 0.30 | 0.09 | **3.26** |
+
+All three sit in sharp precipitation gradients - the Sahel's north-south rainfall
+gradient, the Australian monsoon coast, the orographic desert margin - where a
+point sample and a cell mean differ legitimately. It is a sampling difference,
+not a bug in either configuration.
+
+**Consequence:** the drift check is only meaningful where seed and run see the
+same climate, and it must report the forcing ratio beside the drift so a
+mismatch cannot be read as an integrator failure.

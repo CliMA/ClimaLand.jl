@@ -9,6 +9,15 @@
 ## sit still. Drift means the two integrations disagree, and the map is wrong by
 ## whatever that difference compounds to over centuries.
 ##
+## One caveat this check cannot see on its own. Since the seeds are sampled from
+## the global equilibrium map, the seed carries the *grid cell's* climate while the
+## run experiences the *site's*. Those usually agree - median precipitation ratio
+## 0.92 over 15 sites - but in a sharp precipitation gradient they do not, and a
+## site seeded from a drier cell than it actually experiences will grow wood and
+## report large drift that has nothing to do with the integrators. Check
+## `P_annual_m_yr` and `D_annual_m` in the site metrics against the seed before
+## reading a large drift as offline/coupled disagreement.
+##
 ## What counts as still: the run is 2 years against stem turnover of 30 years and
 ## more, so even a perfectly consistent pair drifts a little - the seeded state
 ## is the equilibrium of the *recycled climatology*, while the coupled run sees
