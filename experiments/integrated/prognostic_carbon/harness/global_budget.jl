@@ -21,8 +21,19 @@
 ## Land area comes from the grid, not from a land-fraction field: the driver run
 ## masked ocean at a 0.99 threshold, so a surviving cell is essentially all land.
 ##
+## With a driver directory as a second argument the dead-carbon side is added
+## from `soc_int` and `hr`, giving a global live + dead total from one run.
+##
+## The two sides are NOT on the same footing, and the report says so rather than
+## presenting one number. Live carbon is an *equilibrium* of the offline
+## integrator. Soil carbon is initialised from SoilGrids and integrated for two
+## years, against a turnover of centuries to millennia - so the global SOC total
+## is essentially the observational initial condition, not a model prediction,
+## and `hr` is what the model does with it rather than a balanced flux. Reporting
+## them as one budget would imply an equilibrium the soil pool has not reached.
+##
 ## Usage:
-##   julia --project=.buildkite global_budget.jl <equilibrium_carbon.nc>
+##   julia --project=.buildkite global_budget.jl <equilibrium_carbon.nc> [driver_outdir]
 
 import NCDatasets
 
@@ -68,7 +79,7 @@ function land_area(mask, area)
     return s
 end
 
-function main(path)
+function main(path, driverdir = nothing)
     ds = NCDatasets.NCDataset(path)
     lons = Array{FT}(Array(ds["lon"][:]))
     lats = Array{FT}(Array(ds["lat"][:]))
@@ -135,6 +146,31 @@ function main(path)
     # An area-weighted mean of a per-cell ratio is not the ratio of the totals;
     # both are reported because they answer different questions - the first is
     # the typical column, the second the whole biosphere.
+    if driverdir !== nothing
+        d = dead_carbon(driverdir, area)
+        if !isempty(d)
+            println()
+            println(rpad("dead carbon", 26), rpad("Pg C", 10), "note")
+            haskey(d, "cSoil") && println(
+                rpad("cSoil (1 m)", 26),
+                rpad(round(d["cSoil"], digits = 1), 10),
+                "SoilGrids initial condition + 2 yr, NOT equilibrated",
+            )
+            haskey(d, "heterotrophic respiration") && println(
+                rpad("Rh", 26),
+                rpad(round(d["heterotrophic respiration"], digits = 1), 10),
+                "Pg C/yr; compare with litterfall above",
+            )
+            veg2 = total(cVeg, area)
+            haskey(d, "cSoil") && println(
+                "\nlive + dead = ",
+                round(veg2 + d["cSoil"], digits = 1),
+                " Pg C  — a sum of two quantities on different footings; the \
+soil term is observational, not a model equilibrium",
+            )
+        end
+    end
+
     tv = get2d("tau_veg")
     if tv !== nothing
         num, den = zero(FT), zero(FT)
@@ -152,8 +188,48 @@ function main(path)
     close(ds)
 end
 
+"""
+    dead_carbon(dir, area)
+
+Global soil carbon and heterotrophic respiration from the driver run.
+"""
+function dead_carbon(dir, area)
+    out = Dict{String, FT}()
+    for (v, scale, label) in (
+        ("soc_int", FT(1), "cSoil"),
+        ("hr", FT(365 * 86400), "heterotrophic respiration"),
+    )
+        f = joinpath(dir, "$(v)_1M_average.nc")
+        isfile(f) || continue
+        ds = NCDatasets.NCDataset(f)
+        try
+            dims = collect(NCDatasets.dimnames(ds[v]))
+            A = Array(ds[v][ntuple(_ -> Colon(), length(dims))...])
+            ti = findfirst(d -> lowercase(d) == "time", dims)
+            # Time-mean over the record, whichever axis carries it.
+            M =
+                ti === nothing ? A :
+                dropdims(sum(A; dims = ti); dims = ti) ./ size(A, ti)
+            li = findfirst(d -> lowercase(d) == "lon", dims)
+            lai = findfirst(d -> lowercase(d) == "lat", dims)
+            perm =
+                sortperm([li === nothing ? 1 : li, lai === nothing ? 2 : lai])
+            M2 = ndims(M) == 2 && perm != [1, 2] ? permutedims(M, (2, 1)) : M
+            s = zero(FT)
+            for i in eachindex(M2)
+                valid(M2[i]) && (s += FT(M2[i]) * scale * area[i])
+            end
+            out[label] = s * PG_PER_KG
+        finally
+            close(ds)
+        end
+    end
+    return out
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
-    isempty(ARGS) &&
-        error("usage: julia global_budget.jl <equilibrium_carbon.nc>")
-    main(ARGS[1])
+    isempty(ARGS) && error(
+        "usage: julia global_budget.jl <equilibrium_carbon.nc> [driver_outdir]",
+    )
+    main(ARGS[1], length(ARGS) > 1 ? ARGS[2] : nothing)
 end
