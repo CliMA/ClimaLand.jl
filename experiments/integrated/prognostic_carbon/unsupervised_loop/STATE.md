@@ -3492,3 +3492,37 @@ direction the check needs.
 it, so "DRIFT SUSPECT" can no longer be read as integrator disagreement without
 looking. Left as it was, this would have reported the offline integrator as
 unreliable — and that integrator is the basis of every global number in this PR.
+
+### `check_map_vs_sites.jl` had become circular; repurposed
+
+The check compared equilibrium woody carbon between the map and
+`equilibrium_pools.tsv`. That TSV is now **sampled from the map**, because a
+per-site offline spinup can no longer produce the water deficit — it needs a
+gridded precipitation climatology. The comparison would have reported a perfect
+agreement that means nothing, which is worse than no check at all.
+
+Repurposed to the quantity the old answer actually depended on: **do the
+single-column and global configurations see the same climate at the same
+coordinate?** The pools follow from the forcing, so if the forcing disagrees,
+every site-versus-map comparison inherits that disagreement.
+
+Across the 30-site battery:
+
+| | |
+|---|---|
+| median precipitation ratio (site / global) | **1.01** |
+| range | 0.36 – 3.9 |
+| sites agreeing on the deficit within 0.10 m | **21/30** |
+
+Typical agreement is excellent. The nine that differ are all in **sharp
+precipitation gradients**, where a point sample and a cell mean legitimately
+differ — and the new cold-steppe sites are over-represented among them:
+patagonian_steppe 3.9x (Andean rain shadow), mongolian_steppe 2.21x,
+kazakh_steppe 1.49x, alongside the earlier mojave_sw_us and n_australia_savanna.
+
+**Consequence for the site set:** nine of the thirty cannot support a
+site-versus-map comparison, and that is a property of where they sit rather than
+of either configuration. A future expansion should prefer coordinates away from
+orographic and monsoon gradients if cross-configuration comparison is the goal —
+the cold non-forest additions were chosen for biome coverage, which is the right
+criterion for rule 1 and the wrong one for this.

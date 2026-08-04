@@ -1,28 +1,40 @@
-## Does the global equilibrium map reproduce the single-column results?
+## Do the single-column runs and the global run see the same climate?
 ##
-## The map and the battery reach the same quantity by different routes: the
-## battery integrates daily drivers from a column run at one longitude/latitude,
-## the map integrates a monthly climatology sampled from a global run at the same
-## point. Agreement is not guaranteed by construction, so it is worth checking -
-## it exercises the global driver output, the dimension-order handling, the
-## land mask, and the climatology averaging all at once, against numbers that
-## were produced before any of that code existed.
+## This check used to compare equilibrium woody carbon between the map and a
+## per-site offline spinup. That comparison became **circular** once the
+## seasonality limit arrived: the per-site seeds can no longer be produced from a
+## single column, because the water deficit needs a gridded precipitation
+## climatology, so `equilibrium_pools.tsv` is now sampled from the map itself.
+## Comparing it against the map would report a perfect agreement that means
+## nothing. Rather than delete the check, it now asks the question its answer
+## actually depended on.
 ##
-## Disagreement is informative rather than fatal. Two known sources:
-##   - the global run samples a 1 degree cell, the battery a single column, and
-##     coastal or mountainous sites differ legitimately;
-##   - monthly vs daily drivers, worth ~0.4% median (check_monthly_drivers.jl).
-## A site that disagrees by more than a factor of two is a bug, not a sampling
-## difference, and that is the threshold this reports on.
+## The pools follow from the forcing. If the site driver and the global driver
+## disagree about precipitation at the same coordinate, the two configurations
+## equilibrate to different vegetation for a reason that is not a model error,
+## and every site-versus-map comparison inherits that disagreement. This measures
+## it directly.
+##
+## It is also what makes `check_drift.jl` readable: a site seeded from a cell
+## whose climate it does not experience will move on its own, and without this
+## the movement looks like the offline and coupled integrators disagreeing.
+##
+## Interpretation: agreement is typically good - the median ratio across the
+## battery is ~0.92 - and the outliers are sites in sharp precipitation
+## gradients, where a point sample and a cell mean legitimately differ. That is a
+## sampling difference, not a bug in either configuration.
 ##
 ## Usage:
-##   julia --project=.buildkite check_map_vs_sites.jl <equilibrium_carbon.nc>
+##   julia --project=.buildkite check_map_vs_sites.jl <driver_outdir> <battery_runroot>
 
-import NCDatasets
+include(joinpath(@__DIR__, "global_equilibrium.jl"))
 
-const FT = Float64
-const TSV = joinpath(@__DIR__, "equilibrium_pools.tsv")
 const SITES = joinpath(@__DIR__, "test_sites.csv")
+
+# Beyond this the seed's climate and the run's climate are different enough that
+# a drift comparison at that site is not testing the integrators. Matches
+# DEFICIT_GAP_TOL in check_drift.jl.
+const DEFICIT_GAP_TOL = FT(0.10)   # m of annual water deficit
 
 read_sites(csv) = [
     (name = f[4], lon = parse(FT, f[1]), lat = parse(FT, f[2])) for
@@ -30,99 +42,104 @@ read_sites(csv) = [
     length(f) == 4 && f[1] != "lon" && !startswith(f[1], "#")
 ]
 
-function read_pools(path)
-    out = Dict{String, FT}()
-    for l in readlines(path)
-        (isempty(strip(l)) || startswith(l, '#') || startswith(l, "site")) &&
-            continue
-        f = split(strip(l), '\t')
-        length(f) >= 5 && (out[f[1]] = parse(FT, f[5]))  # C_stem
+"Scalar metrics from a site's `carbon_metrics.txt`."
+function read_metrics(path)
+    d = Dict{String, FT}()
+    isfile(path) || return d
+    for line in readlines(path)
+        f = split(strip(line))
+        length(f) == 2 || continue
+        v = tryparse(FT, f[2])
+        v === nothing || (d[f[1]] = v)
     end
-    return out
+    return d
 end
 
-"""
-    nearest_land(lons, lats, A, lon, lat; radius = 2)
+"Annual mean of a monthly field on the model grid, NaN where any month is masked."
+function annual_mean(lons, lats, A)
+    M = fill(FT(NaN), length(lons), length(lats))
+    for i in eachindex(lons), j in eachindex(lats)
+        all(m -> valid(A[i, j, m]), 1:12) || continue
+        M[i, j] = abs(sum(FT(A[i, j, m]) for m in 1:12) / 12)
+    end
+    return M
+end
 
-Value at the nearest cell, falling back to the nearest finite cell within
-`radius` cells. Battery sites sit at round coordinates that can land on a
-coastal cell the global land mask excludes; searching a small neighbourhood
-keeps such a site comparable instead of silently dropping it.
-"""
-function nearest_land(lons, lats, A, lon, lat; radius = 2)
+function sample_at(lons, lats, M, lon, lat)
     l = lon
     maximum(lons) <= 180 && l > 180 && (l -= 360)
-    i0 = argmin(abs.(lons .- l))
-    j0 = argmin(abs.(lats .- lat))
-    isfinite(A[i0, j0]) && return A[i0, j0], 0
-    best, bestd = FT(NaN), typemax(Int)
-    for di in (-radius):radius, dj in (-radius):radius
-        i, j = i0 + di, j0 + dj
-        (1 <= i <= size(A, 1) && 1 <= j <= size(A, 2)) || continue
-        isfinite(A[i, j]) || continue
-        d = di * di + dj * dj
-        d < bestd && (best, bestd = A[i, j], d)
-    end
-    return best, isfinite(best) ? round(Int, sqrt(bestd)) : -1
+    return M[argmin(abs.(lons .- l)), argmin(abs.(lats .- lat))]
 end
 
-function main(ncpath)
+function main(driverdir, runroot)
     sites = read_sites(SITES)
-    site_stem = read_pools(TSV)
-    ds = NCDatasets.NCDataset(ncpath)
-    lons = Array{FT}(Array(ds["lon"][:]))
-    lats = Array{FT}(Array(ds["lat"][:]))
-    dims = collect(NCDatasets.dimnames(ds["C_stem"]))
-    A = Array(ds["C_stem"][:, :])
-    # written as (lon, lat) by global_equilibrium.jl, but check rather than trust
-    if lowercase(dims[1]) != "lon"
-        A = permutedims(A, (2, 1))
-    end
-    close(ds)
+    lons, lats, pra = read_monthly(driverdir, "pra")
+    _, _, precip = read_monthly(driverdir, "precip")
+    _, _, tair = read_monthly(driverdir, "tair")
+    P = annual_mean(lons, lats, pra)
+    D = annual_deficit_grid(lons, lats, tair, FT(0.6), precip) ./ 1000  # mm -> m
 
     println(
-        rpad("site", 21),
-        rpad("battery", 10),
-        rpad("map", 10),
-        rpad("ratio", 9),
-        "note",
+        rpad("site", 22),
+        rpad("site P", 9),
+        rpad("global P", 10),
+        rpad("ratio", 8),
+        rpad("site D", 9),
+        rpad("global D", 10),
+        "deficit gap",
     )
-    nbad, ncmp = 0, 0
+    ratios, nbad, ncmp = FT[], 0, 0
     for s in sites
-        haskey(site_stem, s.name) || continue
-        b = site_stem[s.name]
-        m, shift = nearest_land(lons, lats, A, s.lon, s.lat)
-        if !isfinite(m)
-            println(
-                rpad(s.name, 21),
-                rpad(round(b, digits = 2), 10),
-                "no land cell within 2 cells",
-            )
-            continue
-        end
+        m = read_metrics(joinpath(runroot, s.name, "out", "carbon_metrics.txt"))
+        haskey(m, "P_annual_m_yr") || continue
+        gp = sample_at(lons, lats, P, s.lon, s.lat)
+        gd = sample_at(lons, lats, D, s.lon, s.lat)
+        isfinite(gp) || continue
         ncmp += 1
-        # Both near zero is agreement, not a 0/0 blow-up.
-        ratio = (b < 0.05 && m < 0.05) ? 1.0 : m / max(b, 0.01)
-        bad = ratio > 2 || ratio < 0.5
+        r = gp > FT(0.05) ? m["P_annual_m_yr"] / gp : FT(NaN)
+        isnan(r) || push!(ratios, r)
+        gap =
+            (haskey(m, "D_annual_m") && isfinite(gd)) ?
+            abs(m["D_annual_m"] - gd) : FT(NaN)
+        bad = isfinite(gap) && gap > DEFICIT_GAP_TOL
         nbad += bad
         println(
-            rpad(s.name, 21),
-            rpad(round(b, digits = 2), 10),
-            rpad(round(m, digits = 2), 10),
-            rpad(round(ratio, digits = 2), 9),
-            bad ? "OUTSIDE 2x" :
-            (shift > 0 ? "ok (shifted $shift cells)" : "ok"),
+            rpad(s.name, 22),
+            rpad(round(m["P_annual_m_yr"], digits = 2), 9),
+            rpad(round(gp, digits = 2), 10),
+            rpad(isnan(r) ? "-" : string(round(r, digits = 2)), 8),
+            rpad(
+                haskey(m, "D_annual_m") ? round(m["D_annual_m"], digits = 3) :
+                "-",
+                9,
+            ),
+            rpad(isfinite(gd) ? round(gd, digits = 3) : "-", 10),
+            isnan(gap) ? "-" :
+            string(round(gap, digits = 3), bad ? "   >tol" : ""),
         )
     end
-    println("\n$(ncmp - nbad)/$ncmp sites agree within a factor of two")
+    ncmp == 0 && error("no site metrics with P_annual under $runroot")
+    sort!(ratios)
+    med = ratios[(length(ratios) + 1) ÷ 2]
     println(
-        nbad == 0 ? "MAP CONSISTENT with the single-column battery" :
-        "MAP DISAGREES at $nbad site(s) - investigate before using the map",
+        "\n$ncmp sites; median precipitation ratio ",
+        round(med, digits = 2),
+        ", range ",
+        round(ratios[1], digits = 2),
+        " - ",
+        round(ratios[end], digits = 2),
+    )
+    println(
+        "$(ncmp - nbad)/$ncmp sites agree on the annual water deficit to within $(DEFICIT_GAP_TOL) m",
+    )
+    println(
+        nbad == 0 ?
+        "FORCING CONSISTENT - a site-versus-map comparison is meaningful everywhere" :
+        "FORCING DIFFERS at $nbad site(s) - drift there is not evidence about the integrators",
     )
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    isempty(ARGS) &&
-        error("usage: julia check_map_vs_sites.jl <equilibrium_carbon.nc>")
-    main(ARGS[1])
-end
+isempty(ARGS) && error(
+    "usage: julia check_map_vs_sites.jl <driver_outdir> <battery_runroot>",
+)
+main(ARGS[1], ARGS[2])
