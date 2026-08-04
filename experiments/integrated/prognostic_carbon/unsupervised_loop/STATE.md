@@ -2817,3 +2817,58 @@ The *pattern* transfers well, so the predictor should survive the move to ERA5.
 The **half-point must be recalibrated, not copied**: the model is systematically
 wetter, so it will compute smaller deficits, and transplanting dh = 450 would
 under-suppress.
+
+### The interpolated reference: spatial r improves in ALL SIX products
+
+Job 7006236 (after fixing a harness bug that had silently run one floor value
+four times). `pet_floor` = 0 is the pure temperature ramp, 1 is the fixed
+100 mm/month reference. Bias / spatial r:
+
+| product | base | f0.3 dh450 | f0.3 dh550 | **f0.6 dh450** | **f0.6 dh550** | fixed dh500 |
+|---|---|---|---|---|---|---|
+| XuSaatchi | 0.96/0.614 | 0.48/0.642 | 0.65/0.638 | **0.15**/0.649 | 0.43/0.645 | −0.26/0.640 |
+| Thurner | −0.35/0.537 | −0.51/0.536 | −0.43/0.537 | −1.10/0.546 | −0.82/**0.552** | −2.02/**0.484** |
+| ESACCI | 1.37/0.614 | 0.91/0.649 | 1.07/0.642 | 0.59/**0.662** | 0.86/0.653 | 0.20/0.654 |
+| GEOCARBON | 1.15/0.572 | 0.46/0.626 | 0.71/0.615 | **0.04**/0.649 | 0.44/0.631 | −0.52/0.659 |
+| Saatchi2011 | 3.23/0.633 | 2.14/0.670 | 2.52/0.665 | 1.94/**0.687** | 2.38/0.677 | 1.89/0.706 |
+| USForest | 2.40/0.575 | 2.27/0.566 | 2.33/0.571 | 1.84/0.572 | 2.05/**0.576** | 1.18/0.583 |
+
+**At f0.6 dh550, spatial r improves in all six products and bias in five of six.**
+Nothing tried in this project has done that before. `r` gains are 0.001-0.044.
+
+Thurner's *mean* bias worsens (−0.35 -> −0.82) while its *r* improves to 0.552,
+the best Thurner r anywhere in the sweep including base and the fixed reference
+(0.484). The bins explain why - Thurner, model/observed:
+
+| obs bin | base | f0.6 dh550 |
+|---|---|---|
+| > 10 | 0.8 | 0.8 |
+| 5-10 (1524 cells, dominant) | 0.9 | **0.8** |
+| 2-5 | 1.1 | **1.0** |
+| 0.5-2 | 1.8 | **1.4** |
+| < 0.5 | 3.4 | **2.4** |
+
+Its low bins all improve; only its dominant forest bin gets slightly more
+under-predicted, and that is what moves the mean. So the mean-bias regression and
+the correlation gain are not in conflict - they are different parts of the map.
+
+XuSaatchi bins at f0.6 dh550: 0.9 / 1.2 / 1.4 / 2.7 / **7.7** against base
+0.9 / 1.2 / 1.6 / 3.3 / 9.9. Forest bin held, every other bin improved. The
+`<0.5` dry|wet split is 0.39\|5.67 against base 0.54\|6.79 - both halves better.
+
+Budget: cVeg 560 Pg C (base 635), tau_veg 8.6 yr, NPP 65.0 unchanged, root share
+10.7% (base 8.8%).
+
+**Floor 0.6 is not obviously the optimum** - r rises from floor 0 to 0.3 to 0.6,
+while the fixed reference (floor 1) has better r on Saatchi and GEOCARBON but
+collapses Thurner. So the optimum in floor is between 0.6 and 1. Testing floor
+0.8 at dh 550/650, job 7006330.
+
+### Harness bug worth remembering
+
+The first floor sweep (7006093) built `PET_FLAG` from `${PET_FLOOR:-0}` *above*
+the loop that assigns `PET_FLOOR`, so all four runs used floor 0 and the output
+was two duplicated pairs. It was caught only because duplicated runs give
+bit-identical bias and r; had the values merely been close, "four floors barely
+matter" would have been a plausible and completely wrong conclusion. The monitor
+now reports the distinct floor values it actually observed.
