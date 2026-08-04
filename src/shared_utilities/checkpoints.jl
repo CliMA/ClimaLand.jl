@@ -1,5 +1,7 @@
 import ClimaCore: Fields, InputOutput
 import ClimaUtilities
+import ClimaUtilities.TimeManager: ITime
+import Dates
 
 """
     ClimaLand.find_restart(output_dir)
@@ -89,6 +91,15 @@ function _context_from_Y(Y)
 end
 
 """
+    _epoch_attribute(t)
+
+Return the start date of `t` as a string, or `"nothing"` if `t` does not carry
+one. HDF5 attributes cannot hold a `Dates.DateTime` directly.
+"""
+_epoch_attribute(t) = "nothing"
+_epoch_attribute(t::ITime) = isnothing(t.epoch) ? "nothing" : string(t.epoch)
+
+"""
     ClimaLand.save_checkpoint(Y, t, output_dir; model = nothing, context = ClimaComms.context(Y))
 
 Save a simulation checkpoint to an HDF5 file.
@@ -106,6 +117,10 @@ specified output directory.
   to check for consistency.
 - `context` (Optional): The ClimaComms context. This is used for distributed I/O
   operations. Defaults to the context extracted from the state vector `Y` or the `model`.
+
+The time is stored as a number of seconds. If `t` is an `ITime` with a start
+date, that date is stored as well, so that `read_checkpoint` can return an
+`ITime` rather than a bare number of seconds.
 """
 function save_checkpoint(
     Y,
@@ -114,8 +129,9 @@ function save_checkpoint(
     model = nothing,
     context = isnothing(model) ? _context_from_Y(Y) : ClimaComms.context(model),
 )
-    day = floor(Int, t / (60 * 60 * 24))
-    sec = floor(Int, t % (60 * 60 * 24))
+    t_seconds = float(t)
+    day = floor(Int, t_seconds / (60 * 60 * 24))
+    sec = floor(Int, t_seconds % (60 * 60 * 24))
     output_file = joinpath(output_dir, "day$day.$sec.hdf5")
     hdfwriter = InputOutput.HDF5Writer(output_file, context)
     # If model was passed, add its hash, otherwise add nothing
@@ -123,7 +139,11 @@ function save_checkpoint(
     InputOutput.write_attributes!(
         hdfwriter,
         "/",
-        Dict("time" => t, "land_model_hash" => hash_model),
+        Dict(
+            "time" => t_seconds,
+            "epoch" => _epoch_attribute(t),
+            "land_model_hash" => hash_model,
+        ),
     )
     InputOutput.write!(hdfwriter, Y, "Y")
     Base.close(hdfwriter)
@@ -147,7 +167,9 @@ This function loads the simulation state from a previously saved checkpoint file
 
 # Returns
 - `Y`: The state vector loaded from the checkpoint file.
-- `t`: The simulation time loaded from the checkpoint file.
+- `t`: The simulation time loaded from the checkpoint file. This is an `ITime` if
+  the checkpoint was written with one carrying a start date, and a number of
+  seconds otherwise.
 """
 function read_checkpoint(
     file_path;
@@ -164,6 +186,10 @@ function read_checkpoint(
         end
     end
     t = attributes["time"]
+    epoch = get(attributes, "epoch", "nothing")
+    if epoch != "nothing"
+        t = ITime(t; epoch = Dates.DateTime(epoch))
+    end
     Base.close(hdfreader)
     return Y, t
 end

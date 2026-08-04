@@ -70,6 +70,36 @@ restart_file = ClimaLand.find_restart(output_dir)
 Y, t = ClimaLand.read_checkpoint(restart_file; model)
 ```
 
+The time is returned as an `ITime` if the checkpoint was saved with one carrying
+a start date, and as a number of seconds otherwise. Simulations built from a
+`start_date` and a `stop_date` use `ITime`s. Such a simulation is restarted by
+continuing from the time of the checkpoint while keeping the epoch of the
+original run, which is the convention `ClimaCoupler` uses: the restarted
+simulation counts its time from the original start date rather than from the
+checkpoint. The final time and the time step have to be built with that epoch
+too:
+
+```julia
+import ClimaUtilities.TimeManager: ITime, epoch
+
+restart_file = ClimaLand.find_restart(output_dir)
+t_restart = ClimaLand.initial_time_from_checkpoint(restart_file; model)
+start_date = epoch(t_restart)
+t0, tf, Δt = promote(
+    t_restart,
+    ITime(Dates.value(Second(stop_date - start_date)); epoch = start_date),
+    ITime(Δt_seconds; epoch = start_date),
+)
+simulation = LandSimulation(
+    t0,
+    tf,
+    Δt,
+    model;
+    set_ic! = (Y, p, t, model) ->
+        ClimaLand.set_initial_conditions_from_checkpoint!(Y, restart_file; model),
+)
+```
+
 ## Output Structure
 
 `ClimaLand` utilizes the `OutputPathGenerator` from `ClimaUtilities` to manage
@@ -130,3 +160,8 @@ checkpointing and updating the drivers are compatible.
     The reason why `ClimaLand` does not support these features (at the moment), is that
     updating drivers and diagnostics are implemented as callbacks. Callbacks have some
     internal memory that is not saved in the restart files.
+
+### Checkpoints and the cache
+
+Only the state `Y` is checkpointed; the cache is rebuilt from it and from the forcing
+when the simulation restarts.

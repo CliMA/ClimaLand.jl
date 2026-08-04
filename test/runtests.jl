@@ -41,7 +41,7 @@ end
 @safetestset "Bucket soil tests" begin
     include("standalone/Bucket/soil_bucket_tests.jl")
 end
-@safetestset "Restart tests" begin
+@safetestset "Bucket restart tests" begin
     include("standalone/Bucket/restart.jl")
 end
 
@@ -164,6 +164,9 @@ end
 end
 @safetestset "Full land" begin
     include("integrated/full_land.jl")
+end
+@safetestset "Full land restart tests" begin
+    include("integrated/restart.jl")
 end
 
 # FluxnetSimulations extension tests
