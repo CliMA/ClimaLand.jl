@@ -70,6 +70,24 @@ restart_file = ClimaLand.find_restart(output_dir)
 Y, t = ClimaLand.read_checkpoint(restart_file; model)
 ```
 
+The time is returned as an `ITime` if the checkpoint was saved with one carrying
+a start date, and as a number of seconds otherwise. Simulations built from a
+`start_date` and a `stop_date` use `ITime`s, so restarting one amounts to using
+the date of the checkpoint as the new start date:
+
+```julia
+restart_file = ClimaLand.find_restart(output_dir)
+t = ClimaLand.initial_time_from_checkpoint(restart_file; model)
+simulation = LandSimulation(
+    date(t),
+    stop_date,
+    Δt,
+    model;
+    set_ic! = (Y, p, t, model) ->
+        ClimaLand.set_initial_conditions_from_checkpoint!(Y, restart_file; model),
+)
+```
+
 ## Output Structure
 
 `ClimaLand` utilizes the `OutputPathGenerator` from `ClimaUtilities` to manage
@@ -130,3 +148,16 @@ checkpointing and updating the drivers are compatible.
     The reason why `ClimaLand` does not support these features (at the moment), is that
     updating drivers and diagnostics are implemented as callbacks. Callbacks have some
     internal memory that is not saved in the restart files.
+
+### Checkpoints and the cache
+
+Only the state `Y` is checkpointed; the cache is rebuilt from it when the
+simulation restarts. Nearly every cache variable is a function of the state and
+the time, so rebuilding it is exact, but `p.snow.T_sfc` is not: it is the initial
+guess of the snow surface temperature root find, which takes a single Newton step
+per timestep, and so carries the previous step's value in an uninterrupted run.
+
+A restarted land simulation therefore does not reproduce an uninterrupted one
+bit-for-bit. `test/integrated/restart.jl` measures the difference for a global
+simulation checkpointed three hours in: the states agree to a relative 1e-4, and
+restoring `p.snow.T_sfc` alone recovers bit-for-bit agreement.

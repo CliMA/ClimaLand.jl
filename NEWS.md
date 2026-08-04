@@ -2,6 +2,15 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Let `save_checkpoint`/`read_checkpoint` round-trip an `ITime`: the time
+  is written as a number of seconds together with the start date it carries, so a simulation
+  set up from a `start_date` and a `stop_date` can now be checkpointed and restarted (it
+  previously errored when saving). PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
+- ![][badge-✨feature] Add a restart test for the global land model with the P-model
+  (`test/integrated/restart.jl`), the configuration of `experiments/long_runs/snowy_land_pmodel.jl`.
+  It checks that the checkpoint round-trips the state exactly, and that restarting from it
+  reproduces an uninterrupted run — bit-for-bit once `p.snow.T_sfc`, the only lagged quantity
+  in the cache, is restored. PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
 - ![][badge-✨feature] Add a `TimeIntegratedVariable` utility for prognostic time-integrated
   variables — a running mean/sum or plain time-integral stored in `Y` and advanced by the
   time-stepper (no callback, checkpoint/restart-safe). PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
