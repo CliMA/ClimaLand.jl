@@ -461,6 +461,25 @@ function set_canopy_component_initial_conditions!(
     else
         Y.canopy.biomass.P_annual .= FT(0)
     end
+    # Seed the monthly integrals from the current drivers, and the annual water
+    # deficit from the seeded monthly pair. Left at zero, D_annual would make the
+    # seasonality limit exactly 1 - no suppression at all - for as long as its
+    # memory timescale, so a run shorter than that would silently report the
+    # behaviour of a model without the limit.
+    Y.canopy.biomass.T_month .= p.drivers.T
+    @. Y.canopy.biomass.P_month =
+        -(p.drivers.P_liq + p.drivers.P_snow) *
+        ClimaLand.Canopy.SECONDS_PER_MONTH
+    params = model.parameters
+    @. Y.canopy.biomass.D_annual =
+        12 * max(
+            ClimaLand.Canopy.monthly_pet(
+                Y.canopy.biomass.T_month,
+                params.pet_ref_woody,
+                params.pet_floor_woody,
+            ) - Y.canopy.biomass.P_month,
+            0,
+        )
     Y.canopy.biomass.C_sugar .= FT(0)
     Y.canopy.biomass.C_leaf .= FT(0)
     Y.canopy.biomass.C_stem .= FT(0)
