@@ -2689,3 +2689,64 @@ temperature, so cold, dry, low-precipitation cells score a large deficit. Boreal
 forest is exactly that. This is the same trap that killed `q_map(MAT)`: it fixed
 the target band and wrecked everything else. **The `>10` and `5-10` bins are the
 test.** Sweeping `deficit_half` = 350 and 500 mm/yr with `n = 4`, job 7005914.
+
+### The offline test: biggest single improvement so far, with one real cost
+
+Job 7005914, `deficit_n = 4`, fixed 100 mm/month reference.
+
+| product | base bias | base r | dh=350 | r | **dh=500** | **r** |
+|---|---|---|---|---|---|---|
+| XuSaatchi | +0.96 | 0.614 | −0.77 | 0.634 | **−0.26** | **0.640** |
+| Thurner | −0.35 | 0.537 | −2.50 | 0.412 | −2.02 | 0.484 |
+| ESACCI | +1.37 | 0.614 | −0.29 | 0.654 | **+0.20** | **0.654** |
+| GEOCARBON | +1.15 | 0.572 | −1.29 | 0.675 | **−0.52** | **0.659** |
+| Saatchi2011 | +3.23 | 0.633 | +1.05 | 0.707 | **+1.89** | **0.706** |
+| USForest | +2.40 | 0.575 | +0.70 | 0.563 | **+1.18** | 0.583 |
+
+At `dh = 500`, **|bias| falls in 5 of 6 products and spatial r rises in 5 of 6 —
+at the same time.** Every previous candidate traded one against the other. r gains
+are 0.03-0.09, which is large for this quantity.
+
+**The acceptance test named in advance — the forest bins — passes.** XuSaatchi:
+
+| obs bin | base ratio | dh=500 | tau_veg |
+|---|---|---|---|
+| > 10 | 0.9 | **0.9** (held) | 11.3 |
+| 5-10 | 1.2 | **1.0** | 7.5 |
+| 2-5 | 1.6 | **1.1** | 5.1 |
+| 0.5-2 | 3.3 | **2.1** | 4.2 |
+| < 0.5 | 9.9 | **5.5** | 2.8 |
+
+Every bin improved or held. The `<0.5` dry|wet split went 0.54|6.79 -> 0.24|4.59,
+so it helped both the cells the MAP ramp could reach and the ones it could not.
+This is the opposite of `q_map`, which fixed its target band by wrecking the rest.
+
+Global budget also moves the right way, none of it tuned for:
+
+| | base | dh=500 |
+|---|---|---|
+| cVeg | 635 Pg C | **478** (literature 450-650) |
+| tau_veg | 9.7 yr | 7.4 |
+| NPP | 65.5 | 64.9 (unchanged - this is allocation, not production) |
+| root share | 8.8% | **13.3%** (typical 20-25%) |
+
+The root-share improvement is a side effect: carbon denied to stem goes to root,
+which is where the earlier "root carbon looks low" caveat wanted it.
+
+### The cost: Thurner, and it is the predicted failure mode
+
+Thurner is the only product that gets worse, and it gets much worse (−0.35 ->
+−2.02, r 0.537 -> 0.484). Its mid bins are now **under**-predicted: 5-10 goes
+0.9 -> 0.6, 2-5 goes 1.1 -> 0.6, 0.5-2 goes 1.8 -> 0.7.
+
+Thurner is a boreal/temperate forest product, and this is exactly the failure
+written down before the run: a fixed 100 mm/month reference assumes tropical
+evaporative demand everywhere, so a cold dry boreal cell scores a large deficit
+when the reason it is dry is that it is **frozen**. The predictor is right; the
+reference is wrong.
+
+Testing the fix (job 7006043): make the reference a temperature ramp,
+`pet_month(T) = 100 * clamp((T - 273.15)/20, 0, 1)` — zero demand at freezing,
+full tropical demand at 20 C. Sweeping dh = 300/450/600 with `--pet`. The
+acceptance test is now **Thurner's mid bins recovering without the tropical gains
+being given back**.

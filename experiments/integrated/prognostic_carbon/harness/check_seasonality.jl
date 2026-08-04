@@ -57,11 +57,8 @@ end
 
 quantiles(v, qs) =
     isempty(v) ? fill(NaN, length(qs)) :
-    (
-        s = sort(v); [
-            s[clamp(round(Int, q * length(s)), 1, length(s))] for q in qs
-        ]
-    )
+    (s = sort(v);
+    [s[clamp(round(Int, q * length(s)), 1, length(s))] for q in qs])
 
 function seasonality_main(ncpath, driverdir)
     ds = NCDatasets.NCDataset(ncpath)
