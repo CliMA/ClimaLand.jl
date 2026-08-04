@@ -1,0 +1,30 @@
+#!/bin/bash
+# Package test suite. The seasonality limit touches biomass.jl,
+# implicit_timestepping.jl, initial_conditions.jl and the parameter TOML - all
+# shared with configurations that do not use the carbon model at all, so a green
+# rule-1 battery says nothing about whether the rest of ClimaLand still works.
+#PBS -N pc_tests
+#PBS -A UCIT0011
+#PBS -q develop
+#PBS -l walltime=03:00:00
+#PBS -l select=1:ncpus=16:mem=100GB
+#PBS -j oe
+#PBS -m n
+#PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+export HDF5_USE_FILE_LOCKING=FALSE
+REPO=/glade/u/home/arenchon/ClimaLand.jl
+JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+LOG=/glade/derecho/scratch/arenchon/claude/prognostic_carbon/tests_${PBS_JOBID:-local}.log
+cd "$REPO"
+echo "TESTS start"
+"$JULIA" --project=test -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()' >>"$LOG" 2>&1
+if "$JULIA" --project=test test/runtests.jl >>"$LOG" 2>&1; then
+    echo "TESTS_PASS $LOG"
+else
+    echo "TESTS_FAIL $LOG"
+    grep -nE "Test Failed|Error During Test|ERROR:|Got exception" "$LOG" | head -20
+    tail -30 "$LOG"
+fi
+echo TESTS_DONE

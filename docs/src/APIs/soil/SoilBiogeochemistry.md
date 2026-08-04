@@ -21,6 +21,7 @@ ClimaLand.Soil.SoilCO2ModelParameters(toml_dict::CP.ParamDict)
 ## Model-specific Types
 
 ```@docs
+ClimaLand.SoilCarbonLitterInput
 ClimaLand.Soil.Biogeochemistry.MicrobeProduction
 ClimaLand.Soil.Biogeochemistry.SoilCO2FluxBC
 ClimaLand.Soil.Biogeochemistry.SoilO2FluxBC
