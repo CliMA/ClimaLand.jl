@@ -151,17 +151,12 @@ function read_monthly(dir, var)
     isfile(path) || error("missing driver file $path")
     ds = NCDatasets.NCDataset(path)
     try
-        # Record 1 is the run's FIRST month, not January. A driver run starting
-        # 2008-03-01 puts March at index 1, so a climatology indexed 1..12 is
-        # phase-shifted by however many months the run start is from January.
-        # Harmless for the equilibrium pools and the annual deficit, which pair
-        # model fields with each other and sum over a whole cycle - but wrong the
-        # moment a model month is compared with an observational one, which is
-        # exactly what the GPCC branch of annual_deficit_grid does.
-        # Record 1 is the run's FIRST month, not January. Harmless for the
-        # equilibrium pools and for a deficit built from model fields alone -
-        # both pair model months with each other and sum over a whole cycle -
-        # but wrong the moment a model month meets an observational one.
+        # Record 1 is the run's FIRST month, not January: a run starting
+        # 2008-03-01 puts March at index 1. Harmless for the equilibrium pools
+        # and for a deficit built from model fields alone - both pair model
+        # months with each other and sum over a whole cycle - but wrong the
+        # moment a model month meets an observational one, which is what the
+        # GPCC branch of annual_deficit_grid does.
         month_offset = start_month_of(dir) - 1
         lons = Array{FT}(coalesce.(Array(ds["lon"][:]), NaN))
         lats = Array{FT}(coalesce.(Array(ds["lat"][:]), NaN))
@@ -534,7 +529,10 @@ function main(
         ) ? "equilibrium_carbon.nc" :
         deficit_half === nothing ?
         "equilibrium_carbon_mh$(mh)_n$(mn)_q$(q_map).nc" :
-        "equilibrium_carbon_dh$(deficit_half)_dn$(deficit_n)$(use_pet ? "_pet$(pet_floor)" : "").nc",
+        # The precipitation source belongs in the name: a GPCC run and a
+        # model-precipitation run at the same half-point are different
+        # experiments, and without it the second silently overwrites the first.
+        "equilibrium_carbon_dh$(deficit_half)_dn$(deficit_n)$(use_pet ? "_pet$(pet_floor)" : "")_$(use_model_precip ? "modelP" : "gpccP").nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
