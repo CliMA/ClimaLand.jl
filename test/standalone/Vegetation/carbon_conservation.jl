@@ -381,6 +381,45 @@ for FT in (Float32, Float64)
         @test Canopy.woody_fraction(FT(-1), h, n) == FT(0)
     end
 
+    @testset "Woody allocation falls with the annual water deficit, FT = $FT" begin
+        p_c = biomass.parameters
+        h, n = p_c.deficit_half_woody, p_c.n_deficit_woody
+        # Halved exactly at the half-point, by construction.
+        @test Canopy.seasonality_limit(h, h, n) ≈ FT(0.5) atol = FT(1e-6)
+        # An aseasonal column is untouched: the limit must not suppress wet
+        # forest, which is the failure mode that a fixed reference produced.
+        @test Canopy.seasonality_limit(FT(0), h, n) == FT(1)
+        # Monotone decreasing, bounded by (0, 1].
+        @test FT(1) >
+              Canopy.seasonality_limit(FT(0.3), h, n) >
+              Canopy.seasonality_limit(FT(0.8), h, n) >
+              Canopy.seasonality_limit(FT(2.0), h, n) >
+              FT(0)
+        # half <= 0 disables it exactly, so the no-limit control runs through
+        # the same code path rather than a second one.
+        @test Canopy.seasonality_limit(FT(0.8), FT(0), n) == FT(1)
+        # A running sum can dip below zero transiently; that must read as "no
+        # deficit", not as a negative base under a fractional power.
+        @test Canopy.seasonality_limit(FT(-1), h, n) == FT(1)
+    end
+
+    @testset "Evaporative demand carries temperature, FT = $FT" begin
+        p_c = biomass.parameters
+        ref, fl = p_c.pet_ref_woody, p_c.pet_floor_woody
+        # Full demand at 20 C above freezing and beyond; the ramp saturates.
+        @test Canopy.monthly_pet(FT(293.15), ref, fl) ≈ ref atol = FT(1e-8)
+        @test Canopy.monthly_pet(FT(320), ref, fl) ≈ ref atol = FT(1e-8)
+        # At and below freezing the floor remains, and no lower. A pure ramp to
+        # zero protects boreal forest but discards most of the signal; a
+        # constant reference suppresses boreal forest. The floor is the
+        # compromise, so it must actually be the floor.
+        @test Canopy.monthly_pet(FT(273.15), ref, fl) ≈ ref * fl atol = FT(1e-8)
+        @test Canopy.monthly_pet(FT(240), ref, fl) ≈ ref * fl atol = FT(1e-8)
+        # Monotone non-decreasing in temperature between the two limits.
+        @test Canopy.monthly_pet(FT(278), ref, fl) <
+              Canopy.monthly_pet(FT(288), ref, fl)
+    end
+
     @testset "Stem turnover scales with mean annual temperature, FT = $FT" begin
         p_c = biomass.parameters
         @test Canopy.tau_stem_scale(FT(283), p_c.T_ref_τ_stem, p_c.q_τ_stem) ==
