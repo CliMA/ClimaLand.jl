@@ -28,7 +28,7 @@ isdir(savedir) || mkpath(savedir)
 @info "Diagnostics dir: $diag_dir"
 @info "Save dir:        $savedir"
 
-ext.compute_seasonal_leaderboard(savedir, diag_dir, "INVERSION")
+ext.compute_seasonal_leaderboard(savedir, diag_dir, "FlagshipCarbonMetrics")
 
 @info "Done. Inversion leaderboard PNGs:"
 for f in sort(readdir(savedir))

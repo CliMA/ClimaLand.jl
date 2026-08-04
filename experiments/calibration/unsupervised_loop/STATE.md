@@ -1780,3 +1780,48 @@ is spatial pattern in the annual mean and `z`/`sigma`/`alpha` are global scalars
 that cannot reach it. Improving LAI past ~0.885 is a stage-1 and input-field
 problem (`A0_annual`, precipitation, the aridity index behind `f0`), not a
 stage-3 one.
+
+## ✅ Recalibrated after the simplification — 3 parameters, no mask (2026-08-03)
+
+With `z_c4`/`sigma_c4` removed from the model and the natural-vegetation mask removed
+from the objective, stage 3 was rerun over all vegetated land. Output in
+`calibration_stage3_lai_nomask`.
+
+| parameter | before | calibrated |
+|---|---|---|
+| `optimal_lai_z` | 15.0 | **29.2** |
+| `optimal_lai_sigma` | 0.939 | **1.01** |
+| `optimal_lai_alpha` | 0.0701 | **0.202** |
+
+| configuration | free params | LAI RMSE | bias |
+|---|---|---|---|
+| uncalibrated default | — | 1.046 | +0.225 |
+| calibrated with the mask, 5 params | 5 | 0.926 | +0.081 |
+| **calibrated without the mask, 3 params** | **3** | **0.895** | **−0.103** |
+
+All three scored unmasked, which is the domain the model is now fitted on. 14.4 % better
+than default and 3.3 % better than the masked five-parameter fit with two fewer
+parameters. The earlier configuration was optimised on a masked subset and reported on a
+different domain; calibrating on the measured quantity recovers most of the gap.
+
+**It converged.** `z` went 14.96 → 27.57 → 29.4 → 29.31 → 29.16 → 29.17 (final-ensemble
+CV 0.6 %) and the misfit flattened at 0.2728. Every masked run — including all four
+experiments — ended in a period-2 limit cycle instead. Two things changed at once
+(C4 pair and mask), so this cannot be attributed to either alone; experiment B showed
+3 parameters *alone* did not stop the oscillation, which points at the mask.
+
+**Scheduler termination.** `DataMisfitController` exceeded its termination condition and
+blocked further updates after 5 incorporated iterations. Iterations 6 and 7 re-ran
+identical parameters — verified byte-identical across `iteration_006/007/008` — so that
+compute was redundant. Chunk with `N_ITERATIONS` accordingly next time, or set
+`on_terminate="continue"` if more iterations are genuinely wanted.
+
+**Node failure.** The first attempt at iterations 4-6 died when its execution node went
+down: ~1140 `qstat failed ... assuming job is running` warnings, then the orchestrator
+was killed without its "finished" line and `qhist` had no exit records. Two of seven
+members had completed; ClimaCalibrate's `model_completed` check reruns only the
+`"started"` ones, so a plain resubmit recovered it with no manual cleanup.
+
+**Repo bug found:** `plot_inversion_leaderboard.jl` passed the data source `"INVERSION"`,
+which the visualization extension stopped accepting when the loader was renamed to
+`FlagshipCarbonMetrics`. The script had been dead since that rename; fixed.

@@ -26,9 +26,9 @@ using ClimaCore
             # against MODIS LAI in #1794; headline config promoted in #1815;
             # z/sigma/alpha recalibrated in #1832)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(24.3)
-            @test params.sigma ≈ FT(1.05)
-            @test params.alpha ≈ FT(0.13)
+            @test params.z ≈ FT(29.2)
+            @test params.sigma ≈ FT(1.01)
+            @test params.alpha ≈ FT(0.202)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
             # C3/C4 competition is on by default; z is uniform in A0 by default.
