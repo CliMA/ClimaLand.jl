@@ -1,12 +1,5 @@
 export OptimalLAIParameters,
-    compute_L_max,
-    compute_m,
-    lambertw0,
-    compute_steady_state_LAI,
-    compute_LAI,
-    update_optimal_LAI,
-    call_update_optimal_LAI,
-    make_OptimalLAI_callback
+    compute_L_max, compute_m, lambertw0, compute_steady_state_LAI
 
 """
     OptimalLAIParameters{FT<:AbstractFloat}
@@ -36,6 +29,10 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     In arid regions, f0 can be lower: f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index.
     Default value 0.65 assumes optimal water use efficiency."""
     f0::FT
+    """Long-term memory timescale (s) of the A0 and precipitation running-mean annual
+    totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
+    filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
+    tau_long_term::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -55,6 +52,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         sigma = FT(toml_dict["optimal_lai_sigma"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
         f0 = FT(toml_dict["optimal_lai_f0"]),
+        tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
     )
 end
 
@@ -344,367 +342,28 @@ function compute_steady_state_LAI(
 end
 
 """
-    compute_LAI(LAI_prev, L_steady, alpha, local_noon_mask)
+    compute_L_steady_target(A0_daily, k, A0_annual, z, GSL, sigma, precip_annual, f0, ca_pa, chi, vpd_gs)
 
-Compute updated LAI using exponential weighted moving average to represent lag between carbon
-allocation and steady-state LAI.
-
-This implements Equation 16 from Zhou et al. (2025). The exponential moving average
-represents the time lag (days to months) for photosynthate allocation to leaves and
-leaf development.
-
-# Arguments
-- `LAI_prev::FT`: LAI from previous time step (m^2 m^-2, dimensionless)
-- `L_steady::FT`: Current steady-state LAI (m^2 m^-2, dimensionless), from
-  `compute_steady_state_LAI()`
-- `alpha::FT`: Smoothing factor (dimensionless, 0-1). Set to 0.067 for ~15 days of memory,
-  meaning LAI[t] = 0.067 * L_steady[t] + 0.933 * LAI[t-1]
-- `local_noon_mask::FT`: A mask (0 or 1) indicating whether the current time is within the local noon window.
-
-# Returns
-- `LAI_new::FT`: Updated leaf area index (m^2 m^-2, dimensionless). Always >= 0.
-
-# Notes
-The parameter alpha controls the response time:
-- alpha = 0.067 ~ 15 days of memory (paper default)
-- alpha = 0.1 ~ 10 days of memory (faster response)
-- alpha = 0.033 ~ 30 days of memory (slower response)
-
-The time scale tau ~ 1/alpha days.
-
-# References
-Zhou et al. (2025) Global Change Biology, Equation 16
+Compute the steady-state LAI target `L_steady` (Zhou et al. 2025 Eqs. 11-15) from
+the daily and annual potential GPP and the water-limitation inputs, without the
+Eq. 16 acclimation lag. The prognostic `LAI` relaxes toward this target in the
+biomass tendency, so the acclimation `alpha` is applied there rather than here.
 """
-function compute_LAI(
-    LAI_prev::FT,   # m^2 m^-2 (dimensionless)
-    L_steady::FT,   # m^2 m^-2 (dimensionless)
-    alpha::FT,      # dimensionless (0-1)
-    local_noon_mask::FT,
-) where {FT}
-    if local_noon_mask == FT(1.0)
-        # Equation 16: LAI_sim = alpha * L_s[t] + (1-alpha) * LAI_sim[t-1]
-        LAI_new = alpha * L_steady + (1 - alpha) * LAI_prev
-
-        # L_steady is already clipped to >= 0 in compute_steady_state_LAI,
-        # so this is a safety net for initialization edge cases only.
-        LAI_new = max(zero(FT), LAI_new)
-        return LAI_new
-    else
-        return LAI_prev
-    end
-end
-
-"""
-    update_optimal_LAI(local_noon_mask, A0_daily, L, k, A0_annual, z, GSL, sigma, alpha, precip_annual, f0, ca_pa, chi, vpd_gs)
-
-Update LAI using the optimal LAI model with precomputed daily and annual potential GPP.
-
-# Arguments
-- `local_noon_mask::FT`: Mask (0 or 1) indicating if it's local noon
-- `A0_daily::FT`: Daily potential GPP (mol CO2 m^-2 day^-1), with moisture stress factor beta
-- `L::FT`: Current LAI (m^2 m^-2)
-- `k::FT`: Light extinction coefficient
-- `A0_annual::FT`: Annual potential GPP (mol CO2 m^-2 yr^-1)
-- `z::FT`: Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)
-- `GSL::FT`: Growing season length (days)
-- `sigma::FT`: Dimensionless parameter for LAI dynamics
-- `alpha::FT`: Smoothing factor for exponential moving average (~15-day memory)
-- `precip_annual::FT`: Mean annual precipitation (mol H2O m^-2 yr^-1)
-- `f0::FT`: Fraction of precipitation available for transpiration (dimensionless)
-- `ca_pa::FT`: Ambient CO2 partial pressure (Pa)
-- `chi::FT`: Optimal ratio of intercellular to ambient CO2 (dimensionless)
-- `vpd_gs::FT`: Mean vapor pressure deficit during growing season (Pa)
-
-# Returns
-Updated LAI value.
-
-# Notes
-Following Zhou et al. (2025):
-- A0_daily uses moisture stress factor beta to drive daily LAI dynamics
-- A0_annual uses actual moisture stress factor beta for LAI_max computation
-- Water limitation enters LAI_max through the f0*P/A0 * (ca(1-chi))/(1.6*D) term (Equation 11)
-"""
-function update_optimal_LAI(
-    local_noon_mask::FT,
+function compute_L_steady_target(
     A0_daily::FT,
-    L::FT, # m2 m-2
     k::FT,
-    A0_annual::FT, # mol CO2 m-2 y-1
-    z::FT, # mol m-2 yr-1, leaf construction cost
-    GSL::FT, # days, growing season length
-    sigma::FT, # dimensionless
-    alpha::FT, # dimensionless (~15-day memory)
-    precip_annual::FT, # mol H2O m-2 yr-1, mean annual precipitation
-    f0::FT, # dimensionless, fraction of precip for transpiration
-    ca_pa::FT, # Pa, ambient CO2 partial pressure
-    chi::FT, # dimensionless, optimal ci/ca ratio
-    vpd_gs::FT, # Pa, mean VPD during growing season
+    A0_annual::FT,
+    z::FT,
+    GSL::FT,
+    sigma::FT,
+    precip_annual::FT,
+    f0::FT,
+    ca_pa::FT,
+    chi::FT,
+    vpd_gs::FT,
 ) where {FT}
     LAI_max =
         compute_L_max(A0_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
     m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
-    L_steady = compute_steady_state_LAI(A0_daily, m, k, LAI_max)
-    L = compute_LAI(L, L_steady, alpha, local_noon_mask)
-    return L
-end
-
-
-"""
-    call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
-
-Updates LAI and accumulates potential GPP (A0) at each timestep.
-
-Every timestep: accumulates instantaneous potential GPP into the daily accumulator.
-At local noon: finalizes daily A0, adds it to annual accumulator, updates LAI.
-Every 365 days: finalizes annual A0 from the accumulator.
-
-Uses air temperature (not canopy temperature) for A0 computation, since canopy
-temperature includes energy balance feedbacks that should not affect potential GPP.
-
-GSL (Growing Season Length) is read from p.canopy.biomass.GSL, which supports spatially
-varying values initialized via set_historical_cache!.
-"""
-function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
-    FT = eltype(canopy.biomass.parameters)
-
-    # Compute local noon mask
-    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
-
-    # Get P-model parameters and constants for computing A0
-    pmodel_parameters = canopy.photosynthesis.parameters
-    pmodel_constants = canopy.photosynthesis.constants
-    fractional_c3 = canopy.photosynthesis.fractional_c3
-
-    # Get drivers for A0 computation
-    # Use air temperature (not canopy temperature) for potential GPP computation.
-    # Canopy temperature includes energy balance feedbacks that should not affect A0.
-    T_air = p.drivers.T
-    P_air = p.drivers.P
-    ca = p.drivers.c_co2  # mol/mol
-    earth_param_set = canopy.earth_param_set
-
-    # Get soil moisture stress factor (beta)
-    βm = p.canopy.soil_moisture_stress.βm
-
-    # Compute VPD (clipped to avoid numerical issues)
-    VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                LP.thermodynamic_parameters(earth_param_set),
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            sqrt(eps(FT)),
-        ),
-    )
-
-    # Compute PPFD from PAR downwelling (total incoming, not absorbed)
-    par_d = p.canopy.radiative_transfer.par_d
-    λ_γ_PAR = canopy.radiative_transfer.parameters.λ_γ_PAR
-    PPFD = @. lazy(
-        compute_PPFD(
-            par_d,
-            λ_γ_PAR,
-            pmodel_constants.lightspeed,
-            pmodel_constants.planck_h,
-            pmodel_constants.N_a,
-        ),
-    )
-
-    # Compute instantaneous potential GPP (kg C m^-2 s^-1)
-    # A single computation serves both daily and annual accumulation
-    dt_seconds = FT(float(dt))
-    Mc = pmodel_constants.Mc
-    @. p.canopy.biomass.A0_daily_acc +=
-        compute_A0_daily(
-            fractional_c3,
-            pmodel_parameters,
-            pmodel_constants,
-            T_air,
-            P_air,
-            VPD,
-            ca,
-            PPFD,
-            βm,
-        ) * dt_seconds / Mc
-
-    # Get parameters from the biomass model
-    parameters = canopy.biomass.parameters
-
-    # At local noon: finalize daily A0, update annual accumulator, update LAI
-    # Snapshot the daily accumulator before any resets
-    A0_daily_final = @. p.canopy.biomass.A0_daily_acc
-
-    # Use days_since_reset to track accumulation period (365-day rolling window).
-    # This ensures the first annual update happens exactly 365 days after
-    # simulation start, and subsequent updates every 365 days thereafter.
-    days_since_reset = p.canopy.biomass.days_since_reset
-
-    # At noon: finalize annual A0 when we have accumulated 365 days
-    A0_annual_final = @. ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        p.canopy.biomass.A0_annual_acc,
-        p.canopy.biomass.A0_annual,
-    )
-
-    # Compute chi for water limitation term (using growing season mean VPD)
-    chi = @. lazy(
-        compute_chi(
-            pmodel_parameters,
-            pmodel_constants,
-            T_air,
-            P_air,
-            p.canopy.biomass.vpd_gs,
-            ca,
-            fractional_c3,
-        ),
-    )
-
-    # Update LAI at noon using the finalized values
-    @. p.canopy.biomass.area_index.leaf = ifelse(
-        local_noon_mask == FT(1),
-        update_optimal_LAI(
-            FT(1),  # At noon, we always update
-            A0_daily_final,
-            p.canopy.biomass.area_index.leaf,
-            parameters.k,
-            A0_annual_final,
-            parameters.z,
-            p.canopy.biomass.GSL,
-            parameters.sigma,
-            parameters.alpha,
-            p.canopy.biomass.precip_annual,
-            p.canopy.biomass.f0,
-            ca * P_air,  # ca_pa: CO2 partial pressure (Pa)
-            chi,
-            p.canopy.biomass.vpd_gs,
-        ),
-        p.canopy.biomass.area_index.leaf,
-    )
-
-    # Update A0_annual when 365 days have accumulated
-    @. p.canopy.biomass.A0_annual = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        A0_annual_final,
-        p.canopy.biomass.A0_annual,
-    )
-
-    # Update A0_daily at noon (stores the daily sum for diagnostics)
-    @. p.canopy.biomass.A0_daily = ifelse(
-        local_noon_mask == FT(1),
-        A0_daily_final,
-        p.canopy.biomass.A0_daily,
-    )
-
-    # At noon: add daily sum to annual accumulator, then reset daily accumulator
-    # When 365 days reached: start fresh with today's value
-    @. p.canopy.biomass.A0_annual_acc = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        A0_daily_final,  # Reset and start with today's value
-        ifelse(
-            local_noon_mask == FT(1),
-            p.canopy.biomass.A0_annual_acc + A0_daily_final,
-            p.canopy.biomass.A0_annual_acc,
-        ),
-    )
-
-    # Update days_since_reset counter at noon
-    @. p.canopy.biomass.days_since_reset = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        FT(1),  # Reset to 1 (today's value already added)
-        ifelse(
-            local_noon_mask == FT(1),
-            days_since_reset + FT(1),
-            days_since_reset,
-        ),
-    )
-
-    # Reset daily accumulator at noon
-    @. p.canopy.biomass.A0_daily_acc =
-        ifelse(local_noon_mask == FT(1), FT(0), p.canopy.biomass.A0_daily_acc)
-end
-
-"""
-    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy; longitude) where {FT <: AbstractFloat}
-
-This constructs an IntervalBasedCallback for the optimal LAI model that:
-1. Computes and accumulates potential GPP (A0) at each timestep
-2. Updates LAI using an exponential moving average at local noon
-3. Tracks daily and annual A0 sums
-
-We check for local noon using the provided `longitude` every dt.
-The time of local noon is expressed in seconds UTC and neglects the effects of obliquity and eccentricity, so
-it is constant throughout the year.
-
-# Arguments
-- `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
-- `t0`: ITime, with epoch in UTC.
-- `dt`: timestep
-- `canopy`: the canopy object containing the optimal LAI model parameters.
-- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
-    that it will be inferred from the canopy domain).
-
-# Notes
-- Daily A0 is computed with fAPAR=1 and moisture stress factor beta - drives L_steady
-- Annual A0 is computed with fAPAR=1 and actual moisture stress factor beta - used for LAI_max
-- Water limitation enters LAI_max through the f0*P/A0 * (ca(1-chi))/(1.6*D) term (Equation 11)
-- Daily A0 is accumulated over each day and finalized at local noon
-- Annual A0 is accumulated and reset on January 1
-- GSL (Growing Season Length) is read from p.canopy.biomass.GSL, which supports spatially
-  varying values initialized via set_historical_cache!.
-"""
-function make_OptimalLAI_callback(
-    ::Type{FT},
-    t0,
-    dt,
-    canopy;
-    longitude = nothing,
-) where {FT <: AbstractFloat}
-    function seconds_after_midnight(d)
-        return FT(Hour(d).value * 3600 + Minute(d).value * 60 + Second(d).value)
-    end
-
-    if isnothing(longitude)
-        try
-            longitude = get_long(canopy.domain.space.surface)
-        catch e
-            error(
-                "Longitude must be provided explicitly if the domain you are working on does not \
-                  have axes that specify longitude $e",
-            )
-        end
-    end
-
-    # this computes the time of local noon in seconds UTC without considering the
-    # effects of obliquity and orbital eccentricity, so it is constant throughout the year
-    # the max error is on the order of 20 minutes
-    seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-    start_t = seconds_after_midnight(date(t0))
-    start_date = date(t0)
-    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
-
-    affect! =
-        (integrator) -> begin
-            # Compute current date from t0 and elapsed time
-            elapsed_days = floor(Int, float(integrator.t) / seconds_in_a_day)
-            current_date = start_date + Dates.Day(elapsed_days)
-
-            call_update_optimal_LAI(
-                integrator.p,
-                integrator.u,
-                (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC
-                current_date;
-                canopy = canopy,
-                dt = dt,
-                local_noon = local_noon,
-            )
-        end
-
-    return IntervalBasedCallback(
-        dt,         # period of this callback
-        t0,         # simulation start
-        dt,         # integration timestep
-        affect!;
-    )
+    return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
 end

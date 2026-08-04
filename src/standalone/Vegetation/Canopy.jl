@@ -8,6 +8,7 @@ using ClimaCore
 using ClimaCore.MatrixFields
 using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
+import ClimaCore.RecursiveApply: ⊠
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
@@ -30,9 +31,9 @@ import ClimaLand:
     make_update_implicit_aux,
     make_update_implicit_boundary_fluxes,
     make_update_aux,
-    make_set_initial_cache,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
+    apply_time_reduction,
     make_compute_jacobian,
     get_drivers,
     get_model_callbacks,
@@ -413,7 +414,7 @@ end
     ZhouOptimalLAIModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+        optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -424,15 +425,16 @@ Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the pro
 using parameters from `toml_dict`.
 
 The optimal LAI model computes LAI dynamically based on optimality principles, balancing
-energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf`.
+energy and water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is
+mirrored into `p.canopy.biomass.area_index.leaf`.
 
 # Arguments
 - `domain`: The model domain
 - `toml_dict`: Parameter dictionary containing optimal LAI parameters
 
 # Keyword Arguments
-- `optimal_lai_inputs`: NamedTuple with spatially varying initial conditions (GSL, A0_annual,
-  precip_annual, vpd_gs, lai_init, f0). Default loads from `optimal_lai_initial_conditions`.
+- `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI formulas
+  (GSL, vpd_gs, f0). Default loads from `optimal_lai_static_inputs`.
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
@@ -451,7 +453,7 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 function ZhouOptimalLAIModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+    optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -1402,50 +1404,6 @@ function ClimaLand.total_liq_water_vol_per_area!(
         p,
         t,
     )
-end
-
-"""
-    ClimaLand.make_set_initial_cache(model::CanopyModel)
-
-Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
-is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
-sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
-
-For ZhouOptimalLAIModel, this also initializes the LAI and A0 fields via
-`set_historical_cache!(p, Y0, model.biomass, model)`.
-"""
-function ClimaLand.make_set_initial_cache(model::CanopyModel)
-    drivers = get_drivers(model)
-    update_drivers! = make_update_drivers(drivers)
-    update_cache! = make_update_cache(model)
-    function set_initial_cache!(p, Y0, t0)
-        update_drivers!(p, t0)
-        update_cache!(p, Y0, t0)
-        set_historical_cache!(p, Y0, model.photosynthesis, model)
-        set_historical_cache!(p, Y0, model.biomass, model)
-    end
-    return set_initial_cache!
-end
-
-"""
-    set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
-
-For most biomass models, no historical cache initialization is needed. This is the default
-fallback that does nothing.
-"""
-function set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
-    return nothing
-end
-
-"""
-    set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
-
-For some canopy components (namely the P-model), we need values at t-1 to compute new
-values, so this function sets the historical cache values for the photosynthesis model.
-However, for other photosynthesis models this is not needed, so do nothing by default.
-"""
-function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
-    return nothing
 end
 
 """

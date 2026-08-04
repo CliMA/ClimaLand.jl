@@ -20,12 +20,15 @@ using ClimaCore
             @test params.z isa FT
             @test params.sigma isa FT
             @test params.alpha isa FT
+            @test params.tau_long_term isa FT
 
-            # Check expected values from default_parameters.toml
+            # Check expected values from default_parameters.toml (calibrated
+            # against MODIS LAI in #1794)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(12.227)
-            @test params.sigma ≈ FT(1.1)
-            @test params.alpha ≈ FT(0.067)  # ~15 days of memory
+            @test params.z ≈ FT(21.4)
+            @test params.sigma ≈ FT(0.939)
+            @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
             @test eltype(params) == FT
         end
@@ -56,18 +59,29 @@ using ClimaCore
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
 
-            # Test auxiliary variables
+            # Test auxiliary variables: the instantaneous potential GPP and χ, and
+            # the steady-state LAI target. The static spatially varying inputs (GSL,
+            # vpd_gs, f0) are read from the model, not the cache.
             aux_vars = Canopy.auxiliary_vars(model)
             @test :area_index in aux_vars
-            @test :A0_daily in aux_vars
-            @test :A0_annual in aux_vars
-            @test :A0_daily_acc in aux_vars
-            @test :A0_annual_acc in aux_vars
-            @test :days_since_reset in aux_vars
-            @test :GSL in aux_vars
-            @test :precip_annual in aux_vars
-            @test :vpd_gs in aux_vars
-            @test :f0 in aux_vars
+            @test :OptVars in aux_vars
+            @test :L_opt in aux_vars
+            @test :GSL ∉ aux_vars
+            @test :vpd_gs ∉ aux_vars
+            @test :f0 ∉ aux_vars
+            # the daily/annual accumulators are not cache variables; A0_daily,
+            # A0_annual, and precip_annual are prognostic in Y
+            @test :A0_daily_acc ∉ aux_vars
+            @test :A0_annual ∉ aux_vars
+            @test :precip_annual ∉ aux_vars
+
+            # A0_daily, A0_annual, precip_annual, and LAI are time-integrated
+            # prognostic variables in Y (running sums and a running mean).
+            @test Canopy.prognostic_vars(model) ==
+                  (:A0_daily, :A0_annual, :precip_annual, :LAI)
+            @test Canopy.prognostic_types(model) == (FT, FT, FT, FT)
+            @test Canopy.prognostic_domain_names(model) ==
+                  (:surface, :surface, :surface, :surface)
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -185,29 +199,6 @@ using ClimaCore
             @test L_high > L_low
         end
 
-        @testset "compute_LAI function for FT = $FT" begin
-            LAI_prev = FT(2.0)
-            L_steady = FT(3.0)
-            alpha = FT(0.067)
-
-            # Test with local noon mask = 1 (update)
-            LAI_new = Canopy.compute_LAI(LAI_prev, L_steady, alpha, FT(1.0))
-            expected = alpha * L_steady + (1 - alpha) * LAI_prev
-            @test LAI_new ≈ expected
-            @test LAI_new > LAI_prev  # Should move toward higher steady state
-            @test LAI_new < L_steady  # But not reach it in one step
-
-            # Test with local noon mask = 0 (no update)
-            LAI_no_update =
-                Canopy.compute_LAI(LAI_prev, L_steady, alpha, FT(0.0))
-            @test LAI_no_update == LAI_prev
-
-            # Test that LAI is non-negative
-            LAI_negative_test =
-                Canopy.compute_LAI(-FT(1.0), FT(0.0), alpha, FT(1.0))
-            @test LAI_negative_test >= FT(0.0)
-        end
-
         @testset "compute_PPFD function for FT = $FT" begin
             # Test PPFD computation from PAR
             par_d = FT(500.0)  # W m^-2 (typical midday)
@@ -224,91 +215,8 @@ using ClimaCore
             @test isfinite(PPFD)
         end
 
-        @testset "get_local_noon_mask function for FT = $FT" begin
-            dt = FT(3600.0)  # 1 hour timestep
-            local_noon = FT(43200.0)  # 12:00 noon in seconds
-
-            # Test at local noon
-            mask_noon = Canopy.get_local_noon_mask(43200.0, dt, local_noon)
-            @test mask_noon == FT(1.0)
-
-            # Test within window
-            mask_before =
-                Canopy.get_local_noon_mask(43200.0 - dt / 4, dt, local_noon)
-            @test mask_before == FT(1.0)
-
-            mask_after =
-                Canopy.get_local_noon_mask(43200.0 + dt / 4, dt, local_noon)
-            @test mask_after == FT(1.0)
-
-            # Test outside window
-            mask_morning = Canopy.get_local_noon_mask(21600.0, dt, local_noon)  # 6 AM
-            @test mask_morning == FT(0.0)
-
-            mask_evening = Canopy.get_local_noon_mask(64800.0, dt, local_noon)  # 6 PM
-            @test mask_evening == FT(0.0)
-        end
-
-        @testset "update_optimal_LAI function for FT = $FT" begin
-            # Test the full LAI update function
-            A0_daily = FT(0.5)       # mol m^-2 day^-1
-            L = FT(2.0)              # current LAI
-            k = FT(0.5)
-            A0_annual = FT(100.0)    # mol m^-2 yr^-1
-            z = FT(12.227)
-            GSL = FT(180.0)          # days
-            sigma = FT(0.771)
-            alpha = FT(0.067)
-            precip_annual = FT(100000.0)  # mol H2O m^-2 yr^-1 (high, energy-limited)
-            f0 = FT(0.65)
-            ca_pa = FT(40.0)         # Pa
-            chi = FT(0.77)
-            vpd_gs = FT(1000.0)      # Pa
-
-            # Test update at noon
-            L_new = Canopy.update_optimal_LAI(
-                FT(1.0),  # local noon mask
-                A0_daily,
-                L,
-                k,
-                A0_annual,
-                z,
-                GSL,
-                sigma,
-                alpha,
-                precip_annual,
-                f0,
-                ca_pa,
-                chi,
-                vpd_gs,
-            )
-
-            @test L_new isa FT
-            @test L_new >= FT(0.0)
-            @test isfinite(L_new)
-
-            # Test no update when not at noon
-            L_no_update = Canopy.update_optimal_LAI(
-                FT(0.0),  # not local noon
-                A0_daily,
-                L,
-                k,
-                A0_annual,
-                z,
-                GSL,
-                sigma,
-                alpha,
-                precip_annual,
-                f0,
-                ca_pa,
-                chi,
-                vpd_gs,
-            )
-            @test L_no_update == L
-        end
-
-        @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
-            # Test that optimal_lai_initial_conditions returns reasonable values
+        @testset "optimal_lai_static_inputs for single-point domains for FT = $FT" begin
+            # Test that optimal_lai_static_inputs returns reasonable values
             # for single-point domains at various locations (Fluxnet sites)
 
             test_sites = [
@@ -316,7 +224,9 @@ using ClimaCore
                 ("US-MOz (Ozark)", FT(-92.2000), FT(38.7441)),   # Missouri, USA - Deciduous forest
                 ("US-Ha1 (Harvard)", FT(-72.1715), FT(42.5378)), # Massachusetts, USA - Mixed forest
                 ("Amazon", FT(-60.0), FT(-3.0)),                 # Amazon rainforest
-                ("Sahel", FT(0.0), FT(15.0)),                    # Semi-arid Africa
+                # Semi-arid Africa. Longitude is kept off 0.0: `Point(longlat)` with
+                # long == 0 (or lat == 0) currently builds a degenerate domain.
+                ("Sahel", FT(2.5), FT(15.0)),
             ]
 
             for (site_name, long, lat) in test_sites
@@ -326,7 +236,7 @@ using ClimaCore
 
                 # Load initial conditions from global data file
                 optimal_lai_inputs =
-                    Canopy.optimal_lai_initial_conditions(surface_space)
+                    Canopy.optimal_lai_static_inputs(surface_space)
 
                 # Extract scalar values from Fields
                 GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
@@ -338,38 +248,82 @@ using ClimaCore
                 f0_val = Array(parent(optimal_lai_inputs.f0))[1]
 
                 @testset "$site_name" begin
-                    # GSL should be positive and reasonable (0-365 days)
-                    @test GSL_val >= FT(0) "GSL should be non-negative at $site_name"
-                    @test GSL_val <= FT(365) "GSL should be <= 365 days at $site_name"
-                    @test GSL_val > FT(0) "GSL should be positive (non-zero) at $site_name, got $GSL_val"
+                    # GSL should be positive and reasonable. A year-round growing
+                    # season gives the maximum, 12 * 365.25/12 = 365.25 days.
+                    @test GSL_val >= FT(0)
+                    @test GSL_val <= FT(366)
+                    @test GSL_val > FT(0)
 
                     # A0_annual should be positive (mol CO2 m^-2 yr^-1)
                     # Typical values range from ~50 (arid) to ~500 (tropical rainforest)
-                    @test A0_annual_val >= FT(0) "A0_annual should be non-negative at $site_name"
-                    @test A0_annual_val > FT(0) "A0_annual should be positive at $site_name, got $A0_annual_val"
-                    @test A0_annual_val < FT(1000) "A0_annual should be < 1000 at $site_name"
+                    @test A0_annual_val >= FT(0)
+                    @test A0_annual_val > FT(0)
+                    @test A0_annual_val < FT(1000)
 
                     # precip_annual should be positive (mol H2O m^-2 yr^-1)
                     # Ranges from ~5000 (desert, ~100 mm) to ~170000+ (tropical, ~3000 mm)
-                    @test precip_annual_val >= FT(0) "precip_annual should be non-negative at $site_name"
-                    @test precip_annual_val > FT(0) "precip_annual should be positive at $site_name, got $precip_annual_val"
+                    @test precip_annual_val >= FT(0)
+                    @test precip_annual_val > FT(0)
 
                     # vpd_gs should be positive (Pa)
                     # Typical growing season VPD: 500-2500 Pa
-                    @test vpd_gs_val >= FT(0) "vpd_gs should be non-negative at $site_name"
-                    @test vpd_gs_val > FT(0) "vpd_gs should be positive at $site_name, got $vpd_gs_val"
+                    @test vpd_gs_val >= FT(0)
+                    @test vpd_gs_val > FT(0)
 
                     # lai_init should be non-negative (m^2 m^-2)
                     # Ranges from 0 (bare) to ~8 (dense forest)
-                    @test lai_init_val >= FT(0) "lai_init should be non-negative at $site_name"
-                    @test lai_init_val < FT(15) "lai_init should be < 15 at $site_name"
+                    @test lai_init_val >= FT(0)
+                    @test lai_init_val < FT(15)
 
                     # f0 should be in range [0, 1]
-                    @test f0_val >= FT(0) "f0 should be >= 0 at $site_name"
-                    @test f0_val <= FT(1) "f0 should be <= 1 at $site_name"
-                    @test f0_val > FT(0) "f0 should be positive at $site_name, got $f0_val"
+                    @test f0_val >= FT(0)
+                    @test f0_val <= FT(1)
+                    @test f0_val > FT(0)
                 end
             end
+        end
+
+        @testset "set_canopy_component_initial_conditions! for FT = $FT" begin
+            # The prognostic state is set from the netCDF climatology at `set_ic!`
+            # time, i.e. from a file rather than from the model.
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            surface_space = domain.space.surface
+            model = Canopy.ZhouOptimalLAIModel{FT}(
+                domain,
+                toml_dict;
+                SAI = FT(0.0),
+                RAI = FT(1.0),
+                rooting_depth = FT(1.0),
+                height = FT(10.0),
+            )
+            biomass_state = NamedTuple(
+                var => ClimaCore.Fields.zeros(surface_space) for
+                var in Canopy.prognostic_vars(model)
+            )
+            Y = ClimaCore.Fields.FieldVector(;
+                canopy = (; biomass = biomass_state),
+            )
+            ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+                Y,
+                nothing,
+                model,
+                nothing,
+            )
+            LAI = Array(parent(Y.canopy.biomass.LAI))[1]
+            A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
+            A0_daily = Array(parent(Y.canopy.biomass.A0_daily))[1]
+            precip_annual = Array(parent(Y.canopy.biomass.precip_annual))[1]
+            # LAI starts at the MODIS observation in the same file
+            @test LAI ≈ Array(parent(model.optimal_lai_inputs.lai_init))[1]
+            @test FT(0) < LAI < FT(15)
+            # the annual totals start at their (steady-state) climatology, and the
+            # one-day total at the corresponding daily share
+            @test A0_annual ≈
+                  Array(parent(model.optimal_lai_inputs.A0_annual))[1]
+            @test A0_daily ≈ A0_annual / FT(365)
+            @test precip_annual ≈
+                  Array(parent(model.optimal_lai_inputs.precip_annual))[1]
         end
     end
 end

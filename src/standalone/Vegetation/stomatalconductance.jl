@@ -153,7 +153,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
             conductance_molar_flux_to_m_per_s(
-                Drel * p.canopy.photosynthesis.InstVars.gs_co2, # canopy level conductance in mol H2O/m^2/s
+                Drel * p.canopy.photosynthesis.instantaneous.gs_co2, # canopy level conductance in mol H2O/m^2/s
                 T_air,
                 R,
                 P_air,

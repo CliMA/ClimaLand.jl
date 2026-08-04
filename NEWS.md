@@ -2,6 +2,17 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add a `TimeIntegratedVariable` utility for prognostic time-integrated
+  variables — a running mean/sum or plain time-integral stored in `Y` and advanced by the
+  time-stepper (no callback, checkpoint/restart-safe). PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] Make the optimal-LAI and P-model acclimation states continuous
+  prognostic time-integrated variables in `Y`, replacing the local-noon callbacks so they
+  evolve smoothly every timestep and are exactly reproducible across checkpoint/restart. The
+  P-model `AccVars` relaxes toward the instantaneous optimum weighted onto solar noon (a
+  smooth midday window, unit daily mean). The optimal-LAI state is set in `set_ic!`, so a
+  custom initial-condition function must call `set_canopy_biomass_initial_conditions!`.
+  Adds the `pra` diagnostic and the `optimal_lai_tau_long_term` parameter.
+  PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
 
 v1.11.0
 -----

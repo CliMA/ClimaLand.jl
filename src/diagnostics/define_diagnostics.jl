@@ -330,7 +330,7 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Daily Potential GPP",
         standard_name = "daily_potential_gpp",
         units = "mol CO2 m^-2 day^-1",
-        comments = "Cumulative sum of potential GPP (with fAPAR=1) over each day, used by the optimal LAI model.",
+        comments = "Trailing ~1-day running total of potential GPP (fAPAR=1), used by the optimal LAI model.",
         compute! = (out, Y, p, t) ->
             compute_a0_daily!(out, Y, p, t, land_model),
     )
@@ -341,9 +341,20 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Annual Potential GPP",
         standard_name = "annual_potential_gpp",
         units = "mol CO2 m^-2 yr^-1",
-        comments = "Cumulative sum of daily potential GPP (at local noon) over each year, used by the optimal LAI model.",
+        comments = "Smoothed 1-year total of potential GPP (fAPAR=1), used by the optimal LAI model.",
         compute! = (out, Y, p, t) ->
             compute_a0_annual!(out, Y, p, t, land_model),
+    )
+
+    # Annual precipitation (from optimal LAI model)
+    add_diagnostic_variable!(
+        short_name = "pra",
+        long_name = "Annual Precipitation",
+        standard_name = "annual_precipitation",
+        units = "m yr^-1",
+        comments = "Smoothed 1-year precipitation total, used by the optimal LAI model water limitation.",
+        compute! = (out, Y, p, t) ->
+            compute_precip_annual!(out, Y, p, t, land_model),
     )
 
     # Moisture stress factor

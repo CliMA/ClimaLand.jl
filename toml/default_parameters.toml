@@ -130,6 +130,12 @@ type = "float"
 description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
 tag = "OptimalLAIModel"
 
+["optimal_lai_tau_long_term"]
+value = 6.3072e7
+type = "float"
+description = "Long-term memory timescale (s) of the A0 and precipitation running-mean annual totals that set LAI_max and the steady-state LAI. Default 2 years (6.3072e7 s); a longer value filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle into the smoothed totals."
+tag = "OptimalLAIModel"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]

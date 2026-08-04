@@ -329,6 +329,144 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
 end
 
 """
+    set_canopy_component_initial_conditions!(Y, p, model::ClimaLand.Canopy.AbstractCanopyComponent, canopy)
+
+Sets the initial state of the canopy component in `Y`.
+"""
+set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.AbstractCanopyComponent,
+    canopy,
+) = nothing
+
+"""
+    set_canopy_component_initial_conditions!(Y, p, model::ClimaLand.Canopy.BigLeafEnergyModel, canopy)
+
+Sets the initial state of the canopy energy component in `Y` using the air temperature.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.BigLeafEnergyModel,
+    canopy,
+)
+    Y.canopy.energy.T .= p.drivers.T
+end
+
+
+"""
+    set_canopy_component_initial_conditions!(
+        Y,
+        p,
+        model::ClimaLand.Canopy.ZhouOptimalLAIModel{FT},
+        canopy,
+        ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+            context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+        ),
+    ) where {FT}
+
+Sets the optimal-LAI prognostic state — the leaf area index `LAI` and the trailing
+potential-GPP and precipitation totals `A0_daily`, `A0_annual`, `precip_annual`,
+stored in `Y.canopy.biomass` — using the values in the netCDF file at `ic_path`,
+which must contain the variables `lai_init`, `a0_annual` and `precip_annual` on a
+(lon, lat) grid.
+
+With the default IC path, `LAI` starts from the MODIS observation, which reduces spin-up relative to the model
+equilibrium and matches observed vegetation patterns. The annual totals start at
+their climatological values, which are their steady state and are independent of the
+smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
+corresponding daily share of the annual total.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.ZhouOptimalLAIModel{FT},
+    canopy,
+    ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+    ),
+) where {FT}
+    surface_space = axes(Y.canopy.biomass.LAI)
+    surface_bc = (Interpolations.Periodic(), Interpolations.Flat())
+    ic_field(varname) = SpaceVaryingInput(
+        ic_path,
+        varname,
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (;
+            extrapolation_bc = surface_bc,
+            interpolation_method,
+        ),
+    )
+    Y.canopy.biomass.LAI .= ic_field("lai_init")
+    Y.canopy.biomass.A0_annual .= ic_field("a0_annual")
+    Y.canopy.biomass.precip_annual .= ic_field("precip_annual")
+    Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
+    return nothing
+end
+
+"""
+    set_canopy_component_initial_conditions!(
+        Y,
+        p,
+        model::ClimaLand.Canopy.PModel{FT},
+        canopy,
+    ) where {FT}
+
+Sets the PModel initial conditions: the acclimated capacities are those optimal for
+the initial atmospheric state under a nominal midday light level, rather than under
+the instantaneous one, so that a simulation starting at night does not begin with
+zero capacities and spend ~1 month (two e-folding timescales of α) climbing out of
+them.
+
+The capacities are canopy-level and linear in absorbed light, so the nominal light
+level is scaled by the vegetated fraction of the column: over an inland water cell,
+where the canopy area indices are masked to zero, the acclimated capacities start at
+zero as well, and no phantom canopy respiration is carried into the run.
+
+An alternative to this approach is to initialize the initial optimal values to some reasonable values
+based on a spun-up simulation.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.PModel{FT},
+    canopy,
+) where {FT}
+    parameters = model.parameters
+    constants = model.constants
+    # drivers
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    c_co2_air = p.drivers.c_co2
+    T_canopy = T_air
+    thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
+    βm = FT(1)
+    # nominal midday light (mol/m^2/s, from 1000 μmol/m^2/s) over the vegetated
+    # fraction of the column. This allocates, but only on initialization.
+    APAR_canopy_moles =
+        hasproperty(p, :lake_fraction) ? FT(1e-3) .* (1 .- p.lake_fraction) :
+        FT(1e-3)
+    @. Y.canopy.photosynthesis.acclimated =
+        ClimaLand.Canopy.compute_optimal_capacities(
+            parameters,
+            constants,
+            thermo_params,
+            T_canopy,
+            T_air,
+            P_air,
+            q_air,
+            c_co2_air,
+            βm,
+            APAR_canopy_moles,
+        )
+
+    return nothing
+end
+
+"""
     make_set_initial_state_from_file(ic_path, land::LandModel{FT}; enforce_constraints=false) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
@@ -348,7 +486,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
+It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -361,6 +499,7 @@ function make_set_initial_state_from_file(
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
             evaluate!(p.drivers.P, atmos.P, t0)
+            evaluate!(p.drivers.q, atmos.q, t0)
             evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
         end
         # Soil IC
@@ -413,8 +552,11 @@ function make_set_initial_state_from_file(
             land.snow.parameters,
         )
 
-
-        # Canopy IC
+        # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
         ds = NCDataset(ic_path, "r")
@@ -456,9 +598,24 @@ function make_set_initial_state_from_file(
                 ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
             end
         end
-        if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
-        end
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.energy,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.biomass,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.photosynthesis,
+            land.canopy,
+        )
 
         # Lake IC
         if !isnothing(land.lake)
@@ -488,7 +645,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
+It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -500,6 +657,9 @@ function make_set_initial_state_from_file(
         atmos = land.soil.boundary_conditions.top.atmos
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
+            evaluate!(p.drivers.P, atmos.P, t0)
+            evaluate!(p.drivers.q, atmos.q, t0)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
         end
 
         if enforce_constraints
@@ -566,9 +726,29 @@ function make_set_initial_state_from_file(
                 ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
             end
         end
-        if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
-        end
+        # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.energy,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.biomass,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.photosynthesis,
+            land.canopy,
+        )
     end
     return set_ic!
 end
@@ -896,6 +1076,9 @@ function make_set_initial_state_from_atmos_and_parameters(
         earth_param_set = ClimaLand.get_earth_param_set(land.soil)
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
+            evaluate!(p.drivers.P, atmos.P, t0)
+            evaluate!(p.drivers.q, atmos.q, t0)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
         end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
@@ -931,11 +1114,31 @@ function make_set_initial_state_from_atmos_and_parameters(
         Y.snow.S .= FT(0)
         Y.snow.S_l .= FT(0)
         Y.snow.U .= FT(0)
-        if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
-        end
 
+        # Canopy component IC
+        # The lake fraction is needed by the canopy ICs, which must not seed
+        # canopy state where the canopy is masked out; the cache update sets it
+        # again later.
+        ClimaLand.set_lake_fraction!(p, land)
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.energy,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.biomass,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.photosynthesis,
+            land.canopy,
+        )
 
         # Lake IC
         if !isnothing(land.lake)
