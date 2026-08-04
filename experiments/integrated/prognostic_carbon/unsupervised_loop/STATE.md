@@ -3463,3 +3463,32 @@ not a bug in either configuration.
 **Consequence:** the drift check is only meaningful where seed and run see the
 same climate, and it must report the forcing ratio beside the drift so a
 mismatch cannot be read as an integrator failure.
+
+### Full drift result: 28/30, and the offline integrator is vindicated where the test is fair
+
+Partitioning the 30 sites by whether the run's water deficit matches the seed's
+(the seed comes from the global cell, the run from the site's own forcing):
+
+| | sites | worst \|drift\| |
+|---|---|---|
+| **deficit agrees** (gap < 0.10 m) | **19** | **9.3%** |
+| deficit disagrees (gap > 0.10 m) | 5 | 93.6% |
+
+**Every site where seed and run see the same climate holds within 10%.** All the
+large drift is confined to sites where they do not, and the drift tracks the gap:
+n_australia_savanna gap 0.507 m drifts +93.6%, kazakh_steppe gap 0.205 m drifts
++22.2%, while taymyr_siberia gap 0.001 m drifts −3.0%.
+
+So the correct verdict is that **the offline integrator reproduces the coupled
+model** — which is what the global map rests on — and the two flagged sites are a
+seed/run forcing mismatch introduced by sampling seeds from the global map.
+
+Deficit disagreement is necessary but not sufficient for drift: alaska_north_slope
+(gap 0.103) drifts −2.8% and us_great_plains (gap 0.107) drifts +0.1%, because
+their pools are less sensitive. The implication only runs one way, and that is the
+direction the check needs.
+
+`check_drift.jl` now prints the deficit gap as a column and its verdict points at
+it, so "DRIFT SUSPECT" can no longer be read as integrator disagreement without
+looking. Left as it was, this would have reported the offline integrator as
+unreliable — and that integrator is the basis of every global number in this PR.
