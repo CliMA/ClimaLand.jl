@@ -2872,3 +2872,32 @@ was two duplicated pairs. It was caught only because duplicated runs give
 bit-identical bias and r; had the values merely been close, "four floors barely
 matter" would have been a plausible and completely wrong conclusion. The monitor
 now reports the distinct floor values it actually observed.
+
+### Optimum bracketed: floor 0.6-0.8, dh 550
+
+Job 7006330 adds floor 0.8. Scoring each configuration by how many of the six
+products improve and by the mean change in spatial r:
+
+| config | r up | \|bias\| down | mean dr |
+|---|---|---|---|
+| f0.3 dh450 | 4/6 | 5/6 | +0.0240 |
+| f0.3 dh550 | 4/6 | 5/6 | +0.0205 |
+| f0.6 dh450 | 5/6 | 5/6 | +0.0367 |
+| **f0.6 dh550** | **6/6** | 5/6 | +0.0315 |
+| **f0.8 dh550** | **6/6** | 5/6 | **+0.0355** |
+| f0.8 dh650 | 6/6 | 5/6 | +0.0307 |
+| fixed (floor 1) dh500 | 5/6 | 5/6 | +0.0302 |
+
+Mean dr rises 0.3 -> 0.6 -> 0.8 and then falls at floor 1, so the optimum is
+interior in both parameters. Three configurations improve r in all six.
+
+**Recommendation: floor 0.6, dh 550.** Not the top scorer - f0.8 dh550 has a
+slightly higher mean dr (+0.0355 vs +0.0315) - but the difference is small and
+floor 0.8 costs Thurner much more (bias −1.33 vs −0.82 against a base of −0.35).
+Floor 0.8 also means the deficit reference is 80% temperature-*independent*,
+which is hard to defend physically: evaporative demand over frozen ground is not
+80 mm/month. Floor 0.6 keeps substantial temperature dependence, improves r in
+all six, and does the least harm to the one product that disagrees.
+
+This is a parameter choice a maintainer may reasonably take differently, so both
+are recorded rather than one being silently adopted.
