@@ -60,13 +60,23 @@ export NELEM_LAT="${NELEM_LAT:-360}"
 echo "GLOBAL start=$START stop=$STOP dt=$DT device=$DEVICE threads=$JULIA_THREADS outdir=$GLOBAL_OUTDIR"
 "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
 
-if "$JULIA" --project="$REPO/.buildkite" -t "$JULIA_THREADS" "$HARNESS/global_driver.jl" \
-    >"$RUNROOT/global_driver.log" 2>&1; then
+# ClimaLand's solve! catches an integration failure, logs "simulation crashed"
+# and returns normally, so julia exits 0 and a crashed run is indistinguishable
+# from a good one by exit status alone. Both conditions are checked, and the
+# completion marker global_driver.jl prints must be present.
+"$JULIA" --project="$REPO/.buildkite" -t "$JULIA_THREADS" "$HARNESS/global_driver.jl" \
+    >"$RUNROOT/global_driver.log" 2>&1
+rc=$?
+crashed=0
+grep -q "simulation crashed" "$RUNROOT/global_driver.log" && crashed=1
+grep -q "GLOBAL_DRIVER_DONE" "$RUNROOT/global_driver.log" || crashed=1
+if [[ $rc -eq 0 && $crashed -eq 0 ]]; then
     echo PASS >"$RUNROOT/.status"
     echo "GLOBAL_OK $RUNROOT"
 else
     echo FAIL >"$RUNROOT/.status"
-    echo "GLOBAL_FAIL (see $RUNROOT/global_driver.log)"
-    tail -40 "$RUNROOT/global_driver.log"
+    echo "GLOBAL_FAIL rc=$rc crashed=$crashed (see $RUNROOT/global_driver.log)"
+    grep -A4 "exception =" "$RUNROOT/global_driver.log" | head -12
+    tail -20 "$RUNROOT/global_driver.log"
 fi
 ls -la "$GLOBAL_OUTDIR"/output_active/ 2>/dev/null | head -20
