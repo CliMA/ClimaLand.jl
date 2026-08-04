@@ -3099,3 +3099,37 @@ precipitation. The failure is attributed, not just observed.
 products and bias in 5 of 6, mean dr +0.0103 — about **a third** of the +0.0315
 the same configuration achieved with observed precipitation. The mechanism
 works; ERA5's rainfall seasonality over the contiguous US is what limits it.
+
+### The coupled model computes the deficit correctly — measured, not inferred
+
+8-year run at cerrado_brazil (job 7007356), reading the new site metrics:
+
+| quantity | value | independent check |
+|---|---|---|
+| `P_annual` | 1.125 m/yr | realistic for Cerrado |
+| `T_annual` | 297.7 K | |
+| `D_annual` | **0.559 m** | GPCC-derived Cerrado deficit ~0.55 m |
+| `seasonality_limit` | **0.483** | `1/(1+(0.559/0.55)^4)` = 0.484 |
+| `C_stem` | 1.055 kg C m^-2 | 0.50 at 2 years, so still filling |
+
+Three things settled at once:
+
+1. **The accumulator converges to the right value.** `D_annual` = 559 mm against
+   an independently-derived GPCC Cerrado deficit of ~550 mm. The model's ERA5
+   deficit and the observational one agree at the one site checked in detail.
+2. **`seasonality_limit` reproduces its closed form exactly**, so the limit is
+   wired to the state it claims to read.
+3. **The earlier "0.98x at Cerrado in a 2-year run" was the accumulator not
+   having filled, not a bug** - as the arithmetic suggested but could not
+   establish. `C_stem` has since gone 0.50 -> 1.055 and is still rising.
+
+This is why the metrics were added. The 2-year result was consistent with both
+"inert" and "not converged", and only a direct reading of `D_annual`
+distinguishes them - the same ambiguity that let two initial-condition bugs pass
+as results.
+
+**Consequence for how the coupled model must be run:** `D_annual` has a 2-year
+memory and enters a pool with decadal turnover, so a coupled run must be many
+times longer than the memory before the limit means anything. Short coupled runs
+under-suppress by construction. The offline integrator equilibrates and does not
+have this problem, which is why the global map remains the primary evidence.
