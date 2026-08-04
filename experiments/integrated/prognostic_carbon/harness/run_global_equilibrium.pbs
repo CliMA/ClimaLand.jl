@@ -1,0 +1,60 @@
+#!/bin/bash
+# Offline global equilibrium from an existing driver run.
+#
+# `global_equilibrium.jl` integrates the carbon pools to steady state column by
+# column against the monthly driver climatology `run_global_driver.pbs` wrote.
+# It needs no model, no GPU and no forcing regrid - only the driver NetCDFs - so
+# it can be rerun cheaply whenever the pool equations or parameters change,
+# which is why it is a separate job from the driver run rather than a stage of
+# it. It is embarrassingly parallel over latitude, hence the thread count.
+#
+# Point it at a driver directory:
+#   qsub -v ... is disabled on Derecho, so the path comes from a sidecar file:
+#   echo "DRIVERS=/glade/derecho/scratch/.../drivers/output_active" \
+#       > $PC_SCRATCH/equilibrium.conf
+#   qsub experiments/integrated/prognostic_carbon/harness/run_global_equilibrium.pbs
+#PBS -N pc_equil
+#PBS -A UCIT0011
+#PBS -q develop
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=64:mem=100GB
+#PBS -j oe
+#PBS -m n
+#PBS -o /glade/derecho/scratch/arenchon/claude/prognostic_carbon/
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+export HDF5_USE_FILE_LOCKING=FALSE
+REPO=/glade/u/home/arenchon/ClimaLand.jl
+JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+HARNESS=$REPO/experiments/integrated/prognostic_carbon/harness
+PC_SCRATCH=/glade/derecho/scratch/arenchon/claude/prognostic_carbon
+
+CONF=$PC_SCRATCH/equilibrium.conf
+[[ -f "$CONF" ]] && { echo "CONF $CONF"; source "$CONF"; } || echo "CONF none"
+[[ -n "$DRIVERS" ]] || { echo "EQUIL_FAIL no DRIVERS set"; exit 1; }
+
+YEARS="${YEARS:-400}"
+THREADS="${THREADS:-64}"
+# Optional sweep over the woody-fraction exponent. Empty means "use the model's
+# own parameter", which writes equilibrium_carbon.nc; a list writes one
+# suffixed file per value and leaves the base file untouched.
+NMAP_LIST="${NMAP_LIST:-}"
+
+run_one() {  # $1 = extra args, $2 = tag
+    LOG=$PC_SCRATCH/equilibrium_${PBS_JOBID:-local}${2}.log
+    echo "EQUIL drivers=$DRIVERS years=$YEARS threads=$THREADS args='$1'"
+    if "$JULIA" --project="$REPO/.buildkite" -t "$THREADS" \
+        "$HARNESS/global_equilibrium.jl" "$DRIVERS" --years "$YEARS" $1 \
+        >"$LOG" 2>&1; then
+        echo "EQUIL_OK $LOG"; tail -30 "$LOG"
+    else
+        echo "EQUIL_FAIL (see $LOG)"; tail -40 "$LOG"
+    fi
+}
+
+if [[ -z "$NMAP_LIST" ]]; then
+    run_one "" ""
+else
+    for n in $NMAP_LIST; do run_one "--n-map $n" "_n$n"; done
+fi
+echo EQUIL_DONE

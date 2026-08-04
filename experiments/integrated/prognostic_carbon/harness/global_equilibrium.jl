@@ -25,6 +25,10 @@ import NCDatasets
 import ClimaLand.Parameters as LP
 import ClimaLand.Canopy
 
+# The driver record is a 365-day climatology, so this is the length of the cycle
+# the fluxes are averaged over, not a calendar convention.
+const SECONDS_PER_YEAR = FT(365 * 86400)
+
 const OBS_DIR = "/glade/campaign/cesm/community/lmwg/diag/ILAMB/DATA/biomass"
 const PRODUCTS = [
     ("XuSaatchi", joinpath(OBS_DIR, "XuSaatchi2021", "XuSaatchi.nc")),
@@ -211,7 +215,13 @@ end
 # "use the model's own parameter", which is the only correct default: this script
 # exists to reproduce what the model does, and a hard-coded 0 would silently
 # disable a mechanism the model has enabled.
-function main(dir; years = 400, map_half = nothing, q_map = 1.0)
+function main(
+    dir;
+    years = 400,
+    map_half = nothing,
+    map_n = nothing,
+    q_map = 1.0,
+)
     mo = month_of_year_index()
     vars = ("gpp", "rd", "ct", "tair", "fc3", "pra")
     @info "reading monthly driver climatologies" dir vars
@@ -226,12 +236,28 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
     toml_dict = LP.create_toml_dict(FT)
     p = Canopy.PrognosticCarbonParameters(toml_dict)
     mh = map_half === nothing ? p.map_half_woody : FT(map_half)
-    @info "woody fraction" map_half = mh n = p.n_map_woody
+    # The exponent controls how abruptly wood disappears below the half-point.
+    # It matters far more than it looks: stem carbon turns over 15-30x slower
+    # than leaf and root, so even a few percent of allocation to wood dominates
+    # the equilibrium pool, and a gentle ramp leaves woody carbon standing in
+    # cells the observations say carry none.
+    mn = map_n === nothing ? p.n_map_woody : FT(map_n)
+    @info "woody fraction" map_half = mh n = mn
 
     C_stem = fill(FT(NaN), nlon, nlat)
     C_leaf = fill(FT(NaN), nlon, nlat)
     C_root = fill(FT(NaN), nlon, nlat)
     cVeg = fill(FT(NaN), nlon, nlat)
+    # `spinup` already averages these over the last driver cycle; carrying them
+    # out costs nothing and they are what the pools cannot be judged by alone.
+    # Litterfall is the flux the soil carbon pool consumes, and cVeg/litterfall
+    # is the vegetation carbon turnover time - a quantity with its own
+    # observational estimates, independent of the biomass products.
+    gpp_eq = fill(FT(NaN), nlon, nlat)
+    npp_eq = fill(FT(NaN), nlon, nlat)
+    ra_eq = fill(FT(NaN), nlon, nlat)
+    litter_eq = fill(FT(NaN), nlon, nlat)
+    tau_veg = fill(FT(NaN), nlon, nlat)
 
     Threads.@threads for j in 1:nlat
         # One scratch record per thread-iteration, reused across longitudes so
@@ -258,11 +284,12 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
                 d[v][k] = x
             end
             any(v -> any(!isfinite, d[v]), vars) && continue
-            pools, _ = spinup(
+            pools, fl = spinup(
                 d,
                 p;
                 years,
                 map_half = mh,
+                map_n = mn,
                 q_map,
                 T_ref_tau = p.T_ref_τ_stem,
                 q_tau = p.q_τ_stem,
@@ -270,6 +297,14 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
             C_leaf[i, j], C_stem[i, j], C_root[i, j] =
                 pools[2], pools[3], pools[4]
             cVeg[i, j] = sum(pools)
+            gpp_eq[i, j] = fl.GPP * SECONDS_PER_YEAR
+            ra_eq[i, j] = fl.Ra * SECONDS_PER_YEAR
+            npp_eq[i, j] = (fl.GPP - fl.Ra) * SECONDS_PER_YEAR
+            litter_eq[i, j] = fl.litter * SECONDS_PER_YEAR
+            # Undefined where nothing grows; 0/0 would report a spurious age.
+            tau_veg[i, j] =
+                fl.litter > 0 ? cVeg[i, j] / (fl.litter * SECONDS_PER_YEAR) :
+                FT(NaN)
         end
     end
 
@@ -278,8 +313,9 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
 
     out = joinpath(
         dir,
-        (map_half === nothing && q_map == 1) ? "equilibrium_carbon.nc" :
-        "equilibrium_carbon_mh$(mh)_q$(q_map).nc",
+        (map_half === nothing && map_n === nothing && q_map == 1) ?
+        "equilibrium_carbon.nc" :
+        "equilibrium_carbon_mh$(mh)_n$(mn)_q$(q_map).nc",
     )
     NCDatasets.NCDataset(out, "c") do ds
         NCDatasets.defDim(ds, "lon", nlon)
@@ -296,6 +332,19 @@ function main(dir; years = 400, map_half = nothing, q_map = 1.0)
             v.attrib["units"] = "kg m-2"
             v.attrib["long_name"] = l
         end
+        for (n, A, l) in (
+            ("gpp", gpp_eq, "equilibrium gross primary production"),
+            ("npp", npp_eq, "equilibrium net primary production"),
+            ("ra", ra_eq, "equilibrium autotrophic respiration"),
+            ("litterfall", litter_eq, "equilibrium litter carbon flux"),
+        )
+            v = NCDatasets.defVar(ds, n, A, ("lon", "lat"))
+            v.attrib["units"] = "kg m-2 yr-1"
+            v.attrib["long_name"] = l
+        end
+        v = NCDatasets.defVar(ds, "tau_veg", tau_veg, ("lon", "lat"))
+        v.attrib["units"] = "yr"
+        v.attrib["long_name"] = "vegetation carbon turnover time (cVeg/litterfall)"
     end
     @info "wrote $out"
 
@@ -355,10 +404,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
     yi = findfirst(==("--years"), ARGS)
     mi = findfirst(==("--map-half"), ARGS)
     qi = findfirst(==("--q-map"), ARGS)
+    ni = findfirst(==("--n-map"), ARGS)
     main(
         ARGS[1];
         years = yi === nothing ? 400 : parse(FT, ARGS[yi + 1]),
         map_half = mi === nothing ? nothing : parse(FT, ARGS[mi + 1]),
+        map_n = ni === nothing ? nothing : parse(FT, ARGS[ni + 1]),
         q_map = qi === nothing ? 1.0 : parse(FT, ARGS[qi + 1]),
     )
 end

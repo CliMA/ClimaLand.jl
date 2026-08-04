@@ -2504,3 +2504,126 @@ verified at sites, but `soc`/`hr` were not among the seven global driver fields,
 so it is one extra diagnostic in a rerun, not new physics); permafrost
 protection; and wetland anoxia. Those are what "does permafrost SOC decrease,
 does wetland SOC accumulate" require.
+
+## Iteration 86-90 — the bias is a turnover error, not a production error
+
+The global totals said one thing and the spatial binning said the opposite. Both
+are now computed by committed scripts (`global_budget.jl`, `bin_by_obs.jl`)
+rather than ad hoc, so every number below is reproducible.
+
+### Global budget at z = 24.3
+
+`global_equilibrium.jl` already averaged the equilibrium fluxes over the last
+driver cycle and threw them away; it now writes them. New fields in
+`equilibrium_carbon.nc`: `gpp`, `npp`, `ra`, `litterfall` (kg C m-2 yr-1) and
+`tau_veg` (yr). The pools are bit-identical to the verified file, and the
+six-product scoring table reproduces exactly, so the change is additive.
+
+| quantity | model | independent constraint |
+|---|---|---|
+| GPP | 135.4 Pg C/yr | 120-130 (GOSIF) |
+| Ra | 69.9 Pg C/yr | ~half of GPP |
+| NPP | 65.5 Pg C/yr | 55-65 |
+| litterfall | 65.5 Pg C/yr | = NPP at equilibrium |
+| cVeg | 635 Pg C | ~450-650 |
+| **tau_veg** | **9.7 yr** | cVeg/NPP of published pairs is ~8-12 yr |
+
+`litterfall == NPP` to the printed precision is a closure check on the offline
+integrator, not a coincidence: it is what equilibrium means, and it would break
+if the accumulator or the allocation fractions were inconsistent.
+
+**Read alone, this table says the model is fine** — turnover is normal and
+production is only ~5-10% high. That reading is wrong.
+
+### Binned by observed woody carbon, the same numbers say the opposite
+
+`bin_by_obs.jl`, binning by the *observation* (binning by the model would sort
+every wrongly-forested cell into the forest bin and hide the error):
+
+XuSaatchi, ~15 500 cells:
+
+| observed | cells | obs | model | ratio | tau_veg | NPP |
+|---|---|---|---|---|---|---|
+| > 10 | 695 | 14.24 | 13.21 | 0.9 | 11.6 | 1.13 |
+| 5-10 | 1452 | 6.64 | 8.28 | 1.2 | 10.3 | 0.78 |
+| 2-5 | 4435 | 3.34 | 5.46 | 1.6 | 9.3 | 0.57 |
+| 0.5-2 | 3066 | 1.22 | 4.08 | 3.3 | 8.1 | 0.47 |
+| **< 0.5** | 5827 | 0.09 | 0.92 | **9.9** | **5.8** | **0.13** |
+
+ESACCI and GEOCARBON give the same shape (`<0.5` ratios 19.9 and 10.3).
+
+**NPP in the `< 0.5` bin is 0.13 kg C m-2 yr-1 — an 8x drop from the forest bin.
+Production there is already low, and correctly so.** The model is not
+photosynthesising too much in grassland. It is holding what it fixes for 5.8
+years instead of ~1.
+
+### Why a small woody fraction is not a small error
+
+tau_stem is 30 yr (C3, `carbon_tau_stem_c3` = 9.46e8 s) against tau_leaf 1.5 yr
+and tau_root 2.0 yr. The equilibrium pool is `sum(f_i * tau_i) * NPP`, so
+allocation to wood is weighted 15-20x. At MAP = 0.3 m/yr the current ramp
+(`map_half` 0.8, `n` 2) still returns `w = 0.12`; with `f_stem ~ 0.4` that is 5%
+of allocation to wood, which then supplies roughly **half** the standing pool.
+
+So the ramp does not need a lower half-point — it needs to be *sharper*. Testing
+`n = 4` and `n = 8` (job 7004710), which leave `w(map_half) = 0.5` unchanged and
+so cannot move the forest bins by construction.
+
+**Prediction to falsify this:** with wood removed, a grassland column should hold
+`NPP * (f_leaf*tau_leaf + f_root*tau_root)` ~ `0.13 * 1.8` ~ **0.23 kg C m-2**,
+against observations of 0.06-0.39 across the six products. If the `<0.5` bin
+lands near 0.23 and the `>10` bin does not move, the diagnosis is right. If the
+`<0.5` bin stays high, the wood is not coming from the MAP ramp and this whole
+line is wrong.
+
+### Outcome of that prediction: half right, and the half that was wrong matters more
+
+Ran `n = 4` and `n = 8` (job 7004710). Both leave `w(map_half) = 0.5` unchanged,
+so any movement in the forest bins is a side effect of the ramp steepening above
+the half-point, not of the half-point moving.
+
+Aggregate, all six products got **worse**, monotonically in `n`:
+
+| n | XuSaatchi bias | r | ESACCI bias | r | Saatchi bias | r |
+|---|---|---|---|---|---|---|
+| 2 (base) | **0.96** | **0.614** | **1.37** | **0.614** | **3.23** | **0.633** |
+| 4 | 1.13 | 0.598 | 1.53 | 0.598 | 4.01 | 0.622 |
+| 8 | 1.18 | 0.574 | 1.58 | 0.574 | 4.39 | 0.601 |
+
+**`n` stays at 2. This is the fifth climate predictor tried and rejected.**
+
+But the binned table says the ramp was not the thing that failed. `bin_by_obs.jl`
+now splits each bin by whether the ramp can act on the cell at all
+(`MAP >= map_half`), XuSaatchi `< 0.5` bin, 5827 cells:
+
+| n | bin mean | dry cells (94%) | wet cells (6%) | share of bin carbon in the wet 6% |
+|---|---|---|---|---|
+| 2 | 0.92 | 0.54 | 6.79 | 45% |
+| 8 | 0.78 | **0.28** | **8.50** | **66%** |
+
+Observed mean for the bin is 0.09.
+
+**The ramp works exactly as intended on the cells it can reach** - sharpening it
+halves the dry-cell biomass, 0.54 -> 0.28, moving toward 0.09. It is then swamped:
+the same steepening pushes the wet minority from 6.79 to 8.50, and because those
+cells carry forest-sized biomass, 6% of the cells end up holding **two-thirds** of
+the bin's carbon. The bin mean barely moves and the global bias degrades.
+
+So the correction to the previous section: **NPP is not the error and neither is
+the ramp.** Both were right. In the `<0.5` bin, 6% of cells have MAP >= 0.8 m/yr -
+Cerrado, the Sahel fringe, the Pampas, miombo - and no function of rainfall can
+remove wood from them, because their rainfall *is* forest rainfall. That is the
+disturbance residual, and it is now bounded rather than described: it is roughly
+half the `<0.5` bin's excess at the current `n`, and two-thirds at `n = 8`.
+
+Also newly visible, and small: the non-structural `C_sugar` pool is 2% of cVeg in
+the forest bins and 2% in the grass bins. It inflates cVeg and `tau_veg` without
+ever becoming litter, but not enough to matter. Ruled out as a suspect.
+
+### What this closes
+
+The claim "the model builds forests where there are none" is now quantitative and
+localised: **the excess is concentrated in a small wet minority of the treeless
+cells, not spread across them.** Every climate predictor fails on exactly those
+cells by construction. The dry majority is already close and gets closer when the
+ramp is sharpened - it just cannot be seen in a bin mean.
