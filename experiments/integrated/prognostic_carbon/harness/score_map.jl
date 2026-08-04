@@ -119,35 +119,30 @@ function main(ncpath, jsonpath = nothing)
     for i in eachindex(lons), j in eachindex(lats)
         valid(M[i, j]) && valid(Og[i, j]) && (B[i, j] = M[i, j] - Og[i, j])
     end
+    # Payload format is the artifact's, not a convenience: a flat lat-major
+    # array indexed `j*nx + i`, values scaled by 10 and stored as integers, -9999
+    # for missing. Emitting it directly means the figure is redrawn from a
+    # command rather than hand-edited, which is how a previous set of published
+    # ratios came to be adjusted by eye.
     step = 2
+    scale, miss = 10, -9999
     mm = block_means(lons, lats, M, step)
     oo = block_means(lons, lats, Og, step)
     bb = block_means(lons, lats, B, step)
-    fmt(A) =
-        "[" *
-        join(
-            (
-                "[" *
-                join(
-                    (
-                        (isnan(x) ? "null" : string(round(x, digits = 2))) for
-                        x in A[i, :]
-                    ),
-                    ",",
-                ) *
-                "]" for i in axes(A, 1)
-            ),
-            ",",
-        ) *
-        "]"
+    nx, ny = size(mm)
+    function flat(A)
+        v = Vector{Int}(undef, nx * ny)
+        for j in 1:ny, i in 1:nx
+            x = A[i, j]
+            v[(j - 1) * nx + i] = isnan(x) ? miss : round(Int, x * scale)
+        end
+        return "[" * join(v, ",") * "]"
+    end
     open(jsonpath, "w") do io
-        println(io, "{")
-        println(io, "\"step\": $step,")
-        println(io, "\"nlon\": $(size(mm,1)), \"nlat\": $(size(mm,2)),")
-        println(io, "\"model\": $(fmt(mm)),")
-        println(io, "\"obs\": $(fmt(oo)),")
-        println(io, "\"bias\": $(fmt(bb))")
-        println(io, "}")
+        print(io, "{\"nx\":$nx,\"ny\":$ny,\"scale\":$scale,\"miss\":$miss,")
+        print(io, "\"model\":$(flat(mm)),")
+        print(io, "\"obs\":$(flat(oo)),")
+        print(io, "\"bias\":$(flat(bb))}")
     end
     println("wrote $jsonpath")
 end
