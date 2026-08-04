@@ -852,6 +852,14 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     n_map_woody::FT
     "Memory timescale of the running-mean precipitation used as mean annual precipitation (s)"
     τ_MAP::FT
+    "Annual water deficit at which woody allocation is halved (m yr^-1); 0 disables the seasonality limit"
+    deficit_half_woody::FT
+    "Sharpness of the water-deficit limit on woody allocation (dimensionless)"
+    n_deficit_woody::FT
+    "Evaporative demand over 30 days at 20 C above freezing (m), the reference the deficit is taken against"
+    pet_ref_woody::FT
+    "Fraction of the reference demand retained at freezing (-); 0 is a pure temperature ramp, 1 a constant reference"
+    pet_floor_woody::FT
     "Q10 temperature sensitivity of maintenance respiration (-)"
     Q10::FT
     "Reference temperature for the Q10 factor (K)"
@@ -891,6 +899,10 @@ function PrognosticCarbonParameters(
     map_half_woody = toml_dict["carbon_map_half_woody"],
     n_map_woody = toml_dict["carbon_n_map_woody"],
     τ_MAP = toml_dict["carbon_tau_MAP"],
+    deficit_half_woody = toml_dict["carbon_deficit_half_woody"],
+    n_deficit_woody = toml_dict["carbon_n_deficit_woody"],
+    pet_ref_woody = toml_dict["carbon_pet_ref_woody"],
+    pet_floor_woody = toml_dict["carbon_pet_floor_woody"],
     Q10 = toml_dict["carbon_Q10"],
     T_ref = toml_dict["carbon_T_ref"],
 )
@@ -919,6 +931,10 @@ function PrognosticCarbonParameters(
         map_half_woody,
         n_map_woody,
         τ_MAP,
+        deficit_half_woody,
+        n_deficit_woody,
+        pet_ref_woody,
+        pet_floor_woody,
         Q10,
         T_ref,
     )
@@ -999,6 +1015,29 @@ function PrognosticCarbonModel{FT}(
         # `map_half_woody` directly.
         ClimaLand.TimeIntegratedVariable{FT}(;
             name = :P_annual,
+            reduction = ClimaLand.RunningSum(FT(365 * 86400), parameters.τ_MAP),
+        ),
+        # A 30-day precipitation total and temperature mean. These exist only to
+        # feed `D_annual`, and the 30-day window is what makes it a measure of
+        # seasonality rather than of intermittency: precipitation is zero at
+        # almost every instant, so a deficit taken against the instantaneous rate
+        # would reduce to the annual evaporative demand everywhere and carry no
+        # information about how the rain is distributed through the year.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :P_month,
+            reduction = ClimaLand.RunningSum(FT(30 * 86400), FT(30 * 86400)),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :T_month,
+            reduction = ClimaLand.RunningMean(FT(30 * 86400)),
+        ),
+        # Annual water deficit: the monthly shortfall of precipitation below
+        # evaporative demand, summed over the year. Two cells with identical mean
+        # annual precipitation can differ by an order of magnitude in this, and
+        # that difference is what separates wet savanna from wet forest - a
+        # distinction no function of the annual total can express.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :D_annual,
             reduction = ClimaLand.RunningSum(FT(365 * 86400), parameters.τ_MAP),
         ),
     )
@@ -1127,6 +1166,10 @@ bounds stem turnover at ~300 years, about the oldest realistic boreal stand, and
 it also means an uninitialised mean annual temperature degrades to a long but
 finite turnover rather than to `q^28`.
 """
+# The 30-day window of `P_month`/`T_month`, used to convert the monthly deficit
+# back to a rate for the annual accumulator.
+const SECONDS_PER_MONTH = 30 * 86400
+
 const MAX_TAU_STEM_SCALE = 10
 
 function tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
@@ -1153,6 +1196,45 @@ function woody_fraction(MAP::FT, half::FT, n::FT) where {FT}
     x = max(MAP, zero(FT)) / half
     xn = x^n
     return xn / (1 + xn)
+end
+
+"""
+    monthly_pet(T::FT, ref::FT, floor::FT) where {FT}
+
+Evaporative demand over 30 days (m), as a linear ramp in temperature from `floor
+* ref` at freezing to `ref` at 20 C above freezing.
+
+A constant reference is the textbook definition of a water deficit, but it
+assumes tropical evaporative demand everywhere, so it scores a cold cell as
+severely water-stressed when the reason it is dry is that it is frozen - which
+suppresses boreal forest, where the observations show closed canopy. `floor`
+keeps some demand at depth of winter: the deficit is a proxy for growing-season
+water limitation and fuel dryness rather than a literal potential
+evapotranspiration, and a pure ramp to zero gives up most of the signal.
+"""
+function monthly_pet(T::FT, ref::FT, floor::FT) where {FT}
+    warmth = clamp((T - FT(273.15)) / FT(20), zero(FT), one(FT))
+    return ref * (floor + (1 - floor) * warmth)
+end
+
+"""
+    seasonality_limit(D::FT, half::FT, n::FT) where {FT}
+
+Multiplier on woody allocation from the annual water deficit `D` (m):
+`1 / (1 + (D/half)^n)`, falling from 1 in an aseasonal climate toward 0 as the
+dry season lengthens.
+
+Mean annual precipitation cannot separate wet savanna from wet forest, because
+their annual totals are the same - Cerrado, the Sahel fringe, the Pampas and
+miombo all receive forest-sized rainfall and carry no forest. What differs is how
+that rain is distributed through the year, and a long dry season both dries fuel
+for fire and limits tree establishment directly. `half <= 0` disables the limit.
+"""
+function seasonality_limit(D::FT, half::FT, n::FT) where {FT}
+    half <= 0 && return one(FT)
+    x = max(D, zero(FT)) / half
+    xn = x^n
+    return 1 / (1 + xn)
 end
 
 """
@@ -1335,7 +1417,14 @@ function ClimaLand.make_compute_exp_tendency(
     lai_tendency! =
         ClimaLand.make_compute_exp_tendency(component.lai_model, canopy)
     (; a, f_leaf_c3, f_stem_c3, f_leaf_c4, f_stem_c4) = component.parameters
-    (; map_half_woody, n_map_woody) = component.parameters
+    (;
+        map_half_woody,
+        n_map_woody,
+        deficit_half_woody,
+        n_deficit_woody,
+        pet_ref_woody,
+        pet_floor_woody,
+    ) = component.parameters
     tivs = component.time_integrated_vars
     M_C = FT(0.012011)  # kg C per mol
     function compute_exp_tendency!(dY, Y, p, t)
@@ -1361,6 +1450,11 @@ function ClimaLand.make_compute_exp_tendency(
                 map_half_woody,
                 n_map_woody,
             ) *
+            seasonality_limit(
+                Y.canopy.biomass.D_annual,
+                deficit_half_woody,
+                n_deficit_woody,
+            ) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_stem
         # Mean annual temperature, relaxing toward air temperature.
         @. dY.canopy.biomass.T_annual = apply_time_reduction(
@@ -1375,6 +1469,31 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.P_annual,
             tivs.P_annual.reduction,
         )
+        # 30-day precipitation total and temperature mean, feeding D_annual.
+        @. dY.canopy.biomass.P_month = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow),
+            Y.canopy.biomass.P_month,
+            tivs.P_month.reduction,
+        )
+        @. dY.canopy.biomass.T_month = apply_time_reduction(
+            p.drivers.T,
+            Y.canopy.biomass.T_month,
+            tivs.T_month.reduction,
+        )
+        # The monthly shortfall, converted back to a rate so the 1-year
+        # RunningSum accumulates it as an annual total in m.
+        @. dY.canopy.biomass.D_annual = apply_time_reduction(
+            max(
+                monthly_pet(
+                    Y.canopy.biomass.T_month,
+                    pet_ref_woody,
+                    pet_floor_woody,
+                ) - Y.canopy.biomass.P_month,
+                0,
+            ) / SECONDS_PER_MONTH,
+            Y.canopy.biomass.D_annual,
+            tivs.D_annual.reduction,
+        )
 
         # f_root takes whatever leaf and stem do not, including the stem
         # allocation the water limitation withheld, so the three fractions sum
@@ -1388,6 +1507,11 @@ function ClimaLand.make_compute_exp_tendency(
                     Y.canopy.biomass.P_annual,
                     map_half_woody,
                     n_map_woody,
+                ) *
+                seasonality_limit(
+                    Y.canopy.biomass.D_annual,
+                    deficit_half_woody,
+                    n_deficit_woody,
                 )
             ) *
             p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_root

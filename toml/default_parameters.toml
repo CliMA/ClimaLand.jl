@@ -1002,3 +1002,23 @@ value = 6.3072e7
 type = "float"
 description = "Memory timescale (s) of the running-mean precipitation used as mean annual precipitation, 2 years. Matches carbon_tau_MAT so both climate means filter the seasonal cycle identically."
 tag = "PrognosticCarbonParameters"
+
+["carbon_deficit_half_woody"]
+value = 0.55
+type = "float"
+description = "Annual water deficit at which woody allocation is halved (m yr^-1). Offline-calibrated against GPCC precipitation over ~20000 land cells; 0 disables the seasonality limit."
+
+["carbon_n_deficit_woody"]
+value = 4.0
+type = "float"
+description = "Sharpness of the water-deficit limit on woody allocation (dimensionless)"
+
+["carbon_pet_ref_woody"]
+value = 0.1
+type = "float"
+description = "Evaporative demand over 30 days at 20 C above freezing (m), the reference the annual water deficit is taken against. 0.1 m per 30 days is the conventional 100 mm/month dry-month threshold."
+
+["carbon_pet_floor_woody"]
+value = 0.6
+type = "float"
+description = "Fraction of the reference evaporative demand retained at freezing (-). 0 is a pure temperature ramp, which protects boreal forest but gives up most of the signal; 1 is a constant reference, which suppresses boreal forest. 0.6 was the offline optimum."
