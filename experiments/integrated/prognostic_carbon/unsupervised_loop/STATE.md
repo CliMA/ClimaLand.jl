@@ -3270,3 +3270,31 @@ This is the third such error in this harness (`pra` read as a rate rather than
 an annual total; `gpp` read as kg C in a scratch check). `global_budget.jl` now
 derives the conversion from the file's own `units` attribute rather than a
 hard-coded constant, which removes the class rather than this instance.
+
+### One of the ten new sites is not land
+
+`canadian_arctic` at (-100, 68) returns GPP = NaN: the model's land mask has
+**0/12 valid months** there, so the coordinate falls in water. Nine of the ten
+cold non-forest additions are fine.
+
+Checked alternatives on the same grid, all land with 12/12 valid months:
+
+| candidate | annual GPP (g C m-2 yr-1) |
+|---|---|
+| (-95, 65) | 132 |
+| **(-105, 66)** | **132** |
+| (-110, 64) | 241 |
+| taymyr (100, 72), for scale | 126 |
+
+(-105, 66) — mainland Nunavut near Kugluktuk — is the replacement: tundra, and
+comparable to Taymyr rather than the shrubbier 241.
+
+**Not edited yet, deliberately.** `run_battery.pbs` reads `test_sites.csv` per
+site at runtime, so editing it while the CARBON=1 arm is running would give that
+arm a different coordinate from the baseline at any site not yet launched, and
+`check_rule1.jl` would report a difference in GPP and LAI that is a coordinate
+change rather than a rule-1 violation — a false failure of the check that exists
+to catch real ones. The fix waits for the battery to finish.
+
+This round's rule-1 check therefore covers 29 usable sites, with
+`canadian_arctic` NaN on both arms.
