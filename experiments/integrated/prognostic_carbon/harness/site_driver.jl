@@ -356,6 +356,12 @@ if carbon_on
                 model.canopy.biomass.parameters.T_ref_τ_stem,
                 model.canopy.biomass.parameters.q_τ_stem,
             )
+        seasonality_field =
+            ClimaLand.Canopy.seasonality_limit.(
+                Yf.canopy.biomass.D_annual,
+                model.canopy.biomass.parameters.deficit_half_woody,
+                model.canopy.biomass.parameters.n_deficit_woody,
+            )
         for (label, field) in (
             ("C_sugar_kgC_m2", Yf.canopy.biomass.C_sugar),
             ("C_leaf_kgC_m2", Yf.canopy.biomass.C_leaf),
@@ -372,6 +378,16 @@ if carbon_on
             # mechanism itself checkable instead.
             ("T_annual_K", Yf.canopy.biomass.T_annual),
             ("tau_stem_scale", tau_scale_field),
+            # The seasonality limit and everything it is computed from. Reported
+            # for the same reason as tau_stem_scale: a 2-year run cannot show a
+            # decades-long pool respond, so the mechanism has to be checkable
+            # directly rather than inferred from C_stem, which is what let an
+            # initial-condition bug read as "the limit does nothing".
+            ("P_annual_m_yr", Yf.canopy.biomass.P_annual),
+            ("P_month_m", Yf.canopy.biomass.P_month),
+            ("T_month_K", Yf.canopy.biomass.T_month),
+            ("D_annual_m", Yf.canopy.biomass.D_annual),
+            ("seasonality_limit", seasonality_field),
             ("L_leaf_kgC_m2_s", pf.canopy.biomass.carbon.L_leaf),
             ("L_stem_kgC_m2_s", pf.canopy.biomass.carbon.L_stem),
             ("L_root_kgC_m2_s", pf.canopy.biomass.carbon.L_root),
