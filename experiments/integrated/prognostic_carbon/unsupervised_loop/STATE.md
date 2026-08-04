@@ -2974,3 +2974,50 @@ predictor - the deficit should reflect climatology, not one year's weather - but
 it means short coupled runs cannot demonstrate the mechanism. The offline
 integrator equilibrates and does not have this problem, which is why the global
 map remains the primary evidence.
+
+### RULE 1 PASS with the seasonality limit in the model
+
+Battery 7006957, 20/20 sites, `check_rule1.jl` against
+`baseline_prognostic_lai.tsv`: GPP and LAI relative difference **exactly 0.0** at
+every site, including every dry and seasonal site the limit acts on
+(cerrado_brazil, sahel, n_australia_savanna, sahara, pampas_argentina,
+us_great_plains, iberia, mojave_sw_us). `Ra` differs, the sanctioned exception.
+
+### Model precipitation is a weaker predictor than GPCC — but the control is not in yet
+
+Driver run 7007004 carries `precip`, so the offline integrator now computes the
+deficit the way the coupled model does. Sweep at floor 0.6 (job 7007564),
+compared against the **old-driver** base:
+
+| product | old-driver base | dh350 | dh450 | dh550 |
+|---|---|---|---|---|
+| XuSaatchi | 0.96/0.614 | 0.03/0.610 | 0.35/0.623 | 0.57/0.626 |
+| Thurner | −0.35/0.537 | −1.03/0.516 | −0.74/0.530 | −0.57/0.535 |
+| ESACCI | 1.37/0.614 | 0.47/0.629 | 0.79/0.635 | 1.00/0.633 |
+| GEOCARBON | 1.15/0.572 | −0.17/0.606 | 0.30/0.608 | 0.61/0.602 |
+| Saatchi2011 | 3.23/0.633 | 1.55/0.638 | 2.09/0.649 | 2.47/0.650 |
+| USForest | 2.40/0.575 | 1.81/0.524 | 2.07/0.548 | 2.21/0.561 |
+
+| dh | r up | \|bias\| down | mean dr |
+|---|---|---|---|
+| 350 | 3/6 | 5/6 | −0.0037 |
+| 450 | 4/6 | 5/6 | +0.0080 |
+| 550 | 4/6 | 5/6 | **+0.0103** |
+
+Against GPCC on the old drivers the same floor and dh gave **6/6 and +0.0315**.
+So the model-side result is roughly a third of the observational one.
+
+**This comparison is not yet valid.** The base row is from driver run 7001112
+and the sweep from 7007004 — same configuration, but a different run, and
+`implicit_timestepping.jl` and `initial_conditions.jl` have changed since. Job
+7007598 recomputes the base on the *new* drivers with the limit off, which is the
+only thing that separates "model precipitation is a weaker predictor" from "the
+driver rerun differs".
+
+Two further caveats to carry regardless:
+- `dh = 550` is at the **edge** of this sweep and mean dr is still rising, unlike
+  the GPCC case where 0.6/550 was an interior optimum. The model-side optimum is
+  not bracketed.
+- USForest r *falls* at every dh here (0.575 -> 0.524/0.548/0.561) where it was
+  flat under GPCC. That is a specific difference between the two precipitation
+  sources, not noise.
