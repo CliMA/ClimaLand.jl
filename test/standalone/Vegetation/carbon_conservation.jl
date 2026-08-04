@@ -464,10 +464,21 @@ for FT in (Float32, Float64)
         zhou_vars = ClimaLand.prognostic_vars(zhou)
         wrapped_vars = ClimaLand.prognostic_vars(wrapped)
         @test all(v -> v in wrapped_vars, zhou_vars)
-        # The wrapper adds exactly the four pools plus its own climate means;
-        # naming them beats a magic count, which silently needs editing every
-        # time a state variable is added.
-        added = (:C_sugar, :C_leaf, :C_stem, :C_root, :T_annual, :P_annual)
+        # The wrapper adds exactly the four pools plus its own climate means and
+        # the water-deficit chain behind the seasonality limit; naming them beats
+        # a magic count, which silently needs editing every time a state variable
+        # is added.
+        added = (
+            :C_sugar,
+            :C_leaf,
+            :C_stem,
+            :C_root,
+            :T_annual,
+            :P_annual,
+            :P_month,
+            :T_month,
+            :D_annual,
+        )
         @test all(v -> v in wrapped_vars, added)
         @test length(wrapped_vars) == length(zhou_vars) + length(added)
         @test isempty(setdiff(wrapped_vars, (zhou_vars..., added...)))
