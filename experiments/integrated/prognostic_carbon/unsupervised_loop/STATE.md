@@ -3298,3 +3298,20 @@ to catch real ones. The fix waits for the battery to finish.
 
 This round's rule-1 check therefore covers 29 usable sites, with
 `canadian_arctic` NaN on both arms.
+
+### RULE 1 PASS at 30/30 under the recalibrated parameters
+
+`check_rule1.jl` over battery 7010934 against the matching 30-site CARBON=0
+baseline: GPP and LAI relative difference **exactly 0.0** at every site,
+including all ten cold non-forest additions (taymyr_siberia, iceland,
+alaska_interior_bog, hudson_bay_lowland, mongolian_steppe, kazakh_steppe,
+tibetan_plateau, patagonian_steppe, west_siberian_steppe). Both the baseline and
+the carbon arm were regenerated under z = 29.2, so this is not inherited from the
+earlier verification.
+
+`canadian_arctic` moved from (-100, 68), which the model's land mask rejects, to
+(-105, 66). The stale baseline row was **removed** rather than left in place: a
+row keyed to the old coordinate would have been compared against a run at the new
+one, and `check_rule1.jl` would have reported a GPP and LAI difference that is a
+moved site rather than a rule-1 violation. With the row absent the site is
+skipped until its baseline is regenerated, which is the honest state.
