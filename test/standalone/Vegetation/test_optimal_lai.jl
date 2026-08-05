@@ -282,32 +282,40 @@ using ClimaCore
         end
 
         @testset "potential_evaporation for FT = $FT" begin
-            σ = FT(5.67e-8)
-            λv = FT(2.5e6)   # J kg^-1
-            M_w = FT(0.018)  # kg mol^-1
+            earth_param_set = LP.LandParameters(toml_dict)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
+            σ = LP.Stefan(earth_param_set)
+            M_w = LP.molar_mass_water(earth_param_set)
+            λv = LP.LH_v0(earth_param_set)
             ϵ = FT(0.98)
-            pet = Canopy.potential_evaporation(
-                FT(800),
-                FT(350),
-                FT(293.15),
+            P = FT(101325)
+            pet(SW, LW, T) = Canopy.potential_evaporation(
+                FT(SW),
+                FT(LW),
+                FT(T),
+                P,
                 ϵ,
                 σ,
-                λv,
                 M_w,
+                thermo_params,
             )
-            @test pet > FT(0)
-            @test isfinite(pet)
+
+            @test pet(800, 350, 293.15) > FT(0)
+            @test isfinite(pet(800, 350, 293.15))
             # night with a cold sky gives negative net radiation, clipped to zero so
             # it cannot draw down the trailing total
-            @test Canopy.potential_evaporation(
-                FT(0),
-                FT(50),
-                FT(293.15),
-                ϵ,
-                σ,
-                λv,
-                M_w,
-            ) == FT(0)
+            @test pet(0, 50, 293.15) == FT(0)
+
+            # The Priestley-Taylor partition alpha*Delta/(Delta+gamma) is well below
+            # one and grows with temperature, so PET is a fraction of Rn/(lambda*M_w)
+            # and that fraction is smaller in the cold. Without it, the aridity index
+            # would be biased high in cold climates and not in warm ones.
+            Rn_over_λ(SW, LW, T) =
+                ((1 - FT(0.23)) * SW + ϵ * (LW - σ * T^4)) / (λv * M_w)
+            frac(T) = pet(800, 350, T) / Rn_over_λ(FT(800), FT(350), FT(T))
+            @test FT(0.4) < frac(278.15) < FT(0.7)   # ~5 C
+            @test FT(0.7) < frac(303.15) < FT(1.1)   # ~30 C
+            @test frac(278.15) < frac(303.15)
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin

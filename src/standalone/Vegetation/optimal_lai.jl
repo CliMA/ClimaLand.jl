@@ -469,28 +469,53 @@ function c3_fraction_from_competition(
 end
 
 """
-    potential_evaporation(SW_d, LW_d, T_air, ϵ_sfc, σ, λv, M_w)
+    potential_evaporation(SW_d, LW_d, T_air, P_air, ϵ_sfc, σ, M_w, thermo_params)
 
-Net-radiation potential evaporation (mol H2O m^-2 s^-1) over a reference vegetated
+Priestley-Taylor potential evaporation (mol H2O m^-2 s^-1) over a reference vegetated
 surface, the numerator of the aridity index `AI = PET_annual/precip_annual` that sets
-the climate-responsive `f0`. Uses the net-radiation option of Zhou et al.'s aridity
-input, `Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4)` (W m^-2), clipped at zero so
-night-time negative `Rn` does not draw down the running total.
+the climate-responsive `f0`:
+
+    PET = α_PT · Δ/(Δ + γ) · Rn / (λv · M_w),
+    Rn  = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4),
+
+with `Δ` the slope of the saturation vapour pressure curve, `γ` the psychrometric
+constant, and `Rn` clipped at zero so night-time negative net radiation does not draw
+down the running total. The `Δ/(Δ + γ)` partition is what makes this an evaporation
+rather than the full radiative flux: it is about 0.5 near freezing and 0.8 at 30 °C,
+so omitting it would bias `AI` high in cold climates and not in warm ones.
 
 `α_ref` is the FAO-56 reference-crop albedo, which *defines* the reference surface
 the `f0(AI)` relation was fitted against; it is deliberately not the simulated
-surface albedo, which would decouple `AI` from the curve that consumes it.
+surface albedo, which would decouple `AI` from the curve that consumes it. The
+relation is fitted against aridity indices built on FAO-56 Penman-Monteith reference
+evapotranspiration, whose aerodynamic term this omits, so `AI` remains biased low
+where wind and vapour pressure deficit drive evaporation.
 """
 function potential_evaporation(
     SW_d::FT,
     LW_d::FT,
     T_air::FT,
+    P_air::FT,
     ϵ_sfc::FT,
     σ::FT,
-    λv::FT,
     M_w::FT,
+    thermo_params,
 ) where {FT}
     α_ref = FT(0.23)
+    α_PT = FT(1.26)
     Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
-    return max(Rn, zero(FT)) / (λv * M_w)
+
+    λv = TP.LH_v0(thermo_params)
+    R_v = TP.R_v(thermo_params)
+    # Clausius-Clapeyron slope de_sat/dT, and the psychrometric constant with the
+    # dry-to-vapour gas constant ratio standing in for the molar mass ratio.
+    e_sat = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        T_air,
+        Thermodynamics.Liquid(),
+    )
+    Δ = e_sat * λv / (R_v * T_air^2)
+    γ = TP.cp_d(thermo_params) * P_air * R_v / (TP.R_d(thermo_params) * λv)
+
+    return α_PT * Δ / (Δ + γ) * max(Rn, zero(FT)) / (λv * M_w)
 end

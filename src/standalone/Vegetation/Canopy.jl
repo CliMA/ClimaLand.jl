@@ -15,6 +15,7 @@ import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
+import Thermodynamics.Parameters as TP
 using Dates
 
 import ClimaLand:

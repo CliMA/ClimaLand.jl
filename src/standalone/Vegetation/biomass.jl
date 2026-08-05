@@ -658,9 +658,9 @@ function ClimaLand.make_compute_exp_tendency(
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
     earth_param_set = canopy.earth_param_set
     σ = LP.Stefan(earth_param_set)
-    λv = LP.LH_v0(earth_param_set)              # J kg^-1
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
     T_freeze = LP.T_freeze(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
@@ -672,7 +672,7 @@ function ClimaLand.make_compute_exp_tendency(
         VPD = @. lazy(
             max(
                 Thermodynamics.vapor_pressure_deficit(
-                    LP.thermodynamic_parameters(earth_param_set),
+                    thermo_params,
                     p.drivers.T,
                     p.drivers.P,
                     p.drivers.q,
@@ -739,10 +739,11 @@ function ClimaLand.make_compute_exp_tendency(
                 p.drivers.SW_d,
                 p.drivers.LW_d,
                 p.drivers.T,
+                p.drivers.P,
                 ϵ_sfc,
                 σ,
-                λv,
                 M_w,
+                thermo_params,
             ),
             Y.canopy.biomass.PET_annual,
             tivs.PET_annual.reduction,
