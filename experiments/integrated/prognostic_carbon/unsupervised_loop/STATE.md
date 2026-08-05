@@ -3773,3 +3773,53 @@ additional low bias in the largest zone by cell count.
 **Not retuned.** Choosing a different objective is a modelling decision, not a
 calibration detail, and the value has now held across three independent driver
 changes on the objective it was chosen for.
+
+## Iteration 180 — an unmet DONE WHEN: NPP/GPP is too high in the cold
+
+The stage-2 criterion is *"the battery's annual NPP/GPP lands in 0.3-0.6"*. It has
+been checked globally, where it passes, but not per site, which is what the
+criterion actually says.
+
+Per site, on the current battery (27 vegetated sites):
+
+| | |
+|---|---|
+| within 0.3-0.6 | **11 / 27** |
+| median | **0.619** |
+| range | 0.439 - 0.686 |
+
+All 16 failures are **above** the range, and all are cold: canada_boreal 0.619,
+central_siberia 0.654, taymyr_siberia 0.673, canadian_arctic 0.679,
+alaska_north_slope 0.686. No warm site fails.
+
+### Why, and why the global number hid it
+
+Maintenance respiration carries `f_T = Q10^((T - T_ref)/10)` with `Q10 = 2` and
+`T_ref = 298.15 K`:
+
+| T (K) | f_T |
+|---|---|
+| 298 | 1.000 |
+| 283 | 0.354 |
+| 270 | **0.144** |
+| 263 | **0.088** |
+
+A tundra column respires ~9-14% of its reference maintenance cost, so almost all
+of GPP survives as NPP. Observationally NPP/GPP clusters near 0.5 fairly
+universally, boreal forest included, so ~0.69 is high.
+
+The **global** ratio is 0.479 and inside the range because the tropics dominate
+the global flux and sit at the low end. A flux-weighted global mean cannot see a
+bias confined to low-flux cells - the same masking that made the merge look
+harmless globally while moving Mojave LAI by 25%.
+
+### Not fixed
+
+Lowering `Q10`, raising `T_ref`, or adding a cold floor to `f_T` would all pull
+these sites down, but all three change autotrophic respiration - the *one*
+sanctioned exception to rule 1, and therefore the one parameter whose adjustment
+changes a flux the project otherwise holds fixed. That is a modelling decision,
+not a calibration detail, and it is flagged rather than taken.
+
+**This criterion is not met, and was previously reported as met on the strength
+of a global number that does not test it.**
