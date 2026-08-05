@@ -98,11 +98,11 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 
 ## Model Assumptions
 
-1. **Water limitation through soil moisture stress**: Both daily and annual potential GPP ($A_0$) include soil moisture stress (β). This allows vegetation structure (LAI$_{max}$, via $A_{0,annual}$) to adapt to water availability on annual timescales, while daily LAI dynamics respond to shorter-term moisture variability.
+1. **Water limitation enters once**: The potential GPP $A_0$ carries no soil moisture stress, so water availability acts only through the $f_0 P / A_0$ term of LAI$_{max}$ rather than being counted twice.
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
-4. **Growing season inputs are provided, not diagnosed**: The model takes growing season length (GSL) and growing-season VPD as inputs; it does not currently diagnose season onset/offset from temperature.
-5. **Daily update at local noon**: LAI is updated once per day at local solar noon.
+4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length from a trailing-year count of days above freezing, the growing-season VPD as an $A_0$-weighted mean, and $f_0$ from the aridity index. Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
+5. **Continuous update**: LAI and the trailing climate totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters
 
@@ -113,6 +113,20 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 | LAI dynamics parameter | $\sigma$ | - | 1.1 | Departure from square-wave dynamics |
 | Smoothing factor | $\alpha$ | - | 0.067 | Controls LAI response time (~15 days) |
 | Peak precipitation fraction | $f_{0,max}$ | - | 0.65 | Fraction of precipitation used by plants at the energy–water transition |
+
+The C3/C4 competition that sets the C3 fraction adds the coefficients below, fitted by
+Lavergne et al. (2022) and used by pyrealm. The proportional C4 GPP advantage is passed
+through a logistic, then penalised by the C3 tree cover $tc(g) = a g^b + c$ estimated from
+the annual C3 GPP $g$, so C4 is suppressed where C3 trees would shade it.
+
+| Parameter | Symbol | Unit | Typical Value | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| Competition logistic steepness | $k_{c34}$ | - | 6.63 | Sharpness of the C4 fraction's response to the GPP advantage |
+| Competition logistic midpoint | $q_{c34}$ | - | 0.16 | GPP advantage at which C3 and C4 are equally expected |
+| Tree-cover coefficient | $a$ | - | 15.60 | Scale of the tree-cover relation |
+| Tree-cover exponent | $b$ | - | 1.41 | Exponent of the tree-cover relation |
+| Tree-cover offset | $c$ | - | -7.72 | Offset, so tree cover vanishes below a threshold GPP |
+| Tree-cover reference GPP | $g_{ref}$ | kg C m⁻² yr⁻¹ | 2.8 | Normalizes the tree-cover relation to a proportion in [0, 1] |
 
 ## Drivers
 

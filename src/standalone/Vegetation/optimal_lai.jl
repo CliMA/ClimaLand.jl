@@ -37,6 +37,23 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
     photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
     online_c3c4::FT
+    """Steepness of the logistic mapping the proportional C4 GPP advantage to the
+    expected C4 fraction (dimensionless), fitted by Lavergne et al. (2022)."""
+    c3c4_k::FT
+    """Midpoint of that logistic (dimensionless): the C4 GPP advantage at which C4
+    and C3 are equally expected."""
+    c3c4_q::FT
+    """Coefficient `a` of the C3 tree-cover relation `tc(g) = a·g^b + c`, with `g`
+    the annual C3 GPP (kg C m^-2 yr^-1)."""
+    tc_a::FT
+    """Exponent `b` of the tree-cover relation (dimensionless)."""
+    tc_b::FT
+    """Offset `c` of the tree-cover relation; negative, so tree cover vanishes below
+    a threshold GPP."""
+    tc_c::FT
+    """Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation:
+    `tc(g)/tc(tc_gpp_ref)`, clamped to [0, 1], is the C3 tree proportion."""
+    tc_gpp_ref::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -58,6 +75,12 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         f0_max = FT(toml_dict["optimal_lai_f0_max"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
         online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
+        c3c4_k = FT(toml_dict["optimal_lai_c3c4_k"]),
+        c3c4_q = FT(toml_dict["optimal_lai_c3c4_q"]),
+        tc_a = FT(toml_dict["optimal_lai_tc_a"]),
+        tc_b = FT(toml_dict["optimal_lai_tc_b"]),
+        tc_c = FT(toml_dict["optimal_lai_tc_c"]),
+        tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
     )
 end
 
@@ -373,6 +396,11 @@ function compute_L_steady_target(
     return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
 end
 
+# Shape of Zhou et al. (2025)'s f0(AI) curve: the aridity index at which f0 peaks,
+# and the width of the falloff. Structural to the published relation, not tunable.
+const AI_PEAK = 1.9
+const AI_WIDTH = 0.604
+
 """
     f0_from_aridity(PET_annual::FT, precip_annual::FT, f0_max::FT) where {FT}
 
@@ -387,11 +415,24 @@ function f0_from_aridity(
     f0_max::FT,
 ) where {FT}
     AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
-    return f0_max * exp(-FT(0.604) * log(max(AI, eps(FT)) / FT(1.9))^2)
+    return f0_max * exp(-FT(AI_WIDTH) * log(max(AI, eps(FT)) / FT(AI_PEAK))^2)
 end
 
 """
-    c3_fraction_from_competition(A0c3_annual, A0c4_annual, Mc, fapar)
+    aridity_from_f0(f0::FT, f0_max::FT) where {FT}
+
+Inverse of [`f0_from_aridity`](@ref), used to seed `PET_annual` so the online `f0`
+starts at the value of the map it replaces. `f0` is symmetric in `ln(AI/1.9)`, so
+this returns the arid branch (`AI ≥ 1.9`), which is where the map was fitted. An
+`f0` at or above `f0_max` has no arid-branch preimage and returns the peak `1.9`.
+"""
+function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
+    return FT(AI_PEAK) *
+           exp(sqrt(max(log(f0_max / max(f0, eps(FT))), FT(0)) / FT(AI_WIDTH)))
+end
+
+"""
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, Mc, fapar, parameters)
 
 Online C3 fraction from the pyrealm-style C3/C4 competition (GPP-derived, no PFT),
 using the running-mean per-pathway potential GPP `A0c3_annual`/`A0c4_annual`
@@ -406,42 +447,48 @@ function c3_fraction_from_competition(
     A0c4_annual::FT,
     Mc::FT,
     fapar::FT,
+    parameters::OptimalLAIParameters{FT},
 ) where {FT}
+    (; c3c4_k, c3c4_q, tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
     a0c3 = max(A0c3_annual, eps(FT))
     # C4 GPP advantage is a ratio, so it is invariant to the potential→actual GPP
     # scaling (fapar cancels); use the potential per-pathway means directly.
     adv = (A0c4_annual - a0c3) / a0c3
-    frac_c4 = 1 / (1 + exp(-FT(6.63) * (adv / FT(ℯ) - FT(0.16))))
-    # C3-tree proportion from annual C3 GPP in kg m^-2 yr^-1 (tc(g)=a·g^b+c). The
-    # tc() relation (pyrealm/Lavergne) is fit to REALIZED GPP, so scale the potential
-    # a0c3 by the realized fAPAR — using potential GPP here saturates prop_trees and
-    # wrongly suppresses C4 in productive grasslands.
+    frac_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
+    # C3-tree proportion from annual C3 GPP in kg m^-2 yr^-1. The tc() relation
+    # (pyrealm/Lavergne) is fit to REALIZED GPP, so scale the potential a0c3 by the
+    # realized fAPAR — using potential GPP here saturates prop_trees and wrongly
+    # suppresses C4 in productive grasslands.
     gppc3 = a0c3 * Mc * fapar
-    tc(g) = FT(15.60) * g^FT(1.41) - FT(7.72)
-    prop_trees = clamp(tc(gppc3) / tc(FT(2.8)), FT(0), FT(1))
+    tc(g) = tc_a * g^tc_b + tc_c
+    prop_trees = clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
     frac_c4 *= (1 - prop_trees)
     return 1 - frac_c4
 end
 
 """
-    potential_evaporation(SW_d, LW_d, T_air, σ, λv, M_w)
+    potential_evaporation(SW_d, LW_d, T_air, ϵ_sfc, σ, λv, M_w)
 
 Net-radiation potential evaporation (mol H2O m^-2 s^-1) over a reference vegetated
 surface, the numerator of the aridity index `AI = PET_annual/precip_annual` that sets
 the climate-responsive `f0`. Uses the net-radiation option of Zhou et al.'s aridity
 input, `Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4)` (W m^-2), clipped at zero so
 night-time negative `Rn` does not draw down the running total.
+
+`α_ref` is the FAO-56 reference-crop albedo, which *defines* the reference surface
+the `f0(AI)` relation was fitted against; it is deliberately not the simulated
+surface albedo, which would decouple `AI` from the curve that consumes it.
 """
 function potential_evaporation(
     SW_d::FT,
     LW_d::FT,
     T_air::FT,
+    ϵ_sfc::FT,
     σ::FT,
     λv::FT,
     M_w::FT,
 ) where {FT}
-    α_ref = FT(0.23)   # reference vegetated-surface albedo
-    ϵ_sfc = FT(0.97)   # reference surface emissivity
+    α_ref = FT(0.23)
     Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
     return max(Rn, zero(FT)) / (λv * M_w)
 end
