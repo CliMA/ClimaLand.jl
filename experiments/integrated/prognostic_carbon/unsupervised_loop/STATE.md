@@ -3586,3 +3586,37 @@ Every global number in this PR - driver run, equilibrium maps, deficit sweep,
 RMSE, budget - was produced with the clamped `pmodel.jl`. They must be
 regenerated on the merged tree. Boreal sites moved most, and Thurner is the
 boreal product, so the biomass comparison is the most likely to shift.
+
+### The base moved again mid-verification, and it moves LAI in arid regions
+
+While the first merge was being verified, the base gained six more commits —
+Priestley-Taylor then FAO-56 Penman-Monteith aridity, TOML-driven C3/C4
+coefficients. Merged (one add/add conflict in the TOML, both blocks kept after
+asserting the key sets do not intersect). **PR is now MERGEABLE.**
+
+A CARBON=0 baseline on the twice-merged tree, against the one from the first
+merge, says the GPU driver run that had just finished was already stale:
+
+| site | GPP | LAI |
+|---|---|---|
+| mojave_sw_us | +21.6% | **+25.0%** |
+| california_vaira | +9.3% | +13.8% |
+| iberia | +0.9% | +2.3% |
+| mongolian_steppe | +1.7% | +2.2% |
+| amazon_central | 0.0 | 0.0 |
+
+11 of 30 sites moved, all arid or semi-arid. That is the expected signature of
+replacing the aridity index: `AI = PET/P` sets `f0`, which sets `LAI_max`, and
+the change bites hardest where PET dominates.
+
+**The 30-minute CPU baseline was worth running before the 1.2-hour GPU rerun.**
+It converted "the drivers are probably stale" into a measured 25%, and would
+equally have saved the GPU time had nothing moved.
+
+### Standing risk
+
+The base branch has moved twice during this merge, each time invalidating global
+results. The cheap verification chain — rule 1, drift, tests — is worth keeping
+current continuously. The global chain (driver, equilibrium, sweep, maps, budget)
+costs ~2 h and has now been overtaken once; it is worth regenerating when the
+base is quiet rather than on every move.
