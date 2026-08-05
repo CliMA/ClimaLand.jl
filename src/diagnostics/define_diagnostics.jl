@@ -154,6 +154,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_soil_temperature!(out, Y, p, t, land_model),
     )
 
+        # Soil temperature (3D) at depth
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "tsoil_sfc",
+        long_name = "Surface soil temperature",
+        standard_name = "sfc_soil_temperature",
+        units = "K",
+        comments = "Soil temperature at sfc.",
+        compute! = (out, Y, p, t) ->
+            compute_soil_sfc_temperature!(out, Y, p, t, land_model),
+    )
+
     # Surbsurface water storage
     conditional_add_diagnostic_variable!(
         possible_diags;

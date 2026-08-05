@@ -487,6 +487,13 @@ end
     LandModel,
     EnergyHydrology,
 } p.soil.T
+
+@diagnostic_compute "soil_sfc_temperature" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} ClimaLand.Domains.top_center_to_surface(p.soil.T)
+
 @diagnostic_compute "soil_net_radiation" Union{
     SoilCanopyModel,
     LandModel,

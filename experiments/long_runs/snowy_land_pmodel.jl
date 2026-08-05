@@ -148,7 +148,13 @@ model = setup_model(
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date,
+    outdir;
+    output_vars = ["tsoil_sfc",],
+    reduction_period = :hourly)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
@@ -158,18 +164,18 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
-LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(
-    simulation;
-    savedir = root_path,
-    leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"],
-)
+#LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
+#LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+#LandSimVis.make_leaderboard_plots(
+#    simulation;
+#    savedir = root_path,
+#    leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"],
+#)
 
-if LONGER_RUN
-    include("../ilamb/ilamb_conversion.jl")
-    make_compatible_with_ILAMB(
-        joinpath(root_path, "global_diagnostics", "output_active"),
-        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
-    )
-end
+#if LONGER_RUN
+#    include("../ilamb/ilamb_conversion.jl")
+#    make_compatible_with_ILAMB(
+#        joinpath(root_path, "global_diagnostics", "output_active"),
+#        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
+#    )
+#end
