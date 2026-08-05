@@ -568,9 +568,6 @@ the acclimated capacities relax toward: the P-model `compute_exp_tendency!` adva
 `Y.canopy.photosynthesis.acclimated` as a `RunningMean` of this instantaneous optimum,
 applying the acclimation lag continuously through the time-stepper.
 
-The second method computes the vapor pressure deficit from the atmospheric state,
-clipped away from zero since the P-model divides by `sqrt(VPD)`.
-
 Args:
 - `parameters`: PModelParameters object containing the model parameters.
 - `constants`: PModelConstants object containing the model constants.
@@ -604,14 +601,11 @@ function compute_optimal_capacities(
     βm::FT,
     APAR_canopy_moles::FT,
 ) where {FT}
-    VPD = max(
-        Thermodynamics.vapor_pressure_deficit(
-            thermo_params,
-            T_air,
-            P_air,
-            q_air,
-        ),
-        sqrt(eps(FT)),
+    VPD = Thermodynamics.vapor_pressure_deficit(
+        thermo_params,
+        T_air,
+        P_air,
+        q_air,
     )
     return compute_optimal_capacities(
         parameters,
@@ -1583,15 +1577,11 @@ function compute_A0_and_χ(
 
     # Convert ca from mol/mol to partial pressure (Pa)
     ca_pp = ca * P_air
-    # VPD clipped away from zero (the P-model divides by sqrt(VPD)).
-    VPD = max(
-        Thermodynamics.vapor_pressure_deficit(
-            LP.thermodynamic_parameters(earth_param_set),
-            T_air,
-            P_air,
-            q_air,
-        ),
-        sqrt(eps(FT)),
+    VPD = Thermodynamics.vapor_pressure_deficit(
+        LP.thermodynamic_parameters(earth_param_set),
+        T_air,
+        P_air,
+        q_air,
     )
     # Compute P-model intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
@@ -1633,7 +1623,7 @@ function compute_A0_and_χ(
         ξ_opt_c3,
         ca_pp,
         Γstar,
-        max(vpd_gs, sqrt(eps(FT))),
+        vpd_gs,
         vpd_ratio_min,
         Γ_ratio_max,
     )
@@ -1641,7 +1631,7 @@ function compute_A0_and_χ(
         ξ_opt_c4,
         ca_pp,
         Γstar,
-        max(vpd_gs, sqrt(eps(FT))),
+        vpd_gs,
         vpd_ratio_min,
         Γ_ratio_max,
     )

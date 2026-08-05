@@ -155,6 +155,7 @@ for FT in (Float32, Float64)
                 :top_bc,
                 :top_bc_wvec,
                 :sfc_scratch,
+                :q_sfc,
                 :PAR_albedo,
                 :NIR_albedo,
                 :sub_sfc_scratch,

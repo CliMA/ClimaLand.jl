@@ -571,3 +571,24 @@ function ClimaLand.get_drivers(model::SoilCanopyModel)
         model.canopy.boundary_conditions.radiation,
     )
 end
+
+"""
+    make_set_initial_cache(model::SoilCanopyModel)
+
+Creates the function with arguments (p,Y0,t0) that updates the cache
+`p` with initial values corresponding to Y0 and t0.
+
+We require a different method from the default because the lake fraction
+must be set before the cache is updated.
+"""
+function make_set_initial_cache(model::SoilCanopyModel)
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
+        set_lake_fraction!(p, model)
+        update_cache!(p, Y0, t0)
+    end
+    return set_initial_cache!
+end

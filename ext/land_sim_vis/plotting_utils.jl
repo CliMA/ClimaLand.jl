@@ -544,3 +544,612 @@ function LandSimVis.make_timeseries(
     end
     return nothing
 end
+
+"""
+    compare_monthly_fluxes_with_data(
+        savedir,
+        diagnostics,
+        start_date,
+        stop_date,
+        longlat;
+        data_source = "ERA5",
+        plot_stem_name = "ERA5",
+        spinup_date = start_date,
+        short_names = ["lwu", "swu", "shf", "lhf"]
+    )
+
+Creates a leaderboard style plot for single column runs where the diagnostics
+are stored using the DictWriter, in memory; SHF, LHF, LWu, and SWu are all plotted
+against average monthly values from data. This could be extended to pass in other
+data sources and compute other flux comparisons.
+"""
+function compare_monthly_fluxes_with_data(
+    savedir,
+    diagnostics,
+    start_date,
+    stop_date,
+    longlat;
+    data_source = "ERA5",
+    plot_stem_name = "ERA5",
+    spinup_date = start_date,
+    short_names = ["lwu", "swu", "shf", "lhf"],
+)
+    if data_source == "ERA5"
+        data_loader = ERA5DataLoader()
+    else
+        @error(
+            "compare_monthly_fluxes_with_data is currently only configured for ERA5 data."
+        )
+    end
+
+    for i in 1:length(short_names)
+        dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == short_names[i]
+        ]
+        @assert length(dn) == 1 ||
+                @error("$(short_names[i]) not available in saved diagnostics.")
+        dn = first(dn)
+        unit = [
+            d.variable.units for
+            d in diagnostics if d.variable.short_name == short_names[i]
+        ][1]
+        sn = short_names[i]
+        global_obs_data = get(data_loader, sn)
+        ClimaAnalysis.set_reference_date!(global_obs_data, start_date)
+        global_obs_data = ClimaAnalysis.window(
+            global_obs_data,
+            "time",
+            left = spinup_date,
+            right = stop_date,
+        )
+        obs_data = ClimaAnalysis.slice(
+            global_obs_data,
+            lat = longlat[2],
+            lon = longlat[1],
+        )
+        obs_times = obs_data.dims["time"]
+        obs_values = obs_data.data
+        model_time, model_output = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            dn;
+        )
+        model_dates = time_to_date.(model_time, start_date)
+        model_dt = Month(model_dates[2]) - Month(model_dates[1])
+        @assert model_dt == Month(1) || @error(
+            "Diagnostic reduction period must be one month to plot partitioning diagnostics."
+        )
+        # DictWriter diagnostics are saved at the end of the reduction period
+        model_dates = model_dates .- model_dt
+        obs_dates = time_to_date.(obs_times, start_date)
+        model_spinup_idx = findfirst(spinup_date .<= model_dates)
+        obs_spinup_idx = findfirst(spinup_date .<= obs_dates)
+
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(
+            fig[1, 1],
+            xlabel = "Date (UTC)",
+            ylabel = "$sn [$(unit)]",
+        )
+        CairoMakie.lines!(
+            ax,
+            model_dates[model_spinup_idx:end],
+            model_output[model_spinup_idx:end],
+            label = "Model",
+            color = "blue",
+        )
+        xlims = extrema(model_dates[model_spinup_idx:end])
+        xlims!(ax, xlims...)
+        CairoMakie.lines!(
+            ax,
+            obs_dates[obs_spinup_idx:end],
+            obs_values[obs_spinup_idx:end],
+            label = "Data",
+            color = "yellow",
+        )
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "$(sn)_$(plot_stem_name).png"), fig)
+    end
+    return nothing
+end
+
+"""
+    create_partitioning_plots(
+        savedir,
+        diagnostics,
+        start_date,
+        stop_date,
+        longlat,
+    )
+
+Creates some helper diagnostic plots showing the partition between
+- LHF and SHF (LHF / (LHF+SHF)
+- surface and subsurface runoff (SR / (SSR + SR)
+- transpiration and evaporation (T/ET)
+- ET and runoff (ET/precip)
+for a simulation run at a single site with longitude/latitude pair longlat,
+where the diagnostics were stored using the DictWriter.
+
+The entire timeseries of the data (and corresponding times from ERA5)
+are used to compute the partitioning.
+
+For SHF and LHF alone, the comparison to ERA5 is also shown.
+"""
+function create_partitioning_plots(
+    savedir,
+    diagnostics,
+    start_date,
+    stop_date,
+    longlat,
+)
+    data_loader = ERA5DataLoader()
+    diag_short_names = [d.variable.short_name for d in diagnostics]
+    # Evaporative fraction
+    if "shf" ∈ diag_short_names && "lhf" ∈ diag_short_names
+        lhf_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "lhf"
+        ][1]
+        shf_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "shf"
+        ][1]
+
+        model_time, lhf = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            lhf_dn;
+        )
+        _, shf = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            shf_dn;
+        )
+        model_dates = time_to_date.(model_time, start_date)
+        # DictWriter diagnostics are saved at the end of the reduction period
+        model_dates = model_dates .- Month(1)
+
+        obs_shf = get(data_loader, "shf")
+        ClimaAnalysis.set_reference_date!(obs_shf, start_date)
+        obs_lhf = get(data_loader, "lhf")
+        ClimaAnalysis.set_reference_date!(obs_lhf, start_date)
+        obs_shf = ClimaAnalysis.slice(
+            ClimaAnalysis.window(
+                obs_shf,
+                "time",
+                left = start_date,
+                right = stop_date - Month(1),
+            ),
+            lat = longlat[2],
+            lon = longlat[1],
+        )
+        obs_lhf = ClimaAnalysis.slice(
+            ClimaAnalysis.window(
+                obs_lhf,
+                "time",
+                left = start_date,
+                right = stop_date - Month(1),
+            ),
+            lat = longlat[2],
+            lon = longlat[1],
+        )
+
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(
+            fig[1, 1],
+            xlabel = "Date (UTC)",
+            ylabel = "LHF/(SHF+LHF)",
+        )
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            lhf ./ (lhf .+ shf .+ eps(eltype(shf))),
+            label = "Model",
+            color = "blue",
+        )
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            obs_lhf.data ./ (obs_lhf.data .+ obs_shf.data .+ eps(eltype(shf))),
+            label = "ERA5",
+            color = "red",
+        )
+        xlims = extrema(model_dates)
+        xlims!(ax, xlims...)
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "evap_fraction.png"), fig)
+    end
+
+    # ET partitioning
+    if "et" ∈ diag_short_names && "trans" ∈ diag_short_names
+        lhf_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "et"
+        ][1]
+        clhf_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "trans"
+        ][1]
+
+        model_time, lhf = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            lhf_dn;
+        )
+        _, clhf = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            clhf_dn;
+        )
+        start_date = model_time[1].epoch
+        model_dates = time_to_date.(model_time, start_date)
+        model_dates = model_dates .- Month(1)
+
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(fig[1, 1], xlabel = "Date (UTC)", ylabel = "T/ET")
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            clhf ./ (lhf .+ eps(eltype(lhf))),
+            label = "Model",
+            color = "blue",
+        )
+        xlims = extrema(model_dates)
+        xlims!(ax, xlims...)
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "et_partition.png"), fig)
+    end
+    # Runoff partitioning
+    if "et" ∈ diag_short_names &&
+       "precip" ∈ diag_short_names &&
+       "sr" ∈ diag_short_names &&
+       "ssr" ∈ diag_short_names
+        et_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "et"
+        ][1]
+        sr_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "sr"
+        ][1]
+        ssr_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "ssr"
+        ][1]
+        precip_dn = [
+            d.output_short_name for
+            d in diagnostics if d.variable.short_name == "precip"
+        ][1]
+        model_time, et = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            et_dn;
+        )
+        _, precip = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            precip_dn;
+        )
+        _, sr = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            sr_dn;
+        )
+        _, ssr = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            ssr_dn;
+        )
+        start_date = model_time[1].epoch
+        model_dates = time_to_date.(model_time, start_date)
+        model_dates = model_dates .- Month(1)
+
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(fig[1, 1], xlabel = "Date (UTC)", ylabel = "Ratio")
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            et ./ abs.(precip .+ eps(eltype(precip))),
+            label = "ET/P",
+            color = "blue",
+        )
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            (ssr .+ sr) .* 1000 ./ abs.(precip .+ eps(eltype(precip))), # convert to mass flux for runoff
+            label = "R/P",
+            color = "red",
+        )
+        xlims = extrema(model_dates)
+        xlims!(ax, xlims...)
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "water_partition.png"), fig)
+
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(fig[1, 1], xlabel = "Date (UTC)", ylabel = "Ratio")
+        CairoMakie.lines!(
+            ax,
+            model_dates,
+            ssr ./ (ssr .+ sr .+ eps(eltype(sr))),
+            label = "SSR/(SSR+SR)",
+            color = "blue",
+        )
+
+        xlims = extrema(model_dates)
+        xlims!(ax, xlims...)
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "runoff_partition.png"), fig)
+    end
+    return nothing
+end
+
+"""
+    create_partitioning_plots(
+        savedir,
+        diagdir,
+        short_names;
+        plot! = viz.heatmap2D_on_globe!,
+        mask = viz.oceanmask(),
+        plot_kwargs = Dict(
+            :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+            :plot => Dict(
+                ClimaAnalysis.Utils.kwargs(rasterize = true)...,
+                :colorrange => (0, 1),
+            ),
+        ),
+    )
+Creates some helper diagnostic plots showing the partition between
+- LHF and SHF (LHF / (LHF+SHF)
+- surface and subsurface runoff (SR / (SSR + SR)
+- transpiration and evaporation (T/ET)
+- ET and runoff (ET/precip)
+for a simulation run globally,
+where the diagnostics were stored using a NetCDFWriter in `diagdir`.
+
+All ratios are computed using annual means of the numerator and denominator,
+and we restrict to the last complete year of the data and simulation in computing
+them.
+
+For SHF and LHF alone, the comparison to ERA5 is also shown.
+"""
+function create_partitioning_plots(
+    savedir,
+    diagdir,
+    short_names;
+    plot! = viz.heatmap2D_on_globe!,
+    mask = viz.oceanmask(),
+    plot_kwargs = Dict(
+        :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+        :plot => Dict(
+            ClimaAnalysis.Utils.kwargs(rasterize = true)...,
+            :colorrange => (0, 1),
+        ),
+    ),
+)
+    simdir = ClimaAnalysis.SimDir(diagdir)
+    if "shf" ∈ short_names && "lhf" ∈ short_names
+        shf_var = get(simdir; short_name = "shf")
+        lhf_var = get(simdir; short_name = "lhf")
+        # Get the first and last years of the simulation for windowing
+        first_date = first(ClimaAnalysis.dates(shf_var))
+        last_date = last(ClimaAnalysis.dates(shf_var))
+        @assert last_date > first_date + Year(1)
+        shf_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                shf_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        lhf_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                lhf_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+
+        data_loader = ERA5DataLoader()
+        obs_shf = get(data_loader, "shf")
+        ClimaAnalysis.set_reference_date!(obs_shf, first_date)
+        obs_lhf = get(data_loader, "lhf")
+        ClimaAnalysis.set_reference_date!(obs_lhf, first_date)
+        obs_shf = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                obs_shf,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        obs_lhf = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                obs_lhf,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        fig = CairoMakie.Figure(size = (600, 400))
+        fig2 = CairoMakie.Figure(size = (600, 400))
+
+        attributes = Dict(
+            "units" => "",
+            "short_name" => "ef",
+            "long_name" => "Evaporative Fraction",
+        )
+        ratio = ClimaAnalysis.Var.remake(
+            lhf_var;
+            attributes,
+            data = lhf_var.data ./ (lhf_var.data .+ shf_var.data),
+        )
+        attributes = Dict(
+            "units" => "",
+            "short_name" => "",
+            "long_name" => "Evaporative Fraction Bias",
+        )
+        bias_ratio = ClimaAnalysis.Var.remake(
+            lhf_var;
+            attributes,
+            data = clamp.(
+                lhf_var.data ./ (lhf_var.data .+ shf_var.data) .-
+                (obs_lhf.data ./ (obs_lhf.data .+ obs_shf.data))[:, 1:180],
+                -0.3,
+                0.3,
+            ),
+        )
+
+        if mask isa Nothing
+            plot!(fig, ratio, more_kwargs = plot_kwargs)
+            plot!(
+                fig2,
+                bias_ratio,
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => Dict(
+                        ClimaAnalysis.Utils.kwargs(rasterize = true)...,
+                        :colorrange => (-0.3, 0.3),
+                    ),
+                ),
+            )
+        else
+            plot!(fig, ratio, more_kwargs = plot_kwargs, mask = mask)
+            plot!(
+                fig2,
+                bias_ratio,
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => Dict(
+                        ClimaAnalysis.Utils.kwargs(rasterize = true)...,
+                        :colorrange => (-0.3, 0.3),
+                    ),
+                ),
+                mask = mask,
+            )
+        end
+
+    end
+    CairoMakie.save(joinpath(savedir, "evaporative_fraction_bias.png"), fig2)
+    CairoMakie.save(joinpath(savedir, "evaporative_fraction.png"), fig)
+
+    if "trans" ∈ short_names && "et" ∈ short_names
+        t_var = get(simdir; short_name = "trans")
+        et_var = get(simdir; short_name = "et")
+        # Get the first and last years of the simulation for windowing
+        first_date = first(ClimaAnalysis.dates(et_var))
+        last_date = last(ClimaAnalysis.dates(et_var))
+        @assert last_date > first_date + Year(1)
+        t_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                t_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        et_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                et_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        fig = CairoMakie.Figure(size = (600, 400))
+        attributes = Dict(
+            "units" => "",
+            "short_name" => "tf",
+            "long_name" => "Transpiration Fraction",
+        )
+        ratio = ClimaAnalysis.Var.remake(
+            et_var;
+            attributes,
+            data = t_var.data ./ (et_var.data .+ eps(eltype(et_var.data))),
+        )
+        if mask isa Nothing
+            plot!(fig, ratio, more_kwargs = plot_kwargs)
+        else
+            plot!(fig, ratio, more_kwargs = plot_kwargs, mask = mask)
+        end
+        CairoMakie.save(joinpath(savedir, "et_partition.png"), fig)
+    end
+    if "et" ∈ short_names && "precip" ∈ short_names
+        et_var = get(simdir; short_name = "et")
+        precip_var = get(simdir; short_name = "precip")
+        # Get the first and last years of the simulation for windowing
+        first_date = first(ClimaAnalysis.dates(et_var))
+        last_date = last(ClimaAnalysis.dates(et_var))
+        @assert last_date > first_date + Year(1)
+        et_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                et_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        precip_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                precip_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        fig = CairoMakie.Figure(size = (600, 400))
+        attributes = Dict(
+            "units" => "",
+            "short_name" => "etp",
+            "long_name" => "ET Fraction",
+        )
+        ratio = ClimaAnalysis.Var.remake(
+            lhf_var;
+            attributes,
+            data = et_var.data ./ abs.(precip_var.data),
+        )
+        if mask isa Nothing
+            plot!(fig, ratio, more_kwargs = plot_kwargs)
+        else
+            plot!(fig, ratio, more_kwargs = plot_kwargs, mask = mask)
+        end
+        CairoMakie.save(joinpath(savedir, "water_partition.png"), fig)
+    end
+
+    if "sr" ∈ short_names && "ssr" ∈ short_names
+        sr_var = get(simdir; short_name = "sr")
+        ssr_var = get(simdir; short_name = "ssr")
+        # Get the first and last years of the simulation for windowing
+        first_date = first(ClimaAnalysis.dates(sr_var))
+        last_date = last(ClimaAnalysis.dates(sr_var))
+        @assert last_date > first_date + Year(1)
+        sr_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                sr_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        ssr_var = ClimaAnalysis.average_time(
+            ClimaAnalysis.window(
+                ssr_var,
+                "time",
+                left = last_date - Month(11),
+                right = last_date,
+            ),
+        )
+        fig = CairoMakie.Figure(size = (600, 400))
+        attributes = Dict(
+            "units" => "",
+            "short_name" => "rf",
+            "long_name" => "Surface Runoff Fraction",
+        )
+        ratio = ClimaAnalysis.Var.remake(
+            sr_var;
+            attributes,
+            data = sr_var.data ./ (sr_var.data .+ ssr_var.data),
+        )
+        if mask isa Nothing
+            plot!(fig, ratio, more_kwargs = plot_kwargs)
+        else
+            plot!(fig, ratio, more_kwargs = plot_kwargs, mask = mask)
+        end
+        CairoMakie.save(joinpath(savedir, "runoff_partition.png"), fig)
+    end
+
+    return nothing
+end

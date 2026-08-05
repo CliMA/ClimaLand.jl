@@ -695,6 +695,7 @@ function get_short_diagnostics(model::LandModel)
         "nee",
         "ra",
         "tr",
+        "et",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

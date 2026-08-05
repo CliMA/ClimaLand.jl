@@ -70,11 +70,9 @@ matching `_types` / `_domain_names`) from them via
 records that element type for the prognostic-state allocation; it defaults to `FT`
 for the common scalar case.
 
-A spec holds only the declaration, so it is built once by the model that owns it
-(from its parameters) and stored in it. How `f` is computed is not part of the
-declaration: it is written where the tendency is, since it generally needs the
-cache, grid and drivers, which are not in scope where a component declares its
-variables.
+Similar as to how the function `prognostic_vars` etc. define the types and names of
+prognostic variables of a model, this struct only holds the declaration of a time integrated
+variable. How `f` is computed is written in `make_compute_exp_tendency`.
 
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -114,30 +112,30 @@ function TimeIntegratedVariable{FT}(;
 end
 
 """
-    time_integrated_variables(specs::TimeIntegratedVariable...)
+    time_integrated_variables(vars::TimeIntegratedVariable...)
 
 Collect the [`TimeIntegratedVariable`](@ref)s a model owns into a NamedTuple keyed
 by their `name`s, the form a model stores them in: the declaration helpers below
 expand it into the prognostic-variable tuples, and the model's tendency reaches a
 single spec as `model.time_integrated_vars.<name>`.
 """
-time_integrated_variables(specs::TimeIntegratedVariable...) =
-    NamedTuple{map(s -> s.name, specs)}(specs)
+time_integrated_variables(vars::TimeIntegratedVariable...) =
+    NamedTuple{map(s -> s.name, vars)}(vars)
 
 """
-    time_integrated_prognostic_vars(specs)
-    time_integrated_prognostic_types(specs)
-    time_integrated_prognostic_domain_names(specs)
+    time_integrated_prognostic_vars(vars)
+    time_integrated_prognostic_types(vars)
+    time_integrated_prognostic_domain_names(vars)
 
 Expand a tuple of [`TimeIntegratedVariable`](@ref)s into the parallel tuples
 expected by [`prognostic_vars`](@ref), [`prognostic_types`](@ref), and
 [`prognostic_domain_names`](@ref). A model concatenates these with its own
 prognostic-variable tuples.
 """
-time_integrated_prognostic_vars(specs) = map(s -> s.name, Tuple(specs))
-time_integrated_prognostic_types(specs) = map(s -> s.element_type, Tuple(specs))
-time_integrated_prognostic_domain_names(specs) =
-    map(s -> s.domain_name, Tuple(specs))
+time_integrated_prognostic_vars(vars) = map(s -> s.name, Tuple(vars))
+time_integrated_prognostic_types(vars) = map(s -> s.element_type, Tuple(vars))
+time_integrated_prognostic_domain_names(vars) =
+    map(s -> s.domain_name, Tuple(vars))
 
 # Return the tendency dX/dt of the chosen reduction, given the instantaneous quantity
 # `f` and the current state `X`. Meant to be broadcast into the destination `dY` field:
