@@ -221,7 +221,12 @@ diagnostics = ClimaLand.default_diagnostics(
     start_date;
     output_writer = diag_writer,
     reduction_period = :daily,
-    output_vars = [
+    # `fc3` and `pra` come from the optimal-LAI model and do not exist under
+    # prescribed LAI, where requesting them trips the output_vars assertion in
+    # default_diagnostics before the run starts. The carbon model supports both
+    # LAI modes, so the diagnostic list has to as well.
+    output_vars = lai_mode == "prognostic" ?
+                  [
         "gpp",
         "lai",
         "ra",
@@ -232,7 +237,7 @@ diagnostics = ClimaLand.default_diagnostics(
         "ct",
         "fc3",
         "pra",
-    ],
+    ] : ["gpp", "lai", "ra", "hr", "tair", "swc", "rd", "ct"],
 );
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
