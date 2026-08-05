@@ -3647,3 +3647,28 @@ Worth stating because the opposite conclusion was available and wrong: seeing
 25% at a site and inferring the global results were badly wrong would have been
 a reasonable-sounding leap. The site diagnostics said *where* the change was, and
 only the global rerun said whether it mattered.
+
+### Rebuild complete on the merged tree; the calibration holds a third time
+
+Sweep against the merged base:
+
+| dh | r up | \|bias\| down | mean dr |
+|---|---|---|---|
+| 450 | 4/6 | 5/6 | +0.0092 |
+| **550** | **4/6** | 5/6 | **+0.0113** |
+| 650 | 4/6 | 5/6 | +0.0102 |
+
+Interior optimum, still at `carbon_deficit_half_woody = 0.55` m. That value has
+now survived the GPP recalibration, the maintainer's LAI recalibration, and a
+merge that replaced the aridity index — three independent perturbations of the
+drivers it was calibrated against.
+
+Global skill, kg C m-2:
+
+| | mean bias | mean RMSE | mean r |
+|---|---|---|---|
+| base | 1.39 | 3.71 | 0.592 |
+| + seasonality limit | **0.97** | **3.48** | **0.603** |
+
+Budget: cVeg 570 Pg C, cSoil 2136 (SoilGrids IC, not equilibrated), GPP 135.9,
+NPP = litterfall 65.1, Rh 34.0 Pg C/yr.
