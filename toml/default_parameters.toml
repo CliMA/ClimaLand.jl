@@ -142,6 +142,41 @@ type = "float"
 description = "Whether the C3 fraction (fractional_c3) is computed from the C3/C4 competition on the running-mean per-pathway potential GPP (1.0, default) or held fixed at the photosynthesis model's static value (0.0). The C4 GPP advantage (A0c4-A0c3)/A0c3 goes through a logistic to a C4 fraction, penalized by C3 tree-canopy shading (pyrealm/Lavergne, GPP-derived, no PFT)."
 tag = "OptimalLAIModel"
 
+["optimal_lai_c3c4_k"]
+value = 6.63
+type = "float"
+description = "Steepness of the logistic mapping the proportional C4 GPP advantage to the expected C4 fraction (dimensionless). Fitted by Lavergne et al. (2022); used by pyrealm's C3/C4 competition."
+tag = "OptimalLAIModel"
+
+["optimal_lai_c3c4_q"]
+value = 0.16
+type = "float"
+description = "Midpoint of the logistic mapping the proportional C4 GPP advantage to the expected C4 fraction (dimensionless): the advantage at which C4 and C3 are equally expected. Fitted by Lavergne et al. (2022)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tc_a"]
+value = 15.60
+type = "float"
+description = "Coefficient a of the tree-cover relation tc(g) = a*g^b + c, giving C3 tree cover from annual C3 GPP g (kg C m^-2 yr^-1). Fitted by Lavergne et al. (2022); C4 is suppressed in proportion to tree cover."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tc_b"]
+value = 1.41
+type = "float"
+description = "Exponent b of the tree-cover relation tc(g) = a*g^b + c (dimensionless). Fitted by Lavergne et al. (2022)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tc_c"]
+value = -7.72
+type = "float"
+description = "Offset c of the tree-cover relation tc(g) = a*g^b + c. Fitted by Lavergne et al. (2022); negative, so tree cover is zero below a threshold GPP."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tc_gpp_ref"]
+value = 2.8
+type = "float"
+description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation: tc(gpp)/tc(gpp_ref) clamped to [0,1] is the C3 tree proportion. Fitted by Lavergne et al. (2022)."
+tag = "OptimalLAIModel"
 # Prognostic Carbon Pools (PrognosticCarbonModel)
 
 ["carbon_construction_efficiency"]

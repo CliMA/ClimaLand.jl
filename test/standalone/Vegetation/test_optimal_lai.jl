@@ -32,8 +32,15 @@ using ClimaCore
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
-            # C3/C4 competition is on by default.
+            # C3/C4 competition is on by default, with the Lavergne et al. (2022)
+            # logistic and tree-cover coefficients read from the TOML.
             @test params.online_c3c4 ≈ FT(1)
+            @test params.c3c4_k ≈ FT(6.63)
+            @test params.c3c4_q ≈ FT(0.16)
+            @test params.tc_a ≈ FT(15.60)
+            @test params.tc_b ≈ FT(1.41)
+            @test params.tc_c ≈ FT(-7.72)
+            @test params.tc_gpp_ref ≈ FT(2.8)
 
             @test eltype(params) == FT
         end
@@ -229,23 +236,112 @@ using ClimaCore
             # sparse grasslands. So a sparser canopy (lower realized fapar) → less tree
             # suppression → MORE C4 → LOWER C3 fraction; using fapar=1 would invert this.
             Mc = FT(0.012)  # kg C per mol
-            f = Canopy.c3_fraction_from_competition
-            c3_sparse = f(FT(100), FT(130), Mc, FT(0.5))
-            c3_dense = f(FT(100), FT(130), Mc, FT(1.0))
+            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
+            f =
+                (a3, a4, fapar) -> Canopy.c3_fraction_from_competition(
+                    a3,
+                    a4,
+                    Mc,
+                    fapar,
+                    params,
+                )
+            c3_sparse = f(FT(100), FT(130), FT(0.5))
+            c3_dense = f(FT(100), FT(130), FT(1.0))
             @test c3_sparse < c3_dense
             # strong C3 GPP advantage → almost all C3
-            @test f(FT(120), FT(40), Mc, FT(0.8)) > FT(0.9)
+            @test f(FT(120), FT(40), FT(0.8)) > FT(0.9)
             # strong C4 advantage in a sparse canopy → almost all C4
-            @test f(FT(40), FT(120), Mc, FT(0.3)) < FT(0.1)
+            @test f(FT(40), FT(120), FT(0.3)) < FT(0.1)
             # fraction always in [0, 1]
             for args in (
-                (FT(100), FT(130), Mc, FT(0.5)),
-                (FT(120), FT(40), Mc, FT(0.8)),
-                (FT(40), FT(120), Mc, FT(0.3)),
+                (FT(100), FT(130), FT(0.5)),
+                (FT(120), FT(40), FT(0.8)),
+                (FT(40), FT(120), FT(0.3)),
             )
                 v = f(args...)
                 @test FT(0) <= v <= FT(1)
             end
+        end
+
+        @testset "f0_from_aridity / aridity_from_f0 for FT = $FT" begin
+            f0_max = FT(0.65)
+            # f0 peaks at f0_max at the energy-water transition and falls off on
+            # both sides, so it is not invertible without choosing a branch.
+            @test Canopy.f0_from_aridity(FT(1.9), FT(1), f0_max) ≈ f0_max
+            @test Canopy.f0_from_aridity(FT(19), FT(1), f0_max) < f0_max
+            @test Canopy.f0_from_aridity(FT(0.19), FT(1), f0_max) < f0_max
+
+            # aridity_from_f0 is the arid-branch inverse, which is what the initial
+            # conditions rely on to seed PET so the online f0 starts at the map value.
+            for f0 in (FT(0.1), FT(0.3), FT(0.6), f0_max)
+                AI = Canopy.aridity_from_f0(f0, f0_max)
+                @test AI >= FT(1.9)
+                @test Canopy.f0_from_aridity(AI, FT(1), f0_max) ≈ f0 rtol = 1e-5
+            end
+            # an f0 above the peak has no preimage; the inverse saturates at the peak
+            @test Canopy.aridity_from_f0(FT(0.9), f0_max) ≈ FT(1.9)
+        end
+
+        @testset "potential_evaporation for FT = $FT" begin
+            earth_param_set = LP.LandParameters(toml_dict)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
+            σ = LP.Stefan(earth_param_set)
+            M_w = LP.molar_mass_water(earth_param_set)
+            λv = LP.LH_v0(earth_param_set)
+            ϵ = FT(0.98)
+            P = FT(101325)
+            # Daily-mean forcing for a temperate summer, the averaging FAO-56 ET0 is
+            # defined at.
+            pet(; SW = 220, LW = 330, T = 293.15, q = 0.008, u = 2, h = 2) =
+                Canopy.potential_evaporation(
+                    FT(SW),
+                    FT(LW),
+                    FT(T),
+                    P,
+                    FT(q),
+                    FT(u),
+                    FT(h),
+                    ϵ,
+                    σ,
+                    M_w,
+                    thermo_params,
+                )
+
+            mm_per_day(x) = x * M_w * FT(86400)
+
+            @test pet() > FT(0)
+            @test isfinite(pet())
+            # Reference ET0 in a temperate summer is a few mm/day.
+            @test FT(1) < mm_per_day(pet()) < FT(8)
+
+            # Drier air raises the aerodynamic demand, the term the radiation-only
+            # form omitted entirely.
+            @test pet(q = 0.002) > pet(q = 0.012)
+
+            # Wind response is genuinely two-sided in Penman-Monteith: it raises ET0
+            # when the air is dry, and lowers it near saturation, where ventilating
+            # the surface toward air temperature outweighs the added demand.
+            @test pet(q = 0.002, u = 6) > pet(q = 0.002, u = 1)
+            @test pet(q = 0.014, u = 6) < pet(q = 0.014, u = 1)
+
+            # At night the radiative term goes negative while the aerodynamic term
+            # does not; ET0 is clipped at zero rather than Rn.
+            @test pet(SW = 0, LW = 50) == FT(0)
+
+            # In still air the aerodynamic term vanishes and ET0 tends to the
+            # radiative limit Delta/(Delta+gamma)*Rn, below Rn and a smaller fraction
+            # of it in the cold.
+            still(T) = pet(T = T, u = 0)
+            Rn_over_λ(T) =
+                ((1 - FT(0.23)) * FT(220) + ϵ * (FT(330) - σ * T^4)) /
+                (λv * M_w)
+            @test still(FT(278.15)) < Rn_over_λ(FT(278.15))
+            @test still(FT(278.15)) / Rn_over_λ(FT(278.15)) <
+                  still(FT(303.15)) / Rn_over_λ(FT(303.15))
+
+            # 2 m is the identity of the wind adjustment; a higher measurement height
+            # maps to a lower equivalent 2 m wind.
+            @test pet(q = 0.002, h = 10) < pet(q = 0.002, h = 2)
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
@@ -357,6 +453,20 @@ using ClimaCore
             @test A0_annual ≈ Array(parent(ic.A0_annual))[1]
             @test A0_daily ≈ A0_annual / FT(365)
             @test precip_annual ≈ Array(parent(ic.precip_annual))[1]
+
+            # The climate-responsive accumulators are seeded so each online input
+            # reproduces the map value it replaces at t = 0.
+            scalar(field) = Array(parent(field))[1]
+            PET_annual = scalar(Y.canopy.biomass.PET_annual)
+            f0_max = model.parameters.f0_max
+            @test Canopy.f0_from_aridity(PET_annual, precip_annual, f0_max) ≈
+                  scalar(ic.f0) rtol = 1e-5
+            @test scalar(Y.canopy.biomass.VPDA0_annual) / A0_annual ≈
+                  scalar(ic.vpd_gs) rtol = 1e-5
+            @test scalar(Y.canopy.biomass.growing_days) ≈ scalar(ic.GSL)
+            # no per-pathway climatology exists, so both start at the blended total
+            @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual
+            @test scalar(Y.canopy.biomass.A0c4_annual) ≈ A0_annual
         end
     end
 end

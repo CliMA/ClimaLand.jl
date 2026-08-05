@@ -379,11 +379,19 @@ their climatological values, which are their steady state and are independent of
 smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
 corresponding daily share of the annual total.
 
-The climate-responsive accumulators are seeded so that at `t = 0` each online input
-reproduces the static artifact value it replaces, making `optimal_lai_online_*` = 0
-and 1 agree at the initial step; each then relaxes to the model's own climate over
-`tau_long_term`. `A0c3_annual`/`A0c4_annual` have no per-pathway climatology to start
-from, so they begin at the blended `a0_annual` and separate as they spin up.
+`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that at `t = 0` the
+`f0`, `vpd_gs` and `GSL` derived from them reproduce the artifact values they
+replace; each then relaxes to the model's own climate over `tau_long_term`. Two
+caveats: the `f0` seeding inverts a curve that peaks at `f0_max`, so a cell whose
+artifact `f0` is at or above the peak seeds to the peak instead, and the inverse
+takes the arid branch, so a humid cell starts on the far side of the peak and
+crosses it as `PET_annual` relaxes.
+
+`A0c3_annual`/`A0c4_annual` are different: no per-pathway climatology exists, so
+both start at the blended `a0_annual`. The competition therefore sees zero GPP
+advantage at `t = 0` and returns a near-uniform C3 fraction rather than the static
+map, so `optimal_lai_online_c3c4` = 0 and = 1 do *not* agree at the initial step.
+They agree only after the two accumulators separate over `tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -403,12 +411,9 @@ function set_canopy_component_initial_conditions!(
     Y.canopy.biomass.precip_annual .= ic.precip_annual
     Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
 
-    # Invert f0 = f0_max exp(-0.604 ln²(AI/1.9)) for the aridity index, so the online
-    # f0 starts at the artifact value. f0 is symmetric in ln(AI/1.9); take the arid
-    # branch, which is where the artifact f0 was fit.
+    # Seed PET so the online f0 starts at the artifact value it replaces.
     f0_max = model.parameters.f0_max
-    AI_seed = @. FT(1.9) *
-       exp(sqrt(max(log(f0_max / max(ic.f0, eps(FT))), FT(0)) / FT(0.604)))
+    AI_seed = @. ClimaLand.Canopy.aridity_from_f0(ic.f0, f0_max)
     Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
     # vpd_gs is recovered as VPDA0_annual / A0_annual.
     Y.canopy.biomass.VPDA0_annual .= ic.vpd_gs .* Y.canopy.biomass.A0_annual

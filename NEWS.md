@@ -13,24 +13,16 @@ main
   custom initial-condition function must call `set_canopy_biomass_initial_conditions!`.
   Adds the `pra` diagnostic and the `optimal_lai_tau_long_term` parameter.
   PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
-- ![][badge-🔥behavioralΔ] The optimal-LAI climate inputs now respond to the simulated
-  climate instead of being read from a frozen map: the transpiration fraction `f0` comes
-  from the aridity index, the growing-season VPD from an A0-weighted running mean, the
-  growing-season length from a trailing-year count of growing days, and the C3 fraction from
-  a C3/C4 competition on the per-pathway potential GPP (switchable off with
-  `optimal_lai_online_c3c4 = 0`). Adds five time-integrated variables to `Y`, seeded so each
-  starts at the artifact value it replaces. Also drops soil-moisture stress from
-  the potential GPP (water limitation now enters once, through `f0·P/A0`), sets
-  `optimal_lai_z` to 15.0 (was 21.4), renames `optimal_lai_f0` to `optimal_lai_f0_max`
-  (it now sets the peak of the aridity curve rather than a constant `f0`), and adds the
-  `a0c3_annual`, `a0c4_annual` and `fractional_c3` diagnostics. Only affects runs using prognostic LAI
-  (`ZhouOptimalLAIModel`). PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
-- ![][badge-💥breaking] `ZhouOptimalLAIModel` no longer takes the `optimal_lai_inputs`
-  NamedTuple: its growing-season length, VPD and `f0` are derived from the simulated
-  climate, so the constructor is now `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI,
-  rooting_depth, height)` and the `domain`/`toml_dict` constructor has no
-  `optimal_lai_inputs` keyword. The artifact is still read, by `set_ic!`, to seed the
-  trailing totals. PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length,
+  C3 fraction) now track the simulated climate rather than a frozen map, through five new
+  time-integrated variables in `Y`. Potential GPP drops its soil-moisture stress, so water
+  limitation enters once through `f0·P/A0`; the aridity index behind `f0` uses FAO-56
+  Penman-Monteith reference ET; `z`/`sigma`/`alpha` recalibrated to 29.2/1.01/0.202.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` drops the `optimal_lai_inputs` keyword — it is now
+  `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
+  is renamed `optimal_lai_f0_max`. The artifact is still read by `set_ic!` to seed trailing totals.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 
 v1.11.0
 -----

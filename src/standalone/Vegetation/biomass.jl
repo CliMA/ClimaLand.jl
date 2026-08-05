@@ -641,8 +641,9 @@ function update_fractional_c3!(
     biomass::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}
-    online_c3c4 = biomass.parameters.online_c3c4
-    k = biomass.parameters.k
+    parameters = biomass.parameters
+    online_c3c4 = parameters.online_c3c4
+    k = parameters.k
     Mc = canopy.photosynthesis.constants.Mc
     static_c3 = canopy.photosynthesis.fractional_c3
     @. p.canopy.photosynthesis.fractional_c3 =
@@ -651,6 +652,7 @@ function update_fractional_c3!(
             Y.canopy.biomass.A0c4_annual,
             Mc,
             1 - exp(-k * Y.canopy.biomass.LAI),  # realized fAPAR
+            parameters,
         ) + (1 - online_c3c4) * static_c3
     return nothing
 end
@@ -669,8 +671,11 @@ function ClimaLand.make_compute_exp_tendency(
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
     earth_param_set = canopy.earth_param_set
     σ = LP.Stefan(earth_param_set)
-    λv = LP.LH_v0(earth_param_set)              # J kg^-1
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
+    T_freeze = LP.T_freeze(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    h_atmos = FT(ClimaLand.get_drivers(canopy)[1].h)
+    ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
@@ -681,7 +686,7 @@ function ClimaLand.make_compute_exp_tendency(
         VPD = @. lazy(
             max(
                 Thermodynamics.vapor_pressure_deficit(
-                    LP.thermodynamic_parameters(earth_param_set),
+                    thermo_params,
                     p.drivers.T,
                     p.drivers.P,
                     p.drivers.q,
@@ -748,9 +753,14 @@ function ClimaLand.make_compute_exp_tendency(
                 p.drivers.SW_d,
                 p.drivers.LW_d,
                 p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                p.drivers.u,
+                h_atmos,
+                ϵ_sfc,
                 σ,
-                λv,
                 M_w,
+                thermo_params,
             ),
             Y.canopy.biomass.PET_annual,
             tivs.PET_annual.reduction,
@@ -762,10 +772,10 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.VPDA0_annual,
             tivs.VPDA0_annual.reduction,
         )
-        # One growing-day per day with air T > 0 C, so the trailing-year total is the
-        # growing-season length in days.
+        # One growing-day per day with air T above freezing, so the trailing-year
+        # total is the growing-season length in days.
         @. dY.canopy.biomass.growing_days = apply_time_reduction(
-            ifelse(p.drivers.T > FT(273.15), 1 / seconds_per_day, zero(FT)),
+            ifelse(p.drivers.T > T_freeze, 1 / seconds_per_day, zero(FT)),
             Y.canopy.biomass.growing_days,
             tivs.growing_days.reduction,
         )
