@@ -480,18 +480,27 @@ function set_canopy_component_initial_conditions!(
     # shorter than that under-suppresses rather than over-suppresses - the
     # direction that fails visibly against the observations rather than
     # silently.
+    #
+    # Under prescribed LAI there is no `precip_annual` to seed `P_annual` from, so
+    # it starts at zero - and then `P_month` is zero and the deficit below would
+    # be the *maximum* possible in every column, suppressing woody allocation
+    # everywhere including the aseasonal tropics. That is the same
+    # over-suppression the instantaneous seed caused, reintroduced through the
+    # unseeded branch, so an unseeded `P_annual` means an unseeded deficit too.
     Y.canopy.biomass.T_month .= p.drivers.T
     @. Y.canopy.biomass.P_month = Y.canopy.biomass.P_annual / 12
     params = model.parameters
     @. Y.canopy.biomass.D_annual =
-        12 * max(
+        12 *
+        max(
             ClimaLand.Canopy.monthly_pet(
                 Y.canopy.biomass.T_month,
                 params.pet_ref_woody,
                 params.pet_floor_woody,
             ) - Y.canopy.biomass.P_month,
             0,
-        )
+        ) *
+        (Y.canopy.biomass.P_annual > 0)
     Y.canopy.biomass.C_sugar .= FT(0)
     Y.canopy.biomass.C_leaf .= FT(0)
     Y.canopy.biomass.C_stem .= FT(0)
