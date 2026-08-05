@@ -388,7 +388,35 @@ used_in = ["Land"]
         # (soilrn/soillhf/soilshf via the EnergyHydrology possible_diags addition
         # in src/diagnostics/default_diagnostics.jl; lwu/swu via LandModel's
         # additional_diagnostics).
-        "lwu", "swu", "lhf", "shf", "soilrn", "soillhf", "soilshf", "clhf", "cshf"]
+        "lwu", "swu", "lhf", "shf", "soilrn", "soillhf", "soilshf", "clhf", "cshf",
+        # Canopy temperature (prognostic Y.canopy.energy.T). Both canopy turbulent
+        # fluxes are driven by it — SHF via (T_air - T_canopy), LHF via
+        # q_sat(T_canopy) — so it is the variable to check when clhf/cshf look
+        # wrong. NOTE: this is a DAILY MEAN in the CSV below; a short-lived
+        # excursion within a day is averaged away and stays invisible here.
+        "ct",
+        # ── Terms controlling the SOIL latent heat flux ───────────────────────
+        # soillhf ~ rho * L * g_eff * (q_sfc - q_air), with (energy_hydrology.jl
+        # :1064-1145 and soil_specific_humidity):
+        #     q_sfc   = q_sat(T_sfc, rho_sfc) * exp(g*psi/(R_v*T_sfc))
+        #     g_soil  = D_vapor / max(dsl, eps)
+        #     dsl     = d_ds * ((evap_alpha*S_c - S_l)/S_l)^evap_p  if S_l < a*S_c
+        #     beta_ice = (theta_i/nu)^4
+        # These four are the exportable pieces:
+        #   swp   matric potential psi — pushes q_sfc BELOW saturation. A very
+        #         negative psi despite high swc means the retention curve
+        #         (Gupta/Rosetta) disagrees with the observations, which would
+        #         explain a soil that is wet yet barely evaporating.
+        #   si    ice content theta_i, i.e. the beta_ice damping. Should be 0 in
+        #         summer; if not, evaporation is suppressed for the wrong reason.
+        #   salb  soil albedo — sets how much shortwave soilrn actually absorbs.
+        #   stc   thermal conductivity kappa — how fast heat leaves downward.
+        # NOT exportable: S_l, dsl and g_soil live in `p.soil.sfc_scratch`, which
+        # is overwritten three times inside the same function, so a diagnostic on
+        # it would read an undefined intermediate. Reconstruct them instead from
+        # swc + the soil parameters (see the notebook cell).
+        # ("si" is already requested at the top of this list.)
+        "swp", "salb", "stc"]
     diags = ClimaLand.default_diagnostics(land, start_date;
         output_writer = output_writer, output_vars, reduction_period = :halfhourly)
 
@@ -530,6 +558,10 @@ used_in = ["Land"]
         "soilshf" => get_diag_layer(simulation, "soilshf_30m_average", 1),
         "clhf"    => get_diag_layer(simulation, "clhf_30m_average", 1),
         "cshf"    => get_diag_layer(simulation, "cshf_30m_average", 1),
+        # Canopy temperature (K). Surface variable, so layer 1 like the fluxes.
+        "ct"      => get_diag_layer(simulation, "ct_30m_average", 1),
+        # Soil albedo (-). Surface variable; sets the shortwave part of soilrn.
+        "salb"    => get_diag_layer(simulation, "salb_30m_average", 1),
     )
 
     # ── Per-depth loop ───────────────────────────────────────────────────────
@@ -548,6 +580,12 @@ used_in = ["Land"]
         sco2_daily = get_diag_layer(simulation, "sco2_ppm_30m_average", target_layer)
         swc_daily = get_diag_layer(simulation, "swc_30m_average", target_layer)
         tsoil_daily = get_diag_layer(simulation, "tsoil_30m_average", target_layer)
+        # Depth-resolved soil-evaporation terms, taken at THIS depth's layer (so
+        # they line up with swc/tsoil above). `salb` is a surface variable and is
+        # handled with the fluxes instead.
+        swp_daily = get_diag_layer(simulation, "swp_30m_average", target_layer)
+        si_daily = get_diag_layer(simulation, "si_30m_average", target_layer)
+        stc_daily = get_diag_layer(simulation, "stc_30m_average", target_layer)
 
         co2_cols = [Symbol("soilCO2concentrationMean_$(lpad(p,3,'0'))_$obs_depth") for p in 1:5]
         obs_df[!, :sco2_mean] = [rowmean_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
@@ -746,6 +784,20 @@ used_in = ["Land"]
         (flux_daily["soilshf"], :soilshf_model_Wm2),
         (flux_daily["clhf"],    :clhf_model_Wm2),
         (flux_daily["cshf"],    :cshf_model_Wm2),
+        # Canopy temperature (K), daily mean. Compare against tair_model_K: the
+        # canopy fluxes are driven by the difference, so a collapsing or diverging
+        # ct explains clhf/cshf going wrong.
+        (flux_daily["ct"],      :ct_model_K),
+        # Soil-evaporation terms. swp/si/stc are at THIS depth's layer; salb is a
+        # surface value. See the output_vars comment for how they enter soillhf.
+        # NOTE: `swp` reads p.soil.ψ, which is `pressure_head` / `matric_potential`
+        # and therefore a pressure HEAD in METRES (van Genuchten α is in 1/m) —
+        # despite define_diagnostics.jl declaring units = "Pa". Named _m here to
+        # match the actual quantity. To get Pa: ψ[Pa] = ρ_w · g · ψ[m] ≈ 9807·ψ.
+        (swp_daily,             :swp_model_m),
+        (si_daily,              :si_model_m3m3),
+        (stc_daily,             :stc_model_WmK),
+        (flux_daily["salb"],    :salb_model),
     ]
         csv_df = outerjoin(csv_df, _sel(df, name), on = :date)
     end

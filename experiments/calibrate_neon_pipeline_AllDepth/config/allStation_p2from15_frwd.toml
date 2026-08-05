@@ -13,7 +13,7 @@ settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260804_1900"       # stable id so restart_from can reference it
+run_identifier = "20260805_0830"       # stable id so restart_from can reference it
 soil_source = "gupta"
 
 [steps]
@@ -54,9 +54,15 @@ upper = 10.0
 
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
+
 [[runs]]
-site  = "NEON-soap"
-start = 2019-01-01
-stop  = 2024-12-31
+site         = "NEON-clbj"
+start        = 2019-01-01
+stop         = 2024-12-31
 restart_from = "20260714_1700"
 
+[[runs]]
+site         = "NEON-cper"
+start        = 2018-01-01
+stop         = 2024-12-31
+restart_from = "20260714_1700"

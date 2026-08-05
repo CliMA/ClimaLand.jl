@@ -9,11 +9,12 @@ spinup_days  = 364
 preroll_days = 364
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260706_wLab_flagS_Gup_3d_364d_ObsMedian_siteSoilP"
+settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260728_1100"       # stable id so restart_from can reference it
+run_identifier = "20260804_1930"       # stable id so restart_from can reference it
+soil_source = "gupta"
 
 [steps]
 generate_observations = true
@@ -57,46 +58,46 @@ upper = 10.0
 site  = "NEON-dcfs"
 start = 2019-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-grsm"
 start = 2019-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-harv"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-jorn"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-konz"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-rmnp"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-ornl"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
 
 [[runs]]
 site  = "NEON-tall"
 start = 2018-01-01
 stop  = 2024-12-31
-restart_from = "20260721_1900"
+restart_from = "20260714_1700"
