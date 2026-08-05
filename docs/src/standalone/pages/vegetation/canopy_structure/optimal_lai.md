@@ -101,7 +101,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 1. **Water limitation enters once**: The potential GPP $A_0$ carries no soil moisture stress, so water availability acts only through the $f_0 P / A_0$ term of LAI$_{max}$ rather than being counted twice.
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
-4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length from a trailing-year count of days above freezing, the growing-season VPD as an $A_0$-weighted mean, and $f_0$ from the aridity index. Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
+4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length from a trailing-year count of days above freezing, the growing-season VPD as an $A_0$-weighted mean, and $f_0$ from the aridity index $AI = PET/P$, whose $PET$ is FAO-56 Penman-Monteith reference evapotranspiration over the reference crop — the definition the $f_0(AI)$ relation was fitted against. Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
 5. **Continuous update**: LAI and the trailing climate totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters

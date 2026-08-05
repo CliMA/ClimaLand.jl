@@ -469,44 +469,55 @@ function c3_fraction_from_competition(
 end
 
 """
-    potential_evaporation(SW_d, LW_d, T_air, P_air, ϵ_sfc, σ, M_w, thermo_params)
+    potential_evaporation(
+        SW_d, LW_d, T_air, P_air, q_air, u_air, h_atmos, ϵ_sfc, σ, M_w, thermo_params,
+    )
 
-Priestley-Taylor potential evaporation (mol H2O m^-2 s^-1) over a reference vegetated
-surface, the numerator of the aridity index `AI = PET_annual/precip_annual` that sets
-the climate-responsive `f0`:
+FAO-56 Penman-Monteith reference evapotranspiration (mol H2O m^-2 s^-1), the numerator
+of the aridity index `AI = PET_annual/precip_annual` that sets the climate-responsive
+`f0`. This is the definition the `f0(AI)` relation was fitted against, so `AI` is on the
+same footing as the climatology the relation came from:
 
-    PET = α_PT · Δ/(Δ + γ) · Rn / (λv · M_w),
-    Rn  = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4),
+    λE = [Δ Rn + ρ_a c_p D / r_a] / [Δ + γ (1 + r_s/r_a)],
+    Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4),
 
 with `Δ` the slope of the saturation vapour pressure curve, `γ` the psychrometric
-constant, and `Rn` clipped at zero so night-time negative net radiation does not draw
-down the running total. The `Δ/(Δ + γ)` partition is what makes this an evaporation
-rather than the full radiative flux: it is about 0.5 near freezing and 0.8 at 30 °C,
-so omitting it would bias `AI` high in cold climates and not in warm ones.
+constant, `D` the vapour pressure deficit, and `r_a = 208/u_2`, `r_s = 70 s m^-1` the
+aerodynamic and surface resistances of the 0.12 m reference crop. `u_2` is the wind
+speed brought to the reference 2 m by the FAO-56 log-law adjustment.
 
-`α_ref` is the FAO-56 reference-crop albedo, which *defines* the reference surface
-the `f0(AI)` relation was fitted against; it is deliberately not the simulated
-surface albedo, which would decouple `AI` from the curve that consumes it. The
-relation is fitted against aridity indices built on FAO-56 Penman-Monteith reference
-evapotranspiration, whose aerodynamic term this omits, so `AI` remains biased low
-where wind and vapour pressure deficit drive evaporation.
+`α_ref`, `r_s` and the resistance coefficients *define* that reference surface, so they
+are deliberately not the simulated canopy's properties: tying them to the simulation
+would decouple `AI` from the curve that consumes it.
+
+The ground heat flux is taken as zero, which is the FAO-56 convention at daily and
+longer averaging, and this feeds a trailing-year total. `λE` is clipped at zero rather
+than `Rn`, following the FAO-56 sub-daily convention: at night the radiative term goes
+negative while the aerodynamic term does not, and clipping `Rn` alone would leave the
+latter to overstate night-time demand.
 """
 function potential_evaporation(
     SW_d::FT,
     LW_d::FT,
     T_air::FT,
     P_air::FT,
+    q_air::FT,
+    u_air::FT,
+    h_atmos::FT,
     ϵ_sfc::FT,
     σ::FT,
     M_w::FT,
     thermo_params,
 ) where {FT}
     α_ref = FT(0.23)
-    α_PT = FT(1.26)
+    r_s = FT(70)
     Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
 
     λv = TP.LH_v0(thermo_params)
     R_v = TP.R_v(thermo_params)
+    q = max(q_air, zero(FT))
+    c_p = TP.cp_d(thermo_params) * (1 - q) + TP.cp_v(thermo_params) * q
+
     # Clausius-Clapeyron slope de_sat/dT, and the psychrometric constant with the
     # dry-to-vapour gas constant ratio standing in for the molar mass ratio.
     e_sat = Thermodynamics.saturation_vapor_pressure(
@@ -515,7 +526,21 @@ function potential_evaporation(
         Thermodynamics.Liquid(),
     )
     Δ = e_sat * λv / (R_v * T_air^2)
-    γ = TP.cp_d(thermo_params) * P_air * R_v / (TP.R_d(thermo_params) * λv)
+    γ = c_p * P_air * R_v / (TP.R_d(thermo_params) * λv)
 
-    return α_PT * Δ / (Δ + γ) * max(Rn, zero(FT)) / (λv * M_w)
+    D = Thermodynamics.vapor_pressure_deficit(
+        thermo_params,
+        T_air,
+        P_air,
+        q_air,
+    )
+    ρ_a = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+
+    # Wind at the reference 2 m (FAO-56 Eq. 47); the relation is anchored on the
+    # reference crop, so heights below it are held at 2 m rather than extrapolated.
+    u_2 = u_air * FT(4.87) / log(FT(67.8) * max(h_atmos, FT(2)) - FT(5.42))
+    r_a = FT(208) / max(u_2, sqrt(eps(FT)))
+
+    λE = (Δ * Rn + ρ_a * c_p * D / r_a) / (Δ + γ * (1 + r_s / r_a))
+    return max(λE, zero(FT)) / (λv * M_w)
 end

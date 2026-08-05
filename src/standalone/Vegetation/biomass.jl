@@ -661,6 +661,7 @@ function ClimaLand.make_compute_exp_tendency(
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
     T_freeze = LP.T_freeze(earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    h_atmos = FT(ClimaLand.get_drivers(canopy)[1].h)
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
@@ -740,6 +741,9 @@ function ClimaLand.make_compute_exp_tendency(
                 p.drivers.LW_d,
                 p.drivers.T,
                 p.drivers.P,
+                p.drivers.q,
+                p.drivers.u,
+                h_atmos,
                 ϵ_sfc,
                 σ,
                 M_w,

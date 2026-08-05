@@ -289,33 +289,58 @@ using ClimaCore
             λv = LP.LH_v0(earth_param_set)
             ϵ = FT(0.98)
             P = FT(101325)
-            pet(SW, LW, T) = Canopy.potential_evaporation(
-                FT(SW),
-                FT(LW),
-                FT(T),
-                P,
-                ϵ,
-                σ,
-                M_w,
-                thermo_params,
-            )
+            # Daily-mean forcing for a temperate summer, the averaging FAO-56 ET0 is
+            # defined at.
+            pet(; SW = 220, LW = 330, T = 293.15, q = 0.008, u = 2, h = 2) =
+                Canopy.potential_evaporation(
+                    FT(SW),
+                    FT(LW),
+                    FT(T),
+                    P,
+                    FT(q),
+                    FT(u),
+                    FT(h),
+                    ϵ,
+                    σ,
+                    M_w,
+                    thermo_params,
+                )
 
-            @test pet(800, 350, 293.15) > FT(0)
-            @test isfinite(pet(800, 350, 293.15))
-            # night with a cold sky gives negative net radiation, clipped to zero so
-            # it cannot draw down the trailing total
-            @test pet(0, 50, 293.15) == FT(0)
+            mm_per_day(x) = x * M_w * FT(86400)
 
-            # The Priestley-Taylor partition alpha*Delta/(Delta+gamma) is well below
-            # one and grows with temperature, so PET is a fraction of Rn/(lambda*M_w)
-            # and that fraction is smaller in the cold. Without it, the aridity index
-            # would be biased high in cold climates and not in warm ones.
-            Rn_over_λ(SW, LW, T) =
-                ((1 - FT(0.23)) * SW + ϵ * (LW - σ * T^4)) / (λv * M_w)
-            frac(T) = pet(800, 350, T) / Rn_over_λ(FT(800), FT(350), FT(T))
-            @test FT(0.4) < frac(278.15) < FT(0.7)   # ~5 C
-            @test FT(0.7) < frac(303.15) < FT(1.1)   # ~30 C
-            @test frac(278.15) < frac(303.15)
+            @test pet() > FT(0)
+            @test isfinite(pet())
+            # Reference ET0 in a temperate summer is a few mm/day.
+            @test FT(1) < mm_per_day(pet()) < FT(8)
+
+            # Drier air raises the aerodynamic demand, the term the radiation-only
+            # form omitted entirely.
+            @test pet(q = 0.002) > pet(q = 0.012)
+
+            # Wind response is genuinely two-sided in Penman-Monteith: it raises ET0
+            # when the air is dry, and lowers it near saturation, where ventilating
+            # the surface toward air temperature outweighs the added demand.
+            @test pet(q = 0.002, u = 6) > pet(q = 0.002, u = 1)
+            @test pet(q = 0.014, u = 6) < pet(q = 0.014, u = 1)
+
+            # At night the radiative term goes negative while the aerodynamic term
+            # does not; ET0 is clipped at zero rather than Rn.
+            @test pet(SW = 0, LW = 50) == FT(0)
+
+            # In still air the aerodynamic term vanishes and ET0 tends to the
+            # radiative limit Delta/(Delta+gamma)*Rn, below Rn and a smaller fraction
+            # of it in the cold.
+            still(T) = pet(T = T, u = 0)
+            Rn_over_λ(T) =
+                ((1 - FT(0.23)) * FT(220) + ϵ * (FT(330) - σ * T^4)) /
+                (λv * M_w)
+            @test still(FT(278.15)) < Rn_over_λ(FT(278.15))
+            @test still(FT(278.15)) / Rn_over_λ(FT(278.15)) <
+                  still(FT(303.15)) / Rn_over_λ(FT(303.15))
+
+            # 2 m is the identity of the wind adjustment; a higher measurement height
+            # maps to a lower equivalent 2 m wind.
+            @test pet(q = 0.002, h = 10) < pet(q = 0.002, h = 2)
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
