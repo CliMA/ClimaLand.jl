@@ -153,7 +153,7 @@ diagnostics = ClimaLand.default_diagnostics(
     start_date,
     outdir;
     output_vars = ["tsoil_sfc",],
-    reduction_period = :hourly)
+    reduction_period = :daily)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
