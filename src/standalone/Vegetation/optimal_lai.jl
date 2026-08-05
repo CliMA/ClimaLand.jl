@@ -454,6 +454,8 @@ function c3_fraction_from_competition(
     # C4 GPP advantage is a ratio, so it is invariant to the potential→actual GPP
     # scaling (fapar cancels); use the potential per-pathway means directly.
     adv = (A0c4_annual - a0c3) / a0c3
+    # pyrealm modulates the advantage by exp(1/(1+TC)) from observed tree cover;
+    # with no such input, TC = 0 gives the divisor ℯ.
     frac_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
     # C3-tree proportion from annual C3 GPP in kg m^-2 yr^-1. The tc() relation
     # (pyrealm/Lavergne) is fit to REALIZED GPP, so scale the potential a0c3 by the
