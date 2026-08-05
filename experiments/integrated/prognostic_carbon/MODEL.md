@@ -341,3 +341,74 @@ model error.
 Realistically 4–6 of these set global biomass: `τ_stem`, `f_stem`, `f_root`,
 `r_stem`, and `a`. Those are the calibration targets; the rest should be fixed
 at literature values and left alone.
+
+---
+
+## 9. What was tried and rejected
+
+Written after the fact. The specification above says what the model is; this says
+what it is *not*, and why — so the reasoning survives without reading the
+iteration log in `unsupervised_loop/STATE.md`.
+
+### The central problem
+
+The model builds forests correctly and builds them where there are none. Binned
+by observed woody carbon over ~20 000 cells, model/observed is ~0.8–1.3x where
+observations show real forest and 8–16x where they show none, monotone across
+three independent products.
+
+Localised further: the excess is **not** spread across treeless land. At the
+current ramp, 6% of treeless cells — the ones whose rainfall is *forest*
+rainfall — carry 45% of that bin's modelled carbon. Cerrado, the Sahel fringe,
+the Pampas, miombo. They are treeless because of fire, grazing and cultivation.
+
+### Predictors tested and rejected
+
+1. **Site-level precipitation.** Cannot separate boreal forest from warm
+   grassland. (Globally a MAP ramp *does* help — that was a correction to an
+   earlier claim, and the ramp is in the model.)
+2. **Soil properties.** Only organic matter separates, and tundra peat has the
+   highest OM of all.
+3. **Aridity, P/PET.** Orders wrongly: Alaskan tundra scores most humid, Congo
+   in the dry half.
+4. **`f_stem(MAT, MAP)`** via a temperature-dependent half-point. Fixes the
+   boreal and monotonically *degrades* spatial correlation in all three
+   products, because it re-scales a whole temperature band.
+5. **Sharpening the MAP ramp exponent** (`n` = 4, 8). Works exactly as intended
+   on the cells it can reach — dry-cell biomass halves toward the observations —
+   and is then swamped: the same steepening pushes the wet minority further up
+   until 6% of cells hold two-thirds of the bin's carbon.
+6. **A prescribed burned-area map.** Withdrawn on principle rather than on
+   performance: a GFED map is as unextrapolatable as a PFT map, and the point of
+   this model is to run in a climate that has not been observed.
+
+### What worked
+
+**Rainfall seasonality** — the annual water deficit, not the annual total. Two
+cells with the same MAP differ by an order of magnitude in it, and that is what
+separates wet savanna from wet forest. Validated as a contingency table *before*
+any model change: medians differ 3–4x with barely overlapping interquartile
+ranges, in all five products carrying both classes.
+
+The half-point `carbon_deficit_half_woody = 0.55 m` has since survived a GPP
+recalibration, an optimal-LAI recalibration, and a merge that replaced the
+aridity index — three independent perturbations of the drivers it was calibrated
+against.
+
+### Corrections made along the way
+
+Recorded because each invalidated a published number:
+
+- **Four of the six biomass products report dry matter, not carbon** — visible
+  only in `long_name`, not `units`. The model is biased high against *all* six;
+  the previously reported near-zero ESACCI bias and negative GEOCARBON bias were
+  artefacts.
+- **A two-month phase error** in the driver climatology: the monthly NetCDFs
+  carry no reference date, so record 1 is the run's first month, not January.
+  Harmless for equilibria (a uniform shift of a recycled cycle) but wrong the
+  moment a model month meets an observational one.
+- **Three unit errors of the same family** — `pra` is an annual total not a rate,
+  `gpp` and `hr` are mol CO2 not kg C. The last gave a global Rh fifty times any
+  physical value. Conversions are now read from the file's `units` attribute.
+- **"Improves every product" was withdrawn**: 6/6 became 5/6 after the phase fix,
+  on a margin smaller than the error that produced it.
