@@ -3526,3 +3526,63 @@ of either configuration. A future expansion should prefer coordinates away from
 orographic and monsoon gradients if cross-configuration comparison is the goal —
 the cold non-forest additions were chosen for biome coverage, which is the right
 criterion for rule 1 and the wrong one for this.
+
+## Iteration 150 — merged the moved base branch; it changes GPP at cold sites
+
+The base branch had advanced 5 commits (including #1797 landing the
+time-integrated-variable machinery upstream) and the PR was CONFLICTING.
+Resolved 8 conflicts by hand. Post-merge: **tests PASS, baseline 30/30**.
+
+### The merge changes GPP, and only in one place
+
+Taking upstream's `pmodel.jl` was the one resolution with a behavioural
+consequence. Diffing my pre-merge version against upstream's, the **only**
+functional difference is a VPD clamp this branch carried in two places:
+
+```julia
+VPD = max(Thermodynamics.vapor_pressure_deficit(...), sqrt(eps(FT)))   # mine
+VPD =     Thermodynamics.vapor_pressure_deficit(...)                   # upstream
+```
+
+Everything else is docstring prose. Regenerating the CARBON=0 baseline on the
+merged tree and diffing against the pre-merge one:
+
+| site | GPP before | GPP after | change |
+|---|---|---|---|
+| california_vaira | 2.503 | 2.217 | **−11.4%** |
+| central_siberia | — | — | +6.4% |
+| alaska_interior_bog | 0.854 | 0.906 | +6.1% |
+| canada_boreal | — | — | +4.9% |
+| central_europe | 4.076 | 4.074 | −0.05% |
+| amazon_central | 6.855 | 6.855 | **0.0** |
+
+**LAI and Tair are bit-identical at every site.** The change is confined to cold
+and humid sites, which is where VPD approaches zero and the clamp bit. Worst
+observed 16.9%.
+
+Why LAI does not move: it is driven by `A0_annual` and friends, which have a
+two-year memory and are seeded by `set_ic!`, so over a two-year run they are
+dominated by the seed rather than by the run's own GPP. That is an artefact of
+the run length, **not** evidence the clamp is irrelevant to LAI - over a long run
+`A0_annual` would drift and LAI would follow.
+
+### Why upstream's version was taken anyway
+
+`pmodel.jl` is GPP code and the base branch defines what GPP should be. A PR
+about carbon pools must not carry a GPP-changing divergence from its own base;
+that is the same category of unwanted change rule 1 exists to prevent, even
+though rule 1 itself only polices the carbon model. Both versions are
+numerically safe - the post-merge baseline is finite at all 30 sites, and the
+downstream `ci` ratio guard is present on both branches.
+
+**For the maintainer:** the clamp came from this PR's own #1797 lineage
+(f686fa1a8, 5e84f10d4), so it may have been intended upstream and lost. Whether
+`VPD` should be clipped away from zero is a P-model question, not a carbon one,
+and 11% at a Mediterranean site is not negligible.
+
+### Consequence: the global results are stale
+
+Every global number in this PR - driver run, equilibrium maps, deficit sweep,
+RMSE, budget - was produced with the clamped `pmodel.jl`. They must be
+regenerated on the merged tree. Boreal sites moved most, and Thurner is the
+boreal product, so the biomass comparison is the most likely to shift.
