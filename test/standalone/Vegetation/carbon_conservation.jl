@@ -460,6 +460,23 @@ for FT in (Float32, Float64)
         )
         @test all(parent(Y.canopy.biomass.T_annual) .> FT(200))
         @test all(isfinite.(parent(Y.canopy.biomass.T_annual)))
+
+        # This wraps a PrescribedBiomassModel, so there is no `precip_annual` to
+        # seed `P_annual` from and it stays at zero. The water deficit must stay
+        # at zero with it. Computing it from a zero `P_month` instead gives
+        # `12 * pet` - the largest deficit possible - which switches the
+        # seasonality limit almost fully on in every column, including the
+        # aseasonal tropics, for as long as its two-year memory. That is the
+        # inverse of the intended failure direction, and it shipped once.
+        @test all(parent(Y.canopy.biomass.P_annual) .== FT(0))
+        @test all(parent(Y.canopy.biomass.D_annual) .== FT(0))
+        @test all(
+            Canopy.seasonality_limit.(
+                parent(Y.canopy.biomass.D_annual),
+                p_c.deficit_half_woody,
+                p_c.n_deficit_woody,
+            ) .== FT(1),
+        )
     end
 
     # Every prognostic variable needs a Jacobian block, or the implicit solver
