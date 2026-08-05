@@ -379,11 +379,19 @@ their climatological values, which are their steady state and are independent of
 smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
 corresponding daily share of the annual total.
 
-The climate-responsive accumulators are seeded so that at `t = 0` each online input
-reproduces the static artifact value it replaces, making `optimal_lai_online_*` = 0
-and 1 agree at the initial step; each then relaxes to the model's own climate over
-`tau_long_term`. `A0c3_annual`/`A0c4_annual` have no per-pathway climatology to start
-from, so they begin at the blended `a0_annual` and separate as they spin up.
+`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that at `t = 0` the
+`f0`, `vpd_gs` and `GSL` derived from them reproduce the artifact values they
+replace; each then relaxes to the model's own climate over `tau_long_term`. Two
+caveats: the `f0` seeding inverts a curve that peaks at `f0_max`, so a cell whose
+artifact `f0` is at or above the peak seeds to the peak instead, and the inverse
+takes the arid branch, so a humid cell starts on the far side of the peak and
+crosses it as `PET_annual` relaxes.
+
+`A0c3_annual`/`A0c4_annual` are different: no per-pathway climatology exists, so
+both start at the blended `a0_annual`. The competition therefore sees zero GPP
+advantage at `t = 0` and returns a near-uniform C3 fraction rather than the static
+map, so `optimal_lai_online_c3c4` = 0 and = 1 do *not* agree at the initial step.
+They agree only after the two accumulators separate over `tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
