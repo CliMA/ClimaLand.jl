@@ -3672,3 +3672,51 @@ Global skill, kg C m-2:
 
 Budget: cVeg 570 Pg C, cSoil 2136 (SoilGrids IC, not equilibrated), GPP 135.9,
 NPP = litterfall 65.1, Rh 34.0 Pg C/yr.
+
+## Iteration 170 — prescribed LAI: a supported path that was broken and untested
+
+Asked which supported configurations had not been exercised since the seasonality
+limit landed. Prescribed LAI + carbon was one, and it turned out to be broken in
+two independent ways.
+
+**1. The harness could not run it at all.** `site_driver.jl` requested `fc3` and
+`pra` unconditionally; both come from the optimal-LAI model and do not exist
+under prescribed LAI, so `default_diagnostics` asserted before the run started.
+All 30 sites failed identically.
+
+The dating matters: those diagnostics were added at stage 4 (`cb5c5ec50`) for the
+offline spinup, *after* the stage 1-3 batteries that last exercised prescribed
+LAI. **So this configuration had been unrunnable for most of the PR without that
+being visible**, because nothing exercised it. `output_vars` now depends on
+`lai_mode`.
+
+**2. The deficit seeding over-suppressed.** Under prescribed LAI there is no
+`precip_annual`, so `P_annual` starts at zero, `P_month` at zero, and
+`D_annual = 12 * pet` — the maximum possible deficit in every column. The same
+over-suppression the instantaneous `P_month` seed caused, reintroduced through
+the unseeded branch. An unseeded `P_annual` now leaves the deficit unseeded too.
+
+### Verified behaviour on the fixed path
+
+| site | D_annual | seasonality_limit |
+|---|---|---|
+| amazon_central | 0.064 | **1.000** |
+| borneo | 0.003 | **1.000** |
+| congo_basin | 0.077 | **1.000** |
+| cerrado_brazil | 0.363 | 0.841 |
+| california_vaira | 0.339 | 0.874 |
+| arabian | 0.720 | **0.254** |
+
+Aseasonal tropics untouched, seasonal and arid sites suppressed in proportion.
+Under the old seeding every one of these would have started near `limit = 0`.
+
+### The correction this forces
+
+Two earlier statements were wrong and are withdrawn:
+
+- The seeding bug was described as latent in a supported path. That path was
+  already broken upstream of it, so the seeding bug was never reachable. Both
+  were real; the claim that fixing one made the configuration work was not.
+- "The model works under prescribed LAI too" has been repeated from design intent
+  — including in the new documentation page — and was **never verified on this
+  branch**. It is verified now. Design intent is not evidence.
