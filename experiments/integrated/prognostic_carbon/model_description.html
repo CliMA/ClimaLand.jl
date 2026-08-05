@@ -858,6 +858,31 @@ S̄  = GPP − Rm(S̄)          <span class="cmt">fixed point: Rm depends on the
     </div>
     <p class="figsub">Averaged over the six ILAMB woody-biomass products. All three
     metrics improve together. Both rows use the recalibrated optimal-LAI parameters. With observed (GPCC) precipitation instead of the model’s own, the limit does better still — that gap is not a tuning choice but what the model’s rainfall seasonality costs, concentrated over the contiguous US, where the treeless/forest deficit separation collapses to a fifth of the observational value.</p>
+    <h3 style="margin-top:2rem">Skill by climate zone</h3>
+    <p>A global mean hides compensating errors. Zones come from the model’s own
+    drivers, so no extra boundary condition enters: <em>semi-arid</em> is MAP &lt; 0.6 m yr⁻¹
+    at any latitude and is taken first, then tropics / temperate / boreal by latitude.
+    Against XuSaatchi, kg C m⁻²:</p>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>zone</th><th>cells</th><th>bias (base → limit)</th><th>RMSE</th><th>r</th></tr></thead>
+      <tbody>
+        <tr><td>tropics</td><td>2916</td><td>+2.98 → <strong>+1.76</strong></td><td>6.35 → 5.74</td><td>0.438 → <strong>0.503</strong></td></tr>
+        <tr><td>temperate</td><td>2188</td><td>+3.32 → <strong>+2.83</strong></td><td>4.98 → 4.74</td><td>0.247 → 0.257</td></tr>
+        <tr><td>boreal</td><td>2325</td><td>+0.06 → −0.02</td><td>2.37 → 2.38</td><td>0.256 → 0.256</td></tr>
+        <tr><td>semi-arid</td><td>8047</td><td>−0.28 → <strong>−0.43</strong></td><td>1.19 → 1.25</td><td>0.617 → 0.616</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="figsub">Three things the global mean concealed. The <strong>largest bias is
+    temperate</strong>, not dry — “builds forests where there are none” is a statement about
+    treeless <em>cells</em>, not about where the error is largest. <strong>Semi-arid is biased
+    low and the limit lowers it further</strong>: binning by observed biomass selects the
+    treeless cells in that zone, where the model is far too high, while the zone mean is
+    carried by the vegetated ones, where it is now too low. And the limit’s benefit is
+    <strong>almost entirely tropical</strong>, so the global mean Δr of +0.011 is a tropical
+    result diluted across four zones.</p>
+
     <h3 style="margin-top:2rem">Global carbon budget</h3>
     <div style="overflow-x:auto">
     <table>
