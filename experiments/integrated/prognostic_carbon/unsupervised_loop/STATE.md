@@ -3823,3 +3823,45 @@ not a calibration detail, and it is flagged rather than taken.
 
 **This criterion is not met, and was previously reported as met on the strength
 of a global number that does not test it.**
+
+### CORRECTION to the previous entry: 9/13, not 11/27
+
+The stage-2 criterion reads *"NPP/GPP lands in 0.3-0.6 **at the forest and
+grassland sites**"*. The previous entry applied it to all 27 vegetated sites,
+including tundra, steppe and desert margin, which the criterion does not name.
+That overstated the failure.
+
+Restricted to the sites it does name (forest / grassland / savanna, 13 of them):
+
+| site | biome | NPP/GPP |
+|---|---|---|
+| cerrado_brazil | tropical savanna | 0.439 |
+| congo_basin | tropical rainforest | 0.451 |
+| borneo | tropical rainforest | 0.453 |
+| amazon_central | tropical rainforest | 0.459 |
+| n_australia_savanna | tropical savanna | 0.470 |
+| pampas_argentina | temperate grassland | 0.506 |
+| us_great_plains | temperate grassland | 0.540 |
+| ozark_us | temperate deciduous | 0.564 |
+| ne_china | temperate deciduous | 0.564 |
+| **canada_boreal** | boreal forest | **0.619** |
+| **central_europe** | temperate deciduous | **0.637** |
+| **fennoscandia** | boreal forest | **0.647** |
+| **central_siberia** | boreal forest | **0.654** |
+
+**9/13 in range.** The four failures are all three boreal forest sites plus
+central Europe, and all sit just above 0.6 rather than wildly out.
+
+The second clause, *"Ra neither collapses to zero nor exceeds GPP in the annual
+mean at any site"*, **passes at every site** - it had not been tested before.
+
+So the finding stands but is narrower and better localised than reported: **NPP/GPP
+is too high in boreal forest**, not across the cold half of the battery. The
+tropics sit at 0.44-0.47 and temperate grassland at 0.51-0.54, both comfortably
+inside.
+
+The diagnosis is unchanged - the Q10 factor leaves a cold column respiring 9-14%
+of its reference maintenance cost - and so is the decision not to fix it, since
+every candidate change adjusts autotrophic respiration.
+
+**Publishing 11/27 was computing the right statistic over the wrong population.**
