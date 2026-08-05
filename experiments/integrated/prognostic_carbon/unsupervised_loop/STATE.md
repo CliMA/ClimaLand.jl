@@ -3620,3 +3620,30 @@ results. The cheap verification chain — rule 1, drift, tests — is worth keep
 current continuously. The global chain (driver, equilibrium, sweep, maps, budget)
 costs ~2 h and has now been overtaken once; it is worth regenerating when the
 base is quiet rather than on every move.
+
+### The merge is immaterial to the global carbon results
+
+Driver and equilibrium base regenerated on the twice-merged tree:
+
+| product | pre-merge base | merged base |
+|---|---|---|
+| XuSaatchi | 0.87 / 0.610 | 0.90 / 0.612 |
+| Thurner | −0.49 / 0.543 | −0.45 / 0.543 |
+| ESACCI | 1.29 / 0.613 | 1.31 / 0.614 |
+| GEOCARBON | 1.03 / 0.572 | 1.06 / 0.572 |
+| Saatchi2011 | 3.18 / 0.630 | 3.18 / 0.630 |
+| USForest | 2.32 / 0.582 | 2.36 / 0.579 |
+
+Global GPP 135.1 -> 135.7 Pg C/yr (+0.4%); LAI against MODIS/AVHRR/AVH15C1
+0.81/0.87/0.94 -> 0.81/0.88/0.94.
+
+**Both merge effects are large locally and negligible globally**, for the same
+reason: the VPD clamp moved GPP up to 17% at cold humid sites, and the new
+aridity index moved LAI up to 25% at Mojave, but those are cells carrying almost
+no biomass. A large relative change in a near-zero pool does not move an
+area-weighted global statistic.
+
+Worth stating because the opposite conclusion was available and wrong: seeing
+25% at a site and inferring the global results were badly wrong would have been
+a reasonable-sounding leap. The site diagnostics said *where* the change was, and
+only the global rerun said whether it mattered.
