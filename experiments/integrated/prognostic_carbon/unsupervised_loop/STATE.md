@@ -3720,3 +3720,56 @@ Two earlier statements were wrong and are withdrawn:
 - "The model works under prescribed LAI too" has been repeated from design intent
   — including in the new documentation page — and was **never verified on this
   branch**. It is verified now. Design intent is not evidence.
+
+## Iteration 175 — skill by climate zone, which the global mean was hiding
+
+Re-reading the loop prompt found a stage-5 requirement never delivered: *"Report
+RMSE and bias by broad climate zone (tropics / temperate / boreal / semi-arid)."*
+Everything so far was reported globally or binned by observed biomass. Both hide
+regional structure, and this model's error is regionally structured.
+
+`score_by_zone.jl` defines zones from the model's own drivers, so no extra
+boundary condition enters: semi-arid is MAP < 0.6 m/yr at any latitude and is
+taken first, then tropics/temperate/boreal by latitude. Semi-arid deliberately
+cuts across the bands - reporting the Sahara inside "tropics" would average the
+model's largest relative errors together with closed-canopy rainforest.
+
+XuSaatchi, base -> with the seasonality limit:
+
+| zone | cells | bias | RMSE | r |
+|---|---|---|---|---|
+| tropics | 2916 | +2.98 -> **+1.76** | 6.35 -> 5.74 | 0.438 -> **0.503** |
+| temperate | 2188 | +3.32 -> **+2.83** | 4.98 -> 4.74 | 0.247 -> 0.257 |
+| boreal | 2325 | +0.06 -> −0.02 | 2.37 -> 2.38 | 0.256 -> 0.256 |
+| semi-arid | 8047 | −0.28 -> **−0.43** | 1.19 -> 1.25 | 0.617 -> 0.616 |
+
+### What this revises
+
+1. **The largest bias is temperate, not dry.** +2.83 kg C m-2, larger than the
+   tropics. The framing used throughout this PR - "the model builds forests where
+   there are none" - is a statement about *treeless cells*, which the
+   binned-by-observation analysis isolates correctly. It is not the same as
+   "where the model's biomass error is largest", and those two have been allowed
+   to blur together.
+2. **Semi-arid is biased LOW and getting lower** (−0.28 -> −0.43). The
+   seasonality limit removes wood there faster than the observations want. Both
+   statements are true at once because they describe different cell populations:
+   binning by observed biomass selects the treeless cells inside the zone, where
+   the model is far too high, while the zone mean is carried by the vegetated
+   ones, where it is now too low.
+3. **The limit's benefit is concentrated in the tropics** - bias −41%, r +0.065.
+   Temperate gains little, boreal nothing, semi-arid is marginally worse. The
+   global mean dr of +0.011 is a tropical result diluted by three zones where
+   almost nothing happens.
+
+### The honest reading
+
+`deficit_half` was tuned on the global mean, and the global mean is the wrong
+objective for a regionally structured error. The optimum found that way is a
+tropical optimum. A per-zone view suggests the semi-arid over-suppression is a
+real cost that a global mean cannot see - it is worth roughly −0.15 kg C m-2 of
+additional low bias in the largest zone by cell count.
+
+**Not retuned.** Choosing a different objective is a modelling decision, not a
+calibration detail, and the value has now held across three independent driver
+changes on the objective it was chosen for.
