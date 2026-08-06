@@ -3938,3 +3938,39 @@ Both levers move autotrophic respiration, which is the single sanctioned
 exception to rule 1 and therefore the one flux this project holds fixed by
 choice. The numbers are here so the decision can be made on them; the decision
 is not mine.
+
+## Iteration 195 — harness change verified; an audit that found nothing
+
+The override-guard change to `site_driver.jl` and `run_battery.pbs` was pushed
+without testing. A one-site battery confirms it: **pass=1 fail=0**, and
+`C_stem`, `D_annual` and `seasonality_limit` at amazon_central are **bit-identical**
+to the run before the change. Dropping the four dead override variables changed
+nothing, which is what it should have done.
+
+### A second audit, with no finding
+
+Checked the env-var plumbing between `run_battery.pbs` and `site_driver.jl` for
+more silent mismatches. There are none. Two false alarms on the way, both mine:
+
+1. The first grep flagged five variables as "passed but never read". All are
+   shell-side variables the PBS script uses itself.
+2. The verification grep was written `"\$$v"`, and `$$` expands to the process
+   ID, so it reported "0 uses" for variables used two to five times — a broken
+   check that nearly confirmed a wrong conclusion.
+
+`SUMMARY` is exported to the Julia process and read by nothing, but the shell
+writes the summary itself, so it is harmless noise rather than a defect. Not
+changed; churning a file for cosmetics is not worth the diff.
+
+### Where the loop actually stands
+
+The model work is finished. Eight of nine acceptance criteria are met, the ninth
+is quantified to the parameter value that would fix it, and the branch is merged,
+green and mergeable with everything documented.
+
+The last two iterations produced one verification and one null result. That is
+the shape of diminishing returns, and it is worth recording rather than
+disguising: the remaining items are all decisions - autotrophic respiration,
+the calibration objective, disturbance, soil equilibrium - and each is a
+statement about what the model should be rather than something to discover by
+running more jobs.
