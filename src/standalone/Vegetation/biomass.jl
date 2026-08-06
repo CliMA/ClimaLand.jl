@@ -12,6 +12,9 @@ export prescribed_lai_era5,
     PrescribedAreaIndices,
     update_biomass!,
     ZhouOptimalLAIModel,
+    PrognosticCarbonParameters,
+    PrognosticCarbonModel,
+    update_carbon_fluxes!,
     mask_biomass!
 
 """
@@ -292,6 +295,16 @@ ClimaLand.auxiliary_domain_names(::PrescribedBiomassModel) = (:surface,)
 function clip(x::FT, threshold::FT) where {FT}
     x > threshold ? x : FT(0)
 end
+
+"""
+    prescribed_lai_input(model::AbstractBiomassModel)
+
+The prescribed LAI `TimeVaryingInput` a biomass model reads, for the consistency
+check in the prescribed-LAI `CanopyModel` constructor. Defined for models that
+have one, and forwarded by any model that wraps such a model, so the check does
+not need to know how deeply the LAI model is nested.
+"""
+prescribed_lai_input(model::PrescribedBiomassModel) = model.plant_area_index.LAI
 
 """
     update_biomass!(
@@ -782,6 +795,736 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.LAI,
             tivs.LAI.reduction,
         )
+    end
+    return compute_exp_tendency!
+end
+
+#####################################################################
+# PrognosticCarbonModel - live carbon pools wrapping an LAI model
+#####################################################################
+
+"""
+    PrognosticCarbonParameters{FT <: AbstractFloat}
+
+Parameters for the prognostic live-carbon pools.
+
+Allocation fractions and turnover times are global constants, optionally split
+C3/C4 and blended by the modelled C3 fraction. They never vary with a plant
+functional type. `f_root` is not stored: it is `1 - f_leaf - f_stem`, so the
+fractions sum to one by construction.
+
+$(DocStringExtensions.FIELDS)
+"""
+Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
+    "Construction efficiency a (-); (1-a) of the sugar drawn for structure is growth respiration"
+    a::FT
+    "Allocation fraction to leaves, C3 (-)"
+    f_leaf_c3::FT
+    "Allocation fraction to stem, C3 (-)"
+    f_stem_c3::FT
+    "Allocation fraction to leaves, C4 (-)"
+    f_leaf_c4::FT
+    "Allocation fraction to stem, C4 (-)"
+    f_stem_c4::FT
+    "Leaf lifespan (s)"
+    τ_leaf::FT
+    "Stem turnover time, C3 (s)"
+    τ_stem_c3::FT
+    "Stem turnover time, C4 (s)"
+    τ_stem_c4::FT
+    "Fine root turnover time (s)"
+    τ_root::FT
+    "Sapwood specific maintenance respiration rate (s^-1)"
+    r_stem::FT
+    "Root specific maintenance respiration rate (s^-1)"
+    r_root::FT
+    "Sapwood saturation scale (kg C m^-2)"
+    C_sap_half::FT
+    "Target sugar store as a fraction of live biomass (-)"
+    c_nsc::FT
+    "Allocation timescale (s)"
+    τ_alloc::FT
+    "Sharpness of the allocation ramp (-)"
+    n_alloc::FT
+    "Substrate-limitation scale for maintenance respiration (kg C m^-2)"
+    C_sugar_ref::FT
+    "E-folding depth (m) of the leaf and stem litter input to soil carbon"
+    soil_litter_depth::FT
+    "Sensitivity of stem turnover time to mean annual temperature (-); 1 disables"
+    q_τ_stem::FT
+    "Reference mean annual temperature (K) for the stem turnover scaling"
+    T_ref_τ_stem::FT
+    "Memory timescale (s) of the running-mean air temperature used as MAT"
+    τ_MAT::FT
+    "Mean annual precipitation at which woody allocation is half its maximum (m yr^-1); 0 disables the ramp"
+    map_half_woody::FT
+    "Sharpness of the precipitation ramp on woody allocation (dimensionless)"
+    n_map_woody::FT
+    "Memory timescale of the running-mean precipitation used as mean annual precipitation (s)"
+    τ_MAP::FT
+    "Annual water deficit at which woody allocation is halved (m yr^-1); 0 disables the seasonality limit"
+    deficit_half_woody::FT
+    "Sharpness of the water-deficit limit on woody allocation (dimensionless)"
+    n_deficit_woody::FT
+    "Evaporative demand over 30 days at 20 C above freezing (m), the reference the deficit is taken against"
+    pet_ref_woody::FT
+    "Fraction of the reference demand retained at freezing (-); 0 is a pure temperature ramp, 1 a constant reference"
+    pet_floor_woody::FT
+    "Q10 temperature sensitivity of maintenance respiration (-)"
+    Q10::FT
+    "Reference temperature for the Q10 factor (K)"
+    T_ref::FT
+end
+
+Base.eltype(::PrognosticCarbonParameters{FT}) where {FT} = FT
+
+"""
+    PrognosticCarbonParameters(toml_dict::CP.ParamDict; kwargs...)
+
+Constructor for `PrognosticCarbonParameters` from a TOML dictionary. Any
+parameter can be overridden by keyword argument.
+"""
+function PrognosticCarbonParameters(
+    toml_dict::CP.ParamDict;
+    a = toml_dict["carbon_construction_efficiency"],
+    f_leaf_c3 = toml_dict["carbon_f_leaf_c3"],
+    f_stem_c3 = toml_dict["carbon_f_stem_c3"],
+    f_leaf_c4 = toml_dict["carbon_f_leaf_c4"],
+    f_stem_c4 = toml_dict["carbon_f_stem_c4"],
+    τ_leaf = toml_dict["carbon_tau_leaf"],
+    τ_stem_c3 = toml_dict["carbon_tau_stem_c3"],
+    τ_stem_c4 = toml_dict["carbon_tau_stem_c4"],
+    τ_root = toml_dict["carbon_tau_root"],
+    r_stem = toml_dict["carbon_r_stem"],
+    r_root = toml_dict["carbon_r_root"],
+    C_sap_half = toml_dict["carbon_C_sap_half"],
+    c_nsc = toml_dict["carbon_c_nsc"],
+    τ_alloc = toml_dict["carbon_tau_alloc"],
+    n_alloc = toml_dict["carbon_alloc_ramp_n"],
+    C_sugar_ref = toml_dict["carbon_C_sugar_ref"],
+    soil_litter_depth = toml_dict["carbon_soil_litter_depth"],
+    q_τ_stem = toml_dict["carbon_tau_stem_q"],
+    T_ref_τ_stem = toml_dict["carbon_tau_stem_T_ref"],
+    τ_MAT = toml_dict["carbon_tau_MAT"],
+    map_half_woody = toml_dict["carbon_map_half_woody"],
+    n_map_woody = toml_dict["carbon_n_map_woody"],
+    τ_MAP = toml_dict["carbon_tau_MAP"],
+    deficit_half_woody = toml_dict["carbon_deficit_half_woody"],
+    n_deficit_woody = toml_dict["carbon_n_deficit_woody"],
+    pet_ref_woody = toml_dict["carbon_pet_ref_woody"],
+    pet_floor_woody = toml_dict["carbon_pet_floor_woody"],
+    Q10 = toml_dict["carbon_Q10"],
+    T_ref = toml_dict["carbon_T_ref"],
+)
+    FT = CP.float_type(toml_dict)
+    PrognosticCarbonParameters{FT}(;
+        a,
+        f_leaf_c3,
+        f_stem_c3,
+        f_leaf_c4,
+        f_stem_c4,
+        τ_leaf,
+        τ_stem_c3,
+        τ_stem_c4,
+        τ_root,
+        r_stem,
+        r_root,
+        C_sap_half,
+        c_nsc,
+        τ_alloc,
+        n_alloc,
+        C_sugar_ref,
+        soil_litter_depth,
+        q_τ_stem,
+        T_ref_τ_stem,
+        τ_MAT,
+        map_half_woody,
+        n_map_woody,
+        τ_MAP,
+        deficit_half_woody,
+        n_deficit_woody,
+        pet_ref_woody,
+        pet_floor_woody,
+        Q10,
+        T_ref,
+    )
+end
+
+"""
+    PrognosticCarbonModel{FT, LM <: AbstractBiomassModel{FT}, PCP, RDTH, HTH} <: AbstractBiomassModel{FT}
+
+Four prognostic live-carbon pools - `C_sugar`, `C_leaf`, `C_stem`, `C_root`, all
+in kg C m^-2 of ground - wrapped around an existing LAI model.
+
+The carbon model does not compute LAI. It *composes* with a `lai_model`, either
+`PrescribedBiomassModel` or `ZhouOptimalLAIModel`, and delegates every area-index
+and LAI decision to it. It consumes GPP, tracks the pools, and returns
+respiration and litter. This is what makes the phase-1 coupling one-way and
+verifiable: a run with the carbon model reproduces the same GPP and LAI as one
+without it.
+
+In this stage the pools are driven by the carbon model's own internal
+maintenance and growth respiration, but that respiration is *not* yet wired into
+`p.canopy.autotrophic_respiration.Ra` - the existing scheme still drives the
+canopy fluxes, so behaviour outside the pools is unchanged. Wiring it in is a
+separate, explicit step.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct PrognosticCarbonModel{
+    FT,
+    LM <: AbstractBiomassModel{FT},
+    PCP <: PrognosticCarbonParameters{FT},
+    RDTH,
+    HTH,
+    TIV,
+} <: AbstractBiomassModel{FT}
+    "The underlying LAI/area-index model the carbon pools compose with"
+    lai_model::LM
+    "Parameters of the carbon pools"
+    parameters::PCP
+    "Rooting depth (m); mirrored from `lai_model` so the rest of the canopy can read it directly"
+    rooting_depth::RDTH
+    "Canopy height (m); mirrored from `lai_model`"
+    height::HTH
+    "Time-integrated variables carried by the carbon model itself"
+    time_integrated_vars::TIV
+end
+
+Base.eltype(::PrognosticCarbonModel{FT}) where {FT} = FT
+
+"""
+    PrognosticCarbonModel{FT}(lai_model, parameters)
+
+Outer constructor wrapping `lai_model` in the prognostic carbon pools.
+
+`rooting_depth` and `height` are copied from `lai_model` because much of the
+canopy reads `canopy.biomass.rooting_depth` and `canopy.biomass.height`
+directly. In phase 1 both stay prescribed and neither is ever mutated, so the
+copies cannot drift from their source.
+"""
+function PrognosticCarbonModel{FT}(
+    lai_model::AbstractBiomassModel{FT},
+    parameters::PrognosticCarbonParameters{FT},
+) where {FT}
+    rooting_depth = lai_model.rooting_depth
+    height = lai_model.height
+    # Mean annual temperature, as a running mean of air temperature. The LAI
+    # models carry no temperature mean, so the carbon model declares its own -
+    # which also means it is available under prescribed LAI, where the optimal
+    # LAI model and all its trailing integrals are absent.
+    tiv = ClimaLand.time_integrated_variables(
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :T_annual,
+            reduction = ClimaLand.RunningMean(parameters.τ_MAT),
+        ),
+        # Mean annual precipitation, declared here for the same reason as
+        # T_annual: the optimal-LAI model carries its own `precip_annual`, but
+        # the carbon model must also work under prescribed LAI, where that state
+        # does not exist. Kept in m yr^-1 so it can be compared with
+        # `map_half_woody` directly.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :P_annual,
+            reduction = ClimaLand.RunningSum(FT(365 * 86400), parameters.τ_MAP),
+        ),
+        # A 30-day precipitation total and temperature mean. These exist only to
+        # feed `D_annual`, and the 30-day window is what makes it a measure of
+        # seasonality rather than of intermittency: precipitation is zero at
+        # almost every instant, so a deficit taken against the instantaneous rate
+        # would reduce to the annual evaporative demand everywhere and carry no
+        # information about how the rain is distributed through the year.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :P_month,
+            reduction = ClimaLand.RunningSum(FT(30 * 86400), FT(30 * 86400)),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :T_month,
+            reduction = ClimaLand.RunningMean(FT(30 * 86400)),
+        ),
+        # Annual water deficit: the monthly shortfall of precipitation below
+        # evaporative demand, summed over the year. Two cells with identical mean
+        # annual precipitation can differ by an order of magnitude in this, and
+        # that difference is what separates wet savanna from wet forest - a
+        # distinction no function of the annual total can express.
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :D_annual,
+            reduction = ClimaLand.RunningSum(FT(365 * 86400), parameters.τ_MAP),
+        ),
+    )
+    args = (lai_model, parameters, rooting_depth, height, tiv)
+    PrognosticCarbonModel{FT, typeof.(args)...}(args...)
+end
+
+"""
+    PrognosticCarbonModel{FT}(lai_model, toml_dict::CP.ParamDict; kwargs...)
+
+Convenience constructor building the parameters from a TOML dictionary.
+"""
+function PrognosticCarbonModel{FT}(
+    lai_model::AbstractBiomassModel{FT},
+    toml_dict::CP.ParamDict;
+    kwargs...,
+) where {FT}
+    parameters = PrognosticCarbonParameters(toml_dict; kwargs...)
+    PrognosticCarbonModel{FT}(lai_model, parameters)
+end
+
+# The pools are appended to whatever the wrapped LAI model already carries, so
+# a prescribed-LAI wrap adds four prognostic variables and a Zhou wrap adds the
+# same four alongside its nine time-integrated ones.
+const CARBON_POOLS = (:C_sugar, :C_leaf, :C_stem, :C_root)
+
+ClimaLand.prognostic_vars(m::PrognosticCarbonModel) = (
+    ClimaLand.prognostic_vars(m.lai_model)...,
+    CARBON_POOLS...,
+    ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)...,
+)
+ClimaLand.prognostic_types(m::PrognosticCarbonModel{FT}) where {FT} = (
+    ClimaLand.prognostic_types(m.lai_model)...,
+    FT,
+    FT,
+    FT,
+    FT,
+    ClimaLand.time_integrated_prognostic_types(m.time_integrated_vars)...,
+)
+ClimaLand.prognostic_domain_names(m::PrognosticCarbonModel) = (
+    ClimaLand.prognostic_domain_names(m.lai_model)...,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    ClimaLand.time_integrated_prognostic_domain_names(
+        m.time_integrated_vars,
+    )...,
+)
+
+"""
+    ClimaLand.auxiliary_vars(model::PrognosticCarbonModel)
+
+Adds to the wrapped LAI model's cache:
+- `carbon`: the carbon fluxes (kg C m^-2 s^-1) - maintenance respiration `Rm`,
+  growth respiration `Rg`, total autotrophic respiration `Ra` of the carbon
+  model, the structural allocation rate `S`, and the leaf, stem and root litter
+  fluxes `L_leaf`, `L_stem`, `L_root`
+- `cVeg`: total live carbon (kg C m^-2), the sum of the four pools
+- `σl_implied`: `C_leaf/LAI` (kg C m^-2 leaf), the diagnostic that reveals
+  whether the constant allocation fractions and the LAI model agree
+"""
+ClimaLand.auxiliary_vars(model::PrognosticCarbonModel) =
+    (ClimaLand.auxiliary_vars(model.lai_model)..., :carbon, :cVeg, :σl_implied)
+ClimaLand.auxiliary_types(model::PrognosticCarbonModel{FT}) where {FT} = (
+    ClimaLand.auxiliary_types(model.lai_model)...,
+    NamedTuple{(:Rm, :Rg, :Ra, :S, :L_leaf, :L_stem, :L_root), NTuple{7, FT}},
+    FT,
+    FT,
+)
+ClimaLand.auxiliary_domain_names(model::PrognosticCarbonModel) = (
+    ClimaLand.auxiliary_domain_names(model.lai_model)...,
+    :surface,
+    :surface,
+    :surface,
+)
+
+prescribed_lai_input(model::PrognosticCarbonModel) =
+    prescribed_lai_input(model.lai_model)
+
+"""
+    sapwood_carbon(C_stem::FT, C_sap_half::FT) where {FT}
+
+The living (sapwood) fraction of the stem pool,
+`C_sap = C_stem/(1 + C_stem/C_sap_half)`, which saturates at `C_sap_half` as
+`C_stem` grows. Living wood does not scale linearly with total wood, and this is
+what keeps a heavy tropical stem pool from respiring itself to death.
+"""
+function sapwood_carbon(C_stem::FT, C_sap_half::FT) where {FT}
+    return C_stem / (1 + C_stem / C_sap_half)
+end
+
+"""
+    allocation_ramp(x::FT, n::FT) where {FT}
+
+The smooth ramp `g(x) = x^n/(1 + x^n)` regulating the allocation rate, where
+`x = C_sugar/C_sugar_target`. Sugar well above target gives `g -> 1` and growth
+runs at its maximum, drawing the pool down; sugar well below target gives
+`g -> 0` and growth stops while maintenance respiration continues. That
+proportional control is what makes the sugar pool oscillate seasonally rather
+than pin at zero, and it needs no hard clamp.
+"""
+function allocation_ramp(x::FT, n::FT) where {FT}
+    xn = max(x, zero(FT))^n
+    return xn / (1 + xn)
+end
+
+"""
+    tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
+
+Multiplier on stem turnover time as a function of mean annual temperature:
+`q^((T_ref - MAT)/10)`, flat at or above `T_ref`.
+
+Cold columns hold their wood far longer than warm ones - boreal trees live for
+centuries where temperate ones live decades - and a single constant `τ_stem`
+fits neither end. This is a continuous climate dependence, not a plant
+functional type: it reads a running mean of air temperature the model already
+computes.
+
+Being flat above `T_ref` means temperate and tropical columns are untouched by
+construction, so the correction only lengthens the cold end. `q = 1` disables it
+and recovers a constant `τ_stem` exactly.
+
+The scale is capped at `MAX_TAU_STEM_SCALE`. With the default 30 yr base that
+bounds stem turnover at ~300 years, about the oldest realistic boreal stand, and
+it also means an uninitialised mean annual temperature degrades to a long but
+finite turnover rather than to `q^28`.
+"""
+# The 30-day window of `P_month`/`T_month`, used to convert the monthly deficit
+# back to a rate for the annual accumulator.
+const SECONDS_PER_MONTH = 30 * 86400
+
+const MAX_TAU_STEM_SCALE = 10
+
+function tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
+    q <= 1 && return one(FT)
+    return min(q^(max(T_ref - MAT, zero(FT)) / 10), FT(MAX_TAU_STEM_SCALE))
+end
+
+"""
+    woody_fraction(MAP::FT, half::FT, n::FT) where {FT}
+
+Fraction of the structural allocation that may go to stem, as a saturating
+function of mean annual precipitation: `x^n / (1 + x^n)` with `x = MAP/half`.
+
+Dry columns build almost no wood and wet ones approach the full `f_stem`.
+Whatever stem gives up goes to roots, so the three fractions still sum to one.
+
+Mean annual precipitation is the classic climate control on maximum woody cover
+(Sankaran et al. 2005), and it is a *climate* mean rather than a plant
+functional type, which is what the no-PFT constraint requires. `half <= 0`
+disables the ramp and recovers constant allocation.
+"""
+function woody_fraction(MAP::FT, half::FT, n::FT) where {FT}
+    half <= 0 && return one(FT)
+    x = max(MAP, zero(FT)) / half
+    xn = x^n
+    return xn / (1 + xn)
+end
+
+"""
+    monthly_pet(T::FT, ref::FT, floor::FT) where {FT}
+
+Evaporative demand over 30 days (m), as a linear ramp in temperature from `floor
+* ref` at freezing to `ref` at 20 C above freezing.
+
+A constant reference is the textbook definition of a water deficit, but it
+assumes tropical evaporative demand everywhere, so it scores a cold cell as
+severely water-stressed when the reason it is dry is that it is frozen - which
+suppresses boreal forest, where the observations show closed canopy. `floor`
+keeps some demand at depth of winter: the deficit is a proxy for growing-season
+water limitation and fuel dryness rather than a literal potential
+evapotranspiration, and a pure ramp to zero gives up most of the signal.
+"""
+function monthly_pet(T::FT, ref::FT, floor::FT) where {FT}
+    warmth = clamp((T - FT(273.15)) / FT(20), zero(FT), one(FT))
+    return ref * (floor + (1 - floor) * warmth)
+end
+
+"""
+    seasonality_limit(D::FT, half::FT, n::FT) where {FT}
+
+Multiplier on woody allocation from the annual water deficit `D` (m):
+`1 / (1 + (D/half)^n)`, falling from 1 in an aseasonal climate toward 0 as the
+dry season lengthens.
+
+Mean annual precipitation cannot separate wet savanna from wet forest, because
+their annual totals are the same - Cerrado, the Sahel fringe, the Pampas and
+miombo all receive forest-sized rainfall and carry no forest. What differs is how
+that rain is distributed through the year, and a long dry season both dries fuel
+for fire and limits tree establishment directly. `half <= 0` disables the limit.
+"""
+function seasonality_limit(D::FT, half::FT, n::FT) where {FT}
+    half <= 0 && return one(FT)
+    x = max(D, zero(FT)) / half
+    xn = x^n
+    return 1 / (1 + xn)
+end
+
+"""
+    pft_free_blend(fractional_c3::FT, v_c3::FT, v_c4::FT) where {FT}
+
+Blends a C3 and a C4 parameter value by the modelled C3 fraction. This is a
+photosynthetic-pathway blend computed from GPP, not a plant functional type.
+"""
+function pft_free_blend(fractional_c3::FT, v_c3::FT, v_c4::FT) where {FT}
+    return fractional_c3 * v_c3 + (1 - fractional_c3) * v_c4
+end
+
+"""
+    update_biomass!(p, Y, t, component::PrognosticCarbonModel, canopy)
+
+Delegates the area indices and LAI entirely to the wrapped LAI model, then
+updates the carbon diagnostics. Delegating first is what guarantees LAI is
+unchanged by the presence of the carbon model.
+"""
+function update_biomass!(
+    p,
+    Y,
+    t,
+    component::PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    update_biomass!(p, Y, t, component.lai_model, canopy)
+    @. p.canopy.biomass.cVeg =
+        Y.canopy.biomass.C_sugar +
+        Y.canopy.biomass.C_leaf +
+        Y.canopy.biomass.C_stem +
+        Y.canopy.biomass.C_root
+    # Reported against the prescribed specific leaf density; far from ~0.03-0.1
+    # kg C m^-2 leaf means the allocation fractions and the LAI model disagree.
+    # Reported as zero where there is no leaf area rather than divided by eps:
+    # LAI is clipped to exactly zero below 0.05, so dividing by it produced
+    # values of order 1e14 at sites the LAI model considers bare. A site with
+    # zero LAI but non-zero C_leaf is a genuine inconsistency, but the leaf pool
+    # itself is what shows it - the ratio there is meaningless, not enormous.
+    @. p.canopy.biomass.σl_implied = ifelse(
+        p.canopy.biomass.area_index.leaf > 0,
+        Y.canopy.biomass.C_leaf /
+        max(p.canopy.biomass.area_index.leaf, eps(FT)),
+        zero(FT),
+    )
+    return nothing
+end
+
+"""
+    update_fractional_c3!(p, Y, biomass::PrognosticCarbonModel, canopy)
+
+Forwards to the wrapped LAI model. Without this the Zhou model's C3/C4
+competition would silently stop being applied when the carbon model wraps it,
+which would change GPP.
+"""
+function update_fractional_c3!(p, Y, biomass::PrognosticCarbonModel, canopy)
+    update_fractional_c3!(p, Y, biomass.lai_model, canopy)
+end
+
+"""
+    update_carbon_fluxes!(p, Y, component, canopy)
+
+Fills `p.canopy.biomass.carbon` with the respiration, allocation and litter
+fluxes. No-op for biomass models that carry no carbon pools.
+
+This runs in `update_aux`, after photosynthesis has provided GPP and `Rd`, so
+that the fluxes are in the cache before anything reads them. The pool tendency
+and `PoolBasedAutotrophicRespirationModel` are both consumers: computing the
+fluxes once here is what keeps the respiration the canopy reports identical to
+the respiration the pools actually pay.
+"""
+update_carbon_fluxes!(p, Y, component::AbstractBiomassModel, canopy) = nothing
+
+function update_carbon_fluxes!(
+    p,
+    Y,
+    component::PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    (;
+        a,
+        r_stem,
+        r_root,
+        C_sap_half,
+        c_nsc,
+        τ_alloc,
+        n_alloc,
+        C_sugar_ref,
+        Q10,
+        T_ref,
+        τ_leaf,
+        τ_stem_c3,
+        τ_stem_c4,
+        τ_root,
+        q_τ_stem,
+        T_ref_τ_stem,
+    ) = component.parameters
+    M_C = FT(0.012011)  # kg C per mol
+    fractional_c3 = p.canopy.photosynthesis.fractional_c3
+    # Resolved outside the broadcasts below: these select a field from the cache
+    # and must not themselves be broadcast over it.
+    Rd_mol = get_Rd_canopy(p, canopy.photosynthesis)
+    Rd_canopy = @. lazy(M_C * Rd_mol)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    # The specification uses soil temperature for the root term, but there is no
+    # ground temperature the canopy can read in both configurations:
+    # `p.drivers.T_ground` exists only for a standalone canopy over prescribed
+    # ground, and the integrated model's soil temperature would make this depend
+    # on soil `update_aux` ordering. Canopy temperature is used instead, which
+    # damps the root term's seasonality less than soil temperature would.
+    # Revisit when stage 3 builds the canopy-to-soil coupling.
+    T_root_zone = T_canopy
+
+    C_sap = @. lazy(sapwood_carbon(Y.canopy.biomass.C_stem, C_sap_half))
+    # Respiration needs substrate: the ramp takes Rm to zero as the sugar pool
+    # is exhausted, instead of letting maintenance drive it negative.
+    # `C_sugar_ref` is small enough that a healthy pool is unaffected. This is a
+    # floor on the pool, not the allocation ramp `g` - a plant that cannot pay
+    # maintenance still draws its reserves down, it just cannot draw them below
+    # zero.
+    @. p.canopy.biomass.carbon.Rm =
+        allocation_ramp(Y.canopy.biomass.C_sugar / C_sugar_ref, n_alloc) * (
+            Q10^((T_canopy - T_ref) / 10) * (Rd_canopy + r_stem * C_sap) +
+            Q10^((T_root_zone - T_ref) / 10) *
+            r_root *
+            max(Y.canopy.biomass.C_root, zero(FT))
+        )
+
+    # The sugar buffer's target is set by the standing live biomass, so
+    # allocation throttles smoothly as reserves are drawn down.
+    @. p.canopy.biomass.carbon.S =
+        max(Y.canopy.biomass.C_sugar, zero(FT)) / τ_alloc * allocation_ramp(
+            Y.canopy.biomass.C_sugar / max(
+                c_nsc *
+                (Y.canopy.biomass.C_leaf + C_sap + Y.canopy.biomass.C_root),
+                eps(FT),
+            ),
+            n_alloc,
+        )
+    @. p.canopy.biomass.carbon.Rg = (1 - a) * p.canopy.biomass.carbon.S
+    @. p.canopy.biomass.carbon.Ra =
+        p.canopy.biomass.carbon.Rm + p.canopy.biomass.carbon.Rg
+
+    @. p.canopy.biomass.carbon.L_leaf = Y.canopy.biomass.C_leaf / τ_leaf
+    # Stem turnover lengthens toward the cold; see `tau_stem_scale`.
+    @. p.canopy.biomass.carbon.L_stem =
+        Y.canopy.biomass.C_stem / (
+            pft_free_blend(fractional_c3, τ_stem_c3, τ_stem_c4) *
+            tau_stem_scale(Y.canopy.biomass.T_annual, T_ref_τ_stem, q_τ_stem)
+        )
+    @. p.canopy.biomass.carbon.L_root = Y.canopy.biomass.C_root / τ_root
+    return nothing
+end
+
+"""
+    ClimaLand.make_compute_exp_tendency(component::PrognosticCarbonModel, canopy)
+
+Advances the four carbon pools, after advancing whatever prognostic variables
+the wrapped LAI model carries.
+
+Following the model specification, with all fluxes in kg C m^-2 s^-1:
+
+    dC_sugar/dt = GPP - Rm - S
+    dC_leaf/dt  = a*f_leaf*S - C_leaf/τ_leaf
+    dC_stem/dt  = a*f_stem*S - C_stem/τ_stem
+    dC_root/dt  = a*f_root*S - C_root/τ_root
+
+The fluxes themselves are computed in `update_carbon_fluxes!` during
+`update_aux`; this reads them. Summing the four gives
+`d(ΣC)/dt = GPP - Ra - litter`, the balance the conservation test checks.
+
+Phenological leaf shedding (the `C_leaf*max(-dLAI/dt, 0)/LAI` term) is not yet
+included; only the background `C_leaf/τ_leaf` turnover is. Deciduous leaf carbon
+therefore lags LAI through autumn.
+"""
+function ClimaLand.make_compute_exp_tendency(
+    component::PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    lai_tendency! =
+        ClimaLand.make_compute_exp_tendency(component.lai_model, canopy)
+    (; a, f_leaf_c3, f_stem_c3, f_leaf_c4, f_stem_c4) = component.parameters
+    (;
+        map_half_woody,
+        n_map_woody,
+        deficit_half_woody,
+        n_deficit_woody,
+        pet_ref_woody,
+        pet_floor_woody,
+    ) = component.parameters
+    tivs = component.time_integrated_vars
+    M_C = FT(0.012011)  # kg C per mol
+    function compute_exp_tendency!(dY, Y, p, t)
+        lai_tendency!(dY, Y, p, t)
+
+        fractional_c3 = p.canopy.photosynthesis.fractional_c3
+        GPP_mol = get_GPP(p, canopy.photosynthesis)
+        GPP = @. lazy(M_C * GPP_mol)
+
+        @. dY.canopy.biomass.C_sugar =
+            GPP - p.canopy.biomass.carbon.Rm - p.canopy.biomass.carbon.S
+        @. dY.canopy.biomass.C_leaf =
+            a *
+            pft_free_blend(fractional_c3, f_leaf_c3, f_leaf_c4) *
+            p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_leaf
+        # Stem allocation is scaled by the climate-derived woody fraction: dry
+        # columns cannot hold wood however much sugar they fix.
+        @. dY.canopy.biomass.C_stem =
+            a *
+            pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4) *
+            woody_fraction(
+                Y.canopy.biomass.P_annual,
+                map_half_woody,
+                n_map_woody,
+            ) *
+            seasonality_limit(
+                Y.canopy.biomass.D_annual,
+                deficit_half_woody,
+                n_deficit_woody,
+            ) *
+            p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_stem
+        # Mean annual temperature, relaxing toward air temperature.
+        @. dY.canopy.biomass.T_annual = apply_time_reduction(
+            p.drivers.T,
+            Y.canopy.biomass.T_annual,
+            tivs.T_annual.reduction,
+        )
+        # Mean annual precipitation. P_liq/P_snow are negative-downward volume
+        # fluxes (m/s), so negate for a positive total in m yr^-1.
+        @. dY.canopy.biomass.P_annual = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow),
+            Y.canopy.biomass.P_annual,
+            tivs.P_annual.reduction,
+        )
+        # 30-day precipitation total and temperature mean, feeding D_annual.
+        @. dY.canopy.biomass.P_month = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow),
+            Y.canopy.biomass.P_month,
+            tivs.P_month.reduction,
+        )
+        @. dY.canopy.biomass.T_month = apply_time_reduction(
+            p.drivers.T,
+            Y.canopy.biomass.T_month,
+            tivs.T_month.reduction,
+        )
+        # The monthly shortfall, converted back to a rate so the 1-year
+        # RunningSum accumulates it as an annual total in m.
+        @. dY.canopy.biomass.D_annual = apply_time_reduction(
+            max(
+                monthly_pet(
+                    Y.canopy.biomass.T_month,
+                    pet_ref_woody,
+                    pet_floor_woody,
+                ) - Y.canopy.biomass.P_month,
+                0,
+            ) / SECONDS_PER_MONTH,
+            Y.canopy.biomass.D_annual,
+            tivs.D_annual.reduction,
+        )
+
+        # f_root takes whatever leaf and stem do not, including the stem
+        # allocation the water limitation withheld, so the three fractions sum
+        # to one exactly at every column.
+        @. dY.canopy.biomass.C_root =
+            a *
+            (
+                1 - pft_free_blend(fractional_c3, f_leaf_c3, f_leaf_c4) -
+                pft_free_blend(fractional_c3, f_stem_c3, f_stem_c4) *
+                woody_fraction(
+                    Y.canopy.biomass.P_annual,
+                    map_half_woody,
+                    n_map_woody,
+                ) *
+                seasonality_limit(
+                    Y.canopy.biomass.D_annual,
+                    deficit_half_woody,
+                    n_deficit_woody,
+                )
+            ) *
+            p.canopy.biomass.carbon.S - p.canopy.biomass.carbon.L_root
     end
     return compute_exp_tendency!
 end

@@ -23,6 +23,15 @@ main
   `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
   is renamed `optimal_lai_f0_max`. The artifact is still read by `set_ic!` to seed trailing totals.
   PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, a biomass model carrying live carbon as four
+  prognostic pools (sugar, leaf, stem, root) with climate-dependent allocation. It wraps an LAI
+  model rather than replacing one, so GPP and LAI remain inputs. Adds `SoilCarbonLitterInput` and
+  the optional `PoolBasedAutotrophicRespirationModel`. PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-🔥behavioralΔ] `MicrobeProduction` now debits respired carbon from `Y.soilco2.SOC`,
+  previously frozen. Only `PrognosticCarbonModel` supplies the balancing litter, so SOC declines
+  in every other configuration. PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-🐛bugfix] The `rd` diagnostic called an undefined function and threw when requested.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 
 v1.11.0
 -----

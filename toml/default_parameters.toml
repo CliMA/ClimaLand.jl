@@ -177,6 +177,139 @@ value = 2.8
 type = "float"
 description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation: tc(gpp)/tc(gpp_ref) clamped to [0,1] is the C3 tree proportion. Fitted by Lavergne et al. (2022)."
 tag = "OptimalLAIModel"
+# Prognostic Carbon Pools (PrognosticCarbonModel)
+
+["carbon_construction_efficiency"]
+value = 0.7
+type = "float"
+description = "Construction efficiency a (dimensionless): the fraction of sugar drawn for structure that ends up as structural carbon. The remainder (1-a) is growth respiration."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c3"]
+value = 0.3
+type = "float"
+description = "Fraction of structural allocation going to leaves, C3 vegetation (dimensionless). f_leaf + f_stem + f_root must equal 1."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c3"]
+value = 0.4
+type = "float"
+description = "Fraction of structural allocation going to stem and branch, C3 vegetation (dimensionless)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c4"]
+value = 0.4
+type = "float"
+description = "Fraction of structural allocation going to leaves, C4 vegetation (dimensionless). C4 vegetation is herbaceous, so it builds far less stem than C3."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c4"]
+value = 0.05
+type = "float"
+description = "Fraction of structural allocation going to stem, C4 vegetation (dimensionless)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_leaf"]
+value = 4.7304e7
+type = "float"
+description = "Leaf lifespan (s), 1.5 years. Sets the background leaf litter flux C_leaf/tau_leaf, which is what gives an evergreen tropical canopy leaf litter despite near-constant LAI."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c3"]
+value = 9.4608e8
+type = "float"
+description = "Stem turnover time (s) for C3 vegetation, 30 years. With f_stem this is the dominant control on standing woody biomass."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c4"]
+value = 3.1536e7
+type = "float"
+description = "Stem turnover time (s) for C4 vegetation, 1 year. Herbaceous C4 vegetation accumulates no long-lived wood."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_root"]
+value = 6.3072e7
+type = "float"
+description = "Fine root turnover time (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_stem"]
+value = 3.17e-9
+type = "float"
+description = "Sapwood specific maintenance respiration rate (s^-1), about 0.1 per year. Applied to the living (sapwood) fraction of the stem pool, not the whole pool. A calibration target."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_root"]
+value = 1.585e-8
+type = "float"
+description = "Root specific maintenance respiration rate (s^-1), about 0.5 per year. Fine roots respire faster per unit carbon than sapwood. A calibration target."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sap_half"]
+value = 2.0
+type = "float"
+description = "Sapwood saturation scale (kg C m^-2) in C_sap = C_stem/(1 + C_stem/C_sap_half). Living wood does not scale linearly with total wood; this saturation is what stops a 20 kg C m^-2 tropical forest respiring itself to death."
+tag = "PrognosticCarbonParameters"
+
+["carbon_c_nsc"]
+value = 0.1
+type = "float"
+description = "Target non-structural carbon store as a fraction of live biomass (dimensionless). Observed NSC is roughly 5-20% of live biomass."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_alloc"]
+value = 864000.0
+type = "float"
+description = "Allocation timescale (s), 10 days. Sets the maximum rate S_max = C_sugar/tau_alloc at which sugar can be drawn for structure."
+tag = "PrognosticCarbonParameters"
+
+["carbon_alloc_ramp_n"]
+value = 3.0
+type = "float"
+description = "Sharpness of the allocation ramp g(x) = x^n/(1 + x^n), where x = C_sugar/C_sugar_target. This proportional controller is what keeps the sugar pool oscillating seasonally about its target instead of pinning at zero, with no hard clamp."
+tag = "PrognosticCarbonParameters"
+
+["carbon_soil_litter_depth"]
+value = 0.05
+type = "float"
+description = "E-folding depth (m) of the leaf and stem litter input to soil carbon. The specification places surface litter in the top soil layer; this is the continuum form of that, and unlike writing into a single cell it does not depend on the layer thickness. Comparable to the top layer thickness of a typical column."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sugar_ref"]
+value = 1.0e-3
+type = "float"
+description = "Substrate-limitation scale for maintenance respiration (kg C m^-2). Rm is multiplied by the ramp g(C_sugar/C_sugar_ref), so respiration stops as the sugar pool is exhausted rather than driving it negative. Small enough that a healthy pool (0.05-0.2 kg C m^-2) is unaffected to about one part in 10^5."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_q"]
+value = 2.0
+type = "float"
+description = "Sensitivity of stem turnover time to mean annual temperature: tau_stem is multiplied by q^((T_ref - MAT)/10), so colder columns hold their wood longer. Set to 1.0 to disable and recover a constant tau_stem. Boreal trees live for centuries where temperate ones live decades, and a single constant fits neither; q = 2 gives ~107 yr at 265 K and ~30 yr in the temperate and tropical zone. This is a climate dependence, not a plant functional type."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_T_ref"]
+value = 283.0
+type = "float"
+description = "Reference mean annual temperature (K) for the stem turnover scaling. The scaling is flat at or above this temperature, so temperate and tropical columns are unaffected and only the cold end is lengthened."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_MAT"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale (s) of the running mean air temperature used as mean annual temperature, 2 years. Long enough to filter the seasonal cycle, so stem turnover responds to climate rather than weather."
+tag = "PrognosticCarbonParameters"
+
+["carbon_Q10"]
+value = 2.0
+type = "float"
+description = "Q10 temperature sensitivity of the carbon model's maintenance respiration (dimensionless). Deliberately distinct from autotrophic_respiration_Q10, which ships at 1.0 (temperature-insensitive) and governs the legacy JULES scheme; changing that one is a separate, explicit step."
+tag = "PrognosticCarbonParameters"
+
+["carbon_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature (K) for the carbon model's Q10 maintenance-respiration factor."
+tag = "PrognosticCarbonParameters"
 
 # Plant Hydraulics Parameters
 
@@ -885,3 +1018,42 @@ value = 7.83e-7
 type = "float"
 description = "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) for the LAI-independent root and stem maintenance respiration."
 tag = "AutotrophicRespirationParameters"
+
+
+["carbon_map_half_woody"]
+value = 0.8
+type = "float"
+description = "Mean annual precipitation (m yr^-1) at which the woody allocation fraction reaches half its maximum. Chosen from a global sweep against six biomass products: it cuts the mean bias several-fold while spatial correlation rises, and leaves the wet-forest end essentially unchanged. Set to 0 to disable the water limitation on stem allocation."
+tag = "PrognosticCarbonParameters"
+
+["carbon_n_map_woody"]
+value = 2.0
+type = "float"
+description = "Sharpness of the precipitation ramp on woody allocation. Larger values make the transition from herbaceous to woody more abrupt."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_MAP"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale (s) of the running-mean precipitation used as mean annual precipitation, 2 years. Matches carbon_tau_MAT so both climate means filter the seasonal cycle identically."
+tag = "PrognosticCarbonParameters"
+
+["carbon_deficit_half_woody"]
+value = 0.55
+type = "float"
+description = "Annual water deficit at which woody allocation is halved (m yr^-1). Offline-calibrated against GPCC precipitation over ~20000 land cells; 0 disables the seasonality limit."
+
+["carbon_n_deficit_woody"]
+value = 4.0
+type = "float"
+description = "Sharpness of the water-deficit limit on woody allocation (dimensionless)"
+
+["carbon_pet_ref_woody"]
+value = 0.1
+type = "float"
+description = "Evaporative demand over 30 days at 20 C above freezing (m), the reference the annual water deficit is taken against. 0.1 m per 30 days is the conventional 100 mm/month dry-month threshold."
+
+["carbon_pet_floor_woody"]
+value = 0.6
+type = "float"
+description = "Fraction of the reference evaporative demand retained at freezing (-). 0 is a pure temperature ramp, which protects boreal forest but gives up most of the signal; 1 is a constant reference, which suppresses boreal forest. 0.6 was the offline optimum."
