@@ -1,4 +1,5 @@
-export AutotrophicRespirationParameters, AutotrophicRespirationModel
+export AutotrophicRespirationParameters,
+    AutotrophicRespirationModel, PoolBasedAutotrophicRespirationModel
 
 abstract type AbstractAutotrophicRespirationModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -177,3 +178,59 @@ function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
     Rg = Rel * max(An - Rpm, FT(0))
     return Rg
 end
+
+"""
+    PoolBasedAutotrophicRespirationModel{FT} <: AbstractAutotrophicRespirationModel{FT}
+
+Autotrophic respiration taken from the prognostic carbon pools rather than from
+prescribed area indices.
+
+`Ra = Rm + Rg`, with both terms computed by
+[`ClimaLand.Canopy.update_carbon_fluxes!`](@ref) from the pools the canopy
+actually carries: maintenance respiration scales with the living sapwood and
+root pools, and growth respiration is `(1-a)S`, the construction cost of actual
+growth. This model therefore holds no parameters of its own - it reads what the
+carbon model already computed, which is what keeps the respiration the canopy
+reports identical to the respiration the pools pay.
+
+It requires a `PrognosticCarbonModel` biomass model. The JULES-style
+[`AutotrophicRespirationModel`](@ref) remains the default; select this one
+explicitly.
+
+Compared with the JULES model, respiration here goes to zero where the pools go
+to zero. The JULES term respires prescribed constant `SAI` and `RAI`, which do
+not vanish over bare ground, so it reports positive autotrophic respiration at
+sites with no photosynthesis at all.
+"""
+struct PoolBasedAutotrophicRespirationModel{FT} <:
+       AbstractAutotrophicRespirationModel{FT} end
+
+ClimaLand.auxiliary_vars(model::PoolBasedAutotrophicRespirationModel) = (:Ra,)
+ClimaLand.auxiliary_types(
+    model::PoolBasedAutotrophicRespirationModel{FT},
+) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::PoolBasedAutotrophicRespirationModel) =
+    (:surface,)
+
+"""
+    update_autotrophic_respiration!(p, Y, model::PoolBasedAutotrophicRespirationModel, canopy)
+
+Sets `Ra` (mol CO2 m^-2 s^-1) from the carbon model's own total autotrophic
+respiration, converting from kg C m^-2 s^-1.
+"""
+function update_autotrophic_respiration!(
+    p,
+    Y,
+    model::PoolBasedAutotrophicRespirationModel{FT},
+    canopy,
+) where {FT}
+    canopy.biomass isa PrognosticCarbonModel || error(
+        "PoolBasedAutotrophicRespirationModel requires a PrognosticCarbonModel \
+         biomass model; got $(typeof(canopy.biomass)).",
+    )
+    M_C = FT(0.012011)  # kg C per mol
+    @. p.canopy.autotrophic_respiration.Ra = p.canopy.biomass.carbon.Ra / M_C
+    return nothing
+end
+
+Base.broadcastable(model::PoolBasedAutotrophicRespirationModel) = tuple(model)

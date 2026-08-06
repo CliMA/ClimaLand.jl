@@ -116,7 +116,11 @@ end
                PrognosticMet(soil.parameters),
                 forcing.atmos,
             ),
-            toml_dict,
+            toml_dict;
+            sources = (
+                Soil.Biogeochemistry.MicrobeProduction{FT}(),
+                SoilCarbonLitterInput{FT}(),
+            ),
         ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -159,7 +163,14 @@ function SoilCanopyModel{FT}(
             PrognosticMet(soil.parameters),
             forcing.atmos,
         ),
-        toml_dict,
+        toml_dict;
+        # Canopy litter closes the soil carbon balance against the Sm debit in
+        # MicrobeProduction. Harmless when the canopy carries no carbon pools:
+        # p.soil_litter_input is then zero.
+        sources = (
+            Soil.Biogeochemistry.MicrobeProduction{FT}(),
+            SoilCarbonLitterInput{FT}(),
+        ),
     ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -196,6 +207,7 @@ in order to emit the same `LW_u` as the land surface does. This is called the
 and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """
 lsm_aux_vars(m::SoilCanopyModel) = (
+    :soil_litter_input,
     :root_extraction,
     :root_energy_extraction,
     :LW_u,
@@ -214,7 +226,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -223,6 +235,7 @@ The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 lsm_aux_domain_names(m::SoilCanopyModel) = (
+    :subsurface,
     :subsurface,
     :subsurface,
     :surface,
@@ -266,6 +279,8 @@ function make_update_boundary_fluxes(
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land)
+        # distribute canopy litter into the soil carbon profile
+        update_soil_litter_input!(p, Y, t, land) # defined in src/integrated/soil_canopy_carbon_interactions.jl
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,

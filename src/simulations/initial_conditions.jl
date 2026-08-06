@@ -427,6 +427,91 @@ end
     set_canopy_component_initial_conditions!(
         Y,
         p,
+        model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+        canopy,
+    ) where {FT}
+
+Sets the initial live carbon pools, and - importantly - forwards to the wrapped
+LAI model's own initial conditions first. Without that forwarding a carbon model
+wrapping `ZhouOptimalLAIModel` would fall through to the generic no-op method,
+leaving all nine of the optimal-LAI time-integrated variables at zero and
+changing the simulated LAI.
+
+The pools themselves start empty. They cannot be seeded from LAI here because
+the area-index cache has not been filled at this point in initialization, and a
+seed read from it would silently be zero anyway. Starting empty is also honest:
+the pools bootstrap from GPP, and the stem pool's turnover time of decades means
+no short run reaches equilibrium regardless. Filling them properly is what the
+offline spinup exists to do.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+    canopy,
+) where {FT}
+    set_canopy_component_initial_conditions!(Y, p, model.lai_model, canopy)
+    # Seed the mean annual temperature from the current air temperature. Left at
+    # zero it would be 0 K, and the stem-turnover scaling q^((T_ref - MAT)/10)
+    # would start at 2^28 - the pools would never recover from the first step.
+    Y.canopy.biomass.T_annual .= p.drivers.T
+    # Seed the mean annual precipitation too. Left at zero, the woody fraction
+    # is zero and no stem carbon accumulates until the running sum has filled,
+    # which takes as long as its memory timescale. Where the optimal-LAI model
+    # sits underneath it already carries the same quantity in molar units, so
+    # reuse it rather than spinning a second copy up from nothing.
+    if hasproperty(Y.canopy.biomass, :precip_annual)
+        ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
+        @. Y.canopy.biomass.P_annual = Y.canopy.biomass.precip_annual / ρ_m_liq
+    else
+        Y.canopy.biomass.P_annual .= FT(0)
+    end
+    # Seed the monthly integrals, and the annual water deficit from them. Both
+    # extremes are wrong and in opposite directions: left at zero, D_annual makes
+    # the seasonality limit exactly 1 - no suppression at all - for as long as
+    # its memory timescale. But seeding P_month from the *instantaneous*
+    # precipitation rate is worse, because it is zero at almost every instant, so
+    # every column starts at the maximum possible deficit and the limit starts
+    # near zero everywhere, suppressing wood in the aseasonal tropics.
+    #
+    # P_month is therefore seeded from the annual mean: the assumption is an
+    # aseasonal climate until the run observes otherwise. D_annual then fills in
+    # over its memory timescale as real dry seasons pass, so a coupled run
+    # shorter than that under-suppresses rather than over-suppresses - the
+    # direction that fails visibly against the observations rather than
+    # silently.
+    #
+    # Under prescribed LAI there is no `precip_annual` to seed `P_annual` from, so
+    # it starts at zero - and then `P_month` is zero and the deficit below would
+    # be the *maximum* possible in every column, suppressing woody allocation
+    # everywhere including the aseasonal tropics. That is the same
+    # over-suppression the instantaneous seed caused, reintroduced through the
+    # unseeded branch, so an unseeded `P_annual` means an unseeded deficit too.
+    Y.canopy.biomass.T_month .= p.drivers.T
+    @. Y.canopy.biomass.P_month = Y.canopy.biomass.P_annual / 12
+    params = model.parameters
+    @. Y.canopy.biomass.D_annual =
+        12 *
+        max(
+            ClimaLand.Canopy.monthly_pet(
+                Y.canopy.biomass.T_month,
+                params.pet_ref_woody,
+                params.pet_floor_woody,
+            ) - Y.canopy.biomass.P_month,
+            0,
+        ) *
+        (Y.canopy.biomass.P_annual > 0)
+    Y.canopy.biomass.C_sugar .= FT(0)
+    Y.canopy.biomass.C_leaf .= FT(0)
+    Y.canopy.biomass.C_stem .= FT(0)
+    Y.canopy.biomass.C_root .= FT(0)
+    return nothing
+end
+
+"""
+    set_canopy_component_initial_conditions!(
+        Y,
+        p,
         model::ClimaLand.Canopy.PModel{FT},
         canopy,
     ) where {FT}

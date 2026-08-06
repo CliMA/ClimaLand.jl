@@ -21,13 +21,21 @@ for FT in (Float32, Float64)
         model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain)
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
+        # MicrobeProduction debits SOC, so the litter source that balances it
+        # must be present here too, not only in LandModel.
+        @test ClimaLand.SoilCarbonLitterInput{FT}() in model.soilco2.sources
         Y, p, cds = initialize(model)
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
+        @test haskey(p, :soil_litter_input)
         # initialize cache, then check that albedos are set to the correct values
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
+        # This canopy carries no carbon pools, so the litter input is zero -
+        # but it must have been filled, not left as uninitialized memory.
+        @test all(isfinite, parent(p.soil_litter_input))
+        @test all(iszero, parent(p.soil_litter_input))
         canopy_bc = model.canopy.boundary_conditions
         α_soil_PAR = Canopy.ground_albedo_PAR(
             Val(canopy_bc.prognostic_land_components),

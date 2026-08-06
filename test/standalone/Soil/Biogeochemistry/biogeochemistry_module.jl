@@ -86,8 +86,12 @@ for FT in (Float32, Float64)
         # Test that microbial source is positive (CO2 production)
         @test all(parent(p.soilco2.Sm) .>= FT(0))
 
-        # Test that SOC tendency is zero (SOC held constant in this model)
-        @test all(parent(dY.soilco2.SOC) .== FT(0))
+        # SOC is debited by exactly the carbon respired to CO2, so the soil
+        # carbon balance closes. In the standalone model there is no litter
+        # input to offset it, so SOC declines; the canopy litter input that
+        # balances it is added by the integrated model.
+        @test all(parent(dY.soilco2.SOC) .== -parent(p.soilco2.Sm))
+        @test all(parent(dY.soilco2.SOC) .<= FT(0))
 
         # Test that interior cells have CO2 production (source dominates)
         # Near boundaries, diffusion may affect the tendency

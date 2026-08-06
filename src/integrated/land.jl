@@ -238,7 +238,14 @@ function LandModel{FT}(
             PrognosticMet(soil.parameters),
             forcing.atmos,
         ),
-        toml_dict,
+        toml_dict;
+        # Canopy litter closes the soil carbon balance against the Sm debit in
+        # MicrobeProduction. Harmless when the canopy carries no carbon pools:
+        # p.soil_litter_input is then zero.
+        sources = (
+            Soil.Biogeochemistry.MicrobeProduction{FT}(),
+            SoilCarbonLitterInput{FT}(),
+        ),
     ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -366,7 +373,14 @@ function LandModel{FT}(
             PrognosticMet(soil.parameters),
             forcing.atmos,
         ),
-        toml_dict,
+        toml_dict;
+        # Canopy litter closes the soil carbon balance against the Sm debit in
+        # MicrobeProduction. Harmless when the canopy carries no carbon pools:
+        # p.soil_litter_input is then zero.
+        sources = (
+            Soil.Biogeochemistry.MicrobeProduction{FT}(),
+            SoilCarbonLitterInput{FT}(),
+        ),
     ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -425,6 +439,7 @@ included in the land model.
 """
 lsm_aux_vars(m::LandModel) = (
     :snow_T_bot,
+    :soil_litter_input,
     :root_extraction,
     :root_energy_extraction,
     :LW_u,
@@ -472,6 +487,7 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
     FT,
     FT,
@@ -485,6 +501,7 @@ included in the land model.
 """
 lsm_aux_domain_names(m::LandModel) = (
     :surface,
+    :subsurface,
     :subsurface,
     :subsurface,
     :surface,
@@ -550,6 +567,8 @@ function make_update_boundary_fluxes(
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+        # distribute canopy litter into the soil carbon profile
+        update_soil_litter_input!(p, Y, t, land) # defined in src/integrated/soil_canopy_carbon_interactions.jl
         # Radiation - updates Rn for soil, lake, snow also
         lsm_radiant_energy_fluxes!(
             p,

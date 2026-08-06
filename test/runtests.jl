@@ -130,6 +130,9 @@ end
 @safetestset "Canopy integrated water and energy content" begin
     include("standalone/Vegetation/conservation.jl")
 end
+@safetestset "Canopy prognostic carbon pools" begin
+    include("standalone/Vegetation/carbon_conservation.jl")
+end
 @safetestset "Canopy spatial parameters" begin
     include("standalone/Vegetation/spatial_parameters.jl")
 end
