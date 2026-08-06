@@ -321,6 +321,38 @@ for FT in (Float32, Float64)
         @test all(parent(p.canopy.autotrophic_respiration.Ra) .== 0)
     end
 
+    # cVeg must report the pools the model carries, not the area-index estimate,
+    # which would give a different number for the same state. The estimate also
+    # reads the JULES parameters, which PoolBasedAutotrophicRespirationModel does
+    # not have, so the two failures share a fix.
+    @testset "cVeg diagnostic reads the carbon pools, FT = $FT" begin
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(pt, toml_dict;)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            pt,
+            (; radiation, atmos, ground),
+            LAI,
+            toml_dict;
+            hydraulics,
+            biomass,
+            autotrophic_respiration = Canopy.PoolBasedAutotrophicRespirationModel{
+                FT,
+            }(),
+        )
+        Y, p, _ = initialize(canopy)
+        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(290.5)
+        Y.canopy.biomass.C_sugar .= FT(0.3)
+        Y.canopy.biomass.C_leaf .= FT(0.2)
+        Y.canopy.biomass.C_stem .= FT(5.0)
+        Y.canopy.biomass.C_root .= FT(1.0)
+        make_set_initial_cache(canopy)(p, Y, t0)
+
+        out = ClimaCore.Fields.zeros(canopy.domain.space.surface)
+        ClimaLand.Diagnostics.compute_vegetation_carbon!(out, Y, p, t0, canopy)
+        @test all(parent(out) .≈ parent(p.canopy.biomass.cVeg))
+        @test all(parent(out) .≈ FT(6.5))
+    end
+
     # Stage 3: litter must reach the soil carbon pool without being diluted or
     # amplified by the vertical discretisation. Each shape is normalised by its
     # own column integral, so the integral of the input returns the surface
