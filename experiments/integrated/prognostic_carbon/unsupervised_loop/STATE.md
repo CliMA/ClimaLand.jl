@@ -3974,3 +3974,59 @@ disguising: the remaining items are all decisions - autotrophic respiration,
 the calibration objective, disturbance, soil equilibrium - and each is a
 statement about what the model should be rather than something to discover by
 running more jobs.
+
+---
+
+# LOOP COMPLETE
+
+Stopped deliberately, not abandoned. Final state, all verified on the current
+tree rather than recalled:
+
+| | |
+|---|---|
+| PR #1834 | **MERGEABLE**, base fully merged, nothing unpushed, tree clean |
+| rule 1 (GPP/LAI unchanged) | **PASS 30/30**, relative difference exactly 0.0 |
+| package tests | **PASS**, 0 failures |
+| drift, offline vs coupled | **19/19** within 10% where seed and run share a climate |
+| prescribed LAI | **30/30**, seasonality limit correct there |
+| acceptance criteria | **8 of 9 met**; the ninth quantified to the value that fixes it |
+| ships outside src/test/docs/toml/experiments | nothing |
+
+## What the model does
+
+Four prognostic live-carbon pools wrapping an LAI model, one-way coupled so rule
+1 holds structurally rather than by care. Woody allocation limited by two global
+climate multipliers - mean annual precipitation, and the annual water deficit
+that carries rainfall *seasonality*. No PFT anywhere.
+
+Global skill against six ILAMB products: bias 1.39 -> **0.97**, RMSE 3.71 ->
+**3.48**, r 0.592 -> **0.603**. Budget: cVeg 570 Pg C, GPP 135.9, NPP =
+litterfall 65.1, Rh 34.0 Pg C/yr, cSoil 2136 Pg C (SoilGrids IC, not
+equilibrated).
+
+`carbon_deficit_half_woody = 0.55 m` has held through three independent
+perturbations of the drivers it was calibrated against.
+
+## Open, and each a decision rather than a discovery
+
+1. **Boreal NPP/GPP is 0.62-0.65 against a 0.3-0.6 criterion.** `Q10 ~ 1.4` fixes
+   it. Moves autotrophic respiration - the one sanctioned exception to rule 1.
+2. **`deficit_half` was tuned on a global mean**, which is arguably the wrong
+   objective for a regionally structured error; the zone breakdown shows the
+   benefit is almost entirely tropical and semi-arid is slightly over-suppressed.
+3. **Soil carbon equilibrates to > 4132 Pg C**, at least 2.7x observed. A bound,
+   not an estimate, and it concerns the soil model this PR does not touch.
+4. **Disturbance is absent.** The residual is a wet minority of treeless cells
+   whose rainfall is forest rainfall. Six predictors failed on exactly them
+   before seasonality worked, and it reaches many but not all.
+
+## The recurring lesson, recorded because it cost the most time
+
+Every expensive mistake this session was a check that looked like it was working:
+a `GLOBAL_OK` marker printed for a crashed run; a consistency check made circular
+by a change elsewhere; a supported configuration nothing exercised for most of
+the PR; a criterion verified on the wrong statistic and then on the wrong
+population; a parameter sweep whose four arms silently ran one value; overrides
+written for parameters that no longer exist. None failed. All were found by
+enumerating what *should* be true and testing it, and each was invisible from
+any distance short of that.
