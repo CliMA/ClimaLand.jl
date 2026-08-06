@@ -886,24 +886,73 @@ S̄  = GPP − Rm(S̄)          <span class="cmt">fixed point: Rm depends on the
     <h3 style="margin-top:2rem">Global carbon budget</h3>
     <div style="overflow-x:auto">
     <table>
-      <thead><tr><th>quantity</th><th>value</th><th>footing</th></tr></thead>
+      <thead><tr>
+        <th>quantity</th><th>model</th><th>literature</th><th>ratio</th><th>footing</th>
+      </tr></thead>
       <tbody>
-        <tr><td>cVeg — live</td><td><strong>570 Pg C</strong></td><td>offline equilibrium of the pools</td></tr>
-        <tr><td>cSoil (1 m) — dead</td><td>2136 Pg C</td><td><em>SoilGrids initial condition + 2 yr, not equilibrated</em></td></tr>
-        <tr><td>GPP</td><td>135.9 Pg C yr⁻¹</td><td>GOSIF ≈ 120–130</td></tr>
-        <tr><td>NPP = litterfall</td><td>65.1 Pg C yr⁻¹</td><td>equal by construction at equilibrium</td></tr>
-        <tr><td>Rh</td><td>34.0 Pg C yr⁻¹</td><td>below litterfall — the soil is still gaining carbon</td></tr>
+        <tr>
+          <td>cVeg — live</td><td><strong>570 Pg C</strong></td>
+          <td><strong>~450</strong> actual<br><span style="opacity:.75">~800–900 <em>potential</em></span></td>
+          <td>1.27× actual<br><span style="opacity:.75">0.6–0.7× potential</span></td>
+          <td>offline equilibrium; <strong>no land use, fire or harvest</strong>, so the potential row is the fair comparison</td>
+        </tr>
+        <tr>
+          <td>cSoil (1 m) — dead</td><td>2136 Pg C</td>
+          <td>~1500–1600<br><span style="opacity:.75">spread 1400–2400 across datasets</span></td>
+          <td>~1.4×</td>
+          <td><em>SoilGrids initial condition + 2 yr, not equilibrated</em> — this is the input dataset's number, not the model's</td>
+        </tr>
+        <tr>
+          <td>GPP</td><td>135.9 Pg C yr⁻¹</td>
+          <td>~120 (FLUXCOM) – 135 (GOSIF)<br><span style="opacity:.75">full spread 110–150</span></td>
+          <td>1.0–1.13×</td>
+          <td>GOSIF is the calibration target</td>
+        </tr>
+        <tr>
+          <td>NPP = litterfall</td><td>65.1 Pg C yr⁻¹</td>
+          <td>~55–60<br><span style="opacity:.75">syntheses span 50–70</span></td>
+          <td>1.1–1.2×</td>
+          <td>equal by construction at equilibrium</td>
+        </tr>
+        <tr>
+          <td>Rh</td><td>34.0 Pg C yr⁻¹</td>
+          <td>~50–60</td>
+          <td><strong>0.6×</strong></td>
+          <td>below litterfall — the soil is still gaining carbon, so this <em>should</em> be low</td>
+        </tr>
+        <tr>
+          <td>NPP / GPP</td><td>0.48</td>
+          <td>~0.45–0.50</td>
+          <td>in range</td>
+          <td>derived; a stronger check than either flux alone</td>
+        </tr>
+        <tr>
+          <td>τ<sub>veg</sub> = cVeg / litterfall</td><td>8.8 yr</td>
+          <td>~8–12</td>
+          <td>in range</td>
+          <td>derived; tests whether the pools are built the right way, not just to the right size</td>
+        </tr>
       </tbody>
     </table>
     </div>
-    <p class="figsub">The live and dead sides are <strong>not</strong> on the same footing and
-    are deliberately not summed into a headline number. Live carbon is an equilibrium the
-    pools reach; soil carbon is an observational field the model has integrated for two years
-    against a turnover of centuries. Rh sitting at half of litterfall is the visible
-    consequence: the litter the canopy now supplies has not yet been balanced by
-    decomposition.</p>
-
-
+    <p class="figsub"><strong>How to read the cVeg row.</strong> This model has no land use,
+    fire or harvest, so it produces <em>potential</em> vegetation. Comparing it to observed
+    standing biomass (~450 Pg C) is not like-for-like — the honest comparison is against
+    estimates of potential biomass without human land use, which are roughly twice observed.
+    On that basis 570 Pg C is <em>low</em>, not high, which is consistent with the model
+    under-building forest in the temperate zone where clearance has been greatest.</p>
+    <p class="figsub"><strong>Rh is meant to be low.</strong> The soil is not equilibrated —
+    it starts from an observational field and has integrated for two years against a turnover
+    of centuries — so Rh below litterfall is the expected signature of a pool still filling,
+    not a discrepancy with the literature.</p>
+    <p class="figsub" style="border-left:3px solid var(--rule-strong); padding-left:12px">
+    <strong>Provenance of the literature column.</strong> These are recalled consensus ranges,
+    not looked-up citations — this analysis ran without literature access. They are the
+    well-established figures (Beer et al. 2010 for GPP; Jobbágy &amp; Jackson 2000 and Batjes
+    for 1 m soil carbon; Bar-On et al. 2018 and Erb et al. 2018 for biomass; Ito 2011 for NPP),
+    but the numbers here should be checked against the sources before this table is used
+    outside the PR. Ranges are given rather than point values because the underlying spread
+    is genuine, not because of uncertainty about what was published.</p>
 
     <p class="panellab">Model &mdash; equilibrium under recycled pre-industrial forcing</p>
     <div id="fig-map-model"></div>
