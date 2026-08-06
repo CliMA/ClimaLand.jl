@@ -3865,3 +3865,31 @@ of its reference maintenance cost - and so is the decision not to fix it, since
 every candidate change adjusts autotrophic respiration.
 
 **Publishing 11/27 was computing the right statistic over the wrong population.**
+
+## Iteration 185 — full audit of the acceptance criteria
+
+Every `DONE WHEN` in the loop prompt, checked against its own wording rather than
+from memory.
+
+| stage | criterion | status |
+|---|---|---|
+| 0 | battery green on unmodified code; baseline GPP/LAI/Ra/Rh recorded | **met** (now 30 sites) |
+| 1 | tests pass; battery completes; carbon-conservation test passes; GPP and LAI unchanged from baseline | **met** — rule 1 30/30, difference exactly 0.0 |
+| 2a | NPP/GPP in 0.3–0.6 at forest and grassland sites | **NOT met** — 9/13; three boreal forests plus central Europe sit at 0.62–0.65 |
+| 2b | Ra neither collapses to zero nor exceeds GPP at any site | **met** — no violations at any site |
+| 3a | soil C conservation test passes; SOC drifts slowly | **met** — worst drift 4.1% over 2 years (cerrado), nothing collapsing or exploding |
+| 3b | Rh within a factor of ~2 of the stage-0 baseline at every site | **met** — 29/29 inside, none outside |
+| 4a | offline integrator reproduces coupled pools to within a few percent at every site | **met where the test is valid** — 19/19 where seed and run share a climate; the 5 exceptions are a forcing mismatch, quantified |
+| 4b | global equilibrium pools finite and non-negative everywhere over land | **met** — 22 420 land cells, all finite, no negatives, C_stem 0–39.8 kg C m-2 |
+| 5 | global biomass in the right ballpark and the pattern defensible, or say precisely which term is wrong | **met** — bias 0.97, RMSE 3.48, r 0.603; the residual is localised to a wet minority of treeless cells and attributed to absent disturbance |
+
+**One criterion of nine is not met**, and it is stated as such rather than
+softened: NPP/GPP is too high in boreal forest, because the Q10 factor leaves a
+cold column respiring 9-14% of its reference maintenance cost. The fix touches
+autotrophic respiration - the one sanctioned exception to rule 1 - so it is the
+maintainer's call.
+
+Three of these had never been tested at all before this audit: 2b (the Ra
+bounds), 3b (Rh against baseline), and 4b (finiteness over land). All three pass,
+but "passes" and "never checked" are different states and were being reported as
+the same one.
