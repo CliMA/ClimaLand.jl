@@ -3893,3 +3893,48 @@ Three of these had never been tested at all before this audit: 2b (the Ra
 bounds), 3b (Rh against baseline), and 4b (finiteness over land). All three pass,
 but "passes" and "never checked" are different states and were being reported as
 the same one.
+
+## Iteration 190 — what would actually fix the boreal NPP/GPP, with numbers
+
+The one unmet criterion was flagged without a magnitude, which leaves the
+maintainer to redo the arithmetic. Ra splits as `Rm + Rg`, with only `Rm`
+carrying the Q10 factor and `Rg = (1-a)S` independent of temperature, so the
+required change can be solved for directly.
+
+To put each failing site exactly at NPP/GPP = 0.60:
+
+| site | T_annual (K) | Rm/Ra | Q10 needed | or T_ref needed (K) |
+|---|---|---|---|---|
+| canada_boreal | 275.0 | 0.31 | 1.88 | 296.1 |
+| central_europe | 284.6 | 0.23 | 1.53 | 292.9 |
+| central_siberia | 269.3 | 0.12 | 1.50 | 286.1 |
+| fennoscandia | 277.3 | 0.13 | 1.42 | 287.8 |
+
+**`Q10 ≈ 1.4` brings all four inside**, against the current 2.0. Published Q10 for
+plant respiration is usually quoted at 1.5-2.5, so 1.4 sits just below the usual
+range - close enough to be arguable, far enough to be worth saying out loud.
+
+### The more interesting number is `Rm/Ra`
+
+At these sites maintenance respiration is only **12-31% of total Ra** - growth
+respiration dominates. That has two consequences:
+
+1. **Q10 has weak leverage here.** Because `Rm` is a small share, scaling it must
+   be large to move `Ra` much: fennoscandia needs `Rm` roughly doubled to gain
+   0.047 in NPP/GPP.
+2. **The alternative lever is construction efficiency.** `Rg = (1-a)S` with
+   `a = 0.7`, so growth respiration is 30% of allocation. Lowering `a` raises
+   `Ra` at *every* site, including the tropics, which are currently fine at
+   0.44-0.47 and would fall toward 0.35-0.40.
+
+Since only cold sites fail and warm sites are correct, the **temperature-dependent**
+lever is the structurally right one - a uniform change to `a` would fix the
+boreal by degrading everywhere else. That is an argument from the shape of the
+error rather than from either parameter's literature range.
+
+### Still not changed
+
+Both levers move autotrophic respiration, which is the single sanctioned
+exception to rule 1 and therefore the one flux this project holds fixed by
+choice. The numbers are here so the decision can be made on them; the decision
+is not mine.
