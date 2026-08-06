@@ -1027,28 +1027,29 @@ function update_surf_temp!(
     gustiness = SurfaceFluxes.ConstantGustinessSpec(bc.atmos.gustiness)
 
     #get surf_temp values, even if they are > T_freeze:
-    p.snow.T_sfc .= solve_for_surface_temp_at_a_point.(
-        p.snow.T_sfc,
-        p.snow.T,
-        p.snow.z_snow,
-        p.snow.κ,
-        p.snow.ρ_snow,
-        model.parameters.ϵ_snow,
-        SW_net, #passing radiation as args allows different radiation situations, i.e. open ground vs canopy-shielded
-        LW_d, #passing radiation as args enables different radiation situations, i.e. open ground vs canopy-shielded
-        p.snow.q_l,
-        h_sfc,
-        displ,
-        p.drivers.P,
-        p.drivers.T,
-        p.drivers.q,
-        p.drivers.u,
-        roughness_model,
-        bc.atmos.h,
-        gustiness,
-        model.parameters.earth_param_set,
-        surf_temp,
-    )
+    p.snow.T_sfc .=
+        solve_for_surface_temp_at_a_point.(
+            (max.(p.drivers.T, _T_freeze) .+ p.snow.T) ./ 2, # initial guess
+            p.snow.T,
+            p.snow.z_snow,
+            p.snow.κ,
+            p.snow.ρ_snow,
+            model.parameters.ϵ_snow,
+            SW_net, #passing radiation as args allows different radiation situations, i.e. open ground vs canopy-shielded
+            LW_d, #passing radiation as args enables different radiation situations, i.e. open ground vs canopy-shielded
+            p.snow.q_l,
+            h_sfc,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
+            p.drivers.u,
+            roughness_model,
+            bc.atmos.h,
+            gustiness,
+            model.parameters.earth_param_set,
+            surf_temp,
+        )
 
     #set residual flux using values if T_sfc > T_freeze:
     p.snow.surf_residual_flux .= surface_residual_flux.(

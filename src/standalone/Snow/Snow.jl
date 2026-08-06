@@ -21,7 +21,6 @@ import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
     make_update_boundary_fluxes,
-    make_set_initial_cache,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -850,19 +849,6 @@ surf_temp_auxiliary_domain_names(m::EquilibriumGradientTemperatureModel) =
     (:surface,)
 
 ClimaLand.name(::SnowModel) = :snow
-
-function ClimaLand.make_set_initial_cache(model::SnowModel)
-    drivers = get_drivers(model)
-    update_drivers! = make_update_drivers(drivers)
-    update_cache! = make_update_cache(model)
-    function set_initial_cache!(p, Y0, t0)
-        update_drivers!(p, t0)
-        p.snow.T_sfc .= p.drivers.T # set initial guess for root find. This is only used by Equilibrium Gradient
-        # but it is so cheap and done only once that we do it all the time.
-        update_cache!(p, Y0, t0)
-    end
-    return set_initial_cache!
-end
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     NVTX.@annotate function update_aux!(p, Y, t)
