@@ -79,15 +79,28 @@ mkpath(root_path)
 # behaviour now being unconditional.
 override_specs = (
     ("optimal_lai_z", get(ENV, "OPT_Z", "")),
-    ("optimal_lai_z_c4", get(ENV, "OPT_Z_C4", "")),
     ("optimal_lai_sigma", get(ENV, "OPT_SIGMA", "")),
-    ("optimal_lai_sigma_c4", get(ENV, "OPT_SIGMA_C4", "")),
     ("optimal_lai_alpha", get(ENV, "OPT_ALPHA", "")),
-    ("optimal_lai_f0", get(ENV, "F0", "")),
-    ("optimal_lai_z_a0", get(ENV, "Z_A0", "")),
     ("optimal_lai_online_c3c4", get(ENV, "ONLINE_C3C4", "")),
 )
 active_overrides = filter(s -> !isempty(s[2]), collect(override_specs))
+# Four override targets used to live here — optimal_lai_z_c4, _sigma_c4, _f0 and
+# _z_a0 — and none of them is a parameter any more: the C3/C4 LAI split and the
+# A0-mapped leaf cost were both removed. Setting them wrote a key nothing reads,
+# which is a silently ignored override, and a silently ignored override makes a
+# sweep look like it worked. Overriding a name that no longer exists is now an
+# error rather than a no-op.
+for (envname, gone) in (
+    ("OPT_Z_C4", "optimal_lai_z_c4"),
+    ("OPT_SIGMA_C4", "optimal_lai_sigma_c4"),
+    ("F0", "optimal_lai_f0"),
+    ("Z_A0", "optimal_lai_z_a0"),
+)
+    isempty(get(ENV, envname, "")) || error(
+        "$(envname) sets $(gone), which was removed from this branch; the \
+         override would be written and never read",
+    )
+end
 override_files = String[]
 if !isempty(active_overrides)
     override_path = joinpath(root_path, "override_params.toml")

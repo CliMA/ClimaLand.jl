@@ -52,9 +52,7 @@ POOL_INIT_SUGAR="${POOL_INIT_SUGAR:-}"; POOL_INIT_LEAF="${POOL_INIT_LEAF:-}"
 POOL_INIT_STEM="${POOL_INIT_STEM:-}"; POOL_INIT_ROOT="${POOL_INIT_ROOT:-}"
 POOL_INIT_DEFICIT="${POOL_INIT_DEFICIT:-}"
 # Parameter overrides; empty = branch default (see site_driver.jl).
-OPT_Z="${OPT_Z:-}"; OPT_Z_C4="${OPT_Z_C4:-}"
-OPT_SIGMA="${OPT_SIGMA:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
-OPT_ALPHA="${OPT_ALPHA:-}"; F0="${F0:-}"; Z_A0="${Z_A0:-}"
+OPT_Z="${OPT_Z:-}"; OPT_SIGMA="${OPT_SIGMA:-}"; OPT_ALPHA="${OPT_ALPHA:-}"
 ONLINE_C3C4="${ONLINE_C3C4:-}"
 
 # NPAR sites run concurrently. Capped to the allocated ncpus (NOT nproc, which
@@ -98,9 +96,8 @@ run_site() {
         POOL_INIT_STEM="$POOL_INIT_STEM" POOL_INIT_ROOT="$POOL_INIT_ROOT" \
         POOL_INIT_DEFICIT="$POOL_INIT_DEFICIT" \
         SPINUP_YEARS="$SPINUP_YEARS" \
-        OPT_Z="$OPT_Z" OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA="$OPT_SIGMA" \
-        OPT_SIGMA_C4="$OPT_SIGMA_C4" OPT_ALPHA="$OPT_ALPHA" F0="$F0" \
-        Z_A0="$Z_A0" ONLINE_C3C4="$ONLINE_C3C4" \
+        OPT_Z="$OPT_Z" OPT_SIGMA="$OPT_SIGMA" OPT_ALPHA="$OPT_ALPHA" \
+        ONLINE_C3C4="$ONLINE_C3C4" \
         "$JULIA" --project="$REPO/.buildkite" "$DRIVER" \
         >"$SITEDIR/$name.log" 2>&1; then
         echo "SITE_OK $name"; echo PASS >"$SITEDIR/.status"
