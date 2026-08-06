@@ -1,0 +1,57 @@
+#!/bin/bash
+#PBS -N calib_fluxnet
+#PBS -A UCIT0011
+#PBS -q main
+#PBS -l walltime=02:00:00
+#PBS -l select=1:ncpus=2:mem=16GB
+#PBS -j oe
+#PBS -o experiments/integrated/generic_site/calibration_out/pbs_^array_index^.out
+# Set -J at submit time so it matches the actual site count, e.g.
+#   qsub -J 0-199 experiments/integrated/generic_site/calibrate_all_fluxnet.pbs
+# PBSPro caps concurrent array tasks via queue limits — tune via
+# `qsub -W max_running=50 ...` or your project's fair-share rules.
+#
+# One array task = one fluxnet site = one full TransformUnscented calibration
+# using ClimaCalibrate.JuliaBackend. Forward models run serially inside each
+# task — no MPI, no GPU.
+#
+# Usage on Derecho:
+#   module load climacommon/2025_02_25
+#   # Generate the site list once on the login node:
+#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl experiments/integrated/generic_site/calibration_out/site_ids.txt
+#   N=$(wc -l < experiments/integrated/generic_site/calibration_out/site_ids.txt)
+#   qsub -J 0-$((N-1)) -v CALIBRATION_CONFIG=er.jl \
+#       experiments/integrated/generic_site/calibrate_all_fluxnet.pbs
+
+set -euo pipefail
+
+cd "$PBS_O_WORKDIR"
+
+SITE_LIST="experiments/integrated/generic_site/calibration_out/site_ids.txt"
+
+if [[ ! -s "$SITE_LIST" ]]; then
+    echo "Site list $SITE_LIST is missing or empty. Generate it first with:"
+    echo "  julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl > $SITE_LIST"
+    exit 1
+fi
+
+# PBS arrays are 0-based; sed wants 1-based line numbers.
+LINE_NO=$((PBS_ARRAY_INDEX + 1))
+SITE_ID=$(sed -n "${LINE_NO}p" "$SITE_LIST")
+
+if [[ -z "$SITE_ID" ]]; then
+    echo "No site ID at line $LINE_NO of $SITE_LIST"
+    exit 1
+fi
+
+echo "Array task $PBS_ARRAY_INDEX -> site $SITE_ID"
+
+# HDF5 file locking is incompatible with Lustre/GPFS on Derecho.
+export HDF5_USE_FILE_LOCKING=FALSE
+
+export SITE_ID
+export N_ITERS="${N_ITERS:-5}"
+export LOCAL="false"
+
+julia --color=yes --project=.buildkite \
+    experiments/integrated/generic_site/calibrate_site.jl
