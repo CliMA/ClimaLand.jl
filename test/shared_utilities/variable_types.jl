@@ -133,7 +133,9 @@ end
     @test Array(parent(Y.foo.a)) == zeros(FT, 1)
     @test Array(parent(Y.foo.b)) == zeros(FT, 2)
     @test Array(parent(p.foo.d)) == zeros(FT, 1)
-    @test Array(parent(p.foo.e)) == zeros(FT, 5, 2)
+    @test eltype(p.foo.e) == SVector{2, FT}
+    @test ClimaCore.Spaces.nlevels(axes(p.foo.e)) == 5
+    @test all(iszero, Array(parent(p.foo.e)))
     @testset "Boundary variables default, FT = $FT" begin
         struct BC <: ClimaLand.AbstractBC end
         bc = BC()

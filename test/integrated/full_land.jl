@@ -281,17 +281,16 @@ function check_ocean_values_Y(Y, binary_mask; val = 0.0)
     @test extrema(
         Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
     ) == (val, val)
-    @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
+    @test extrema(vec(Array(parent(Y.snow.U)))[Array(binary_mask)]) ==
           (val, val)
-    @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
+    @test extrema(vec(Array(parent(Y.snow.S)))[Array(binary_mask)]) ==
           (val, val)
-    @test extrema(Array(parent(Y.snow.S_l))[1, 1, 1, Array(binary_mask)]) ==
+    @test extrema(vec(Array(parent(Y.snow.S_l)))[Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(vec(Array(parent(Y.canopy.energy.T)))[Array(binary_mask)]) ==
           (val, val)
     @test extrema(
-        Array(parent(Y.canopy.energy.T))[1, 1, 1, Array(binary_mask)],
-    ) == (val, val)
-    @test extrema(
-        Array(parent(Y.canopy.hydraulics.ϑ_l))[1, 1, 1, Array(binary_mask)],
+        vec(Array(parent(Y.canopy.hydraulics.ϑ_l)))[Array(binary_mask)],
     ) == (val, val)
 end
 
@@ -353,7 +352,7 @@ land = LandModel{FT}(
     soil = land.soil
     evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
     binary_mask = parent(soil.domain.space.surface.grid.mask.is_active)[:]
-    T_bounds = extrema(parent(p.drivers.T)[1, 1, 1, Array(binary_mask)])
+    T_bounds = extrema(vec(parent(p.drivers.T))[Array(binary_mask)])
 
     @test all(
         parent(Y.soil.ϑ_l .- soil.parameters.θ_r)[
@@ -415,12 +414,12 @@ end
     )
     @test all(parent(Y.soil.θ_i)[:, 1, 1, 1, Array(binary_mask)] .≈ 0)
     @test all(
-        parent(Y.canopy.hydraulics.ϑ_l)[1, 1, 1, Array(binary_mask)] .-
+        vec(parent(Y.canopy.hydraulics.ϑ_l))[Array(binary_mask)] .-
         land.canopy.hydraulics.parameters.ν .≈ 0,
     )
-    @test all(parent(Y.snow.U)[1, 1, 1, Array(binary_mask)] .≈ 0)
-    @test all(parent(Y.snow.S)[1, 1, 1, Array(binary_mask)] .≈ 0)
-    @test all(parent(Y.snow.S_l)[1, 1, 1, Array(binary_mask)] .≈ 0)
+    @test all(vec(parent(Y.snow.U))[Array(binary_mask)] .≈ 0)
+    @test all(vec(parent(Y.snow.S))[Array(binary_mask)] .≈ 0)
+    @test all(vec(parent(Y.snow.S_l))[Array(binary_mask)] .≈ 0)
     @test all(
         parent(Y.soilco2.CO2)[:, 1, 1, 1, Array(binary_mask)] .- FT(6e-5) .≈ 0,
     )
@@ -499,12 +498,12 @@ end
     expected = ClimaCore.Fields.zeros(domain.space.surface)
     @. expected = snow_exp + canopy_exp + soil_exp
     @test all(
-        Array(parent(total_water))[1, 1, 1, continents] .≈
-        Array(parent(expected))[1, 1, 1, continents],
+        vec(Array(parent(total_water)))[continents] .≈
+        vec(Array(parent(expected)))[continents],
     )
     @test all(
-        Array(parent(total_water))[1, 1, 1, oceans] .≈
-        Array(parent(expected))[1, 1, 1, oceans],
+        vec(Array(parent(total_water)))[oceans] .≈
+        vec(Array(parent(expected)))[oceans],
     )
 
     int_cache .*= 0
@@ -517,12 +516,12 @@ end
     ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
     @. expected = snow_exp + canopy_exp + soil_exp
     @test all(
-        Array(parent(total_energy))[1, 1, 1, continents] .≈
-        Array(parent(expected))[1, 1, 1, continents],
+        vec(Array(parent(total_energy)))[continents] .≈
+        vec(Array(parent(expected)))[continents],
     )
     @test all(
-        Array(parent(total_energy))[1, 1, 1, oceans] .≈
-        Array(parent(expected))[1, 1, 1, oceans],
+        vec(Array(parent(total_energy)))[oceans] .≈
+        vec(Array(parent(expected)))[oceans],
     )
 end
 
@@ -626,9 +625,8 @@ end
     ) == (0.0, 0.0)
 
     ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
-    @test extrema(
-        Array(parent(∂Tres∂T.entries.:1))[1, 1, 1, Array(binary_mask)],
-    ) == (0.0, 0.0)
+    @test extrema(vec(Array(parent(∂Tres∂T.entries.:1)))[Array(binary_mask)]) ==
+          (0.0, 0.0)
 
 
     # Now carry out a solve of Jx = b, with x = Y, and b = 1
