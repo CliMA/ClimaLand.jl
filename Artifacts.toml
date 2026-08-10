@@ -171,6 +171,13 @@ git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
     sha256 = "f05b4c01b57afe9c0f59095b39cea1c0cf46b20deecd5c7afb44f474d9cd9966"
     url = "https://caltech.box.com/shared/static/otrr2y0rgjct7hqhmq214nb8qjsvqj5p.gz"
 
+# fluxnet2015: full FLUXNET2015 dataset (200+ sites + metadata). HPC-only —
+# no download URL because the bundle is too large to ship. On machines where
+# the artifact is not available, ClimaLand.Artifacts.experiment_fluxnet_data_path
+# falls back to fluxnet_sites for the 4 US- sites bundled there.
+[fluxnet2015]
+git-tree-sha1 = "94d6eb8e3bc5fc361a43597ab4fb6941bdbe2850"
+
 [topmodel]
 git-tree-sha1 = "10855ff977cc948a92c7a83915895d27650649a1"
 

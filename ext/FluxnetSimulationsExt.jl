@@ -11,6 +11,7 @@ using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Canopy
+import ClimaDiagnostics
 export prescribed_forcing_fluxnet,
     make_set_fluxnet_initial_conditions,
     get_comparison_data,
@@ -18,17 +19,23 @@ export prescribed_forcing_fluxnet,
     get_data_dt,
     replace_hyphen,
     get_parameters,
-    get_domain_info
-
-# Include site-specific configurations, as well as the default generic site.
-include("fluxnet_simulations/generic_site.jl")
-include("fluxnet_simulations/US-MOz.jl")
-include("fluxnet_simulations/US-Ha1.jl")
-include("fluxnet_simulations/US-NR1.jl")
-include("fluxnet_simulations/US-Var.jl")
+    get_domain_info,
+    generic_site_simulation,
+    get_site_info,
+    get_canopy_height
 
 # Include the data processing, forcing, and initial conditions utilities.
 include("fluxnet_simulations/data_processing.jl")
 include("fluxnet_simulations/forcing.jl")
 include("fluxnet_simulations/initial_conditions.jl")
+
+# Generic-site driver and FLUXNET2015 metadata helpers.
+include("fluxnet_simulations/get_fluxnet_metadata.jl")
+include("fluxnet_simulations/generic_site.jl")
+
+# Include site-specific configurations (hardcoded coordinates/parameters).
+include("fluxnet_simulations/US-MOz.jl")
+include("fluxnet_simulations/US-Ha1.jl")
+include("fluxnet_simulations/US-NR1.jl")
+include("fluxnet_simulations/US-Var.jl")
 end # module FluxnetSimulationsExt

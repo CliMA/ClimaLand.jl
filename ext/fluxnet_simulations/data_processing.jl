@@ -8,6 +8,15 @@ data. Returns true if x == -9999.
 var_missing(x; val = -9999) = x == val
 
 """
+    all_missing(v; val = -9999)
+
+True iff every entry of `v` equals the missing-data sentinel `val`. Used to
+detect FLUXNET CSV columns that are entirely unobserved at a given site —
+in which case callers must fall back rather than try to read a value.
+"""
+all_missing(v; val = -9999) = all(==(val), v)
+
+"""
     hour_offset_to_period(hour_offset_from_UTC)
 
 Convert a numerical hour offset (which may be fractional) to a
@@ -151,8 +160,13 @@ function get_data_at_start_date(
     Δ_date::Vector;
     preprocess_func = identity,
     val = -9999,
+    varname::AbstractString = "<unknown>",
 )
     Δ_date, v = mask_data(Δ_date, v; val)
+    isempty(Δ_date) && error(
+        "FLUXNET column `$(varname)` has no non-missing values; cannot read \
+         an initial condition. Caller should provide a fallback.",
+    )
     idx_start = argmin(abs.(Δ_date))
     return preprocess_func(v[idx_start])
 end
