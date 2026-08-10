@@ -90,9 +90,10 @@ end
 
     # check that vG params are not all the same
     for p in vg_params
-        # this gives a nelements x (n) matrix
+        # the first axis of `parent(p)` is the vertical; compare each level
+        # against the first
         vals = parent(p)
-        @test size(vals, 1) > 1 && any(vals .!= @view vals[1:1, :])
+        @test size(vals, 1) > 1 && any(vals .!= selectdim(vals, 1, 1:1))
     end
 end
 
