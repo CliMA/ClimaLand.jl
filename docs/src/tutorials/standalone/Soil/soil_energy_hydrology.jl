@@ -260,10 +260,10 @@ simulation = LandSimulation(
 sol = solve!(simulation);
 
 # Extract output
-z = parent(soil.domain.fields.z)
-t = parent(FT.(sol.t))
-ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
-T = [parent(saved_values.saveval[k].soil.T) for k in 1:length(t)];
+z = vec(parent(soil.domain.fields.z))
+t = vec(parent(FT.(sol.t)))
+ϑ_l = [vec(parent(sol.u[k].soil.ϑ_l)) for k in 1:length(t)]
+T = [vec(parent(saved_values.saveval[k].soil.T)) for k in 1:length(t)];
 # Let's look at the initial and final times:
 plot(
     ϑ_l[1],
