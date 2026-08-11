@@ -130,8 +130,10 @@ simulation = LandSimulation(
 );
 sol = solve!(simulation);
 
-z = parent(ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z)
-ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(sol.t)]
+z = vec(
+    parent(ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z),
+)
+ϑ_l = [vec(parent(sol.u[k].soil.ϑ_l)) for k in 1:length(sol.t)]
 plot(ϑ_l[1], z, label = "initial", color = "grey", aspect_ratio = 0.8)
 plot!(ϑ_l[2], z, label = "8min", color = "orange")
 plot!(ϑ_l[3], z, label = "16min", color = "red")

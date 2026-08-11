@@ -206,8 +206,8 @@ sol = solve!(simulation);
 # at the beginning (yielding an interface location of `z≈-0.56m`).
 
 t = FT.(sol.t) ./ (60 * 60 * 24);
-ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
-z = parent(soil.domain.fields.z)
+ϑ_l = [vec(parent(sol.u[k].soil.ϑ_l)) for k in 1:length(t)]
+z = vec(parent(soil.domain.fields.z))
 plot(
     ϑ_l[1],
     z,
