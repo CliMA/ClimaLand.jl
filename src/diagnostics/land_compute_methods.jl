@@ -54,6 +54,8 @@ end
 
 get_canopy(m::Union{SoilCanopyModel, LandModel}) = m.canopy
 get_canopy(m::CanopyModel) = m
+get_snow(m::Union{SoilSnowModel, LandModel}) = m.snow
+get_snow(m::SnowModel) = m
 
 get_soil(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) = m.soil
 get_soil(m::EnergyHydrology) = m
@@ -741,6 +743,58 @@ function compute_soil_fsat!(
     return out
 end
 
+function compute_infiltration_excess!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    prognostic_land_components = soil.boundary_conditions.top.prognostic_land_components
+    i_c = Runoff.soil_infiltration_capacity(soil, Y, p) # does not allocate but uses a scratch variable p.soil.subsfc_scratch
+    input = Soil.compute_liquid_influx(p, soil, prognostic_land_components) # lazy operation
+    fsat = Runoff.get_soil_fsat(
+        soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+        soil.domain.fields.depth,
+    ) # lazy
+    # max((Input -i_c)*(1-fsat), 0)
+    out .= max(abs(input - i_c) * (1-fsat), 0)
+    return out
+end
+
+
+function compute_saturation_excess!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    prognostic_land_components = soil.boundary_conditions.top.prognostic_land_components
+    input = Soil.compute_liquid_influx(p, soil, prognostic_land_components) # lazy operation
+    fsat = Runoff.get_soil_fsat(
+        soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+        soil.domain.fields.depth,
+    ) # lazy
+    # max((Input -i_c)*(1-f_sat), 0)
+    out .= fsat*abs(input)
+    return out
+end
+
 function compute_surface_runoff!(
     out,
     Y,
@@ -1121,6 +1175,26 @@ end
 @diagnostic_compute "snow_bot_temp" LandModel p.snow_T_bot
 @diagnostic_compute "snowk" LandModel p.snow.κ
 @diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
+function compute_snow_melt_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{LandModel{FT}, SoilSnowModel{FT}, SnowModel{FT}},
+    ) where {FT}
+    snow = get_snow(land_model)
+    if isnothing(out)
+        out = zeros(snow.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.snow.water_runoff * p.snow.snow_cover_fraction
+        return out
+
+    else
+        out .= p.snow.water_runoff * p.snow.snow_cover_fraction
+
+    end
+end
+
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 

@@ -93,9 +93,14 @@ diagnostics = ClimaLand.default_diagnostics(
         "lwu",
         "sr",
         "ssr",
-        "precip",
+        "rain",
         "et",
         "lai",
+        "satex",
+        "infex",
+        "sfsat",
+        "infc",
+        "snowm"
     ],
 );
 simulation =
@@ -112,7 +117,7 @@ ClimaLand.Simulations.solve!(simulation);
 LandSimVis.make_timeseries(
     simulation;
     savedir = root_path,
-    short_names = ["lai"],
+    short_names = ["lai", "satex", "infex", "sfsat", "infc", "rain", "snowm"],
 )
 LandSimVis.make_leaderboard_plots(
     model,

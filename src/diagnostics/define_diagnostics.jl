@@ -751,6 +751,28 @@ function define_diagnostics!(land_model, possible_diags)
             compute_bottom_water_flux!(out, Y, p, t, land_model),
     )
 
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "infex",
+        long_name = "Infiltration Excess",
+        standard_name = "Infiltration Excess",
+        units = "m s^-1",
+        comments = "The flux of liquid water volume due to infiltration excess; a contributor to surface runoff",
+        compute! = (out, Y, p, t) ->
+            compute_infiltration_excess!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "satex",
+        long_name = "Saturation Excess",
+        standard_name = "Saturation Excess",
+        units = "m s^-1",
+        comments = "The flux of liquid water volume due to saturation excess; a contributor to surface runoff",
+        compute! = (out, Y, p, t) ->
+            compute_saturation_excess!(out, Y, p, t, land_model),
+    )
+
     # Soil albedo
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -1110,6 +1132,17 @@ function define_diagnostics!(land_model, possible_diags)
         comments = "The height of liquid water if all snow melted",
         compute! = (out, Y, p, t) ->
             compute_snow_water_equivalent!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowm",
+        long_name = "Snow melt flux",
+        standard_name = "snow_melt_flux_per_grid_area",
+        units = "m/s",
+        comments = "The volume flux of water due to snowmelt",
+        compute! = (out, Y, p, t) ->
+            compute_snow_melt_flux!(out, Y, p, t, land_model),
     )
 
     # Snow depth
