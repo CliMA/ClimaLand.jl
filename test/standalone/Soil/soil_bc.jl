@@ -167,25 +167,24 @@ for FT in (Float32, Float64)
         T_bc = FT(298)
         T_c = FT(290)
 
-        κ_c =
-            thermal_conductivity.(
-                parameters.κ_dry,
-                kersten_number.(
-                    θ_i,
-                    relative_saturation.(ϑ_c, θ_i, ν),
-                    parameters.α,
-                    parameters.β,
-                    ν_ss_om,
-                    ν_ss_quartz,
-                    ν_ss_gravel,
-                ),
-                κ_sat.(
-                    ϑ_c,
-                    θ_i,
-                    parameters.κ_sat_unfrozen,
-                    parameters.κ_sat_frozen,
-                ),
-            )
+        κ_c = thermal_conductivity.(
+            parameters.κ_dry,
+            kersten_number.(
+                θ_i,
+                relative_saturation.(ϑ_c, θ_i, ν),
+                parameters.α,
+                parameters.β,
+                ν_ss_om,
+                ν_ss_quartz,
+                ν_ss_gravel,
+            ),
+            κ_sat.(
+                ϑ_c,
+                θ_i,
+                parameters.κ_sat_unfrozen,
+                parameters.κ_sat_frozen,
+            ),
+        )
 
         flux_int = diffusive_flux(κ_c, T_bc, T_c, Δz)
         flux_expected = -κ_c * (T_bc - T_c) / Δz
@@ -243,20 +242,18 @@ for FT in (Float32, Float64)
         Y.soil.ϑ_l .= ν / 2
         Y.soil.θ_i .= 0
         T = coords.subsurface.z .* 10 .+ FT(290.0)
-        ρc_s =
-            Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                parameters.ρc_ds,
-                parameters.earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                T,
-                parameters.earth_param_set,
-            )
+        ρc_s = Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            parameters.ρc_ds,
+            parameters.earth_param_set,
+        )
+        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            parameters.earth_param_set,
+        )
         set_initial_cache! = ClimaLand.make_set_initial_cache(soil)
         set_initial_cache!(p, Y, 0.0)
         flux_expected_water = -1 .* ClimaCore.Fields.level(p.soil.K, 1)

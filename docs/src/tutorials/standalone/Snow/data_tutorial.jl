@@ -103,8 +103,7 @@ scales = Dict{Symbol, Real}(
 good_stations = Dict{Int, Tuple{String, String}}(
     #306 => ("start", "end"), #*
     316 => ("start", "end"),
-    344 => ("start", "end"),
-    #=367 => ("start", "end"),
+    344 => ("start", "end"), #=367 => ("start", "end"),
     395 => ("start", "end"),
     457 => ("start", "end"),
     482 => ("start", "end"),

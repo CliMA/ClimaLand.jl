@@ -589,17 +589,16 @@ function update_dzdt!(dzdt, density::NeuralDepthModel, model, Y, p)
     Δt; an EMA gives beneficial weighting to immediate values while only requiring
     storage of a single additional field.
     =#
-    dzdt .=
-        eval_z_nn.(
-            Ref(density.z_model),
-            Y.snow.Z,
-            Y.snow.S,
-            Y.snow.P_avg,
-            Y.snow.T_avg,
-            Y.snow.R_avg,
-            Y.snow.Qrel_avg,
-            Y.snow.u_avg,
-        )
+    dzdt .= eval_z_nn.(
+        Ref(density.z_model),
+        Y.snow.Z,
+        Y.snow.S,
+        Y.snow.P_avg,
+        Y.snow.T_avg,
+        Y.snow.R_avg,
+        Y.snow.Qrel_avg,
+        Y.snow.u_avg,
+    )
 end
 
 """
@@ -610,21 +609,20 @@ albedo paramterization.
 """
 function update_dαdt!(dαdt, albedo::NeuralAlbedoModel, model, Y, p, t)
     start_date = model.boundary_conditions.radiation.start_date
-    dαdt .=
-        reset_alb_tendency.(
-            Y.snow.S,
+    dαdt .= reset_alb_tendency.(
+        Y.snow.S,
+        abs.(p.drivers.P_snow),
+        albedo.new_alb.no_snowpack_S,
+        albedo.new_alb.reset_limit,
+        albedo_reset_rate(albedo.new_alb, model.parameters.Δt, Y, p),
+        eval_alb_nn.(
+            Ref(albedo.alb_model),
+            Y.snow.A,
             abs.(p.drivers.P_snow),
-            albedo.new_alb.no_snowpack_S,
-            albedo.new_alb.reset_limit,
-            albedo_reset_rate(albedo.new_alb, model.parameters.Δt, Y, p),
-            eval_alb_nn.(
-                Ref(albedo.alb_model),
-                Y.snow.A,
-                abs.(p.drivers.P_snow),
-                albedo.za_solarnoon(t, start_date),
-                p.drivers.T .- model.parameters.earth_param_set.T_freeze,
-            ),
-        )
+            albedo.za_solarnoon(t, start_date),
+            p.drivers.T .- model.parameters.earth_param_set.T_freeze,
+        ),
+    )
 end
 
 """
@@ -690,17 +688,16 @@ function ClimaLand.Snow.compute_extra_prog_tendency!(
         Y.snow.T_avg,
     )
     @. dY.snow.R_avg = ema_tendency(density.w, p.drivers.SW_d, Y.snow.R_avg)
-    dY.snow.Qrel_avg .=
-        ema_tendency.(
-            density.w,
-            Thermodynamics.relative_humidity.(
-                model.boundary_conditions.atmos.thermo_params,
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            Y.snow.Qrel_avg,
-        )
+    dY.snow.Qrel_avg .= ema_tendency.(
+        density.w,
+        Thermodynamics.relative_humidity.(
+            model.boundary_conditions.atmos.thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        ),
+        Y.snow.Qrel_avg,
+    )
     @. dY.snow.u_avg = ema_tendency(density.w, p.drivers.u, Y.snow.u_avg)
 end
 

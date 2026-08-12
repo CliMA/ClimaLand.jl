@@ -187,8 +187,7 @@ end
         (model.parameters.ν .- model.parameters.θ_r),
     )
     @test scratch == p.soil.h∇
-    @test p.soil.R_ss ==
-          Runoff.topmodel_ss_flux.(
+    @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
         runoff_model.subsurface_source.R_sb,
         runoff_model.f_over,
         model.domain.depth .- p.soil.h∇,
@@ -247,20 +246,18 @@ end
     Y.soil.ϑ_l .= FT(0.6) .- FT(0.3 / 50) .* (z .+ FT(50))
     Y.soil.θ_i .= FT(0)
     T = FT(273.17)
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            model.parameters.ρc_ds,
-            model.parameters.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        ClimaLand.Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            model.parameters.earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        model.parameters.ρc_ds,
+        model.parameters.earth_param_set,
+    )
+    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T,
+        model.parameters.earth_param_set,
+    )
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
     surface_space = domain.space.surface
@@ -273,8 +270,7 @@ end
         (model.parameters.ν .- model.parameters.θ_r),
     )
     @test scratch == p.soil.h∇
-    @test p.soil.R_ss ==
-          Runoff.topmodel_ss_flux.(
+    @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
         runoff_model.subsurface_source.R_sb,
         runoff_model.f_over,
         model.domain.depth .- p.soil.h∇,
@@ -377,8 +373,7 @@ end
     set_initial_cache!(p, Y, FT(0))
     ic = Runoff.soil_infiltration_capacity(model, Y, p)
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
-    @test p.soil.infiltration ==
-          Runoff.surface_infiltration.(
+    @test p.soil.infiltration == Runoff.surface_infiltration.(
         ic,
         precip_field,
         ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated),

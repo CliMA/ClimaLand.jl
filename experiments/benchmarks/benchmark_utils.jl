@@ -193,7 +193,7 @@ function run_timing_benchmarks(
     timings_s = Float64[]
     @info "Running benchmarks"
     while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
-        length(timings_s) < MAX_PROFILING_SAMPLES
+          length(timings_s) < MAX_PROFILING_SAMPLES
         GC.gc()
         simulation = setup_simulation()
         # step once for closures that may recompile

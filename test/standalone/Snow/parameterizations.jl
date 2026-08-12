@@ -117,21 +117,19 @@ for FT in (Float32, Float64)
         T = snow_bulk_temperature(U, FT(1), FT(0.5), parameters.ΔS, param_set)
         @test T ≈ _T_freeze
 
-        U =
-            energy_from_T_and_swe.(
-                FT(1),
-                FT.([272, 274]),
-                parameters.ΔS,
-                param_set,
-            )
-        T =
-            snow_bulk_temperature.(
-                U,
-                FT(1),
-                FT.([0.0, 1.0]),
-                parameters.ΔS,
-                param_set,
-            )
+        U = energy_from_T_and_swe.(
+            FT(1),
+            FT.([272, 274]),
+            parameters.ΔS,
+            param_set,
+        )
+        T = snow_bulk_temperature.(
+            U,
+            FT(1),
+            FT.([0.0, 1.0]),
+            parameters.ΔS,
+            param_set,
+        )
         @test all(T .≈ FT.([272, 274]))
 
         #Tests for surface_temp use unphysical args for straightforward formula checks:

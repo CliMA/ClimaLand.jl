@@ -69,29 +69,26 @@ function set_soil_initial_conditions!(
         Y.soil.θ_i .=
             enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
         Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
-        ρc_s =
-            ClimaLand.Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
+        ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+        if ~isnothing(T_bounds)
+            T = ClimaLand.Soil.temperature_from_ρe_int.(
+                Y.soil.ρe_int,
                 Y.soil.θ_i,
-                soil.parameters.ρc_ds,
+                ρc_s,
                 soil.parameters.earth_param_set,
             )
-        if ~isnothing(T_bounds)
-            T =
-                ClimaLand.Soil.temperature_from_ρe_int.(
-                    Y.soil.ρe_int,
-                    Y.soil.θ_i,
-                    ρc_s,
-                    soil.parameters.earth_param_set,
-                )
             T .= clip_to_bounds.(T, T_bounds[1], T_bounds[2])
-            Y.soil.ρe_int .=
-                ClimaLand.Soil.volumetric_internal_energy.(
-                    Y.soil.θ_i,
-                    ρc_s,
-                    T,
-                    soil.parameters.earth_param_set,
-                )
+            Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                T,
+                soil.parameters.earth_param_set,
+            )
         end
     end
     return nothing
@@ -119,20 +116,18 @@ function set_soilco2_initial_conditions!(Y, p, land)
     θ_l = min.(Y.soil.ϑ_l, ν .- θ_i)
     θ_w = θ_l .+ θ_i
 
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            θ_l,
-            θ_i,
-            soil.parameters.ρc_ds,
-            soil.parameters.earth_param_set,
-        )
-    T_soil =
-        ClimaLand.Soil.temperature_from_ρe_int.(
-            Y.soil.ρe_int,
-            θ_i,
-            ρc_s,
-            soil.parameters.earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        θ_l,
+        θ_i,
+        soil.parameters.ρc_ds,
+        soil.parameters.earth_param_set,
+    )
+    T_soil = ClimaLand.Soil.temperature_from_ρe_int.(
+        Y.soil.ρe_int,
+        θ_i,
+        ρc_s,
+        soil.parameters.earth_param_set,
+    )
 
     θ_a = ClimaLand.Soil.Biogeochemistry.volumetric_air_content.(θ_w, ν)
     R = ClimaLand.Parameters.gas_constant(params.earth_param_set)
@@ -295,13 +290,12 @@ function set_snow_initial_conditions!(
     )
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)
-    Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(
-            Y.snow.S,
-            p.snow.T,
-            params.ΔS,
-            params.earth_param_set,
-        )
+    Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+        Y.snow.S,
+        p.snow.T,
+        params.ΔS,
+        params.earth_param_set,
+    )
     FT = eltype(Y.snow.U)
     if :Z in propertynames(Y.snow)
         #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
@@ -528,20 +522,18 @@ function make_set_initial_state_from_file(
         # Snow IC
         # Use soil temperature at top to set IC
         soil = land.soil
-        ρc_s =
-            ClimaLand.Soil.volumetric_heat_capacity.(
-                min.(Y.soil.ϑ_l, soil.parameters.ν .- Y.soil.θ_i), # θ_l
-                Y.soil.θ_i,
-                soil.parameters.ρc_ds,
-                soil.parameters.earth_param_set,
-            )
-        p.soil.T .=
-            ClimaLand.Soil.temperature_from_ρe_int.(
-                Y.soil.ρe_int,
-                Y.soil.θ_i,
-                ρc_s,
-                soil.parameters.earth_param_set,
-            )
+        ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            min.(Y.soil.ϑ_l, soil.parameters.ν .- Y.soil.θ_i), # θ_l
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+        p.soil.T .= ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            ρc_s,
+            soil.parameters.earth_param_set,
+        )
         T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
         p.snow.T .= T_sfc
         set_snow_initial_conditions!(
@@ -945,20 +937,18 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
     Y.soil.θ_i .=
         enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
     Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            ρc_ds,
-            earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        ClimaLand.Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            temperature,
-            earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        ρc_ds,
+        earth_param_set,
+    )
+    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        temperature,
+        earth_param_set,
+    )
     return nothing
 end
 
@@ -1083,20 +1073,18 @@ function make_set_initial_state_from_atmos_and_parameters(
         (; θ_r, ν, ρc_ds) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
         Y.soil.θ_i .= FT(0.0)
-        ρc_s =
-            ClimaLand.Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                ρc_ds,
-                earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            ClimaLand.Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                p.drivers.T,
-                earth_param_set,
-            )
+        ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+        Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.drivers.T,
+            earth_param_set,
+        )
 
         # SoilCO2 IC (requires soil state). Y.soilco2.CO2 and Y.soilco2.O2 store
         # total mass per unit bulk soil volume (kg C m⁻³ soil and kg O₂ m⁻³ soil),

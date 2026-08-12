@@ -109,10 +109,9 @@ function LandSimVis.make_leaderboard_plots(
     savedir = ".",
     plot_stem_name = "ERA5",
 )
-    surface_coords =
-        ClimaLand.Domains.coordinates(
-            ClimaLand.Domains.obtain_surface_domain(domain),
-        ).surface
+    surface_coords = ClimaLand.Domains.coordinates(
+        ClimaLand.Domains.obtain_surface_domain(domain),
+    ).surface
     longlat = (parent(surface_coords.long)[1], parent(surface_coords.lat)[1])
     compare_monthly_fluxes_with_data(
         savedir,
