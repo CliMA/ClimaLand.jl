@@ -224,9 +224,8 @@ function Column(;
             dz_tuple = dz_tuple,
         )
         # Extract a column from the 3D space
-        colidx = ClimaCore.Grids.ColumnIndex((1, 1), 1)
         subsurface_space =
-            ClimaCore.Spaces.column(box_domain.space.subsurface, colidx)
+            ClimaCore.Spaces.column(box_domain.space.subsurface, 1, 1, 1)
     end
 
     surface_space = obtain_surface_space(subsurface_space)
