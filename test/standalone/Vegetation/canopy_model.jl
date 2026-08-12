@@ -465,10 +465,8 @@ end
         )[1] < 0.01
 
         finitediff_SHF =
-            (
-                p_2.canopy.turbulent_fluxes.shf .-
-                p.canopy.turbulent_fluxes.shf
-            ) ./ ΔT
+            (p_2.canopy.turbulent_fluxes.shf .- p.canopy.turbulent_fluxes.shf) ./
+            ΔT
         estimated_SHF = p.canopy.turbulent_fluxes.∂shf∂T
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
@@ -476,10 +474,8 @@ end
 
         # It's not obvious why this is so poor compared to SHF
         finitediff_LHF =
-            (
-                p_2.canopy.turbulent_fluxes.lhf .-
-                p.canopy.turbulent_fluxes.lhf
-            ) ./ ΔT
+            (p_2.canopy.turbulent_fluxes.lhf .- p.canopy.turbulent_fluxes.lhf) ./
+            ΔT
         estimated_LHF = p.canopy.turbulent_fluxes.∂lhf∂T
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),

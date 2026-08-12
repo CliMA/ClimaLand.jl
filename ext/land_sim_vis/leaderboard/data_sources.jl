@@ -515,9 +515,9 @@ function get_inversion_obs_var_dict()
     _load(varname) = begin
         obs_var = ClimaAnalysis.OutputVar(inversion_path, varname)
         ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
-        ClimaAnalysis.set_dim_units!(obs_var, "lon", "degrees_east")
+            ClimaAnalysis.set_dim_units!(obs_var, "lon", "degrees_east")
         ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
-        ClimaAnalysis.set_dim_units!(obs_var, "lat", "degrees_north")
+            ClimaAnalysis.set_dim_units!(obs_var, "lat", "degrees_north")
         ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
         return ClimaAnalysis.replace(obs_var, missing => NaN)
     end
@@ -662,7 +662,7 @@ function _fully_observed_month_starts(dates)
     return filter(
         month_start ->
             first_date <= month_start &&
-                month_start + Dates.Month(1) <= last_date,
+            month_start + Dates.Month(1) <= last_date,
         candidate_starts,
     )
 end

@@ -12,6 +12,6 @@ jobs:
     steps:
       - uses: julia-actions/julia-format@v4
         with:
-          version: '1' # Set `version` to '1.0.62' if you run into issues
-          # To use the same JuliaFormatter version locally, run: `julia -e 'using Pkg; Pkg.add(PackageSpec("JuliaFormatter", v"1.0.62"))'`
+          version: '2.10.1'
+          # To use the same JuliaFormatter version locally, run: `julia -e 'using Pkg; Pkg.add(name="JuliaFormatter", version="2.10.1")'`
           suggestion-label: 'format-suggest' # leave this unset or empty to show suggestions for all PRs

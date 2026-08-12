@@ -242,11 +242,11 @@ function check_ocean_values_p(p, binary_mask; val = 0.0)
 
     field_pn_p = [
         pn for pn in propertynames(p) if pn != :soil &&
-        pn != :canopy &&
-        pn != :snow &&
-        pn != :soilco2 &&
-        pn != :drivers &&
-        ~occursin("dss", String(pn))
+            pn != :canopy &&
+            pn != :snow &&
+            pn != :soilco2 &&
+            pn != :drivers &&
+            ~occursin("dss", String(pn))
     ]
 
     for var in field_pn_p
@@ -372,20 +372,18 @@ land = LandModel{FT}(
             Array(binary_mask),
         ] .< 0,
     )
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil.parameters.ρc_ds,
-            soil.parameters.earth_param_set,
-        )
-    T =
-        ClimaLand.Soil.temperature_from_ρe_int.(
-            Y.soil.ρe_int,
-            Y.soil.θ_i,
-            ρc_s,
-            soil.parameters.earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        soil.parameters.ρc_ds,
+        soil.parameters.earth_param_set,
+    )
+    T = ClimaLand.Soil.temperature_from_ρe_int.(
+        Y.soil.ρe_int,
+        Y.soil.θ_i,
+        ρc_s,
+        soil.parameters.earth_param_set,
+    )
     @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
     @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
 end
@@ -905,15 +903,11 @@ end
         land_mask
 
     @test all(
-        Array(
-            parent(ClimaLand.Domains.top_center_to_surface(YL.soil.ϑ_l)),
-        )[:][no_lake_mask] .==
+        Array(parent(ClimaLand.Domains.top_center_to_surface(YL.soil.ϑ_l)))[:][no_lake_mask] .==
         Array(parent(ClimaLand.Domains.top_center_to_surface(YNL.soil.ϑ_l)))[:][no_lake_mask],
     )
     @test all(
-        Array(
-            parent(ClimaLand.Domains.top_center_to_surface(YL.soil.θ_i)),
-        )[:][no_lake_mask] .==
+        Array(parent(ClimaLand.Domains.top_center_to_surface(YL.soil.θ_i)))[:][no_lake_mask] .==
         Array(parent(ClimaLand.Domains.top_center_to_surface(YNL.soil.θ_i)))[:][no_lake_mask],
     )
     @test all(

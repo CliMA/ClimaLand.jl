@@ -129,18 +129,17 @@ end
     n_layers = UInt64(20)
     Ω = rand(N)
     LAI = round.(rand(N))
-    output =
-        ClimaLand.Canopy.canopy_sw_rt_two_stream.(
-            G_Function,
-            Ω,
-            n_layers,
-            α_leaf,
-            τ_leaf,
-            LAI,
-            cosθs,
-            α_soil,
-            frac_diff,
-        )
+    output = ClimaLand.Canopy.canopy_sw_rt_two_stream.(
+        G_Function,
+        Ω,
+        n_layers,
+        α_leaf,
+        τ_leaf,
+        LAI,
+        cosθs,
+        α_soil,
+        frac_diff,
+    )
     expected = zeros(N)
     for i in 1:N
         expected[i] =

@@ -310,10 +310,9 @@ function kersten_number(
     if θ_i < eps(FT)
         K_e =
             S_r^((FT(1) + ν_ss_om - α * ν_ss_quartz - ν_ss_gravel) / FT(2)) *
-            (
-                (FT(1) + exp(-β * S_r))^(-FT(3)) -
-                ((FT(1) - S_r) / FT(2))^FT(3)
-            )^(FT(1) - ν_ss_om)
+            ((FT(1) + exp(-β * S_r))^(-FT(3)) - ((FT(1) - S_r) / FT(2))^FT(3))^(
+                FT(1) - ν_ss_om
+            )
     else
         K_e = S_r^(FT(1) + ν_ss_om)
     end
