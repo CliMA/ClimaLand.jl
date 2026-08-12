@@ -1,5 +1,6 @@
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+using Dates
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import Interpolations: Constant
 import ClimaUtilities.Regridders: InterpolationsRegridder
@@ -117,7 +118,7 @@ end
 
 """
      prescribed_climatological_lai_modis(surface_space,
-                                         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                                         time_interpolation_method = LinearInterpolation(PeriodicCalendar(Year(1), DateTime(2000))),
                                          regridder_type = :InterpolationsRegridder,
                                          interpolation_method = Interpolations.Constant(),
                                          context = ClimaComms.context(surface_space))
@@ -132,7 +133,7 @@ by passing interpolation_method = Interpolations.Linear().
 """
 function prescribed_climatological_lai_modis(
     surface_space,
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar(Year(1), DateTime(2000))),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
     context = ClimaComms.context(surface_space),
