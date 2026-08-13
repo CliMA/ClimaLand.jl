@@ -1028,7 +1028,7 @@ function update_surf_temp!(
 
     #get surf_temp values, even if they are > T_freeze:
     p.snow.T_sfc .= solve_for_surface_temp_at_a_point.(
-        p.snow.T_sfc,
+        max.((p.drivers.T .+ p.snow.T) ./ 2, _T_freeze), # initial guess
         p.snow.T,
         p.snow.z_snow,
         p.snow.κ,
