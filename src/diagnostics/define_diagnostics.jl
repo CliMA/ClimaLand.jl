@@ -429,6 +429,62 @@ function define_diagnostics!(land_model, possible_diags)
         compute! = (out, Y, p, t) -> compute_vcmax25!(out, Y, p, t, land_model),
     )
 
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "vcmax25_c3",
+        long_name = "Vcmax25_c3",
+        standard_name = "vcmax25_c3",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The parameter vcmax of leaves at 25 degree celsius for C3",
+        compute! = (out, Y, p, t) ->
+            compute_vcmax25_c3!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "vcmax25_c4",
+        long_name = "Vcmax25_c4",
+        standard_name = "vcmax25_c4",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The parameter vcmax of leaves at 25 degree celsius for C4",
+        compute! = (out, Y, p, t) ->
+            compute_vcmax25_c4!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "jmax25_c4",
+        long_name = "jmax25_c4",
+        standard_name = "jmax25_c4",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The parameter jmax of leaves at 25 degree celsius for C4",
+        compute! = (out, Y, p, t) ->
+            compute_jmax25_c4!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "jmax25_c3",
+        long_name = "jmax25_c3",
+        standard_name = "jmax25_c3",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The parameter jmax of leaves at 25 degree celsius for C3",
+        compute! = (out, Y, p, t) ->
+            compute_jmax25_c3!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "joverjmax",
+        long_name = "joverjmax",
+        standard_name = "joverjmax",
+        units = "",
+        comments = "The quantity J/Jmax",
+        compute! = (out, Y, p, t) ->
+            compute_joverjmax!(out, Y, p, t, land_model),
+    )
+
+
     ### Canopy - Radiative Transfer
     # NIR - near infrared radiaton
     conditional_add_diagnostic_variable!(

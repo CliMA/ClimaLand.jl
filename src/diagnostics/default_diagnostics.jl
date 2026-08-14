@@ -510,6 +510,11 @@ function get_possible_diagnostics(model::CanopyModel)
         "an",
         "rd",
         "vcmax25",
+        "vcmax25_c3",
+        "vcmax25_c4",
+        "jmax25_c3",
+        "jmax25_c4",
+        "joverjmax",
         "nir",
         "anir",
         "rnir",
@@ -641,7 +646,18 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "so2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "lai", "trans", "er", "lwp"]
+    diagnostics = [
+        "gpp",
+        "lai",
+        "trans",
+        "er",
+        "lwp",
+        "vcmax25_c3",
+        "vcmax25_c4",
+        "jmax25_c3",
+        "jmax25_c4",
+        "joverjmax",
+    ]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end

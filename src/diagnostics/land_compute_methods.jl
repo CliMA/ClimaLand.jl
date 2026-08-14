@@ -334,6 +334,17 @@ end
     get_canopy(land_model).photosynthesis,
 )
 
+@diagnostic_compute "jmax25_c3" Union{CanopyModel, SoilCanopyModel, LandModel} Y.canopy.photosynthesis.acclimated.Jmax25_c3
+@diagnostic_compute "jmax25_c4" Union{CanopyModel, SoilCanopyModel, LandModel} Y.canopy.photosynthesis.acclimated.Jmax25_c4
+@diagnostic_compute "vcmax25_c3" Union{CanopyModel, SoilCanopyModel, LandModel} Y.canopy.photosynthesis.acclimated.Vcmax25_c3
+@diagnostic_compute "vcmax25_c4" Union{CanopyModel, SoilCanopyModel, LandModel} Y.canopy.photosynthesis.acclimated.Vcmax25_c4
+@diagnostic_compute "joverjmax" Union{CanopyModel, SoilCanopyModel, LandModel} get_J_over_Jmax(
+    Y,
+    p,
+    get_canopy(land_model),
+    get_canopy(land_model).photosynthesis,
+)
+
 # Canopy - Radiative Transfer
 @diagnostic_compute "near_infrared_radiation_down" Union{
     SoilCanopyModel,
