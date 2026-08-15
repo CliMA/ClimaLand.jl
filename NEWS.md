@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.11.2
+-------
 - ![][badge-✨feature] Add a restart test for the global land model with the P-model
   (`test/integrated/restart.jl`): restarting from a checkpoint reproduces an uninterrupted
   run bit-for-bit. PR [#1840](https://github.com/CliMA/ClimaLand.jl/pull/1840)
