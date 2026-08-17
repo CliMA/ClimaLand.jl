@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
 project_hash = "0ea2920b7d8e270eb765c22f105b4aa0709bb20f"
 
@@ -574,7 +574,9 @@ weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables"]
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "0b3bee4ed33c36adea64ed47fa4ef5bb60926006"
+git-tree-sha1 = "e63edf607b2d64d308ccb9cfaa37ab98e8dc7cd4"
+repo-rev = "kp/point-cloud-intp"
+repo-url = "https://github.com/CliMA/ClimaUtilities.jl.git"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.31"
 
