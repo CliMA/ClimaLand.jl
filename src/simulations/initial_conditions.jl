@@ -826,12 +826,11 @@ function make_set_initial_state_from_era5land(
 )
     function set_ic!(Y, p, t, land)
         atmos = ClimaLand.get_drivers(land)[1]
-        earth_param_set = ClimaLand.get_earth_param_set(land.soil)
         if atmos isa ClimaLand.PrescribedAtmosphere
-            evaluate!(p.drivers.T, atmos.T, t0)
-            evaluate!(p.drivers.P, atmos.P, t0)
-            evaluate!(p.drivers.q, atmos.q, t0)
-            evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
+            evaluate!(p.drivers.T, atmos.T, t)
+            evaluate!(p.drivers.P, atmos.P, t)
+            evaluate!(p.drivers.q, atmos.q, t)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t)
         end
         domain = ClimaLand.get_domain(land)
         surface_space = domain.space.surface

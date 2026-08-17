@@ -2,7 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-
+- ![][badge-✨feature] Change initial condition function name from set_subseasonal to set_from_era5land PR [#1858](https://github.com/CliMA/ClimaLand.jl/pull/1858)
+  
 v1.11.2
 -------
 - ![][badge-✨feature] Add a restart test for the global land model with the P-model
