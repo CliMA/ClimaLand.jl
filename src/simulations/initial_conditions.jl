@@ -4,7 +4,7 @@ import Interpolations
 using ClimaCore
 
 export make_set_initial_state_from_file,
-    make_set_subseasonal_initial_conditions,
+    make_set_initial_state_from_era5land,
     make_set_initial_state_from_atmos_and_parameters
 
 regridder_type = :InterpolationsRegridder
@@ -798,20 +798,23 @@ function make_set_initial_state_from_file(
 end
 
 """
-    make_set_subseasonal_initial_conditions(ic_path)
+     make_set_initial_state_from_era5land(ic_path)
 
 Creates and returns a function `set_ic!(Y,p,t,model)` which updates `Y` in place with
-the subseasonal initial conditions from the file `ic_path`.
+the initial conditions from the file `ic_path`, which is assumed to be an nc file
+using the naming convention of ERA5 Land.
 These initial conditions are analytical for some variables and read in from file for others.
 
 The input file `ic_path` is expected to contain the following variables:
 - "tsn": snow temperature
 - "swe": snow water equivalent
-- "skt": skin temperature of the land surface
 - "swvl": soil total water content
 - "stl": soil temperature
+
+It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
+been updated already.
 """
-function make_set_subseasonal_initial_conditions(
+function make_set_initial_state_from_era5land(
     ic_path;
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
@@ -822,6 +825,13 @@ function make_set_subseasonal_initial_conditions(
     interpolation_method = Interpolations.Linear(),
 )
     function set_ic!(Y, p, t, land)
+        atmos = ClimaLand.get_drivers(land)[1]
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t)
+            evaluate!(p.drivers.P, atmos.P, t)
+            evaluate!(p.drivers.q, atmos.q, t)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t)
+        end
         domain = ClimaLand.get_domain(land)
         surface_space = domain.space.surface
         subsurface_space = domain.space.subsurface
@@ -841,19 +851,28 @@ function make_set_subseasonal_initial_conditions(
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
-
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.energy,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.biomass,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.photosynthesis,
+            land.canopy,
+        )
         # Set snow T first to use in computing snow internal energy from IC file
         p.snow.T .= SpaceVaryingInput(
             ic_path,
             "tsn",
-            surface_space;
-            regridder_type,
-            regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        )
-        # Set canopy temperature to skin temperature
-        Y.canopy.energy.T .= SpaceVaryingInput(
-            ic_path,
-            "skt",
             surface_space;
             regridder_type,
             regridder_kwargs = (; extrapolation_bc, interpolation_method),
