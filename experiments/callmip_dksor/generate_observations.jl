@@ -37,21 +37,26 @@ using Statistics
 # no data committed to the repo. See src/Artifacts.jl and the companion
 # CliMA/ClimaArtifacts PR for the artifact definition + cluster hosting.
 const CLIMALAND_DIR = abspath(joinpath(@__DIR__, "..", ".."))
-const FLUX_NC_PATH  = ClimaLand.Artifacts.callmip_phase1_flux_path("DK-Sor"; phase = "1a")
-const OUTDIR        = get(ENV, "CALLMIP_OUTDIR", joinpath(CLIMALAND_DIR,
-    "experiments/callmip_dksor/output_calibration"))
+const FLUX_NC_PATH =
+    ClimaLand.Artifacts.callmip_phase1_flux_path("DK-Sor"; phase = "1a")
+const OUTDIR = get(
+    ENV,
+    "CALLMIP_OUTDIR",
+    joinpath(CLIMALAND_DIR, "experiments/callmip_dksor/output_calibration"),
+)
 
 # ── Calibration period ─────────────────────────────────────────────────────────
 # Qle and Qh are only available from 2003 onward → 11 years of joint obs.
 # Override with CALLMIP_CALIB_YEARS="2004" (comma-separated) for single-year tests.
-const CALIB_YEARS = haskey(ENV, "CALLMIP_CALIB_YEARS") ?
+const CALIB_YEARS =
+    haskey(ENV, "CALLMIP_CALIB_YEARS") ?
     parse.(Int, split(ENV["CALLMIP_CALIB_YEARS"], ",")) : collect(2003:2013)
 
 # 12 monthly means × 3 variables = 36 entries per year (always fixed)
 const N_OBS_PER_YEAR = 36
 
 # Large noise for months with insufficient valid data
-const SIGMA2_MISS    = 1.0e12
+const SIGMA2_MISS = 1.0e12
 const MIN_VALID_DAYS = 5   # require at least 5 valid days to trust a monthly mean
 
 """
@@ -70,22 +75,24 @@ function build_obs_series(flux_nc_path, calib_years)
 
     NCDataset(flux_nc_path, "r") do ds
         # NCDatasets decodes time axis directly to DateTime
-        dates   = DateTime.(ds["time"][:])
+        dates = DateTime.(ds["time"][:])
         nee_all = Float64.(coalesce.(ds["NEE_daily"][:], NaN))
         qle_all = Float64.(coalesce.(ds["Qle_daily"][:], NaN))
-        qh_all  = Float64.(coalesce.(ds["Qh_daily"][:],  NaN))
-        nee_uc  = Float64.(coalesce.(ds["NEE_uc_daily"][:], NaN))
-        qle_uc  = Float64.(coalesce.(ds["Qle_uc_daily"][:], NaN))
-        qh_uc   = Float64.(coalesce.(ds["Qh_uc_daily"][:],  NaN))
+        qh_all = Float64.(coalesce.(ds["Qh_daily"][:], NaN))
+        nee_uc = Float64.(coalesce.(ds["NEE_uc_daily"][:], NaN))
+        qle_uc = Float64.(coalesce.(ds["Qle_uc_daily"][:], NaN))
+        qh_uc = Float64.(coalesce.(ds["Qh_uc_daily"][:], NaN))
 
         # Sentinel values (FillValue ≥ 1e19) → NaN
         for arr in (nee_all, qle_all, qh_all, nee_uc, qle_uc, qh_uc)
             arr[arr .>= 1.0e19] .= NaN
         end
 
-        fluxes = [("nee", nee_all, nee_uc),
-                  ("lhf", qle_all, qle_uc),
-                  ("shf", qh_all,  qh_uc)]
+        fluxes = [
+            ("nee", nee_all, nee_uc),
+            ("lhf", qle_all, qle_uc),
+            ("shf", qh_all, qh_uc),
+        ]
 
         # ---- First pass: inter-annual (representativeness) variance ----
         # The FLUXNET random uncertainty in the NetCDF (NEE_uc/Qle_uc/Qh_uc, propagated
@@ -102,42 +109,52 @@ function build_obs_series(flux_nc_path, calib_years)
             for mon in 1:12
                 year_means = Float64[]
                 for yr in calib_years
-                    mask  = (Dates.year.(dates) .== yr) .& (Dates.month.(dates) .== mon)
+                    mask =
+                        (Dates.year.(dates) .== yr) .&
+                        (Dates.month.(dates) .== mon)
                     v_mon = vals[mask]
                     u_mon = ucs[mask]
-                    valid = isfinite.(v_mon) .& isfinite.(u_mon) .& (u_mon .> 0.0)
+                    valid =
+                        isfinite.(v_mon) .& isfinite.(u_mon) .& (u_mon .> 0.0)
                     if sum(valid) >= MIN_VALID_DAYS
                         push!(year_means, mean(v_mon[valid]))
                     end
                 end
-                interannual_var[fname][mon] = length(year_means) >= 2 ? var(year_means) : 0.0
+                interannual_var[fname][mon] =
+                    length(year_means) >= 2 ? var(year_means) : 0.0
             end
         end
 
         for yr in calib_years
-            obs_vec   = Float64[]
+            obs_vec = Float64[]
             noise_vec = Float64[]
-            vdays     = Dict("nee" => Date[], "lhf" => Date[], "shf" => Date[])
+            vdays = Dict("nee" => Date[], "lhf" => Date[], "shf" => Date[])
 
             for (fname, vals, ucs) in fluxes
                 for mon in 1:12
-                    mask  = (Dates.year.(dates) .== yr) .& (Dates.month.(dates) .== mon)
+                    mask =
+                        (Dates.year.(dates) .== yr) .&
+                        (Dates.month.(dates) .== mon)
                     mdays = Date.(dates[mask])
                     v_mon = vals[mask]
                     u_mon = ucs[mask]
 
                     # Keep only days with finite value AND finite positive uncertainty
-                    valid = isfinite.(v_mon) .& isfinite.(u_mon) .& (u_mon .> 0.0)
+                    valid =
+                        isfinite.(v_mon) .& isfinite.(u_mon) .& (u_mon .> 0.0)
                     n_valid = sum(valid)
 
                     if n_valid >= MIN_VALID_DAYS
-                        push!(obs_vec,   mean(v_mon[valid]))
+                        push!(obs_vec, mean(v_mon[valid]))
                         # Realistic noise = FLUXNET random (σ²/n) + inter-annual floor
-                        random_var = mean(u_mon[valid].^2) / n_valid
-                        push!(noise_vec, random_var + interannual_var[fname][mon])
+                        random_var = mean(u_mon[valid] .^ 2) / n_valid
+                        push!(
+                            noise_vec,
+                            random_var + interannual_var[fname][mon],
+                        )
                         append!(vdays[fname], mdays[valid])   # record valid obs days
                     else
-                        push!(obs_vec,   0.0)
+                        push!(obs_vec, 0.0)
                         push!(noise_vec, SIGMA2_MISS)
                         # month dropped → leave no valid dates (model falls back to all days)
                     end
@@ -145,8 +162,10 @@ function build_obs_series(flux_nc_path, calib_years)
             end
 
             @assert length(obs_vec) == N_OBS_PER_YEAR
-            push!(obs_series,
-                EKP.Observation(obs_vec, Diagonal(noise_vec), "DK_Sor_$(yr)"))
+            push!(
+                obs_series,
+                EKP.Observation(obs_vec, Diagonal(noise_vec), "DK_Sor_$(yr)"),
+            )
             push!(valid_dates_series, vdays)
         end
     end
@@ -163,11 +182,11 @@ obs_series, valid_dates_series = build_obs_series(FLUX_NC_PATH, CALIB_YEARS)
 # ── Validation ─────────────────────────────────────────────────────────────────
 @assert length(obs_series) == length(CALIB_YEARS)
 for (i, obs) in enumerate(obs_series)
-    yr      = CALIB_YEARS[i]
-    y_vec   = EKP.get_obs(obs)
-    Γ_vec   = diag(EKP.get_obs_noise_cov(obs))
+    yr = CALIB_YEARS[i]
+    y_vec = EKP.get_obs(obs)
+    Γ_vec = diag(EKP.get_obs_noise_cov(obs))
     n_valid = sum(Γ_vec .< SIGMA2_MISS)
-    n_miss  = sum(Γ_vec .>= SIGMA2_MISS)
+    n_miss = sum(Γ_vec .>= SIGMA2_MISS)
     @assert length(y_vec) == N_OBS_PER_YEAR
     @assert all(Γ_vec .> 0)
     nee_slice = y_vec[1:12]

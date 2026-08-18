@@ -14,12 +14,20 @@ const MDIR = joinpath(BASE, "members")
 # inside the `for` loop makes it loop-local and `dates === nothing` throws
 # UndefVarError (Julia soft-scope). A function barrier fixes it.
 function assemble()
-    files = sort(filter(f -> startswith(f, "member_") && endswith(f, ".jld2"), readdir(MDIR)),
-                 by = f -> parse(Int, match(r"member_(\d+)\.jld2", f).captures[1]))
+    files = sort(
+        filter(
+            f -> startswith(f, "member_") && endswith(f, ".jld2"),
+            readdir(MDIR),
+        ),
+        by = f -> parse(Int, match(r"member_(\d+)\.jld2", f).captures[1]),
+    )
     isempty(files) && error("No member files in $MDIR")
 
     dates = nothing
-    nee = Vector{Float64}[]; lhf = Vector{Float64}[]; shf = Vector{Float64}[]; pn = nothing
+    nee = Vector{Float64}[];
+    lhf = Vector{Float64}[];
+    shf = Vector{Float64}[];
+    pn = nothing
     for f in files
         d = JLD2.load(joinpath(MDIR, f))
         if dates === nothing
@@ -27,14 +35,22 @@ function assemble()
         else
             @assert Date.(d["dates"]) == dates "member $f has a different date axis"
         end
-        push!(nee, Float64.(d["nee"])); push!(lhf, Float64.(d["lhf"])); push!(shf, Float64.(d["shf"]))
+        push!(nee, Float64.(d["nee"]));
+        push!(lhf, Float64.(d["lhf"]));
+        push!(shf, Float64.(d["shf"]))
         pn = d["param_names"]
     end
     NEE = permutedims(reduce(hcat, nee))   # (n_members × n_days)
     LHF = permutedims(reduce(hcat, lhf))
     SHF = permutedims(reduce(hcat, shf))
-    jldsave(joinpath(BASE, "ensemble_diagnostics.jld2");
-        member_nee = NEE, member_lhf = LHF, member_shf = SHF, dates = dates, param_names = pn)
+    jldsave(
+        joinpath(BASE, "ensemble_diagnostics.jld2");
+        member_nee = NEE,
+        member_lhf = LHF,
+        member_shf = SHF,
+        dates = dates,
+        param_names = pn,
+    )
     @info "Assembled $(length(files)) members × $(length(dates)) days → ensemble_diagnostics.jld2"
 end
 assemble()

@@ -13,7 +13,8 @@ as an independent cross-check — its Sample step anchored on this EKI posterior
 deliverable because, being anchored on EKI, it largely reproduces it. See the PR
 description for the full EKI-vs-CES comparison.
 =#
-import ClimaComms; ClimaComms.@import_required_backends
+import ClimaComms;
+ClimaComms.@import_required_backends
 using JLD2, Statistics
 import EnsembleKalmanProcesses as EKP
 import EnsembleKalmanProcesses.ParameterDistributions as PD
@@ -27,16 +28,24 @@ ekp = JLD2.load(joinpath(OUT, "ekp_checkpoint.jld2"), "ekp")
 @info "EKI loaded: $(length(EKP.get_u(ekp))-1) iterations, ensemble size $(EKP.get_N_ens(ekp))"
 
 eki_mean = Float64.(EKP.get_ϕ_mean_final(prior, ekp))     # constrained, length 11
-ens      = Float64.(EKP.get_ϕ_final(prior, ekp))          # constrained, 11 × N_ens
+ens = Float64.(EKP.get_ϕ_final(prior, ekp))          # constrained, 11 × N_ens
 
 @info "EKI posterior mean (constrained):"
 for (n, v) in zip(pnames, eki_mean)
     @info "  $(rpad(n,34)) = $(round(v; sigdigits=5))"
 end
 
-jldsave(joinpath(OUT, "posterior_mean.jld2");
-    posterior_mean = eki_mean, param_names = pnames,
-    eki_mean = eki_mean, coverage = NaN, used_eki_fallback = true)
-jldsave(joinpath(OUT, "posterior_samples.jld2");
-    constrained_posterior = ens, param_names = pnames)
+jldsave(
+    joinpath(OUT, "posterior_mean.jld2");
+    posterior_mean = eki_mean,
+    param_names = pnames,
+    eki_mean = eki_mean,
+    coverage = NaN,
+    used_eki_fallback = true,
+)
+jldsave(
+    joinpath(OUT, "posterior_samples.jld2");
+    constrained_posterior = ens,
+    param_names = pnames,
+)
 @info "Wrote posterior_mean.jld2 + posterior_samples.jld2 (EKI fallback; $(size(ens,2)) ensemble members)"

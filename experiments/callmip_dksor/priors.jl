@@ -27,24 +27,42 @@ function build_dk_sor_priors()
     # AR/GPP ~60-67%).
     priors_vec = [
         # ── P-model + moisture stress ──────────────────────────────────────────
-        PD.constrained_gaussian("pmodel_cstar",      0.3648,  0.05,  0.2,   0.7),
-        PD.constrained_gaussian("pmodel_β_c3",       159.4,   40.0,  10.0,  300.0),
-        PD.constrained_gaussian("pmodel_β_c4",       39.575,  5.0,   5.0,   80.0),   # inert (C3 site)
-        PD.constrained_gaussian("pmodel_α",          0.9443,  0.02,  0.85,  0.999),
-        PD.constrained_gaussian("moisture_stress_c", 0.3098,  0.15,  0.05,  1.0),
+        PD.constrained_gaussian("pmodel_cstar", 0.3648, 0.05, 0.2, 0.7),
+        PD.constrained_gaussian("pmodel_β_c3", 159.4, 40.0, 10.0, 300.0),
+        PD.constrained_gaussian("pmodel_β_c4", 39.575, 5.0, 5.0, 80.0),   # inert (C3 site)
+        PD.constrained_gaussian("pmodel_α", 0.9443, 0.02, 0.85, 0.999),
+        PD.constrained_gaussian("moisture_stress_c", 0.3098, 0.15, 0.05, 1.0),
 
         # ── DAMM heterotrophic respiration ─────────────────────────────────────
         # NEE alone constrains only ecosystem respiration (AR + HR), not the AR/HR split
         # — a flat likelihood ridge. The regularized UTKI posterior stays physical
         # (HR/GPP ~20%); an unregularized sampler can drift along this ridge, so the
         # deliverable uses the UTKI posterior.
-        PD.constrained_gaussian("soilCO2_reference_rate",    1.72e-6,   5.0e-7,  1.0e-9, 5.0e-6),
-        PD.constrained_gaussian("soilCO2_activation_energy", 57080.0,   25000.0, 5000.0, 150000.0),
-        PD.constrained_gaussian("michaelis_constant",        0.6234,    0.25,    0.001,  2.0),
+        PD.constrained_gaussian(
+            "soilCO2_reference_rate",
+            1.72e-6,
+            5.0e-7,
+            1.0e-9,
+            5.0e-6,
+        ),
+        PD.constrained_gaussian(
+            "soilCO2_activation_energy",
+            57080.0,
+            25000.0,
+            5000.0,
+            150000.0,
+        ),
+        PD.constrained_gaussian("michaelis_constant", 0.6234, 0.25, 0.001, 2.0),
         # The O2 Michaelis constant is kept near 8.7e-4: centering at the much smaller
         # global value is infeasible for the logit-normal (mean too close to the lower
         # bound). O2 limitation is secondary at this well-drained site.
-        PD.constrained_gaussian("O2_michaelis_constant",     0.0008681, 0.0004,  1.0e-5, 1.0e-1),
+        PD.constrained_gaussian(
+            "O2_michaelis_constant",
+            0.0008681,
+            0.0004,
+            1.0e-5,
+            1.0e-1,
+        ),
 
         # ── JULES autotrophic respiration ──────────────────────────────────────
         # autotrophic_respiration_Rd_ref is the base maintenance-respiration rate
@@ -52,8 +70,20 @@ function build_dk_sor_priors()
         # inactive in the current AR formulation, so Rd_ref is calibrated instead. As
         # with soilCO2_reference_rate, AR lies in the NEE-unidentifiable ridge, so the
         # deliverable uses the UTKI posterior.
-        PD.constrained_gaussian("autotrophic_respiration_Rd_ref", 1.02e-7, 6.0e-8, 1.0e-8, 1.0e-6),
-        PD.constrained_gaussian("relative_contribution_factor",   0.305, 0.15, 0.0, 1.5),
+        PD.constrained_gaussian(
+            "autotrophic_respiration_Rd_ref",
+            1.02e-7,
+            6.0e-8,
+            1.0e-8,
+            1.0e-6,
+        ),
+        PD.constrained_gaussian(
+            "relative_contribution_factor",
+            0.305,
+            0.15,
+            0.0,
+            1.5,
+        ),
         # Energy/turbulent parameters (e.g. leaf_Cd, emissivity_bare_soil) were evaluated
         # but excluded: the NEE-dominated objective pulled SHF away from its already-good
         # default. The unmatched SHF spring peak is structural, not parametric, so the set
@@ -67,11 +97,17 @@ end
 
 # Names + bounds of the 11 parameters (must match build_dk_sor_priors above).
 const DK_SOR_BOUNDS = [
-    ("pmodel_cstar", 0.2, 0.7), ("pmodel_β_c3", 10.0, 300.0), ("pmodel_β_c4", 5.0, 80.0),
-    ("pmodel_α", 0.85, 0.999), ("moisture_stress_c", 0.05, 1.0),
-    ("soilCO2_reference_rate", 1.0e-9, 5.0e-6), ("soilCO2_activation_energy", 5000.0, 150000.0),
-    ("michaelis_constant", 0.001, 2.0), ("O2_michaelis_constant", 1.0e-5, 1.0e-1),
-    ("autotrophic_respiration_Rd_ref", 1.0e-8, 1.0e-6), ("relative_contribution_factor", 0.0, 1.5),
+    ("pmodel_cstar", 0.2, 0.7),
+    ("pmodel_β_c3", 10.0, 300.0),
+    ("pmodel_β_c4", 5.0, 80.0),
+    ("pmodel_α", 0.85, 0.999),
+    ("moisture_stress_c", 0.05, 1.0),
+    ("soilCO2_reference_rate", 1.0e-9, 5.0e-6),
+    ("soilCO2_activation_energy", 5000.0, 150000.0),
+    ("michaelis_constant", 0.001, 2.0),
+    ("O2_michaelis_constant", 1.0e-5, 1.0e-1),
+    ("autotrophic_respiration_Rd_ref", 1.0e-8, 1.0e-6),
+    ("relative_contribution_factor", 0.0, 1.5),
 ]
 
 """
@@ -84,7 +120,10 @@ uninformative prior instead lets the emulator-MCMC drift along the NEE-unidentif
 ridge into an unphysical regime (AR > GPP, NEE source); anchoring on the EKI posterior
 regularizes those sloppy directions and keeps the CES posterior physical.
 """
-function build_dk_sor_eki_prior(eki_mean::AbstractVector, eki_std::AbstractVector)
+function build_dk_sor_eki_prior(
+    eki_mean::AbstractVector,
+    eki_std::AbstractVector,
+)
     @assert length(eki_mean) == length(DK_SOR_BOUNDS) == length(eki_std)
     priors_vec = map(enumerate(DK_SOR_BOUNDS)) do (i, (nm, lo, hi))
         σ = max(eki_std[i], 1.0e-4 * (hi - lo))   # tiny floor to avoid a degenerate prior

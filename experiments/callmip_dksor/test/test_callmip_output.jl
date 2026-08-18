@@ -11,26 +11,42 @@ required Phase 1a global attributes.
 
 Run:  julia --project=.buildkite experiments/callmip_dksor/test/test_callmip_output.jl
 =#
-import ClimaComms; ClimaComms.@import_required_backends
+import ClimaComms;
+ClimaComms.@import_required_backends
 using Test, JLD2, NCDatasets, Dates
 
 include(joinpath(@__DIR__, "..", "write_callmip_netcdf.jl"))  # PROGRAM_FILE guard ⇒ no main run
 
 # Expected spec, verified against the CalLMIP template .nc
 const EXPECT_UNITS = Dict(
-    "nep" => "kgC m-2 s-1", "hfls" => "W m-2", "hfss" => "W m-2",
-    "gpp" => "kgC m-2 s-1", "reco" => "kgC m-2 s-1", "tran" => "kg m-2 s-1",
-    "evspsblsoi" => "kg m-2 s-1", "hfg" => "W m-2", "ts" => "K",
-    "mrso" => "kg m-2", "mrsos" => "kg m-2", "lai" => "m2 m-2",
-    "cSoil" => "kg m-2", "cLiveBioAbove" => "kg m-2",
+    "nep" => "kgC m-2 s-1",
+    "hfls" => "W m-2",
+    "hfss" => "W m-2",
+    "gpp" => "kgC m-2 s-1",
+    "reco" => "kgC m-2 s-1",
+    "tran" => "kg m-2 s-1",
+    "evspsblsoi" => "kg m-2 s-1",
+    "hfg" => "W m-2",
+    "ts" => "K",
+    "mrso" => "kg m-2",
+    "mrsos" => "kg m-2",
+    "lai" => "m2 m-2",
+    "cSoil" => "kg m-2",
+    "cLiveBioAbove" => "kg m-2",
 )
 
 # ── synthetic diagnostics (3 days, 5 soil layers) ─────────────────────────────
 dir = mktempdir()
 dates = [Date(2009, 6, d) for d in 1:3]
-sd = Dict{String,Vector{Float64}}(k => Float64.(1:3) for k in
-     ("nee", "lhf", "shf", "gpp", "er", "trans", "ct", "lai", "cveg"))
-cd_ = Dict("swc" => fill(0.3, 5, 3), "tsoil" => fill(285.0, 5, 3), "soc" => fill(2.0, 5, 3))
+sd = Dict{String, Vector{Float64}}(
+    k => Float64.(1:3) for
+    k in ("nee", "lhf", "shf", "gpp", "er", "trans", "ct", "lai", "cveg")
+)
+cd_ = Dict(
+    "swc" => fill(0.3, 5, 3),
+    "tsoil" => fill(285.0, 5, 3),
+    "soc" => fill(2.0, 5, 3),
+)
 z = Float64[-0.05, -0.2, -0.5, -1.0, -2.0]
 diag = joinpath(dir, "callmip_diagnostics.jld2")
 jldsave(diag; dates = dates, surface_data = sd, column_data = cd_, z_soil = z)
