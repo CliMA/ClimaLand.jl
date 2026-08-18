@@ -149,3 +149,45 @@ Fix in `experiments/integrated/fluxnet/callmip_forcing.jl`: convert with
 any other `array2field`/`parent(...) .=` per-column constructions must use the space's
 device array type. Grep pattern for future scalar→Field audits:
 `ThisHost.*ThisThreadPool` in errors = host/device mix.
+
+
+---
+
+## 2026-08-18 — Phase 1 (session 1, continued)
+
+### Correctness harness
+
+- era5 `column_ensemble_comparison.jl` (Kevin's duplicated-column test) CPU:
+  **7/7 pass, 15.7 s** (duplicates exactly identical; single-vs-ensemble ≤ 1e-9;
+  diagnostics agree at ~1e-13 rel). GPU repeat: running.
+- NEW `experiments/callmip_phase1b/verify_single_vs_ensemble.jl` — covers what the
+  era5 test cannot: **different forcing per column** (matrix TVI), cross-column
+  contamination, row-order robustness, forcing fidelity. CPU results:
+  - Single DK-Sor `Column` vs DK-Sor as col 1 of [DK-Sor, US-NR1] ensemble:
+    **9/9 pass**; worst err 4.1e-12 (`Y.soil.θ_i`, scale 2e-5), most fields ≤ 8e-14
+    (tolerance 1e-9, era5 precedent). → no cross-column contamination.
+  - **Column-order flip [US-NR1, DK-Sor]: EXACTLY 0 error** for both sites' state and
+    cache — solution is bitwise independent of column position.
+  - Forcing fidelity: **63/63** — 7 drivers × 9 raw met sample times reproduce the
+    file values per column (rtol 1e-12) → row order and interpolation verified
+    end-to-end.
+- GPU repeats: first attempts were SIGTERM-killed by a session restart (leftover
+  processes killed by hand — check `ps aux | grep julia` if GPUs look busy with no
+  progress). Relaunched:
+  - `verify_single_vs_ensemble.jl` GPU (V100, CUDA 12.9): **9/9 + 63/63 pass**;
+    order-flip exactly 0 on GPU as well; worst single-vs-ensemble err 3.2e-14.
+  - era5 `column_ensemble_comparison.jl` GPU: **7/7 pass, 16.3 s** (worst err 1.7e-12).
+
+### Phase 1 gate — CLOSED 2026-08-18
+
+- [x] era5 duplicated-column test: CPU 7/7, GPU 7/7.
+- [x] DK-Sor single-Column vs 2-site ensemble (different forcing per column):
+  CPU 9/9 (worst 4.1e-12), GPU 9/9 (worst 3.2e-14) — tolerance 1e-9.
+- [x] Column-order flip: EXACTLY 0 difference, CPU and GPU.
+- [x] Forcing row-order/fidelity: 63/63 on both devices (drivers reproduce raw met
+  values per column at sample times, rtol 1e-12).
+- [x] scalar→Field gaps: atmos_h fixed in Phase 0; none new surfaced at N=2.
+  (Larger N with the default LandModel may surface more — watched in Phase 2.)
+
+**PHASE 1 CLOSED.** Multi-forcing ColumnEnsemble machinery is verified correct at
+N=2 on CPU and GPU. Next: Phase 2 (21-site forcing, union-axis padding).
