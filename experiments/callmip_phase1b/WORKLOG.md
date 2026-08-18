@@ -268,3 +268,20 @@ Phase 1a DK-Sor (`LAI_alternative`/MODIS) — documented.
 - End-to-end load of all 10 validation sites: CLEAN (30-min grids after resample,
   MODIS by attribute, zero non-finite).
 - Per Renato: data stays on sampo (kiwi copy is a spare only).
+
+
+### Phase 2 gate — GPU PASS → PHASE 2 CLOSED (2026-08-18)
+
+- GPU (V100, CUDA 12.9): padding 840/840, driver order 22/22, forward run 85/85;
+  final canopy-T extrema IDENTICAL to CPU to all printed digits
+  (278.1357825374…, 304.0405517522…). Wall 99.6 s incl. compile.
+- Phase 2 deliverables: sites.jl (31 verified sites), forcing_phase1b.jl
+  (padding + resampling + MODIS-by-attribute), 31-site artifact `a597745c…`.
+  Commits `344ed7932`, `08addda41`.
+
+## 2026-08-18 — Phase 3 (session 1, continued)
+
+Benchmark: SYPD vs column count, CPU vs V100, default LandModel, Δt=450 s,
+10-day timed window (1-day warmup discarded), duplicated sites cycled to reach
+N ∈ {1, 2, 5, 10, 21, 30, 100, 300}. Purpose: pick the EKI member schedule
+(GPU vs CPU crossover) + post numbers to PR #1826 (kmdeck's request).
