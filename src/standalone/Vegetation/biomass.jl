@@ -7,6 +7,7 @@ import ClimaUtilities.FileReaders: NCFileReader, read
 using DocStringExtensions
 
 export prescribed_lai_era5,
+    TwoComponentResNetLAIModel,
     prescribed_lai_modis,
     prescribed_climatological_lai_modis,
     PrescribedAreaIndices,
@@ -641,6 +642,277 @@ function ClimaLand.make_compute_exp_tendency(
             p.canopy.biomass.L_opt,
             Y.canopy.biomass.LAI,
             tivs.LAI.reduction,
+        )
+    end
+    return compute_exp_tendency!
+end
+
+struct TwoComponentResNetLAIModel{
+    FT,
+    PLPT <: TwoComponentResNetLAIParameters{FT},
+    GD,
+    FS <: Union{FT, ClimaCore.Fields.Field},
+    RDTH <: Union{FT, ClimaCore.Fields.Field},
+    HTH <: Union{FT, ClimaCore.Fields.Field},
+    T,
+} <: AbstractBiomassModel{FT}
+    "Required parameters for the model"
+    parameters::PLPT
+    "Spatially varying environmental inputs"
+    optimal_lai_inputs::GD
+    "Prescribed stem area index (m^2 m^-2)"
+    SAI::FS
+    "Prescribed root area index (m^2 m^-2)"
+    RAI::FS
+    "Rooting depth parameter (m)"
+    rooting_depth::RDTH
+    "Canopy height (m)"
+    height::HTH
+    "Prognostic time-integrated variables (A0_daily, A0_annual, precip_annual, LAI_wood, LAI_herb)"
+    time_integrated_vars::T
+end
+
+Base.eltype(::TwoComponentResNetLAIModel{FT}) where {FT} = FT
+
+function TwoComponentResNetLAIModel{FT}(
+    parameters::TwoComponentResNetLAIParameters{FT},
+    optimal_lai_inputs;
+    SAI,
+    RAI,
+    rooting_depth,
+    height,
+) where {FT <: AbstractFloat}
+    seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    tau_long_term = FT(365 * 86400.0)
+    tiv = ClimaLand.time_integrated_variables(
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :A0_daily,
+            reduction = ClimaLand.RunningSum(
+                seconds_per_day,
+                3 * seconds_per_day,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :A0_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :precip_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :LAI_wood,
+            reduction = ClimaLand.RunningMean(
+                seconds_per_day / parameters.alpha_wood,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :LAI_herb,
+            reduction = ClimaLand.RunningMean(
+                seconds_per_day / parameters.alpha_herb,
+            ),
+        ),
+    )
+    return TwoComponentResNetLAIModel{
+        FT,
+        typeof(parameters),
+        typeof(optimal_lai_inputs),
+        typeof(SAI),
+        typeof(rooting_depth),
+        typeof(height),
+        typeof(tiv),
+    }(
+        parameters,
+        optimal_lai_inputs,
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+        tiv,
+    )
+end
+
+ClimaLand.auxiliary_vars(model::TwoComponentResNetLAIModel) =
+    (:area_index, :OptVars, :L_opt_wood, :L_opt_herb)
+ClimaLand.auxiliary_types(model::TwoComponentResNetLAIModel{FT}) where {FT} = (
+    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+    NamedTuple{(:A0, :χ), Tuple{FT, FT}},
+    FT,
+    FT,
+)
+ClimaLand.auxiliary_domain_names(::TwoComponentResNetLAIModel) =
+    (:surface, :surface, :surface, :surface)
+
+ClimaLand.prognostic_vars(m::TwoComponentResNetLAIModel) =
+    ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
+ClimaLand.prognostic_types(m::TwoComponentResNetLAIModel) =
+    ClimaLand.time_integrated_prognostic_types(m.time_integrated_vars)
+ClimaLand.prognostic_domain_names(m::TwoComponentResNetLAIModel) =
+    ClimaLand.time_integrated_prognostic_domain_names(m.time_integrated_vars)
+
+function update_biomass!(
+    p,
+    Y,
+    t,
+    component::TwoComponentResNetLAIModel{FT},
+    canopy,
+) where {FT}
+    (; SAI, RAI, parameters, optimal_lai_inputs) = component
+    @. p.canopy.biomass.area_index.stem = SAI
+    @. p.canopy.biomass.area_index.root = RAI
+
+    # Eco-climatic indices for active optical greenness gating
+    p_mm_ann = @. Y.canopy.biomass.precip_annual / FT(55.55)
+    si = compute_seasonality_index.(optimal_lai_inputs.GSL)
+    ai = compute_aridity_index.(
+        Y.canopy.biomass.precip_annual,
+        Y.canopy.biomass.A0_annual,
+        optimal_lai_inputs.vpd_gs,
+    )
+    rainforest_idx = @. clamp((FT(1) - si) * tanh(p_mm_ann / FT(1500.0)), FT(0), FT(1))
+    evergreen_idx = @. clamp((FT(1) - si) * tanh(ai), FT(0), FT(1))
+    deciduous_idx = @. clamp(si * (FT(1) - rainforest_idx), FT(0), FT(1))
+    dryland_pheno_idx = compute_dryland_phenology_index.(rainforest_idx, evergreen_idx, p_mm_ann)
+
+    # Thermal and cryogenic phenology gates
+    t_air_k = p.drivers.T
+    f_freeze = compute_thermal_freeze_gate.(t_air_k, parameters.theta_freeze, parameters.kappa_cold)
+    pheno_gate = @. FT(1.0) - deciduous_idx * (FT(1.0) - f_freeze)
+    cryo_gate = @. FT(1.0) - evergreen_idx * (FT(1.0) - f_freeze)
+
+    # Root-zone moisture stress
+    soil_stress = p.canopy.soil_moisture_stress.βm
+
+    # Active optical green leaf fraction (accounts for drought curing & dormancy)
+    f_green = compute_hydro_optical_greenness.(
+        deciduous_idx,
+        evergreen_idx,
+        dryland_pheno_idx,
+        pheno_gate,
+        cryo_gate,
+        f_freeze,
+        soil_stress,
+        parameters.green_min,
+        parameters.hydro_weight,
+    )
+
+    # Dual-trigger dormancy gate for structural baseline floor
+    f_drought = compute_drought_dormancy_gate.(soil_stress, dryland_pheno_idx, parameters.beta_dry)
+    f_dormant = compute_dual_trigger_dormancy.(f_freeze, f_drought)
+    struct_floor = compute_structural_canopy_floor.(
+        rainforest_idx,
+        evergreen_idx,
+        deciduous_idx,
+        ai,
+        f_dormant,
+        parameters.theta_ai_scale,
+        parameters.enf_retention_scale,
+        parameters.enf_cold_gain,
+        t_air_k,
+    )
+
+    @. p.canopy.biomass.area_index.leaf =
+        max(struct_floor, (Y.canopy.biomass.LAI_wood + Y.canopy.biomass.LAI_herb) * f_green)
+    p.canopy.biomass.area_index.leaf .=
+        clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
+    mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+end
+
+function ClimaLand.make_compute_exp_tendency(
+    component::TwoComponentResNetLAIModel{FT},
+    canopy,
+) where {FT}
+    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
+    tivs = component.time_integrated_vars
+    function compute_exp_tendency!(dY, Y, p, t)
+        model = component
+        parameters = model.parameters
+        static_inputs = model.optimal_lai_inputs
+        pmodel_parameters = canopy.photosynthesis.parameters
+        pmodel_constants = canopy.photosynthesis.constants
+        fractional_c3 = canopy.photosynthesis.fractional_c3
+        earth_param_set = canopy.earth_param_set
+
+        @. p.canopy.biomass.OptVars = compute_A0_and_χ(
+            fractional_c3,
+            pmodel_parameters,
+            pmodel_constants,
+            earth_param_set,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            p.drivers.c_co2,
+            compute_PPFD(
+                p.canopy.radiative_transfer.par_d,
+                canopy.radiative_transfer.parameters.λ_γ_PAR,
+                pmodel_constants.lightspeed,
+                pmodel_constants.planck_h,
+                pmodel_constants.N_a,
+            ),
+            p.canopy.soil_moisture_stress.βm,
+            static_inputs.vpd_gs,
+        )
+
+        # Compute total target LAI
+        L_opt_total = compute_L_steady_target.(
+            Y.canopy.biomass.A0_daily,
+            parameters.k,
+            Y.canopy.biomass.A0_annual,
+            parameters.z,
+            static_inputs.GSL,
+            parameters.sigma,
+            Y.canopy.biomass.precip_annual,
+            static_inputs.f0,
+            p.drivers.c_co2 .* p.drivers.P,
+            p.canopy.biomass.OptVars.χ,
+            static_inputs.vpd_gs,
+        )
+
+        # Dynamic ResNet-PINN carbon allocation multiplier
+        A0_norm = clamp.(p.canopy.biomass.OptVars.A0 ./ max.(Y.canopy.biomass.A0_daily, eps(FT)), FT(0), FT(2))
+        vpd_norm = clamp.(static_inputs.vpd_gs ./ FT(2000.0), FT(0), FT(2))
+        sw_norm = clamp.(p.canopy.soil_moisture_stress.βm, FT(0), FT(1))
+        alloc_mult = compute_resnet_carbon_allocation.(Ref(model.parameters), A0_norm, vpd_norm, sw_norm)
+
+        # Eco-climatic partitioning
+        p_mm_ann = @. Y.canopy.biomass.precip_annual / FT(55.55)
+        ai = compute_aridity_index.(Y.canopy.biomass.precip_annual, Y.canopy.biomass.A0_annual, static_inputs.vpd_gs)
+        si = compute_seasonality_index.(static_inputs.GSL)
+        f_wood = compute_woody_fraction.(ai, si)
+
+        @. p.canopy.biomass.L_opt_wood = L_opt_total * alloc_mult * f_wood
+        @. p.canopy.biomass.L_opt_herb = L_opt_total * alloc_mult * (FT(1) - f_wood)
+
+        @. dY.canopy.biomass.A0_daily = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0,
+            Y.canopy.biomass.A0_daily,
+            tivs.A0_daily.reduction,
+        )
+        @. dY.canopy.biomass.A0_annual = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0,
+            Y.canopy.biomass.A0_annual,
+            tivs.A0_annual.reduction,
+        )
+        @. dY.canopy.biomass.precip_annual = apply_time_reduction(
+            -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
+            Y.canopy.biomass.precip_annual,
+            tivs.precip_annual.reduction,
+        )
+        @. dY.canopy.biomass.LAI_wood = apply_time_reduction(
+            p.canopy.biomass.L_opt_wood,
+            Y.canopy.biomass.LAI_wood,
+            tivs.LAI_wood.reduction,
+        )
+        @. dY.canopy.biomass.LAI_herb = apply_time_reduction(
+            p.canopy.biomass.L_opt_herb,
+            Y.canopy.biomass.LAI_herb,
+            tivs.LAI_herb.reduction,
         )
     end
     return compute_exp_tendency!

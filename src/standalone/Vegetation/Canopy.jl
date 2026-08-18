@@ -55,6 +55,7 @@ using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export CanopyModel
 include("./component_models.jl")
 include("./optimal_lai.jl")  # Must be before biomass.jl (defines OptimalLAIParameters used by ZhouOptimalLAIModel)
+include("./two_component_resnet_lai.jl")
 include("./biomass.jl")
 include("./plant_hydraulics.jl")
 include("./soil_moisture_stress.jl")
@@ -466,6 +467,40 @@ function ZhouOptimalLAIModel{FT}(
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
     return ZhouOptimalLAIModel{FT}(
+        parameters,
+        optimal_lai_inputs;
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+    )
+end
+
+
+"""
+    TwoComponentResNetLAIModel{FT}(
+        domain,
+        toml_dict::CP.ParamDict;
+        optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
+        SAI::FT = toml_dict["SAI"],
+        RAI::FT = toml_dict["RAI"],
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"],
+    ) where {FT <: AbstractFloat}
+
+Creates a TwoComponentResNetLAIModel on the provided domain, using parameters from `toml_dict`.
+"""
+function TwoComponentResNetLAIModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
+    SAI::FT = toml_dict["SAI"],
+    RAI::FT = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FT <: AbstractFloat}
+    parameters = TwoComponentResNetLAIParameters{FT}()
+    return TwoComponentResNetLAIModel{FT}(
         parameters,
         optimal_lai_inputs;
         SAI,
