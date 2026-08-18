@@ -1,0 +1,50 @@
+# Upstream findings to report (Phase 1b work)
+
+Running log of bugs/issues found in dependencies during Phase 1b, with status.
+Owner: Renato (decides when/how to report).
+
+## 1. GPU bug in `callmip_forcing.jl` on `kp/diff-multi-cols` (found 2026-08-18, FIXED locally)
+
+**For:** Kevin Phan (ph-kev), branch `kp/diff-multi-cols` (companion to PR #1826).
+
+**Symptom:** `callmip_run_demo.jl` with `CLIMACOMMS_DEVICE=CUDA` crashes in the snow
+model's surface-temperature broadcast:
+
+```
+ERROR: ClimaCoreCUDAExt.ThisHost and ClimaCore.DataLayouts.ThisThreadPool do not
+overlap, so they cannot be put in the same DataScope
+```
+
+(first hit inside `ClimaLand.Snow.solve_for_surface_temp_at_a_point` — but the defect
+is upstream of the snow model.)
+
+**Cause:** in `prescribed_forcing_callmip`, the per-column tower height is built as
+`ClimaCore.Fields.array2field(heights, surface_space)` with `heights::Vector{FT}` — a
+host `Array` wrapped into a Field on a GPU space. Every downstream broadcast that mixes
+`atmos.h` with device fields then throws. Invisible on CPU.
+
+**Fix (verified on 2× V100, CPU/GPU final states agree to ~11 digits):**
+
+```julia
+device_array = ClimaComms.array_type(ClimaComms.device(surface_space))(heights)
+atmos_h = length(heights) == 1 ? heights[1] :
+          ClimaCore.Fields.array2field(device_array, surface_space)
+```
+
+(+ `import ClimaComms` at the top.) Same pattern applies to ANY future per-column
+Field built from a host vector — worth a helper or a doc note on PR #1826.
+
+**Also useful for #1826 thread (kmdeck's question):** first timing points on
+Tesla V100 (sm_70, CUDA runtime pinned 12.9 — CUDA 13 dropped Volta), 2-column
+ensemble, integrated LandModel, Δt=450 s: GPU ≈ 125 SYPD vs CPU ≈ 780 SYPD —
+launch-latency-bound at N=2, as expected; proper N-scaling numbers coming from our
+Phase 3 benchmark (1/2/5/10/21 real sites + duplicated 30/100/300).
+
+## 2. Stale `callmip_phase1` artifact in CliMA/ClimaArtifacts (found 2026-08-18, worked around)
+
+The published artifact (tree `c8014d3…`, created 2026-06-30, PR #172) predates the
+callmip-org/Phase1 site swap of 2026-07-17: it contains AU-How flux (now a validation
+site) and is missing US-Var (calibration site). Fix: rerun
+`callmip_phase1/create_artifact.jl` at current upstream (`d6d36ad` or later) and bump
+`Artifacts.toml` in ClimaLand (we already carry the refreshed tree `9b4bd0d8…` locally;
+see DATA_MANIFEST.md).
