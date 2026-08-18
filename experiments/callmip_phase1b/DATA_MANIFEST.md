@@ -7,7 +7,7 @@ locations, hashes, or upstream contents change.
 
 | Artifact | git-tree-sha1 | Resolved path (Overrides.toml) | Status |
 |---|---|---|---|
-| `callmip_phase1_forcing` | `a0c004071c73d047095a01faedf017571e5237ef` | `/net/sampo/data1/ClimaArtifacts/artifacts/callmip_phase1_forcing` | ✅ hash verified 2026-08-18; 21 met files, correct site set |
+| `callmip_phase1_forcing` | `a0c004071c73d047095a01faedf017571e5237ef` | `/net/sampo/data1/ClimaArtifacts/artifacts/callmip_phase1_forcing` (per Renato: use sampo; hash-identical copy exists at `/home/renatob/data/callmip_data/callmip_phase1_forcing`) | ✅ hash verified 2026-08-18; 21 met files, correct site set |
 | `callmip_phase1` (published) | `c8014d3bbd838fcaa01bd2a69523b3fa98f28c5c` | `/net/sampo/data1/ClimaArtifacts/artifacts/callmip_phase1` | ⚠️ STALE (see below); kept for Phase 1a reproduction only |
 | `callmip_phase1` (refreshed, used by this branch) | `9b4bd0d80ad1a1ac54ab906ee999af5b952f0e7a` | `/net/sampo/data1/renatob/callmip_artifacts/callmip_phase1_20260818` | ✅ built 2026-08-18 from callmip-org/Phase1 @ `d6d36ad` (27 files, 3.5 MB) |
 
@@ -55,6 +55,18 @@ published artifact; also stage the refreshed copy to the shared
   NEE units `gC/m2/d`; daily counts consistent with year spans (leap days included).
 - Met files verified to carry: Tair, Wind, Qair, Psurf, SWdown, LWdown, CO2air, Precip,
   VPD, RH, LAI(±alternative), reference_height, latitude, longitude, elevation.
+- **US-MMS is HOURLY** (140,256 = 5,844 d × 24); the other 20 sites are half-hourly.
+  Handled by linear midpoint insertion at load time (`resample_to_30min` in
+  `forcing_phase1b.jl`) — identical to what the TVI's linear interpolation of the
+  hourly nodes would produce, so physically a no-op. Found 2026-08-18 when padding
+  hit a missing 30-min key; the n-half-hours column below is the raw file count.
+- **LAI product↔variable mapping varies by site** (`source` attribute): MODIS sits
+  under `LAI` at FR-Pue, IT-Lav, IT-MBo, IT-Noe, RU-Fyo and all US sites; under
+  `LAI_alternative` at the 8 northern/central European + Canadian sites. D7 (MODIS
+  everywhere, Renato 2026-08-18) is therefore implemented by attribute
+  (`modis_lai_var`), never by variable name.
+- **US-SRG tower height is 3.25 m** (not 3.2 — earlier table entry came from a
+  rounded print; caught by the `load_site` cross-check).
   Time axis: `seconds since <start>-01-01`, **local standard time**, no UTC-offset
   attribute (checked US-SRG) → UTC offsets must come from our site table (Phase 2).
 - Flux files carry: NEE, Qle, Qh + `<var>_uc` + missing-% per day. Daily, gap-days = NaN.
@@ -109,7 +121,7 @@ WRONG at 4 sites: FR-Pue, NL-Loo (+1 not 0), RU-Fyo (+3 not +2), US-MMS (−5 no
 | RU-Fyo | 56.4615 | 32.9221 | +3 | 48.0 | 265 | 2003-01-01 | 210384 |
 | US-MMS | 39.3232 | −86.4131 | −5 | 48.0 | 275 | 1999-01-01 | 140256 |
 | US-NR1 | 40.0329 | −105.5464 | −7 | 26.0 | 3050 | 1999-01-01 | 280512 |
-| US-SRG | 31.7894 | −110.8277 | −7 | 3.2 | 1291 | 2009-01-01 | 105168 |
+| US-SRG | 31.7894 | −110.8277 | −7 | 3.25 | 1291 | 2009-01-01 | 105168 |
 | US-SRM | 31.8214 | −110.8660 | −7 | 6.4 | 1120 | 2004-01-01 | 192864 |
 | US-Ton | 38.4316 | −120.9660 | −8 | 23.0 | 177 | 2001-01-01 | 245424 |
 | US-Var | 38.4133 | −120.9507 | −8 | 3.0 | 129 | 2001-01-01 | 245424 |
@@ -124,6 +136,14 @@ Convention: UTC = local − offset (matches `hour_offset_to_period` usage in
 - TRENDY CO2: `Data/Non-site-specific_forcing/CO2_1700_2024_TRENDYv2025.txt`
   (in both flux-artifact versions), for 1850-spin-up/transient CO2.
 - Met `CO2air` variable available per site for the observed window.
+
+## Local copy note (2026-08-18)
+
+`/home/renatob/data/callmip_data/` holds byte-identical copies of the two PUBLISHED
+artifacts (forcing tree hash re-verified = `a0c0040…`; forcing override now points
+here). ⚠️ Its `callmip_phase1/Data/Phase1b` is the STALE flux set (AU-How present,
+US-Var missing) — do not use; the refreshed flux artifact `9b4bd0d8…` remains the
+one wired in.
 
 ## Validation-site met (10 sites) — NOT YET AVAILABLE LOCALLY
 

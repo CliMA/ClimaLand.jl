@@ -21,14 +21,18 @@ import ClimaUtilities.TimeVaryingInputs:
 const FSExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
 
 """
-    read_callmip_met(met_nc_path, hour_offset_from_UTC)
+    read_callmip_met(met_nc_path, hour_offset_from_UTC; lai_var = "LAI_alternative")
 
 Read one CalLMIP/PLUMBER2 `*_Met.nc` file fully into memory and return a
 NamedTuple with the UTC timestamps (`UTC = local - hour_offset_from_UTC`), the
 site coordinates and tower height, and the forcing time series in the file's
 native units. The data are assumed gap-filled; missing values are an error.
 """
-function read_callmip_met(met_nc_path, hour_offset_from_UTC)
+function read_callmip_met(
+    met_nc_path,
+    hour_offset_from_UTC;
+    lai_var = "LAI_alternative",
+)
     NCDataset(met_nc_path) do ds
         function read_series(name)
             v = ds[name][1, 1, :]
@@ -53,8 +57,7 @@ function read_callmip_met(met_nc_path, hour_offset_from_UTC)
             CO2air = read_series("CO2air"), # ppm
             Precip = read_series("Precip"), # kg/m^2/s
             VPD = read_series("VPD"),       # hPa
-            LAI = haskey(ds, "LAI_alternative") ?
-                  read_series("LAI_alternative") : nothing,
+            LAI = haskey(ds, lai_var) ? read_series(lai_var) : nothing,
         )
     end
 end

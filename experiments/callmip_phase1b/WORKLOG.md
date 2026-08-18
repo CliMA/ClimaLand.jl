@@ -191,3 +191,47 @@ device array type. Grep pattern for future scalar→Field audits:
 
 **PHASE 1 CLOSED.** Multi-forcing ColumnEnsemble machinery is verified correct at
 N=2 on CPU and GPU. Next: Phase 2 (21-site forcing, union-axis padding).
+
+
+---
+
+## 2026-08-18 — Phase 2 (session 1, continued)
+
+### D7: LAI source
+
+All 21 met files carry BOTH `LAI` and `LAI_alternative` at 100% validity
+(PLUMBER2 climatology-fills outside product coverage) → availability does not
+constrain the choice. Decision D7 (PLAN.md): use `LAI` (the PLUMBER2-preferred
+product per protocol §4) for Phase 1b, `lai_var` override available. Differs from
+Phase 1a DK-Sor (`LAI_alternative`/MODIS) — documented.
+
+### Implementation
+
+- `sites.jl` — verified 21-site table (coords, UTC offsets, z_ref, met years) +
+  validation-site ID list.
+- `forcing_phase1b.jl` — `load_site` (table-checked reads), `union_axis`,
+  `pad_to_axis` (interior-year recycling, Feb-29→28 fallback, `native` mask),
+  `load_calibration_sites(; window)`.
+- `read_callmip_met` gained a `lai_var` kwarg (default unchanged =
+  `LAI_alternative`, so demos/Phase-1 scripts are untouched).
+- `verify_21site_forcing.jl` — Phase 2 gate script: padding fidelity (native
+  untouched, recycled = mapped interior-year sample, all finite), 21-column
+  driver order/fidelity, tower-height order, 5-day 21-column forward run with
+  per-column finiteness + physical canopy-T range. CPU run in progress.
+
+
+### Gate iterations (findings while making verify_21site_forcing.jl pass)
+
+1. `US-SRG tower height mismatch` — table said 3.2 (rounded print); file says
+   **3.25**. Fixed table + manifest. Also: heights are Float32 in files → all
+   equality checks use atol=1e-3.
+   Process lesson: a `sed` fix silently no-opped (pattern predated formatter
+   reflow; sed exits 0 on zero matches) → **only assert-guarded python edits**.
+2. `KeyError: 2010-12-31T22:30` in padding — **US-MMS met is HOURLY** (only such
+   site; 5,844 d × 24). Added `resample_to_30min` (linear midpoints ≡ TVI linear
+   interp; physically a no-op) wired into `load_site`. Kevin's `align_sites`
+   would also have rejected the mixed grid (its equispaced/shared-dt assert).
+3. D7 revised per Renato mid-session: **MODIS everywhere**. Implemented by the
+   `source` attribute via `modis_lai_var` — variable names flip per site
+   (13/21 keep MODIS under `LAI`), so name-based selection would silently pick
+   Copernicus at 13 sites.

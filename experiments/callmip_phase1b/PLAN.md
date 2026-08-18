@@ -57,6 +57,7 @@ CalLMIP Phase 1b, Calibration Scenario 1 (required): calibrate **one operational
 | D3 | Calibration window = **union axis with per-site recycled-met padding**, obs masked to each site's real window | Intersection (2009–2010) wastes ~80% of obs. Padding = protocol-consistent cycling. |
 | D4 | Calibration objective = **monthly means** of NEE/Qle/Qh per site (site-major blocks), minibatched over year-windows | Matches Phase 1a (worked); daily misfit is noisy and 100× larger G vector. |
 | D5 | Spin-up: calibration loop uses short water/T spin-up + prescribed carbon ICs (protocol §8 Note 1 allows prescribed ICs); deliverable runs use the 5-yr water/T spin-up + full transient | Full 1850 carbon equilibrium per member×iteration is computationally prohibitive; documented deviation, same treatment for prior and posterior. |
+| D7 (revised by Renato 2026-08-18) | Phase 1b LAI = **MODIS at every site**, resolved per file via the `source` attribute (`modis_lai_var`) — NOT by variable name, since 13/21 sites keep MODIS under `LAI` and 8 under `LAI_alternative` | Renato's call ("I rather keep MODIS everywhere"): one consistent sensor across sites and consistency with Phase 1a DK-Sor. Both products are 100% valid everywhere, so no availability cost. |
 | D6 | Flux obs = **refreshed artifact** `9b4bd0d8…` (callmip-org/Phase1 @ d6d36ad) | Published artifact `c8014d3…` is stale: contains AU-How (validation site), missing US-Var (calibration site). See DATA_MANIFEST.md. |
 
 ## Dependency state (checked 2026-08-18)
