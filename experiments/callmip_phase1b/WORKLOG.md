@@ -33,7 +33,7 @@ what was checked, what broke, decisions made. Companion to [PLAN.md](PLAN.md) an
 
 ### Branch setup
 
-- Committed Phase 1a WIP snapshot on `callmip-phase1a-dksor-ces` (`b0a1281ac`) to
+- Committed Phase 1a WIP snapshot on `callmip-phase1a-dksor-ces` (`026039141`) to
   clear the working tree. Untracked local analysis files left in place (131 files,
   no collisions with target branch — verified).
 - Created `rb/callmip-phase1b` from `origin/kp/diff-multi-cols` (`f829d7cfd`).
@@ -51,9 +51,32 @@ what was checked, what broke, decisions made. Companion to [PLAN.md](PLAN.md) an
     `kp/point-cloud-intp` — required).
 - Net diff vs `kp/diff-multi-cols`: +2,672 lines, 16 files (verified `git diff --stat`).
 
-### Next (this session, Phase 0 continued)
+### Site metadata extraction + UTC-offset verification (DATA_MANIFEST)
 
+- Extracted lat/lon/z_ref/elev/time-units from all 21 met files (netCDF4/python).
+- Met lengths validate exactly against year spans (e.g. DK-Sor 18 yr = 6574 d × 48).
+- **UTC offsets verified empirically** from SWdown diurnal cycle:
+  - centroid method flagged US-NR1 (−7.79) and US-MMS (−5.56) — turned out to be
+    afternoon-convection bias, NOT wrong offsets;
+  - sunrise/sunset-midpoint method (unbiased) confirms FLUXNET political offsets at
+    **all 21 sites within ±0.15 h**. Naive `round(lon/15)` wrong at FR-Pue, NL-Loo
+    (+1), RU-Fyo (+3), US-MMS (−5) — do NOT derive offsets from longitude.
+- Verified all 21 refreshed flux files: `{NEE,Qle,Qh}_daily` (+`_uc_daily`), NEE in
+  gC/m2/d. **Coverage finding:** NEE valid days very sparse at 5 sites (US-Ton 0.3%,
+  CH-Dav/DE-Hai/IT-Lav/US-Var ≤ 1.8%); Qle/Qh much better (26–97%). Totals:
+  NEE 16.6k / Qle 60.5k / Qh 67.4k valid daily obs. → per-month masks mandatory;
+  misfit energy-dominated at NEE-poor sites (noted for Phase 4).
+
+### Environment
+
+- `.buildkite` instantiate + precompile started in background
+  (Julia 1.12.6; Manifest pins ClimaCore 0.15.1 + ClimaUtilities `kp/point-cloud-intp`).
+
+### Phase 0 gate checklist
+
+- [x] Data verified (artifacts, hashes, windows, offsets, flux structure/coverage).
+- [x] Branch `rb/callmip-phase1b` assembled and committed (`1ac8e4e81`).
 - [x] Docs scaffolding (this file, PLAN.md, DATA_MANIFEST.md).
-- [ ] Commit Phase 0 state.
-- [ ] Instantiate `.buildkite` project (Julia 1.12.6; ClimaUtilities branch pin).
-- [ ] Gate: run `callmip_forcing_demo.jl` + `callmip_run_demo.jl` on CPU, then CUDA.
+- [ ] `.buildkite` project instantiated + precompiled clean.
+- [ ] Gate: `callmip_forcing_demo.jl` + `callmip_run_demo.jl` on CPU.
+- [ ] Gate: same demos on CUDA (`CLIMACOMMS_DEVICE=CUDA`), values sane per column.
