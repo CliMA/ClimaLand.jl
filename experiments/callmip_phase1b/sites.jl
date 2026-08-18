@@ -179,21 +179,95 @@ const CALIBRATION_SITES = [
 
 const CALIBRATION_SITE_IDS = [s.id for s in CALIBRATION_SITES]
 
-# Validation sites (protocol Table 2). Met forcing must come from the ME-org
-# "Phase 1b Validation" experiment (not yet staged); offsets to be verified
-# from the files on arrival (AU sites may sit on half-hour offsets, e.g.
-# AU-ASM is UTC+9.5).
-const VALIDATION_SITE_IDS = [
-    "AU-ASM",
-    "AU-How",
-    "AU-Stp",
-    "AU-Tum",
-    "CH-Cha",
-    "US-FPe",
-    "US-GLE",
-    "US-Ha1",
-    "US-Me2",
-    "US-UMB",
+# Validation sites (protocol Table 2), met from ME-org "Phase 1b Validation".
+# UTC offsets verified 2026-08-18 from SWdown sunrise/sunset midpoints (the AU
+# sites sit on the +9.5 half-hour zone); AU-Tum, US-Ha1, US-UMB report HOURLY
+# met (handled by resample_to_30min). Provenance: OzFlux (AU), LaThuile
+# (US-FPe), FLUXNET2015 (rest).
+const VALIDATION_SITES = [
+    (
+        id = "AU-ASM",
+        lat = -22.2830,
+        long = 133.2490,
+        utc_offset = 9.5,
+        zref = 11.6,
+        met_years = (2011, 2017),
+    ),
+    (
+        id = "AU-How",
+        lat = -12.4952,
+        long = 131.1500,
+        utc_offset = 9.5,
+        zref = 23.0,
+        met_years = (2003, 2017),
+    ),
+    (
+        id = "AU-Stp",
+        lat = -17.1507,
+        long = 133.3502,
+        utc_offset = 9.5,
+        zref = 4.8,
+        met_years = (2010, 2017),
+    ),
+    (
+        id = "AU-Tum",
+        lat = -35.6566,
+        long = 148.1517,
+        utc_offset = 10,
+        zref = 70.0,
+        met_years = (2002, 2017),
+    ),
+    (
+        id = "CH-Cha",
+        lat = 47.2102,
+        long = 8.4104,
+        utc_offset = 1,
+        zref = 2.0,
+        met_years = (2006, 2014),
+    ),
+    (
+        id = "US-FPe",
+        lat = 48.3077,
+        long = -105.1019,
+        utc_offset = -7,
+        zref = 3.5,
+        met_years = (2000, 2006),
+    ),
+    (
+        id = "US-GLE",
+        lat = 41.3665,
+        long = -106.2399,
+        utc_offset = -7,
+        zref = 23.0,
+        met_years = (2009, 2014),
+    ),
+    (
+        id = "US-Ha1",
+        lat = 42.5378,
+        long = -72.1715,
+        utc_offset = -5,
+        zref = 30.0,
+        met_years = (1992, 2012),
+    ),
+    (
+        id = "US-Me2",
+        lat = 44.4523,
+        long = -121.5574,
+        utc_offset = -8,
+        zref = 29.0,
+        met_years = (2002, 2014),
+    ),
+    (
+        id = "US-UMB",
+        lat = 45.5598,
+        long = -84.7138,
+        utc_offset = -5,
+        zref = 50.0,
+        met_years = (2000, 2014),
+    ),
 ]
 
-site_info(id) = only(filter(s -> s.id == id, CALIBRATION_SITES))
+const VALIDATION_SITE_IDS = [s.id for s in VALIDATION_SITES]
+
+site_info(id) =
+    only(filter(s -> s.id == id, [CALIBRATION_SITES; VALIDATION_SITES]))

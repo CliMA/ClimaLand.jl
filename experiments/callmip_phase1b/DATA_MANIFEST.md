@@ -145,12 +145,35 @@ here). ⚠️ Its `callmip_phase1/Data/Phase1b` is the STALE flux set (AU-How pr
 US-Var missing) — do not use; the refreshed flux artifact `9b4bd0d8…` remains the
 one wired in.
 
-## Validation-site met (10 sites) — NOT YET AVAILABLE LOCALLY
+## Validation-site met (10 sites) — VERIFIED 2026-08-18
 
-AU-ASM, AU-How, AU-Stp, AU-Tum, CH-Cha, US-FPe, US-GLE, US-Ha1, US-Me2, US-UMB.
-Only distributed via ME-org ("Phase 1b Validation" experiment); requires Renato's ME-org
-login (blocker for Phase 7; flagged in PLAN.md). Note: AU-How *flux* obs exist in the
-stale artifact but protocol provides no validation-site flux — do not use.
+Downloaded by Renato from ME-org ("Phase 1b Validation") to
+`/net/sampo/data1/renatob/callmip_validation_met/` (zip + extracted files; the zip's
+`__MACOSX` junk is excluded from the artifact). All 10 files verified: complete driver
+set, both LAI products with `source` attributes, zero non-finite values, UTC offsets
+confirmed from SWdown sunrise/sunset midpoints (AU sites are on the **+9.5 half-hour
+zone**), and **three sites are HOURLY** (AU-Tum, US-Ha1, US-UMB → `resample_to_30min`).
+
+| Site | lat | lon | UTC offset | z_ref (m) | met window | provenance | per day |
+|---|---|---|---|---|---|---|---|
+| AU-ASM | −22.2830 | 133.2490 | +9.5 | 11.6 | 2011–2017 | OzFlux | 48 |
+| AU-How | −12.4952 | 131.1500 | +9.5 | 23.0 | 2003–2017 | OzFlux | 48 |
+| AU-Stp | −17.1507 | 133.3502 | +9.5 | 4.8 | 2010–2017 | OzFlux | 48 |
+| AU-Tum | −35.6566 | 148.1517 | +10 | 70.0 | 2002–2017 | OzFlux | **24** |
+| CH-Cha | 47.2102 | 8.4104 | +1 | 2.0 | 2006–2014 | FLUXNET2015 | 48 |
+| US-FPe | 48.3077 | −105.1019 | −7 | 3.5 | 2000–2006 | LaThuile | 48 |
+| US-GLE | 41.3665 | −106.2399 | −7 | 23.0 | 2009–2014 | FLUXNET2015 | 48 |
+| US-Ha1 | 42.5378 | −72.1715 | −5 | 30.0 | 1992–2012 | FLUXNET2015 | **24** |
+| US-Me2 | 44.4523 | −121.5574 | −8 | 29.0 | 2002–2014 | FLUXNET2015 | 48 |
+| US-UMB | 45.5598 | −84.7138 | −5 | 50.0 | 2000–2014 | FLUXNET2015 | **24** |
+
+**31-site forcing artifact** (21 calibration + 10 validation) built 2026-08-18:
+tree `a597745c2a2dc2be831cbafafc37569a67f4a3c7` at
+`/net/sampo/data1/renatob/callmip_artifacts/callmip_phase1_forcing_20260818`
+(wired via Artifacts.toml + Overrides.toml on this branch; the published 21-site
+artifact `a0c0040…` stays overridden for reproducing older branches). No flux obs
+exist for validation sites (protocol design). Table-2 record-length note: my PDF
+extraction had CH-Cha/US-Ha1 lengths garbled; the file windows above are authoritative.
 
 ## Other local copies (pre-artifact, kept for reference)
 

@@ -54,7 +54,9 @@ function load_site(id; lai_var = :modis)
     # reference_height is Float32 in the files; compare with tolerance
     isapprox(site.atmos_h, info.zref; atol = 1e-3) ||
         error("$id: tower height mismatch")
-    yr = Dates.year(site.utc_dates[1] + Dates.Hour(info.utc_offset))
+    yr = Dates.year(
+        site.utc_dates[1] + FSExt.hour_offset_to_period(info.utc_offset),
+    )
     yr == info.met_years[1] || error("$id: met start year $yr != table")
     return resample_to_30min(site)
 end

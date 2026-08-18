@@ -48,3 +48,11 @@ site) and is missing US-Var (calibration site). Fix: rerun
 `callmip_phase1/create_artifact.jl` at current upstream (`d6d36ad` or later) and bump
 `Artifacts.toml` in ClimaLand (we already carry the refreshed tree `9b4bd0d8…` locally;
 see DATA_MANIFEST.md).
+
+## 3. `callmip_phase1_forcing` should grow to 31 sites (2026-08-18)
+
+The published forcing artifact has only the 21 calibration sites. Phase 1b also
+requires met for the 10 ME-org validation sites (protocol Table 2). We built the
+31-site tree `a597745c…` locally (see DATA_MANIFEST.md); the upstream ClimaArtifacts
+refresh should include them (note: 3 validation sites are hourly, AU zones are +9.5,
+provenance is OzFlux/LaThuile for some — README should say so).

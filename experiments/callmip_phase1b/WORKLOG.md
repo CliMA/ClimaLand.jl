@@ -235,3 +235,36 @@ Phase 1a DK-Sor (`LAI_alternative`/MODIS) — documented.
    `source` attribute via `modis_lai_var` — variable names flip per site
    (13/21 keep MODIS under `LAI`), so name-based selection would silently pick
    Copernicus at 13 sites.
+
+
+### Phase 2 gate — CPU PASS (2026-08-18)
+
+- Padding correctness (full union axis 1995-12-31T22:00 → 2015-01-01T07:30,
+  333,140 half-hours): **840/840** — native samples untouched, recycled samples
+  equal the independently recomputed interior-year mapping, everything finite.
+- 21-column driver order/fidelity: **22/22** (7 sample times × 3 drivers vs raw
+  values per column; tower heights in column order at atol 1e-3).
+- 21-column × 5-day forward run (default LandModel): **85/85** finiteness checks;
+  July canopy T spans 278–304 K across the ensemble (boreal → desert). Wall 54 s
+  including compile → the 21.9 "SYPD" is a floor, not a throughput number
+  (Phase 3 measures properly).
+- Committed `344ed7932`. GPU repeat running.
+- Data-location decision (Renato): artifacts resolve from **sampo**; the kiwi copy
+  at /home/renatob/data/callmip_data is a spare (its flux subset is the STALE set).
+- Validation download list sent to Renato: 10 met files from ME-org "Phase 1b
+  Validation" (site IDs + Table-2 record lengths in the chat + DATA_MANIFEST).
+
+
+### Validation-site met verified + 31-site artifact (2026-08-18)
+
+- Renato downloaded the 10 ME-org validation met files (zip →
+  /net/sampo/data1/renatob/callmip_validation_met/). Verified: full driver set,
+  UTC offsets empirical-confirmed (AU = +9.5 half-hour zone!), 3 HOURLY sites
+  (AU-Tum, US-Ha1, US-UMB), provenance mix (OzFlux/LaThuile/FLUXNET2015).
+- Built 31-site forcing artifact `a597745c…`; Artifacts.toml bumped, override added.
+- sites.jl: verified VALIDATION_SITES table; site_info searches both tables.
+- Bug found by the check: my start-year cross-check used `Dates.Hour(offset)` →
+  `InexactError` on +9.5; fixed with `FSExt.hour_offset_to_period` (fraction-aware).
+- End-to-end load of all 10 validation sites: CLEAN (30-min grids after resample,
+  MODIS by attribute, zero non-finite).
+- Per Renato: data stays on sampo (kiwi copy is a spare only).
