@@ -87,8 +87,10 @@ function _build_sim(
         LAI,
         toml_dict,
         domain,
-        DT1B,
+        DT1B;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     )
+    @assert !isnothing(land.soilco2) "SoilCO2 component is required (DAMM params + cSoil)"
     diags =
         isnothing(diagnostics) ? () :
         vcat(

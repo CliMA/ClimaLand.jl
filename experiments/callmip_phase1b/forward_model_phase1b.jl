@@ -99,8 +99,10 @@ function run_member(params_vec, years)
             LAI,
             toml_dict,
             land_domain,
-            DT1B,
+            DT1B;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         )
+        @assert !isnothing(land.soilco2) "SoilCO2 component is required (DAMM params + cSoil)"
         writer = ClimaDiagnostics.Writers.DictWriter()
         diags = ClimaLand.default_diagnostics(
             land,

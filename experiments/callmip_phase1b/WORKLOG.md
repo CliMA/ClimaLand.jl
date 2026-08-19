@@ -378,3 +378,32 @@ Benchmark ran detached overnight, both sweeps exit 0
   JLD2 → NetCDF. CLI: `<site_id> <Prior|Posterior>` (Posterior reads the
   UTKI ϕ_mean).
 - Smoke: US-SRG Prior (11 sim-yr) running.
+
+
+### ⚠️ MAJOR CATCH: default LandModel omits soilco2 — Phase 5 restarted (2026-08-19)
+
+The deliverable smoke (US-SRG) failed the diagnostics whitelist assertion for
+`hr`/`soc` — which exposed that the convenience constructor
+`LandModel{FT}(forcing, LAI, toml_dict, domain, Δt)` defaults to
+`prognostic_land_components = (:canopy, :snow, :soil)` — **no SoilCO2 model**
+(type parameter MM = Nothing). Consequences of the model we had been calibrating:
+- 4 of the 11 calibrated parameters (all DAMM heterotrophic-respiration params)
+  had ZERO effect;
+- modeled NEE omitted heterotrophic respiration entirely (er = autotrophic only);
+- protocol variable cSoil impossible.
+The calibration G-map only requested nee/lhf/shf, so nothing errored — silent
+scientific wrongness caught by the wider deliverable diagnostics. Kevin's demo
+and our Phases 0–3 verification are UNAFFECTED (they test forcing/space
+machinery, not carbon completeness); the Phase 3 SYPD numbers were measured on
+the no-soilco2 model and will shift somewhat.
+
+Actions:
+- **Phase 5 stopped at iteration ~6; checkpoint quarantined**
+  (`ekp_checkpoint_NOSOILCO2_INVALID.jld2`, log `calibration_iter_NOSOILCO2.log`).
+- `prognostic_land_components = (:canopy, :snow, :soil, :soilco2)` added to the
+  LandModel calls in forward_model_phase1b.jl and deliverable_runs_phase1b.jl.
+- Re-verification ladder restarted: G smoke → deliverable smoke → Phase 4 gate
+  iteration → fresh Phase 5.
+Lesson recorded: when using a convenience constructor, ASSERT the components you
+scientifically require (a `@assert !isnothing(land.soilco2)` now belongs in the
+forward model).
