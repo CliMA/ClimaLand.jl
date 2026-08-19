@@ -312,3 +312,26 @@ Benchmark ran detached overnight, both sweeps exit 0
   (630 cols ≈ 29 min/iteration on ONE V100 — viable fallback if per-column params
   ever get implemented) and for PR #1826 evidence.
 - Numbers added to UPSTREAM_NOTES.md for kmdeck's #1826 question.
+
+
+## 2026-08-19 — Phase 4 (session 2)
+
+### Implementation (mirrors Phase 1a conventions exactly)
+
+- `observations_phase1b.jl` — per-site Phase 1a recipe (monthly means,
+  MIN_VALID_DAYS=5, SIGMA2_MISS=1e12, noise = FLUXNET σ²/n + inter-annual floor,
+  valid-dates threading), site-major 756-entry windows. Built 2003–2014:
+  **12 windows, 5,708/9,072 unmasked (63%)**. NEE contributes at 16/21 sites
+  (0 months at CH-Dav/DE-Hai/US-Ton/US-Var, 1 at IT-Lav); LHF/SHF everywhere.
+- `forward_model_phase1b.jl` — `run_member(θ, years)`: TOML override → default
+  LandModel (D1) on 21-col ColumnEnsemble → leading spin-up year (D5) → daily
+  nee/lhf/shf via DictWriter → monthly all-day means per column (GMATCH=allday),
+  NEE ×12×86400 → gC/m²/d; year-major site-major layout; NaN on failure.
+  Padded sites cached once per process (`sites_full()`), windows cropped
+  in-memory (`crop_sites` added to forcing_phase1b.jl).
+- `run_calibration_phase1b.jl` — UTKI (TransformUnscented, impose_prior,
+  2p+1=23 members), biennial consecutive minibatches (G dim 1512), pmap on 23
+  CPU workers, DataMisfitController(100), JLD2 checkpoint/resume, --test mode
+  (serial 2 members × 1 iteration).
+- Priors: reusing Phase 1a `priors.jl` verbatim (D2) — note `pmodel_β_c4` is now
+  genuinely constrained (3 C4-grass sites).

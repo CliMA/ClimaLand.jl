@@ -139,6 +139,24 @@ function pad_to_axis(site, axis)
 end
 
 """
+    crop_sites(padded_sites, window)
+
+Slice already-padded sites (shared axis) to `window = (start, stop)` in place of
+re-reading NetCDF — cheap per-minibatch windowing for the calibration loop.
+"""
+function crop_sites(padded_sites, window)
+    axis = padded_sites[1].utc_dates
+    i0 = searchsortedfirst(axis, window[1])
+    i1 = searchsortedlast(axis, window[2])
+    1 <= i0 <= i1 <= length(axis) || error("window outside padded axis")
+    slice(v::Vector) = v[i0:i1]
+    slice(x) = x
+    return [
+        merge(map(slice, s), (; utc_dates = axis[i0:i1])) for s in padded_sites
+    ]
+end
+
+"""
     load_calibration_sites(site_ids = CALIBRATION_SITE_IDS;
                            window = nothing, lai_var = :modis)
 
