@@ -17,6 +17,7 @@ per-window forcing is an in-memory crop.
 """
 
 using Dates
+using Statistics
 import ClimaCore
 import ClimaDiagnostics
 import ClimaUtilities.TimeManager: date
