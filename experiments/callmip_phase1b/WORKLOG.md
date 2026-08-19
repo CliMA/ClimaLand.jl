@@ -335,3 +335,16 @@ Benchmark ran detached overnight, both sweeps exit 0
   (serial 2 members × 1 iteration).
 - Priors: reusing Phase 1a `priors.jl` verbatim (D2) — note `pmodel_β_c4` is now
   genuinely constrained (3 C4-grass sites).
+
+
+### Phase 4 gate — CLOSED (2026-08-19)
+
+- G smoke: 5/5 (756 finite entries, plausible ranges, 12.5 min for 2 sim-yr).
+- Gate iteration attempt 1: all 23 members NaN — missing `using Statistics` in
+  forward_model_phase1b.jl (smoke test masked it by importing before include).
+  Fixed (`776f2042f`), stale vacuous checkpoint deleted, rerun.
+- Gate iteration (real, 23 workers, window [2005,2006]): **NaN members 0**,
+  G_ens (1512×23), wall **19.6 min**, real UTKI update (T=0.061; β_c3 159→42,
+  cstar 0.36→0.51; β_c4 ~unchanged as expected from one window).
+- **PHASE 4 CLOSED.** Phase 5 = resume checkpoint to iteration 10
+  (CALLMIP1B_N_ITER=10 via output_calibration/run_iter.sh, detached).
