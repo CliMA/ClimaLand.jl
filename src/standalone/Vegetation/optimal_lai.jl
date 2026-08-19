@@ -24,15 +24,36 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
-    """Fraction of annual precipitation available for transpiration (dimensionless, 0-1).
-    Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition.
-    In arid regions, f0 can be lower: f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index.
-    Default value 0.65 assumes optimal water use efficiency."""
-    f0::FT
+    """Peak fraction of annual precipitation available for transpiration (dimensionless,
+    0-1), reached at the energy-water limitation transition. The fraction actually used,
+    `f0 = f0_max * exp(-0.604 * ln^2(AI/1.9))` with `AI` the aridity index, falls off
+    toward both extremes; Zhou et al. (2025) fit `f0_max = 0.65`. See `f0_from_aridity`."""
+    f0_max::FT
     """Long-term memory timescale (s) of the A0 and precipitation running-mean annual
     totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
     filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
     tau_long_term::FT
+    """Whether the C3 fraction is computed from the C3/C4 competition on the
+    running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
+    photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
+    online_c3c4::FT
+    """Steepness of the logistic mapping the proportional C4 GPP advantage to the
+    expected C4 fraction (dimensionless), fitted by Lavergne et al. (2022)."""
+    c3c4_k::FT
+    """Midpoint of that logistic (dimensionless): the C4 GPP advantage at which C4
+    and C3 are equally expected."""
+    c3c4_q::FT
+    """Coefficient `a` of the C3 tree-cover relation `tc(g) = a·g^b + c`, with `g`
+    the annual C3 GPP (kg C m^-2 yr^-1)."""
+    tc_a::FT
+    """Exponent `b` of the tree-cover relation (dimensionless)."""
+    tc_b::FT
+    """Offset `c` of the tree-cover relation; negative, so tree cover vanishes below
+    a threshold GPP."""
+    tc_c::FT
+    """Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation:
+    `tc(g)/tc(tc_gpp_ref)`, clamped to [0, 1], is the C3 tree proportion."""
+    tc_gpp_ref::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -51,8 +72,15 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         z = FT(toml_dict["optimal_lai_z"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
-        f0 = FT(toml_dict["optimal_lai_f0"]),
+        f0_max = FT(toml_dict["optimal_lai_f0_max"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
+        online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
+        c3c4_k = FT(toml_dict["optimal_lai_c3c4_k"]),
+        c3c4_q = FT(toml_dict["optimal_lai_c3c4_q"]),
+        tc_a = FT(toml_dict["optimal_lai_tc_a"]),
+        tc_b = FT(toml_dict["optimal_lai_tc_b"]),
+        tc_c = FT(toml_dict["optimal_lai_tc_c"]),
+        tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
     )
 end
 
@@ -366,4 +394,153 @@ function compute_L_steady_target(
         compute_L_max(A0_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
     m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
     return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
+end
+
+# Shape of Zhou et al. (2025)'s f0(AI) curve: the aridity index at which f0 peaks,
+# and the width of the falloff. Structural to the published relation, not tunable.
+const AI_PEAK = 1.9
+const AI_WIDTH = 0.604
+
+"""
+    f0_from_aridity(PET_annual::FT, precip_annual::FT, f0_max::FT) where {FT}
+
+Climate-responsive fraction of precipitation available for transpiration
+(Zhou et al. 2025): `f0 = f0_max·exp(−0.604·ln²(AI/1.9))` with aridity index
+`AI = PET_annual/precip_annual`. Peaks at `f0_max` at the energy–water transition
+(AI = 1.9) and declines toward both the arid and humid extremes.
+"""
+function f0_from_aridity(
+    PET_annual::FT,
+    precip_annual::FT,
+    f0_max::FT,
+) where {FT}
+    AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
+    return f0_max * exp(-FT(AI_WIDTH) * log(max(AI, eps(FT)) / FT(AI_PEAK))^2)
+end
+
+"""
+    aridity_from_f0(f0::FT, f0_max::FT) where {FT}
+
+Inverse of [`f0_from_aridity`](@ref), used to seed `PET_annual` so the online `f0`
+starts at the value of the map it replaces. `f0` is symmetric in `ln(AI/1.9)`, so
+this returns the arid branch (`AI ≥ 1.9`), which is where the map was fitted. An
+`f0` at or above `f0_max` has no arid-branch preimage and returns the peak `1.9`.
+"""
+function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
+    return FT(AI_PEAK) *
+           exp(sqrt(max(log(f0_max / max(f0, eps(FT))), FT(0)) / FT(AI_WIDTH)))
+end
+
+"""
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, Mc, fapar, parameters)
+
+Online C3 fraction from the pyrealm-style C3/C4 competition (GPP-derived, no PFT),
+using the running-mean per-pathway potential GPP `A0c3_annual`/`A0c4_annual`
+(mol CO2 m^-2 yr^-1) and the molar mass `Mc` (kg mol^-1). Steps (Lavergne/pyrealm):
+the proportional C4 GPP advantage `A4 = (A0c4 − A0c3)/A0c3` is passed through a
+logistic to an expected C4 fraction, which is then penalised by the proportion of
+C3-tree canopy (estimated from `A0c3`), so C4 is suppressed where C3 trees would
+shade it. Returns `fractional_c3 = 1 − frac_c4`.
+"""
+function c3_fraction_from_competition(
+    A0c3_annual::FT,
+    A0c4_annual::FT,
+    Mc::FT,
+    fapar::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    (; c3c4_k, c3c4_q, tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
+    a0c3 = max(A0c3_annual, eps(FT))
+    # C4 GPP advantage is a ratio, so it is invariant to the potential→actual GPP
+    # scaling (fapar cancels); use the potential per-pathway means directly.
+    adv = (A0c4_annual - a0c3) / a0c3
+    # pyrealm modulates the advantage by exp(1/(1+TC)) from observed tree cover;
+    # with no such input, TC = 0 gives the divisor ℯ.
+    frac_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
+    # C3-tree proportion from annual C3 GPP in kg m^-2 yr^-1. The tc() relation
+    # (pyrealm/Lavergne) is fit to REALIZED GPP, so scale the potential a0c3 by the
+    # realized fAPAR — using potential GPP here saturates prop_trees and wrongly
+    # suppresses C4 in productive grasslands.
+    gppc3 = a0c3 * Mc * fapar
+    tc(g) = tc_a * g^tc_b + tc_c
+    prop_trees = clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
+    frac_c4 *= (1 - prop_trees)
+    return 1 - frac_c4
+end
+
+"""
+    potential_evaporation(
+        SW_d, LW_d, T_air, P_air, q_air, u_air, h_atmos, ϵ_sfc, σ, M_w, thermo_params,
+    )
+
+FAO-56 Penman-Monteith reference evapotranspiration (mol H2O m^-2 s^-1), the numerator
+of the aridity index `AI = PET_annual/precip_annual` that sets the climate-responsive
+`f0`. This is the definition the `f0(AI)` relation was fitted against, so `AI` is on the
+same footing as the climatology the relation came from:
+
+    λE = [Δ Rn + ρ_a c_p D / r_a] / [Δ + γ (1 + r_s/r_a)],
+    Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4),
+
+with `Δ` the slope of the saturation vapour pressure curve, `γ` the psychrometric
+constant, `D` the vapour pressure deficit, and `r_a = 208/u_2`, `r_s = 70 s m^-1` the
+aerodynamic and surface resistances of the 0.12 m reference crop. `u_2` is the wind
+speed brought to the reference 2 m by the FAO-56 log-law adjustment.
+
+`α_ref`, `r_s` and the resistance coefficients *define* that reference surface, so they
+are deliberately not the simulated canopy's properties: tying them to the simulation
+would decouple `AI` from the curve that consumes it.
+
+The ground heat flux is taken as zero, which is the FAO-56 convention at daily and
+longer averaging, and this feeds a trailing-year total. `λE` is clipped at zero rather
+than `Rn`, following the FAO-56 sub-daily convention: at night the radiative term goes
+negative while the aerodynamic term does not, and clipping `Rn` alone would leave the
+latter to overstate night-time demand.
+"""
+function potential_evaporation(
+    SW_d::FT,
+    LW_d::FT,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
+    u_air::FT,
+    h_atmos::FT,
+    ϵ_sfc::FT,
+    σ::FT,
+    M_w::FT,
+    thermo_params,
+) where {FT}
+    α_ref = FT(0.23)
+    r_s = FT(70)
+    Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
+
+    λv = TP.LH_v0(thermo_params)
+    R_v = TP.R_v(thermo_params)
+    q = max(q_air, zero(FT))
+    c_p = TP.cp_d(thermo_params) * (1 - q) + TP.cp_v(thermo_params) * q
+
+    # Clausius-Clapeyron slope de_sat/dT, and the psychrometric constant with the
+    # dry-to-vapour gas constant ratio standing in for the molar mass ratio.
+    e_sat = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        T_air,
+        Thermodynamics.Liquid(),
+    )
+    Δ = e_sat * λv / (R_v * T_air^2)
+    γ = c_p * P_air * R_v / (TP.R_d(thermo_params) * λv)
+
+    D = Thermodynamics.vapor_pressure_deficit(
+        thermo_params,
+        T_air,
+        P_air,
+        q_air,
+    )
+    ρ_a = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+
+    # Wind at the reference 2 m (FAO-56 Eq. 47); the relation is anchored on the
+    # reference crop, so heights below it are held at 2 m rather than extrapolated.
+    u_2 = u_air * FT(4.87) / log(FT(67.8) * max(h_atmos, FT(2)) - FT(5.42))
+    r_a = FT(208) / max(u_2, sqrt(eps(FT)))
+
+    λE = (Δ * Rn + ρ_a * c_p * D / r_a) / (Δ + γ * (1 + r_s / r_a))
+    return max(λE, zero(FT)) / (λv * M_w)
 end

@@ -379,7 +379,7 @@ function clm_canopy_height(
 end
 
 """
-    optimal_lai_static_inputs(
+    optimal_lai_initial_conditions(
         surface_space,
         data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
         regridder_type = :InterpolationsRegridder,
@@ -390,9 +390,15 @@ end
         interpolation_method = Interpolations.Constant(),
     )
 
-Reads the spatially varying optimal LAI data from a NetCDF file, and regrids it to the
-grid defined by the `surface_space` of the Clima simulation. Returns a NamedTuple of
-ClimaCore Fields suitable for passing to `ZhouOptimalLAIModel`.
+Reads the spatially varying optimal LAI climatology from a NetCDF file, and regrids it
+to the grid defined by the `surface_space` of the Clima simulation. Returns a NamedTuple
+of ClimaCore Fields.
+
+The optimal-LAI model derives its growing-season inputs from the simulated climate, so
+these fields are not read at runtime: they are the climatology
+`ClimaLand.Simulations.set_canopy_component_initial_conditions!` seeds the prognostic
+trailing totals from, which it reads from the same file. This function is the
+standalone reader for that file.
 
 This function returns fields for:
 - `GSL`: Growing season length (days)
@@ -416,8 +422,8 @@ The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `v
 
 # Example
 ```julia
-ic_data = optimal_lai_static_inputs(surface_space)
-biomass = ZhouOptimalLAIModel{FT}(parameters, ic_data; SAI, RAI, rooting_depth, height)
+ic_data = optimal_lai_initial_conditions(surface_space)
+lai_init = ic_data.lai_init
 ```
 
 # Notes
@@ -426,7 +432,7 @@ biomass = ZhouOptimalLAIModel{FT}(parameters, ic_data; SAI, RAI, rooting_depth, 
 - lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
 - f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
 """
-function optimal_lai_static_inputs(
+function optimal_lai_initial_conditions(
     surface_space,
     data_path::AbstractString = Artifacts.optimal_lai_initial_conditions_path(;
         context = ClimaComms.context(surface_space),

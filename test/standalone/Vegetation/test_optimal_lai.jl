@@ -23,30 +23,31 @@ using ClimaCore
             @test params.tau_long_term isa FT
 
             # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI in #1794)
+            # against MODIS LAI in #1794; headline config promoted in #1815)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(21.4)
-            @test params.sigma ≈ FT(0.939)
-            @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.z ≈ FT(29.2)
+            @test params.sigma ≈ FT(1.01)
+            @test params.alpha ≈ FT(0.202)  # ~15 days of memory
+            @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
+
+            # C3/C4 competition is on by default, with the Lavergne et al. (2022)
+            # logistic and tree-cover coefficients read from the TOML.
+            @test params.online_c3c4 ≈ FT(1)
+            @test params.c3c4_k ≈ FT(6.63)
+            @test params.c3c4_q ≈ FT(0.16)
+            @test params.tc_a ≈ FT(15.60)
+            @test params.tc_b ≈ FT(1.41)
+            @test params.tc_c ≈ FT(-7.72)
+            @test params.tc_gpp_ref ≈ FT(2.8)
 
             @test eltype(params) == FT
         end
 
         @testset "ZhouOptimalLAIModel construction for FT = $FT" begin
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
-            # For unit tests, use scalar values for initial conditions
-            optimal_lai_inputs = (;
-                GSL = FT(240.0),
-                A0_annual = FT(258.0),
-                precip_annual = FT(1000.0),
-                vpd_gs = FT(1000.0),
-                lai_init = FT(2.0),
-                f0 = FT(0.65),
-            )
             model = Canopy.ZhouOptimalLAIModel{FT}(
-                params,
-                optimal_lai_inputs;
+                params;
                 SAI = FT(0.0),
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
@@ -54,34 +55,46 @@ using ClimaCore
             )
 
             @test model.parameters === params
-            @test model.optimal_lai_inputs === optimal_lai_inputs
             @test eltype(model) == FT
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
 
-            # Test auxiliary variables: the instantaneous potential GPP and χ, and
-            # the steady-state LAI target. The static spatially varying inputs (GSL,
-            # vpd_gs, f0) are read from the model, not the cache.
+            # Test auxiliary variables: the instantaneous potential GPP and χ, the
+            # steady-state LAI target, and the growing-season inputs (GSL, vpd_gs,
+            # f0), which are derived from the trailing climate totals in Y each step.
             aux_vars = Canopy.auxiliary_vars(model)
             @test :area_index in aux_vars
             @test :OptVars in aux_vars
             @test :L_opt in aux_vars
-            @test :GSL ∉ aux_vars
-            @test :vpd_gs ∉ aux_vars
-            @test :f0 ∉ aux_vars
+            @test :GSL in aux_vars
+            @test :vpd_gs in aux_vars
+            @test :f0 in aux_vars
             # the daily/annual accumulators are not cache variables; A0_daily,
             # A0_annual, and precip_annual are prognostic in Y
             @test :A0_daily_acc ∉ aux_vars
             @test :A0_annual ∉ aux_vars
             @test :precip_annual ∉ aux_vars
 
-            # A0_daily, A0_annual, precip_annual, and LAI are time-integrated
-            # prognostic variables in Y (running sums and a running mean).
-            @test Canopy.prognostic_vars(model) ==
-                  (:A0_daily, :A0_annual, :precip_annual, :LAI)
-            @test Canopy.prognostic_types(model) == (FT, FT, FT, FT)
+            # The optimal-LAI model carries the running-mean/running-sum climate
+            # inputs (A0, precip, PET, VPD·A0, growing-days, per-pathway A0) plus the
+            # prognostic LAI as time-integrated prognostic variables in Y. These are
+            # what the climate-tracking f0 / vpd_gs / GSL / C3-C4 inputs derive from.
+            optlai_prog = (
+                :A0_daily,
+                :A0_annual,
+                :precip_annual,
+                :PET_annual,
+                :VPDA0_annual,
+                :growing_days,
+                :A0c3_annual,
+                :A0c4_annual,
+                :LAI,
+            )
+            @test Canopy.prognostic_vars(model) == optlai_prog
+            @test Canopy.prognostic_types(model) ==
+                  ntuple(_ -> FT, length(optlai_prog))
             @test Canopy.prognostic_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface)
+                  ntuple(_ -> :surface, length(optlai_prog))
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -215,8 +228,123 @@ using ClimaCore
             @test isfinite(PPFD)
         end
 
-        @testset "optimal_lai_static_inputs for single-point domains for FT = $FT" begin
-            # Test that optimal_lai_static_inputs returns reasonable values
+        @testset "c3_fraction_from_competition for FT = $FT" begin
+            # Regression test for the dynamic C3/C4 competition (two bugs fixed in #1815).
+            # The tree-cover proxy must use REALIZED GPP (a0c3·Mc·fapar), not potential
+            # (fapar=1): potential GPP saturates the proxy and wrongly suppresses C4 in
+            # sparse grasslands. So a sparser canopy (lower realized fapar) → less tree
+            # suppression → MORE C4 → LOWER C3 fraction; using fapar=1 would invert this.
+            Mc = FT(0.012)  # kg C per mol
+            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
+            f =
+                (a3, a4, fapar) -> Canopy.c3_fraction_from_competition(
+                    a3,
+                    a4,
+                    Mc,
+                    fapar,
+                    params,
+                )
+            c3_sparse = f(FT(100), FT(130), FT(0.5))
+            c3_dense = f(FT(100), FT(130), FT(1.0))
+            @test c3_sparse < c3_dense
+            # strong C3 GPP advantage → almost all C3
+            @test f(FT(120), FT(40), FT(0.8)) > FT(0.9)
+            # strong C4 advantage in a sparse canopy → almost all C4
+            @test f(FT(40), FT(120), FT(0.3)) < FT(0.1)
+            # fraction always in [0, 1]
+            for args in (
+                (FT(100), FT(130), FT(0.5)),
+                (FT(120), FT(40), FT(0.8)),
+                (FT(40), FT(120), FT(0.3)),
+            )
+                v = f(args...)
+                @test FT(0) <= v <= FT(1)
+            end
+        end
+
+        @testset "f0_from_aridity / aridity_from_f0 for FT = $FT" begin
+            f0_max = FT(0.65)
+            # f0 peaks at f0_max at the energy-water transition and falls off on
+            # both sides, so it is not invertible without choosing a branch.
+            @test Canopy.f0_from_aridity(FT(1.9), FT(1), f0_max) ≈ f0_max
+            @test Canopy.f0_from_aridity(FT(19), FT(1), f0_max) < f0_max
+            @test Canopy.f0_from_aridity(FT(0.19), FT(1), f0_max) < f0_max
+
+            # aridity_from_f0 is the arid-branch inverse, which is what the initial
+            # conditions rely on to seed PET so the online f0 starts at the map value.
+            for f0 in (FT(0.1), FT(0.3), FT(0.6), f0_max)
+                AI = Canopy.aridity_from_f0(f0, f0_max)
+                @test AI >= FT(1.9)
+                @test Canopy.f0_from_aridity(AI, FT(1), f0_max) ≈ f0 rtol = 1e-5
+            end
+            # an f0 above the peak has no preimage; the inverse saturates at the peak
+            @test Canopy.aridity_from_f0(FT(0.9), f0_max) ≈ FT(1.9)
+        end
+
+        @testset "potential_evaporation for FT = $FT" begin
+            earth_param_set = LP.LandParameters(toml_dict)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
+            σ = LP.Stefan(earth_param_set)
+            M_w = LP.molar_mass_water(earth_param_set)
+            λv = LP.LH_v0(earth_param_set)
+            ϵ = FT(0.98)
+            P = FT(101325)
+            # Daily-mean forcing for a temperate summer, the averaging FAO-56 ET0 is
+            # defined at.
+            pet(; SW = 220, LW = 330, T = 293.15, q = 0.008, u = 2, h = 2) =
+                Canopy.potential_evaporation(
+                    FT(SW),
+                    FT(LW),
+                    FT(T),
+                    P,
+                    FT(q),
+                    FT(u),
+                    FT(h),
+                    ϵ,
+                    σ,
+                    M_w,
+                    thermo_params,
+                )
+
+            mm_per_day(x) = x * M_w * FT(86400)
+
+            @test pet() > FT(0)
+            @test isfinite(pet())
+            # Reference ET0 in a temperate summer is a few mm/day.
+            @test FT(1) < mm_per_day(pet()) < FT(8)
+
+            # Drier air raises the aerodynamic demand, the term the radiation-only
+            # form omitted entirely.
+            @test pet(q = 0.002) > pet(q = 0.012)
+
+            # Wind response is genuinely two-sided in Penman-Monteith: it raises ET0
+            # when the air is dry, and lowers it near saturation, where ventilating
+            # the surface toward air temperature outweighs the added demand.
+            @test pet(q = 0.002, u = 6) > pet(q = 0.002, u = 1)
+            @test pet(q = 0.014, u = 6) < pet(q = 0.014, u = 1)
+
+            # At night the radiative term goes negative while the aerodynamic term
+            # does not; ET0 is clipped at zero rather than Rn.
+            @test pet(SW = 0, LW = 50) == FT(0)
+
+            # In still air the aerodynamic term vanishes and ET0 tends to the
+            # radiative limit Delta/(Delta+gamma)*Rn, below Rn and a smaller fraction
+            # of it in the cold.
+            still(T) = pet(T = T, u = 0)
+            Rn_over_λ(T) =
+                ((1 - FT(0.23)) * FT(220) + ϵ * (FT(330) - σ * T^4)) /
+                (λv * M_w)
+            @test still(FT(278.15)) < Rn_over_λ(FT(278.15))
+            @test still(FT(278.15)) / Rn_over_λ(FT(278.15)) <
+                  still(FT(303.15)) / Rn_over_λ(FT(303.15))
+
+            # 2 m is the identity of the wind adjustment; a higher measurement height
+            # maps to a lower equivalent 2 m wind.
+            @test pet(q = 0.002, h = 10) < pet(q = 0.002, h = 2)
+        end
+
+        @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
+            # Test that optimal_lai_initial_conditions returns reasonable values
             # for single-point domains at various locations (Fluxnet sites)
 
             test_sites = [
@@ -236,7 +364,7 @@ using ClimaCore
 
                 # Load initial conditions from global data file
                 optimal_lai_inputs =
-                    Canopy.optimal_lai_static_inputs(surface_space)
+                    Canopy.optimal_lai_initial_conditions(surface_space)
 
                 # Extract scalar values from Fields
                 GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
@@ -310,20 +438,34 @@ using ClimaCore
                 model,
                 nothing,
             )
+            # the same climatology the IC reads, for the expected values
+            ic = Canopy.optimal_lai_initial_conditions(surface_space)
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
             A0_daily = Array(parent(Y.canopy.biomass.A0_daily))[1]
             precip_annual = Array(parent(Y.canopy.biomass.precip_annual))[1]
             # LAI starts at the MODIS observation in the same file
-            @test LAI ≈ Array(parent(model.optimal_lai_inputs.lai_init))[1]
+            @test LAI ≈ Array(parent(ic.lai_init))[1]
             @test FT(0) < LAI < FT(15)
             # the annual totals start at their (steady-state) climatology, and the
             # one-day total at the corresponding daily share
-            @test A0_annual ≈
-                  Array(parent(model.optimal_lai_inputs.A0_annual))[1]
+            @test A0_annual ≈ Array(parent(ic.A0_annual))[1]
             @test A0_daily ≈ A0_annual / FT(365)
-            @test precip_annual ≈
-                  Array(parent(model.optimal_lai_inputs.precip_annual))[1]
+            @test precip_annual ≈ Array(parent(ic.precip_annual))[1]
+
+            # The climate-responsive accumulators are seeded so each online input
+            # reproduces the map value it replaces at t = 0.
+            scalar(field) = Array(parent(field))[1]
+            PET_annual = scalar(Y.canopy.biomass.PET_annual)
+            f0_max = model.parameters.f0_max
+            @test Canopy.f0_from_aridity(PET_annual, precip_annual, f0_max) ≈
+                  scalar(ic.f0) rtol = 1e-5
+            @test scalar(Y.canopy.biomass.VPDA0_annual) / A0_annual ≈
+                  scalar(ic.vpd_gs) rtol = 1e-5
+            @test scalar(Y.canopy.biomass.growing_days) ≈ scalar(ic.GSL)
+            # no per-pathway climatology exists, so both start at the blended total
+            @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual
+            @test scalar(Y.canopy.biomass.A0c4_annual) ≈ A0_annual
         end
     end
 end

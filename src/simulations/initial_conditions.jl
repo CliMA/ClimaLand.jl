@@ -360,17 +360,32 @@ end
         ),
     ) where {FT}
 
-Sets the optimal-LAI prognostic state — the leaf area index `LAI` and the trailing
-potential-GPP and precipitation totals `A0_daily`, `A0_annual`, `precip_annual`,
-stored in `Y.canopy.biomass` — using the values in the netCDF file at `ic_path`,
-which must contain the variables `lai_init`, `a0_annual` and `precip_annual` on a
-(lon, lat) grid.
+Sets the optimal-LAI prognostic state stored in `Y.canopy.biomass` — the leaf area
+index `LAI`, the trailing potential-GPP and precipitation totals `A0_daily`,
+`A0_annual`, `precip_annual`, and the accumulators behind the climate-responsive
+inputs (`PET_annual`, `VPDA0_annual`, `growing_days`, `A0c3_annual`, `A0c4_annual`)
+— using the netCDF file at `ic_path`, which must contain `lai_init`, `a0_annual`,
+`precip_annual`, `vpd_gs`, `gsl` and `f0` on a (lon, lat) grid.
 
 With the default IC path, `LAI` starts from the MODIS observation, which reduces spin-up relative to the model
 equilibrium and matches observed vegetation patterns. The annual totals start at
 their climatological values, which are their steady state and are independent of the
 smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
 corresponding daily share of the annual total.
+
+`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that at `t = 0` the
+`f0`, `vpd_gs` and `GSL` derived from them reproduce the artifact values they
+replace; each then relaxes to the model's own climate over `tau_long_term`. Two
+caveats: the `f0` seeding inverts a curve that peaks at `f0_max`, so a cell whose
+artifact `f0` is at or above the peak seeds to the peak instead, and the inverse
+takes the arid branch, so a humid cell starts on the far side of the peak and
+crosses it as `PET_annual` relaxes.
+
+`A0c3_annual`/`A0c4_annual` are different: no per-pathway climatology exists, so
+both start at the blended `a0_annual`. The competition therefore sees zero GPP
+advantage at `t = 0` and returns a near-uniform C3 fraction rather than the static
+map, so `optimal_lai_online_c3c4` = 0 and = 1 do *not* agree at the initial step.
+They agree only after the two accumulators separate over `tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -381,22 +396,24 @@ function set_canopy_component_initial_conditions!(
         context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
     ),
 ) where {FT}
-    surface_space = axes(Y.canopy.biomass.LAI)
-    surface_bc = (Interpolations.Periodic(), Interpolations.Flat())
-    ic_field(varname) = SpaceVaryingInput(
+    ic = ClimaLand.Canopy.optimal_lai_initial_conditions(
+        axes(Y.canopy.biomass.LAI),
         ic_path,
-        varname,
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (;
-            extrapolation_bc = surface_bc,
-            interpolation_method,
-        ),
     )
-    Y.canopy.biomass.LAI .= ic_field("lai_init")
-    Y.canopy.biomass.A0_annual .= ic_field("a0_annual")
-    Y.canopy.biomass.precip_annual .= ic_field("precip_annual")
+    Y.canopy.biomass.LAI .= ic.lai_init
+    Y.canopy.biomass.A0_annual .= ic.A0_annual
+    Y.canopy.biomass.precip_annual .= ic.precip_annual
     Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
+
+    # Seed PET so the online f0 starts at the artifact value it replaces.
+    f0_max = model.parameters.f0_max
+    AI_seed = @. ClimaLand.Canopy.aridity_from_f0(ic.f0, f0_max)
+    Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
+    # vpd_gs is recovered as VPDA0_annual / A0_annual.
+    Y.canopy.biomass.VPDA0_annual .= ic.vpd_gs .* Y.canopy.biomass.A0_annual
+    Y.canopy.biomass.growing_days .= ic.GSL
+    Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
+    Y.canopy.biomass.A0c4_annual .= Y.canopy.biomass.A0_annual
     return nothing
 end
 

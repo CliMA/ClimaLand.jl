@@ -15,6 +15,7 @@ import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
+import Thermodynamics.Parameters as TP
 using Dates
 
 import ClimaLand:
@@ -412,7 +413,6 @@ end
     ZhouOptimalLAIModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -431,8 +431,6 @@ mirrored into `p.canopy.biomass.area_index.leaf`.
 - `toml_dict`: Parameter dictionary containing optimal LAI parameters
 
 # Keyword Arguments
-- `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI formulas
-  (GSL, vpd_gs, f0). Default loads from `optimal_lai_static_inputs`.
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
@@ -451,7 +449,6 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 function ZhouOptimalLAIModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    optimal_lai_inputs = optimal_lai_static_inputs(domain.space.surface),
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -463,14 +460,7 @@ function ZhouOptimalLAIModel{FT}(
     height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
-    return ZhouOptimalLAIModel{FT}(
-        parameters,
-        optimal_lai_inputs;
-        SAI,
-        RAI,
-        rooting_depth,
-        height,
-    )
+    return ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)
 end
 
 ## Radiative transfer models

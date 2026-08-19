@@ -25,6 +25,16 @@ v1.11.1
   custom initial-condition function must call `set_canopy_biomass_initial_conditions!`.
   Adds the `pra` diagnostic and the `optimal_lai_tau_long_term` parameter.
   PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length,
+  C3 fraction) now track the simulated climate rather than a frozen map, through five new
+  time-integrated variables in `Y`. Potential GPP drops its soil-moisture stress, so water
+  limitation enters once through `f0·P/A0`; the aridity index behind `f0` uses FAO-56
+  Penman-Monteith reference ET; `z`/`sigma`/`alpha` recalibrated to 29.2/1.01/0.202.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` drops the `optimal_lai_inputs` keyword — it is now
+  `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
+  is renamed `optimal_lai_f0_max`. The artifact is still read by `set_ic!` to seed trailing totals.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 
 v1.11.0
 -----
