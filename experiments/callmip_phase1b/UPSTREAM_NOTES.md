@@ -37,8 +37,23 @@ Field built from a host vector — worth a helper or a doc note on PR #1826.
 **Also useful for #1826 thread (kmdeck's question):** first timing points on
 Tesla V100 (sm_70, CUDA runtime pinned 12.9 — CUDA 13 dropped Volta), 2-column
 ensemble, integrated LandModel, Δt=450 s: GPU ≈ 125 SYPD vs CPU ≈ 780 SYPD —
-launch-latency-bound at N=2, as expected; proper N-scaling numbers coming from our
-Phase 3 benchmark (1/2/5/10/21 real sites + duplicated 30/100/300).
+launch-latency-bound at N=2, as expected. Full N-scaling (10-day windows, JIT
+excluded, real 21-site forcing cycled to larger N):
+
+| N | V100 SYPD | V100 column-SYPD | CPU 1-core SYPD | CPU column-SYPD |
+|---|---|---|---|---|
+| 2 | 145 | 291 | 1099 | 2199 |
+| 10 | 150 | 1497 | 505 | 5049 |
+| 21 | 151 | 3178 | 289 | 6070 |
+| 30 | 147 | 4421 | 212 | 6368 |
+| 100 | 151 | 15087 | 69 | 6862 |
+| 300 | 146 | 43659 | 24 | 7183 |
+
+V100 SYPD is FLAT to 300 columns (launch-latency-bound; column-throughput linear,
+unsaturated at 43.7k col-SYPD). CPU saturates ~7k col-SYPD. Crossover ≈ 50
+columns/process: below it a single CPU core beats a V100; above it the GPU wins and
+keeps winning linearly — very promising for big-ensemble batching (sites×members) or
+newer GPUs. (Caveat: sm_70 V100 on CUDA 12.9; A100+/CUDA 13 should look better.)
 
 ## 2. Stale `callmip_phase1` artifact in CliMA/ClimaArtifacts (found 2026-08-18, worked around)
 

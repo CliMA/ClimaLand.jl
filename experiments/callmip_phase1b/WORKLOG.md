@@ -285,3 +285,30 @@ Benchmark: SYPD vs column count, CPU vs V100, default LandModel, Δt=450 s,
 10-day timed window (1-day warmup discarded), duplicated sites cycled to reach
 N ∈ {1, 2, 5, 10, 21, 30, 100, 300}. Purpose: pick the EKI member schedule
 (GPU vs CPU crossover) + post numbers to PR #1826 (kmdeck's request).
+
+
+### Phase 3 gate — CLOSED (2026-08-19)
+
+Benchmark ran detached overnight, both sweeps exit 0
+(benchmark_logs/bench_{gpu,cpu}.log; N=1 rows are compile-contaminated, ignore).
+
+| N cols | V100 SYPD | V100 col-SYPD | CPU-1core SYPD | CPU col-SYPD |
+|---|---|---|---|---|
+| 2 | 145 | 291 | 1099 | 2199 |
+| 5 | 141 | 703 | 784 | 3921 |
+| 10 | 150 | 1497 | 505 | 5049 |
+| 21 | **151** | 3178 | **289** | 6070 |
+| 30 | 147 | 4421 | 212 | 6368 |
+| 100 | 151 | 15087 | 69 | 6862 |
+| 300 | 146 | 43659 | 24 | 7183 |
+
+- V100 is launch-latency-bound: SYPD flat ~150 from N=2 to N=300; column-throughput
+  linear and UNSATURATED at 43.7k col-SYPD (N=300). CPU saturates ~7k col-SYPD.
+  Crossover ≈ 50 columns/process.
+- **Decision: calibration engine = CPU member-parallel** (one 21-col ColumnEnsemble
+  per member per core; machine has 96 logical CPUs / 754 GB). Wall-time model:
+  3-sim-yr member run ≈ 15 min → EKI iteration (30 members parallel) ≈ 15 min →
+  10 iterations ≈ **2.5 h**. GPUs reserved for the sites×members mega-batch
+  (630 cols ≈ 29 min/iteration on ONE V100 — viable fallback if per-column params
+  ever get implemented) and for PR #1826 evidence.
+- Numbers added to UPSTREAM_NOTES.md for kmdeck's #1826 question.
