@@ -348,3 +348,33 @@ Benchmark ran detached overnight, both sweeps exit 0
   cstar 0.36→0.51; β_c4 ~unchanged as expected from one window).
 - **PHASE 4 CLOSED.** Phase 5 = resume checkpoint to iteration 10
   (CALLMIP1B_N_ITER=10 via output_calibration/run_iter.sh, detached).
+
+
+### Upstream feedback (2026-08-19)
+
+- Renato reported the atmos_h GPU bug + ordering verification + timings to Kevin
+  (Slack) and the scaling numbers toward kmdeck's #1826 question.
+- Kevin confirmed: (a) the shared-time-axis requirement is a known limitation of
+  the ClimaUtilities matrix TimeVaryingInput (by design, simplifies the input);
+  (b) his own benchmarking found the same qualitative scaling (CPU linear-ish,
+  GPU not saturating until large N) — independent corroboration of Phase 3.
+
+
+## 2026-08-19 — Phase 6 prep (while Phase 5 runs)
+
+- Phase 5 progress: checkpoint iteration 5/10, ~20 min/iter, healthy. (Master
+  stdout is buffered until exit — read progress from the checkpoint's
+  `iteration` field, not the log.)
+- `write_callmip_netcdf_phase1b.jl` — parametrized port of the Phase 1a writer
+  (identical variable mapping, units, hfg sign convention, template time axis
+  "days since <y0-1>-12-31"; per-site lat/lon/window; Phase1b/Scen1 attrs;
+  Cal/Val token).
+- `deliverable_runs_phase1b.jl` — per-site prior/posterior runner using THE
+  SAME model as the calibration engine (default LandModel, MODIS LAI, 1-site
+  ColumnEnsemble): min(5, window−1)-yr spin-up cycling the site's own met,
+  FULL-state handoff (recursive parent-copy), production run over the native
+  window (day 1 = fill since the UTC start must sit inside all offsets' records;
+  tail padded so Dec 31 closes), daily CalLMIP diagnostics → Phase 1a-format
+  JLD2 → NetCDF. CLI: `<site_id> <Prior|Posterior>` (Posterior reads the
+  UTKI ϕ_mean).
+- Smoke: US-SRG Prior (11 sim-yr) running.
