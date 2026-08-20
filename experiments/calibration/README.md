@@ -25,6 +25,12 @@ latitude-weighted scalar covariance matrix.
       submission for the forward models.
     - You may want to use `tmux` to keep a persistent session on the cluster.
 
+On Derecho, the calibration uses the `WorkerBackend`: persistent workers are
+submitted once with `ClimaCalibrate.add_workers`, packed 4 per allocation (one
+per GPU), and reused across iterations. Workers are not resubmitted if they
+hit their walltime; to continue a stopped calibration, rerun with the same
+`OUTPUT_DIR`.
+
 For example, launching er.jl on Derecho
 Go into tmux:
 
@@ -52,3 +58,9 @@ are compatible with ClimaCalibrate v0.2.2.
 - `DerechoBackend`: `climacommon/2025_02_25`
 - `CaltechHPCBackend`: `climacommon/2024_10_09`
 - `GCPBackend`: `climacommon` is not supported
+
+On Derecho, if workers repeatedly exit with "Master process (id 1) could not
+connect within 60.0 seconds", the driver could not reach the address the
+workers advertise. See `julia_worker_hsn_bind.sh` and check the logs in
+`OUTPUT_DIR/worker_logs/` (each launch writes to its own timestamped
+subdirectory).
