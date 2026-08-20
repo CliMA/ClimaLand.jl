@@ -71,7 +71,8 @@ using SurfaceFluxes
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import ClimaLand.Domains: Column, HybridBox, SphericalShell
+import ClimaLand.Domains:
+    AbstractColumnDomain, Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,
     make_update_aux,
@@ -142,16 +143,17 @@ abstract type AbstractSoilModel{FT} <: ClimaLand.AbstractImExModel{FT} end
 ClimaLand.name(::AbstractSoilModel) = :soil
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
-                          domain::Column, _...)
+                          domain::AbstractColumnDomain, _...)
+
 Updates dY in place by adding in the tendency terms resulting from
 horizontal derivative operators.
 
-In the case of a column domain, there are no horizontal
+In the case of column domains, there are no horizontal
 contributions to the right hand side.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
-    domain::Column,
+    domain::AbstractColumnDomain,
     _...,
 ) end
 

@@ -122,7 +122,16 @@ end
 
 
 """
-    Column{FT} <: AbstractDomain{FT}
+    AbstractColumnDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for domains discretized by finite difference in the
+vertical only: a single `Column` or a `ColumnEnsemble` of independent
+columns sharing a vertical mesh.
+"""
+abstract type AbstractColumnDomain{FT} <: AbstractDomain{FT} end
+
+"""
+    Column{FT} <: AbstractColumnDomain{FT}
 A struct holding the necessary information
 to construct a domain, a mesh, a center and face
 space, etc. for use when a finite difference in
@@ -134,7 +143,8 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
+struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractColumnDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
@@ -247,6 +257,34 @@ function Column(;
 end
 
 """
+    ColumnEnsemble{FT} <: AbstractColumnDomain{FT}
+A struct holding the necessary information to construct a domain
+made of N independent vertical columns at arbitrary (long, lat)
+locations, sharing a vertical mesh.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct ColumnEnsemble{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractColumnDomain{FT}
+    "Domain interval limits, (zmin, zmax), in meters"
+    zlim::Tuple{FT, FT}
+    "Number of elements used to discretize the interval"
+    nelements::Tuple{Int}
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
+    "Boundary face identifiers"
+    boundary_names::Tuple{Symbol, Symbol}
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NT1
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
+    fields::NT2
+end
+
+"""
     ColumnEnsemble(;
         zlim::Tuple{FT, FT},
         nelements::Int,
@@ -320,7 +358,7 @@ function ColumnEnsemble(;
         subsurface_face = subsurface_face_space,
     )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return Column{FT, typeof(space), typeof(fields)}(
+    return ColumnEnsemble{FT, typeof(space), typeof(fields)}(
         zlim,
         (nelements,),
         dz_tuple,
@@ -841,12 +879,13 @@ obtain_surface_domain(d::AbstractDomain) =
     @error("No surface domain is defined for this domain.")
 
 """
-    obtain_surface_domain(c::Column{FT}) where {FT}
+    obtain_surface_domain(c::AbstractColumnDomain{FT}) where {FT}
 
 Returns the Point domain corresponding to the top face (surface) of the
-Column domain `c`.
+column domain `c`. For a `ColumnEnsemble`, the returned Point domain's
+space holds one point per column.
 """
-function obtain_surface_domain(c::Column{FT}) where {FT}
+function obtain_surface_domain(c::AbstractColumnDomain{FT}) where {FT}
     surface_domain = Point{FT, typeof((; surface = c.space.surface))}(
         c.zlim[2],
         (; surface = c.space.surface),
@@ -1268,7 +1307,7 @@ function average_horizontal_resolution_degrees(
 end
 
 average_horizontal_resolution_degrees(
-    domain::Union{Point{FT}, Column{FT}},
+    domain::Union{Point{FT}, AbstractColumnDomain{FT}},
 ) where {FT} = (FT(1), FT(1))
 
 apply_threshold(field, value) =
@@ -1324,7 +1363,7 @@ function landsea_mask(
 end
 
 # Points and Columns do not have a horizontal dim, so a horizontal mask cannot be applied
-landsea_mask(domain::Union{Point, Column}; kwargs...) = nothing
+landsea_mask(domain::Union{Point, AbstractColumnDomain}; kwargs...) = nothing
 
 function landsea_mask(
     domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
@@ -1539,8 +1578,9 @@ function global_box_domain(
 
     return domain
 end
-export AbstractDomain
-export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
+export AbstractDomain, AbstractColumnDomain
+export Column,
+    ColumnEnsemble, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
     obtain_surface_space,
     obtain_surface_domain,

@@ -84,11 +84,11 @@ Base.show(io::IO, domain::Point) =
 
 Base.summary(io::IO, domain::Point) = show(io, domain)
 
-function Base.show(io::IO, ::MIME"text/plain", domain::Column)
+function Base.show(io::IO, ::MIME"text/plain", domain::AbstractColumnDomain)
     if get(io, :compact, false)
         show(io, domain)
     else
-        println(io, "Column{", eltype(domain), "}")
+        println(io, nameof(typeof(domain)), "{", eltype(domain), "}")
         println(
             io,
             "  z ∈ [",
@@ -114,9 +114,10 @@ function Base.show(io::IO, ::MIME"text/plain", domain::Column)
     end
 end
 
-Base.show(io::IO, domain::Column) = print(
+Base.show(io::IO, domain::AbstractColumnDomain) = print(
     io,
-    "Column{",
+    nameof(typeof(domain)),
+    "{",
     eltype(domain),
     "}(z ∈ [",
     domain.zlim[1],
@@ -127,7 +128,7 @@ Base.show(io::IO, domain::Column) = print(
     " elements)",
 )
 
-Base.summary(io::IO, domain::Column) = show(io, domain)
+Base.summary(io::IO, domain::AbstractColumnDomain) = show(io, domain)
 
 function Base.show(io::IO, ::MIME"text/plain", domain::Plane)
     if get(io, :compact, false)

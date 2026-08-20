@@ -6,6 +6,7 @@ CurrentModule = ClimaLand
 
 ```@docs
 ClimaLand.Domains.AbstractDomain
+ClimaLand.Domains.AbstractColumnDomain
 ClimaLand.Domains.SphericalShell
 ClimaLand.Domains.SphericalSurface
 ClimaLand.Domains.HybridBox

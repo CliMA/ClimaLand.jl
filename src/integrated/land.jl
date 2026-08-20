@@ -145,7 +145,7 @@ end
         LAI,
         toml_dict::CP.ParamDict,
         domain::Union{
-            ClimaLand.Domains.Column,
+            ClimaLand.Domains.AbstractColumnDomain,
             ClimaLand.Domains.SphericalShell,
             ClimaLand.Domains.HybridBox,
         },
@@ -218,7 +218,7 @@ function LandModel{FT}(
     LAI,
     toml_dict::CP.ParamDict,
     domain::Union{
-        ClimaLand.Domains.Column,
+        ClimaLand.Domains.AbstractColumnDomain,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
     },
@@ -282,7 +282,7 @@ end
         forcing,
         toml_dict::CP.ParamDict,
         domain::Union{
-            ClimaLand.Domains.Column,
+            ClimaLand.Domains.AbstractColumnDomain,
             ClimaLand.Domains.SphericalShell,
             ClimaLand.Domains.HybridBox,
         },
@@ -346,7 +346,7 @@ function LandModel{FT}(
     forcing,
     toml_dict::CP.ParamDict,
     domain::Union{
-        ClimaLand.Domains.Column,
+        ClimaLand.Domains.AbstractColumnDomain,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
     },
