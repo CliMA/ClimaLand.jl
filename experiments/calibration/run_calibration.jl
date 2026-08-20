@@ -117,8 +117,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         scheduler = EKP.DataMisfitController(terminate_at = 100),
     )
 
-    # Note: Using this script on Derecho requires changes to addprocs to use
-    # the PBSManager
     curr_backend = ClimaCalibrate.get_backend()
     N_ens = EKP.get_N_ens(ekp)
 
@@ -162,12 +160,38 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     # Determine which backend to submit job scripts to
     if curr_backend == ClimaCalibrate.DerechoBackend
-        derecho_directives = [:job_priority => "regular"]
-        backend = ClimaCalibrate.DerechoBackend(;
-            directives = vcat(directives, derecho_directives),
-            modules,
-            env_vars,
+        # On Derecho, we use the WorkerBackend to use persistent workers.
+        # Furthermore, we pack 4 workers on a single node since Derecho charges
+        # on a per node basis, so a single worker on a single node costs the
+        # same as four workers on a single node.
+        exename = joinpath(
+            pkgdir(ClimaLand),
+            "experiments",
+            "calibration",
+            "julia_worker_hsn_bind.sh",
         )
+        worker_log_path = joinpath(
+            abspath(CALIBRATE_CONFIG.output_dir),
+            "worker_logs",
+            "worker",
+        )
+        mkpath(dirname(worker_log_path))
+        # 720 minutes is 12 hours
+        walltime = 720
+        ClimaCalibrate.add_workers(
+            N_ens;
+            device = :gpu,
+            time = walltime,
+            workers_per_node = 4,
+            env = env_vars,
+            o = worker_log_path,
+            l_job_priority = "regular",
+            exename,
+        )
+        # Load the model interface on every worker
+        ClimaCalibrate.@worker_setup include($model_interface_filepath)
+        backend =
+            ClimaCalibrate.WorkerBackend(; empty_pool_timeout = walltime * 60)
     elseif curr_backend == ClimaCalibrate.GCPBackend
         gcp_directives = [:partition => "a3mega"]
         backend = ClimaCalibrate.GCPBackend(;
