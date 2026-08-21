@@ -123,3 +123,71 @@ compare_vars_biases_plot_extrema = Dict(
     ...
 )
 ```
+
+Note that `get_mask_dict(::ERA5DataLoader)` gives every ERA5 variable the ocean
+mask, so step 3 is only needed for loaders whose observations have gaps over
+land.
+
+## Annual leaderboard columns
+
+`compute_seasonal_leaderboard` draws one row per variable and the columns below.
+The names are the short headings drawn on the figure:
+
+- `SIM` (simulation), the simulated annual mean,
+- `ANN` (annual bias), its bias against observations,
+- `LAT` (zonal mean), the mean along each latitude band of both, banded by the
+  standard deviation along that band,
+- `MON` (seasonal cycle), their global monthly means, banded by the spread
+  across years,
+- `IAV` (interannual variability), the area-weighted global annual mean of one
+  against the other, one point per year, with the 1:1 line, the least squares
+  fit, its slope, r² and `σ_sim / σ_obs`.
+
+Only years covering all twelve months enter `IAV`, since the annual mean of a
+partial year is aliased by whichever part of the seasonal cycle it sampled, and
+the column is drawn only when some variable has more than `_MIN_IAV_YEARS` of
+them.
+
+## Partitioning leaderboard
+
+`partitioning.jl` produces a separate leaderboard of the dimensionless fractions
+describing how the model splits energy and water: the evaporative fraction
+`lhf / (lhf + shf)`, the surface runoff fraction `sr / (sr + ssr)`, the
+evaporative index `et / precip`, and the transpiration fraction `trans / et`.
+Its layout matches the annual leaderboard, with the same `SIM`, `ANN`, `LAT`,
+`MON` and `IAV` columns.
+
+Each row is a `PartitionFraction`, so adding one means appending an entry to
+`PARTITION_FRACTIONS` rather than touching the plotting code:
+
+```julia
+PartitionFraction(
+    "ef",                # short name used in file names
+    "Evaporative Fraction",
+    "LHF/(LHF+SHF)",     # label shown on rows and axes
+    ["lhf"],             # diagnostics summed for the numerator
+    ["lhf", "shf"],      # diagnostics summed for the denominator
+    String[],            # components taken from the simulation on the obs side
+    (-0.2, 0.2),         # bias panel color scale
+    nothing,             # published constraint, when there are no gridded obs
+)
+```
+
+Two things to keep in mind:
+
+**Aggregate, then divide.** Every panel sums the numerator and the denominator
+over its domain or period and divides only at the end. The mean of a ratio is
+not the ratio of the means, and a per-cell `et / precip` diverges wherever
+precipitation approaches zero, so the order matters both physically and
+numerically. Cells whose aggregated denominator falls below
+`_MIN_DENOMINATOR_FRACTION` of its global mean are masked out for the same
+reason.
+
+**Observations are optional.** A row is compared against ERA5 only when every
+component that is not listed as prescribed is available from the loader, which
+is built from the `era5_to_clima_names` keyword argument
+(`ERA5_PARTITION_TO_CLIMA_NAMES` by default). Components that *are* listed as prescribed
+(such as precipitation, which is forcing) are taken from the simulation on both
+sides. A row with no gridded observations, like the transpiration fraction,
+shows the simulation alone next to the published global constraint given in its
+`reference` field.

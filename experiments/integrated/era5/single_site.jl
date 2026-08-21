@@ -82,7 +82,11 @@ model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.DictWriter(),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        outdir;
+        start_date,
+    ),
     reduction_period = :monthly,
     reduction_type = :average,
     output_vars = [

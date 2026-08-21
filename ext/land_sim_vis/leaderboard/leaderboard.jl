@@ -28,53 +28,314 @@ function _percentile_contour_kwargs(
 end
 
 """
-    _monthly_climatology_global_means(sim, obs,
-                                      mask_fn = ClimaAnalysis.apply_oceanmask)
+    _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
 
-Return a pair `(sim_monthly, obs_monthly)` of 12-element vectors of global,
-lonlat-weighted monthly climatology means. Index `i` corresponds to month `i`
-(1=Jan ... 12=Dec). Months that have no valid samples are filled with `NaN`.
+Return `(dates, sim_global, obs_global)`: the date of every output time and the
+lonlat-weighted global mean of `sim` and `obs` there.
 
-`mask_fn` is the same per-variable mask used by `global_bias`/`global_rmse`
-elsewhere. After applying it, at each time step both sim and obs are restricted
-to the grid cells where *both* have valid (non-`NaN`) data, so the two lines are
-averaged over the same domain even where obs has data gaps that sim does not —
-otherwise the SIM/OBS gap would not match the global bias in the ANN column.
+Both fields are restricted to the cells where *both* are finite, so the SIM/OBS
+gap here matches the global bias in the ANN column even where obs has gaps that
+sim does not.
 """
-function _monthly_climatology_global_means(
-    sim,
-    obs,
-    mask_fn = ClimaAnalysis.apply_oceanmask,
-)
+function _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
     times = ClimaAnalysis.times(sim)
-    isempty(times) && return (fill(NaN, 12), fill(NaN, 12))
-    start_date = Dates.DateTime(sim.attributes["start_date"])
-    months =
-        [Dates.month(start_date + Dates.Second(round(Int, t))) for t in times]
+    dates = ClimaAnalysis.dates(sim)
     sim_global = Float64[]
     obs_global = Float64[]
     for t in times
         sim_t = mask_fn(ClimaAnalysis.slice(sim, time = t))
         obs_t = mask_fn(ClimaAnalysis.slice(obs, time = t))
-        # Keep only cells where both fields have valid data, so the two
-        # weighted global means are taken over the same domain.
         nan_either = isnan.(sim_t.data) .| isnan.(obs_t.data)
         sim_t.data[nan_either] .= NaN
         obs_t.data[nan_either] .= NaN
         push!(sim_global, ClimaAnalysis.weighted_average_lonlat(sim_t).data[])
         push!(obs_global, ClimaAnalysis.weighted_average_lonlat(obs_t).data[])
     end
-    out_sim = fill(NaN, 12)
-    out_obs = fill(NaN, 12)
+    return (dates, sim_global, obs_global)
+end
+
+"""
+    _monthly_climatology(dates, sim_global, obs_global)
+
+Return `(sim_monthly, obs_monthly, sim_spread, obs_spread)`, each a 12-element
+vector indexed by calendar month. The first two are the climatology of the
+global means from `_global_mean_series`; the last two their standard deviation
+across years, drawn as the interannual band on the MON panel. Months with no
+valid sample are `NaN`, months sampled in a single year get a spread of zero.
+"""
+function _monthly_climatology(dates, sim_global, obs_global)
+    isempty(dates) && return ntuple(_ -> fill(NaN, 12), 4)
+    months = Dates.month.(dates)
+    out_sim, out_obs = fill(NaN, 12), fill(NaN, 12)
+    spread_sim, spread_obs = fill(NaN, 12), fill(NaN, 12)
     for m in 1:12
         idxs = findall(==(m), months)
         isempty(idxs) && continue
-        sim_vals = filter(isfinite, sim_global[idxs])
-        obs_vals = filter(isfinite, obs_global[idxs])
-        isempty(sim_vals) || (out_sim[m] = sum(sim_vals) / length(sim_vals))
-        isempty(obs_vals) || (out_obs[m] = sum(obs_vals) / length(obs_vals))
+        for (global_vals, means, spreads) in (
+            (sim_global, out_sim, spread_sim),
+            (obs_global, out_obs, spread_obs),
+        )
+            vals = filter(isfinite, global_vals[idxs])
+            isempty(vals) && continue
+            means[m] = sum(vals) / length(vals)
+            spreads[m] = length(vals) > 1 ? Statistics.std(vals) : 0.0
+        end
     end
-    return (out_sim, out_obs)
+    return (out_sim, out_obs, spread_sim, spread_obs)
+end
+
+"""
+    _annual_means(dates, sim_global, obs_global)
+
+Return `(years, sim_annual, obs_annual)`, one entry per calendar year of the
+global means from `_global_mean_series`.
+
+Only years covering all twelve months in both series contribute: a partial
+year's mean is aliased by whichever part of the seasonal cycle it sampled. Each
+month is weighted by its length.
+"""
+function _annual_means(dates, sim_global, obs_global)
+    years, sim_annual, obs_annual = Int[], Float64[], Float64[]
+    for year in sort(unique(Dates.year.(dates)))
+        idxs = findall(d -> Dates.year(d) == year, dates)
+        valid = filter(
+            i -> isfinite(sim_global[i]) && isfinite(obs_global[i]),
+            idxs,
+        )
+        length(unique(Dates.month.(dates[valid]))) == 12 || continue
+        weights = Dates.daysinmonth.(dates[valid])
+        push!(years, year)
+        push!(sim_annual, sum(weights .* sim_global[valid]) / sum(weights))
+        push!(obs_annual, sum(weights .* obs_global[valid]) / sum(weights))
+    end
+    return (years, sim_annual, obs_annual)
+end
+
+"""
+    _band_interannual_spread!(ax, means, spread, color)
+
+Shade `means ± spread` over the 12 calendar months on `ax`. Months whose mean is
+missing stay blank, and a month sampled in a single year contributes no width.
+"""
+function _band_interannual_spread!(ax, means, spread, color)
+    half_width = [isfinite(s) ? s : 0.0 for s in spread]
+    all(iszero, half_width) && return nothing
+    CairoMakie.band!(
+        ax,
+        1:12,
+        means .- half_width,
+        means .+ half_width;
+        color = (color, 0.2),
+    )
+    return nothing
+end
+
+"""
+    _band_zonal_spread!(ax, values, spread, lats, color)
+
+Shade `values ± spread` against latitude on `ax`, whose value axis is the
+horizontal one. Fully masked latitude bands interrupt the shading rather than
+being bridged across.
+"""
+function _band_zonal_spread!(ax, values, spread, lats, color)
+    valid = isfinite.(values) .& isfinite.(spread)
+    i = firstindex(valid)
+    while i <= lastindex(valid)
+        if !valid[i]
+            i += 1
+            continue
+        end
+        j = i
+        while j < lastindex(valid) && valid[j + 1]
+            j += 1
+        end
+        if j > i
+            band = i:j
+            CairoMakie.band!(
+                ax,
+                CairoMakie.Point2f.(values[band] .- spread[band], lats[band]),
+                CairoMakie.Point2f.(values[band] .+ spread[band], lats[band]);
+                color = (color, 0.2),
+            )
+        end
+        i = j + 1
+    end
+    return nothing
+end
+
+"""
+    _zonal_means(var, mask_fn)
+
+Return `(latitudes, values)` for the zonal (longitudinal) mean of the
+time-averaged `var` after applying `mask_fn`. Latitudes whose band is entirely
+masked or missing come back as `NaN`, which `Makie` skips when drawing the line.
+
+All cells in a latitude band subtend the same area, so no area weighting is
+needed.
+"""
+function _zonal_means(var, mask_fn)
+    masked = mask_fn(var)
+    zonal = ClimaAnalysis.average_lon(masked)
+    return (ClimaAnalysis.latitudes(zonal), vec(zonal.data))
+end
+
+"""
+    _zonal_std(var, mask_fn)
+
+Return the standard deviation over longitude of the time-averaged `var` within
+each latitude band, skipping masked cells the way `_zonal_means` does.
+"""
+function _zonal_std(var, mask_fn)
+    # A band holds the whole population of cells at that latitude rather than a
+    # sample of it, so the variance is not Bessel-corrected.
+    variance = ClimaAnalysis.variance_lon(mask_fn(var); corrected = false)
+    return sqrt.(vec(variance.data))
+end
+
+"""
+The IAV column is only drawn when some variable has more than this many complete
+years; below that a scatter of annual means says nothing about year-to-year
+variability.
+"""
+const _MIN_IAV_YEARS = 3
+
+"""
+    _interannual_stats(obs_annual, sim_annual)
+
+Return `(slope, intercept, r2, amplitude_ratio)` for the least squares fit of
+the simulated annual means on the observed ones, and `std(sim) / std(obs)`.
+
+Both are reported because they answer different questions: r² is whether the
+model varies in the right years, the ratio whether it varies by the right
+amount. A model can do the first while damping every anomaly.
+"""
+function _interannual_stats(obs_annual, sim_annual)
+    length(obs_annual) < 3 && return ntuple(_ -> NaN, 4)
+    obs_var = Statistics.var(obs_annual)
+    sim_var = Statistics.var(sim_annual)
+    (obs_var == 0 || sim_var == 0) && return ntuple(_ -> NaN, 4)
+    slope = Statistics.cov(obs_annual, sim_annual) / obs_var
+    intercept =
+        Statistics.mean(sim_annual) - slope * Statistics.mean(obs_annual)
+    r2 = Statistics.cor(obs_annual, sim_annual)^2
+    return (slope, intercept, r2, sqrt(sim_var / obs_var))
+end
+
+"""Ends of the blue → red ramp the IAV points are colored by."""
+const _IAV_FIRST_YEAR_COLOR = :royalblue
+const _IAV_LAST_YEAR_COLOR = :firebrick
+
+"""
+    _label_first_and_last_year!(ax, years, xs, ys)
+
+Write the first and last year beside their own points, in the colors at the ends
+of the ramp those points are drawn with. This does the work of a colorbar
+without spending a strip of the panel on it, and marks where in the cloud the
+run started and ended.
+"""
+function _label_first_and_last_year!(ax, years, xs, ys)
+    x_mid, y_mid = Statistics.mean(xs), Statistics.mean(ys)
+    for (idx, color) in (
+        (firstindex(years), _IAV_FIRST_YEAR_COLOR),
+        (lastindex(years), _IAV_LAST_YEAR_COLOR),
+    )
+        # Grow the label horizontally back towards the middle; endpoints sit in
+        # a corner, where a label growing outwards would be clipped.
+        outward = ys[idx] > y_mid
+        CairoMakie.text!(
+            ax,
+            xs[idx],
+            ys[idx];
+            text = string(years[idx]),
+            offset = (0, outward ? 10 : -10),
+            align = (
+                xs[idx] > x_mid ? :right : :left,
+                outward ? :bottom : :top,
+            ),
+            color,
+            fontsize = 14,
+        )
+    end
+    return nothing
+end
+
+"""
+    _plot_interannual!(position, years, sim_annual, obs_annual;
+                       label, show_title)
+
+Draw the IAV panel: one point per year of the area-weighted global annual mean,
+simulated against observed, with the 1:1 line, the least squares fit and the
+statistics from `_interannual_stats`.
+
+Points run blue to red with the year, so a drift shows up as a march along the
+cloud. The axes share one range, putting the 1:1 line at 45°.
+"""
+function _plot_interannual!(
+    position,
+    years,
+    sim_annual,
+    obs_annual;
+    label,
+    show_title,
+)
+    ax = CairoMakie.Axis(
+        position,
+        xlabel = "OBS $label",
+        ylabel = "SIM $label",
+        aspect = CairoMakie.AxisAspect(1),
+        title = show_title ?
+                "Annual global means, one point per year\n(dashed 1:1, black least squares fit)" :
+                "",
+    )
+    # Leave room above and below the cloud for the year labels.
+    lo, hi = extrema(vcat(sim_annual, obs_annual))
+    pad = hi > lo ? 0.14 * (hi - lo) : 1.0
+    limits = [lo - pad, hi + pad]
+    CairoMakie.limits!(ax, limits..., limits...)
+    CairoMakie.lines!(ax, limits, limits; color = :gray, linestyle = :dash)
+    slope, intercept, r2, amplitude_ratio =
+        _interannual_stats(obs_annual, sim_annual)
+    isfinite(slope) && CairoMakie.lines!(
+        ax,
+        limits,
+        intercept .+ slope .* limits;
+        color = :black,
+        linewidth = 2,
+    )
+    CairoMakie.scatter!(
+        ax,
+        obs_annual,
+        sim_annual;
+        color = years,
+        colormap = CairoMakie.cgrad([
+            _IAV_FIRST_YEAR_COLOR,
+            _IAV_LAST_YEAR_COLOR,
+        ]),
+        colorrange = (first(years), last(years)),
+        markersize = 14,
+        strokewidth = 0.5,
+        strokecolor = :black,
+    )
+    _label_first_and_last_year!(ax, years, obs_annual, sim_annual)
+    # Annotate the corner the cloud leaves free: points above the 1:1 line fill
+    # the upper left, points below it the lower right.
+    above = Statistics.mean(sim_annual .- obs_annual) > 0
+    CairoMakie.text!(
+        ax,
+        above ? 0.97 : 0.03,
+        above ? 0.03 : 0.97;
+        text = Printf.@sprintf(
+            "slope %.2f\nr² %.2f\nσ_sim/σ_obs %.2f\n%d years",
+            slope,
+            r2,
+            amplitude_ratio,
+            length(years),
+        ),
+        space = :relative,
+        align = above ? (:right, :bottom) : (:left, :top),
+        fontsize = 18,
+    )
+    return nothing
 end
 
 """
@@ -103,23 +364,52 @@ function _nee_diverging_contour_kwargs(var, q; nlevels = 21)
 end
 
 """
+    _mask_template(var)
+
+Return a lon-lat field on `var`'s grid whose values are all zero.
+
+`_resolved_mask` needs some field on the grid to find out which cells a mask
+removes. Zeros are used rather than `var`'s own values so that what comes back
+is the mask's footprint alone, with none of `var`'s missing cells in it.
+"""
+function _mask_template(var)
+    lonlat = ClimaAnalysis.slice(var, time = first(ClimaAnalysis.times(var)))
+    return ClimaAnalysis.remake(lonlat; data = zeros(size(lonlat.data)))
+end
+
+"""
+    _resolved_mask(mask_fn, template)
+
+Return a function that masks any field sharing `template`'s grid exactly as
+`mask_fn` does, but that resolves *which* cells are masked only once.
+
+`ClimaAnalysis.apply_oceanmask` and the masks from `make_lonlat_mask` resample
+onto the target grid on every call, which dominates the runtime of a leaderboard
+that masks every monthly slice several times over. The footprint is the same for
+any field on the grid. Fields on another grid fall back to `mask_fn` itself.
+"""
+function _resolved_mask(mask_fn, template)
+    blank = isnan.(mask_fn(template).data)
+    return function (var)
+        size(var.data) == size(blank) || return mask_fn(var)
+        new_data = copy(var.data)
+        new_data[blank] .= NaN
+        return ClimaAnalysis.remake(var; data = new_data)
+    end
+end
+
+"""
     _prepare_for_bias(base_mask, sim, obs)
 
 Return `(sim, obs, mask_fn)` so that `ClimaAnalysis.bias` / `global_bias` /
 `global_rmse` / `plot_bias_on_globe!` integrate over the intersection of finite
-cells, matching `_monthly_climatology_global_means`.
+cells, matching `_global_mean_series`. `mask_fn` drops every cell that is `NaN`
+in either field, so obs with spatial gaps (GOSIF-GPP and residual-ER over
+deserts and ice) are averaged over the same area they are normalized by.
 
-Works around a normalization issue in `ClimaAnalysis.bias` when `obs` has
-spatial gaps (e.g. GOSIF-GPP/residual-ER over deserts/ice): its normalization
-`ones_var` doesn't inherit obs's NaN footprint (denominator over all land,
-numerator over land∩finite(obs) — attenuates or flips the bias). `mask_fn`
-combines `base_mask` with the union of the sim/obs NaN footprints so `ones_var`
-and `sim − obs` share one domain.
-
-Gaps are left as `NaN` (not zero-filled) so a NaN-aware `resampled_as`
-(ClimaAnalysis.jl#198) works with them unchanged. Until then `resampled_as`
-erodes cells adjacent to a gap into NaN, leaving a slightly smaller dataset
-there, which is preferable to biasing those edges low with zero-fill.
+Gaps stay `NaN` rather than zero-filled: `resampled_as` erodes the cells next to
+one into `NaN` until it is NaN-aware (ClimaAnalysis.jl#198), which loses less
+than biasing those edges towards zero.
 """
 function _prepare_for_bias(base_mask, sim, obs)
     sim_masked = base_mask(sim)
@@ -130,12 +420,7 @@ function _prepare_for_bias(base_mask, sim, obs)
         any(extra_nan) || return v
         new_data = copy(v.data)
         new_data[extra_nan] .= NaN
-        return ClimaAnalysis.OutputVar(
-            v.attributes,
-            v.dims,
-            v.dim_attributes,
-            new_data,
-        )
+        return ClimaAnalysis.remake(v; data = new_data)
     end
     return sim, obs, mask_fn
 end
@@ -289,7 +574,10 @@ function compute_monthly_leaderboard(
         )
 
         fig = CairoMakie.Figure(size = (650 * ceil(num_times / 2), 450 * 2))
-        mask = mask_dict[short_name](sim_var, obs_var)
+        mask = _resolved_mask(
+            mask_dict[short_name](sim_var, obs_var),
+            _mask_template(sim_var),
+        )
         times = vcat(
             times,
             Array{Union{Missing, eltype(times)}}(missing, 12 - num_times),
@@ -331,7 +619,10 @@ function compute_monthly_leaderboard(
     for (col, short_name) in enumerate(short_names)
         sim_var, obs_var = sim_obs_comparison_dict[short_name]
         times = ClimaAnalysis.times(sim_var)
-        mask = mask_dict[short_name](sim_var, obs_var)
+        mask = _resolved_mask(
+            mask_dict[short_name](sim_var, obs_var),
+            _mask_template(sim_var),
+        )
 
         sim_vec = [
             begin
@@ -493,9 +784,12 @@ function compute_seasonal_leaderboard(
     sim_obs_season_comparison_dict = Dict()
     # Map short name to time series of time averages for each season
     sim_obs_time_avg_over_seasons_comparison_dict = Dict()
-    # Map short name to (sim_var, obs_var) full windowed time series, used by
-    # the MON column to compute a monthly climatology.
+    # Map short name to the (sim_var, obs_var) full windowed time series, kept
+    # for the metadata that survives collapsing along time below.
     sim_obs_full_dict = Dict()
+    # Map short name to the global mean at each output time. The MON and IAV
+    # columns both reduce it, and the masked slicing behind it is expensive.
+    global_series_dict = Dict()
     seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
 
     spin_up_months = 12
@@ -508,7 +802,10 @@ function compute_seasonal_leaderboard(
         obs_var = get(data_loader, short_name)
 
         # Make masking function
-        mask_fn_dict[short_name] = mask_dict[short_name](sim_var, obs_var)
+        mask_fn_dict[short_name] = _resolved_mask(
+            mask_dict[short_name](sim_var, obs_var),
+            _mask_template(sim_var),
+        )
 
         # Remove first spin_up_months from simulation if possible
         spinup_cutoff = spin_up_months * 31 * 86400.0
@@ -548,9 +845,10 @@ function compute_seasonal_leaderboard(
 
         # Resample
         obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
-        # Stash the full windowed time series so the MON column can compute a
-        # monthly climatology before we collapse along time below.
+        # Reduce along time before collapsing the vars along it below.
         sim_obs_full_dict[short_name] = (sim_var, obs_var)
+        global_series_dict[short_name] =
+            _global_mean_series(sim_var, obs_var, mask_fn_dict[short_name])
         sim_var_seasons = (sim_var, ClimaAnalysis.split_by_season(sim_var)...)
         obs_var_seasons = (obs_var, ClimaAnalysis.split_by_season(obs_var)...)
 
@@ -652,7 +950,15 @@ function compute_seasonal_leaderboard(
     # Cols correspond to "SIM" and "ANN"
     annual_compare_vars_biases_plot_extrema =
         get_compare_vars_biases_plot_extrema(; annual = true)
-    groups = ["SIM", "ANN", "MON"]
+    annual_means_dict = Dict(
+        short_name => _annual_means(global_series_dict[short_name]...) for
+        short_name in short_names
+    )
+    groups = ["SIM", "ANN", "LAT", "MON"]
+    any(
+        years -> length(years) > _MIN_IAV_YEARS,
+        first.(values(annual_means_dict)),
+    ) && push!(groups, "IAV")
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),
     )
@@ -695,35 +1001,21 @@ function compute_seasonal_leaderboard(
                 sim_var, _ = sim_obs_season_comparison_dict[short_name]["ANN"]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                # Clip the colorbar to the 5th-95th percentile of the
-                # simulated field so that outliers don't flatten the map;
-                # values outside that range are drawn with the `contourf!`
-                # :auto arrow bounds (same convention as the SIM-OBS bias
-                # plot produced by `plot_bias_on_globe!`).
-                # NEE uses a diverging colormap centered at zero
-                # (green = sink, red = source) since the sign carries
-                # physical meaning.
+                # NEE's sign is physical, so it gets a diverging colormap
+                # centered at zero: green = sink, red = source.
                 more_kwargs =
                     short_name == "nee" ?
                     _nee_diverging_contour_kwargs(sim_var, 0.95) :
                     _percentile_contour_kwargs(sim_var)
-                # Replace the auto-generated panel title (which leaks raw
-                # seconds-since-start_date) with a clean summary that names
-                # the variable, the year range averaged over, and the actual
-                # min/max of the field shown — the colorbar is clipped to
-                # [5%, 95%] so the data range is otherwise invisible.
+                # The auto-generated title leaks seconds-since-start_date, and
+                # the clipped colorbar hides the actual range of the field.
                 sim_var_full, _ = sim_obs_full_dict[short_name]
-                start_date =
-                    Dates.DateTime(sim_var_full.attributes["start_date"])
-                ts = ClimaAnalysis.times(sim_var_full)
-                y0 =
-                    Dates.year(start_date + Dates.Second(round(Int, first(ts))))
-                y1 = Dates.year(start_date + Dates.Second(round(Int, last(ts))))
+                sim_dates = ClimaAnalysis.dates(sim_var_full)
+                y0, y1 =
+                    Dates.year(first(sim_dates)), Dates.year(last(sim_dates))
                 year_str = y0 == y1 ? "$(y0)" : "$(y0)–$(y1)"
-                # Use the un-averaged var's `long_name` and strip the
-                # `, average within …` annotation that ClimaAnalysis appends
-                # for monthly diagnostics — otherwise it leaks into the title
-                # alongside our explicit "mean over <years>" phrase.
+                # Strip the `, average within …` that ClimaAnalysis appends to
+                # `long_name`; the title already says what it averages over.
                 long_name =
                     get(sim_var_full.attributes, "long_name", short_name)
                 long_name = String(split(long_name, ", average")[1])
@@ -750,15 +1042,83 @@ function compute_seasonal_leaderboard(
                     mask = mask_fn_dict[short_name];
                     more_kwargs,
                 )
+            elseif group == "LAT"
+                sim_var, obs_var =
+                    sim_obs_season_comparison_dict[short_name]["ANN"]
+                isempty(sim_var) && break
+                # Average both fields over the same cells, as the bias plots do,
+                # so the two profiles stay comparable where obs has gaps.
+                sim_c, obs_c, mask_c = _prepare_for_bias(
+                    mask_fn_dict[short_name],
+                    sim_var,
+                    obs_var,
+                )
+                sim_lats, sim_zonal = _zonal_means(sim_c, mask_c)
+                _, obs_zonal = _zonal_means(obs_c, mask_c)
+                sim_zonal_std = _zonal_std(sim_c, mask_c)
+                obs_zonal_std = _zonal_std(obs_c, mask_c)
+                ax = CairoMakie.Axis(
+                    fig_sim_ann[row_idx, col_idx],
+                    xlabel = "$short_name ($(ClimaAnalysis.units(sim_var)))",
+                    ylabel = "Latitude (degrees)",
+                    yticks = -90:30:90,
+                    title = row_idx == 1 ? "Zonal mean of the annual mean" : "",
+                )
+                CairoMakie.ylims!(ax, -90, 90)
+                # Bands give the zonal heterogeneity a SIM/OBS gap sits against.
+                _band_zonal_spread!(
+                    ax,
+                    obs_zonal,
+                    obs_zonal_std,
+                    sim_lats,
+                    :black,
+                )
+                _band_zonal_spread!(
+                    ax,
+                    sim_zonal,
+                    sim_zonal_std,
+                    sim_lats,
+                    :firebrick,
+                )
+                # Latitude on the vertical axis, to read alongside the maps.
+                CairoMakie.lines!(
+                    ax,
+                    obs_zonal,
+                    sim_lats;
+                    color = :black,
+                    linewidth = 4,
+                    label = "OBS",
+                )
+                CairoMakie.lines!(
+                    ax,
+                    sim_zonal,
+                    sim_lats;
+                    color = :firebrick,
+                    linewidth = 4,
+                    label = "SIM",
+                )
+                row_idx == 1 && CairoMakie.axislegend(
+                    ax,
+                    position = :rb,
+                    framevisible = false,
+                )
+            elseif group == "IAV"
+                sim_var_full, _ = sim_obs_full_dict[short_name]
+                years, sim_annual, obs_annual = annual_means_dict[short_name]
+                length(years) > _MIN_IAV_YEARS || continue
+                _plot_interannual!(
+                    fig_sim_ann[row_idx, col_idx],
+                    years,
+                    sim_annual,
+                    obs_annual;
+                    label = "$short_name ($(ClimaAnalysis.units(sim_var_full)))",
+                    show_title = row_idx == 1,
+                )
             elseif group == "MON"
                 sim_var_full, obs_var_full = sim_obs_full_dict[short_name]
                 isempty(sim_var_full) && break
-                mask_fn = mask_fn_dict[short_name]
-                sim_monthly, obs_monthly = _monthly_climatology_global_means(
-                    sim_var_full,
-                    obs_var_full,
-                    mask_fn,
-                )
+                sim_monthly, obs_monthly, sim_spread, obs_spread =
+                    _monthly_climatology(global_series_dict[short_name]...)
                 units_str = ClimaAnalysis.units(sim_var_full)
                 ax = CairoMakie.Axis(
                     fig_sim_ann[row_idx, col_idx],
@@ -782,6 +1142,16 @@ function compute_seasonal_leaderboard(
                         ],
                     ),
                 )
+                # Bands show the spread of the global monthly mean across the
+                # simulated years, so the SIM/OBS gap can be read against the
+                # interannual variability rather than in isolation.
+                _band_interannual_spread!(ax, obs_monthly, obs_spread, :black)
+                _band_interannual_spread!(
+                    ax,
+                    sim_monthly,
+                    sim_spread,
+                    :firebrick,
+                )
                 CairoMakie.lines!(
                     ax,
                     1:12,
@@ -798,10 +1168,8 @@ function compute_seasonal_leaderboard(
                     linewidth = 4,
                     label = "SIM",
                 )
-                # Show the legend only on the top-right panel (first row of
-                # MON); per review feedback (kmdeck/AlexisRenchon), repeating
-                # it on every row clutters the figure and on some variables
-                # (e.g. SWU, NEE) the curves intersect the :rt anchor.
+                # First row only: on some variables the curves run through the
+                # :rt anchor, and repeating the legend clutters the figure.
                 row_idx == 1 && CairoMakie.axislegend(
                     ax,
                     position = :rt,
@@ -827,6 +1195,12 @@ function compute_seasonal_leaderboard(
             end
         end
     end
+
+    # The IAV axis is square, so left to a map-sized column it would sit in the
+    # middle of a blank margin.
+    iav_col = findfirst(==("IAV"), groups)
+    isnothing(iav_col) ||
+        CairoMakie.colsize!(fig_sim_ann.layout, iav_col, CairoMakie.Fixed(420))
 
     CairoMakie.save(
         joinpath(
