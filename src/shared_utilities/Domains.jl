@@ -53,7 +53,15 @@ function coordinates(domain::AbstractDomain)
 end
 
 """
-    Point{FT} <: AbstractDomain{FT}
+    AbstractPointDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for surface domains with no horizontal extent: a single
+`Point` or a `PointEnsemble` of independent points.
+"""
+abstract type AbstractPointDomain{FT} <: AbstractDomain{FT} end
+
+"""
+    Point{FT} <: AbstractPointDomain{FT}
 
 A domain for single column surface variables.
 For models such as ponds, snow, plant hydraulics, etc. Enables consistency
@@ -64,7 +72,7 @@ the Point space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
+struct Point{FT, NT <: NamedTuple} <: AbstractPointDomain{FT}
     "Surface elevation relative to a reference (m)"
     z_sfc::FT
     "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
@@ -120,6 +128,51 @@ function Point(;
     return Point{FT, typeof(space)}(z_sfc, space)
 end
 
+"""
+    PointEnsemble{FT} <: AbstractPointDomain{FT}
+
+A domain made of N independent surface points at arbitrary (long, lat)
+locations, sharing a single surface elevation `z_sfc`.
+
+This is the surface counterpart of a [`ColumnEnsemble`](@ref);
+`space` is a NamedTuple holding the surface space (a point per ensemble
+member).
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct PointEnsemble{FT, NT <: NamedTuple} <: AbstractPointDomain{FT}
+    "Surface elevation relative to a reference (m), shared by all points"
+    z_sfc::FT
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space holding all points"
+    space::NT
+end
+
+"""
+    PointEnsemble(;
+        z_sfc::FT,
+        longlat::AbstractVector{Tuple{FT, FT}},
+        device = ClimaComms.device(),
+    ) where {FT}
+
+Constructor for the `PointEnsemble` domain: N independent surface points
+at the (long, lat) locations in `longlat`, all at elevation `z_sfc`.
+
+The points are created by constructing an intermediate [`ColumnEnsemble`](@ref)
+whose top is at `z_sfc` and extracting its surface.
+"""
+function PointEnsemble(;
+    z_sfc::FT,
+    longlat::AbstractVector{Tuple{FT, FT}},
+    device = ClimaComms.device(),
+) where {FT}
+    ensemble = ColumnEnsemble(;
+        zlim = FT.((z_sfc - 1, z_sfc)),
+        nelements = 2,
+        longlat,
+        device,
+    )
+    return obtain_surface_domain(ensemble)
+end
 
 """
     AbstractColumnDomain{FT} <: AbstractDomain{FT}
@@ -879,14 +932,27 @@ obtain_surface_domain(d::AbstractDomain) =
     @error("No surface domain is defined for this domain.")
 
 """
-    obtain_surface_domain(c::AbstractColumnDomain{FT}) where {FT}
+    obtain_surface_domain(c::Column{FT}) where {FT}
 
 Returns the Point domain corresponding to the top face (surface) of the
-column domain `c`. For a `ColumnEnsemble`, the returned Point domain's
-space holds one point per column.
+Column domain `c`.
 """
-function obtain_surface_domain(c::AbstractColumnDomain{FT}) where {FT}
+function obtain_surface_domain(c::Column{FT}) where {FT}
     surface_domain = Point{FT, typeof((; surface = c.space.surface))}(
+        c.zlim[2],
+        (; surface = c.space.surface),
+    )
+    return surface_domain
+end
+
+"""
+    obtain_surface_domain(c::ColumnEnsemble{FT}) where {FT}
+
+Returns the PointEnsemble domain corresponding to the top faces (surfaces)
+of the ColumnEnsemble domain `c`, with one point per column.
+"""
+function obtain_surface_domain(c::ColumnEnsemble{FT}) where {FT}
+    surface_domain = PointEnsemble{FT, typeof((; surface = c.space.surface))}(
         c.zlim[2],
         (; surface = c.space.surface),
     )
@@ -1307,7 +1373,7 @@ function average_horizontal_resolution_degrees(
 end
 
 average_horizontal_resolution_degrees(
-    domain::Union{Point{FT}, AbstractColumnDomain{FT}},
+    domain::Union{AbstractPointDomain{FT}, AbstractColumnDomain{FT}},
 ) where {FT} = (FT(1), FT(1))
 
 apply_threshold(field, value) =
@@ -1362,8 +1428,11 @@ function landsea_mask(
     return binary_mask
 end
 
-# Points and Columns do not have a horizontal dim, so a horizontal mask cannot be applied
-landsea_mask(domain::Union{Point, AbstractColumnDomain}; kwargs...) = nothing
+# Points and columns do not have a horizontal dim, so a horizontal mask cannot be applied
+landsea_mask(
+    domain::Union{AbstractPointDomain, AbstractColumnDomain};
+    kwargs...,
+) = nothing
 
 function landsea_mask(
     domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
@@ -1578,9 +1647,15 @@ function global_box_domain(
 
     return domain
 end
-export AbstractDomain, AbstractColumnDomain
+export AbstractDomain, AbstractColumnDomain, AbstractPointDomain
 export Column,
-    ColumnEnsemble, Plane, HybridBox, Point, SphericalShell, SphericalSurface
+    ColumnEnsemble,
+    Plane,
+    HybridBox,
+    Point,
+    PointEnsemble,
+    SphericalShell,
+    SphericalSurface
 export coordinates,
     obtain_surface_space,
     obtain_surface_domain,

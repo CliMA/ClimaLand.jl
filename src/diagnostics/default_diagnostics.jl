@@ -170,12 +170,12 @@ function default_output_writer(
 end
 
 """
-    default_output_writer(domain::Union{AbstractColumnDomain, Point}, start_date, outdir)
+    default_output_writer(domain::Union{AbstractColumnDomain, AbstractPointDomain}, start_date, outdir)
 
-Creates an in memory diagnostics output writer for column and Point domains.
+Creates an in memory diagnostics output writer for column and point domains.
 """
 function default_output_writer(
-    domain::Union{AbstractColumnDomain, Point},
+    domain::Union{AbstractColumnDomain, AbstractPointDomain},
     start_date,
     outdir,
 )

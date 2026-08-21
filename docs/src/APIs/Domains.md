@@ -7,6 +7,7 @@ CurrentModule = ClimaLand
 ```@docs
 ClimaLand.Domains.AbstractDomain
 ClimaLand.Domains.AbstractColumnDomain
+ClimaLand.Domains.AbstractPointDomain
 ClimaLand.Domains.SphericalShell
 ClimaLand.Domains.SphericalSurface
 ClimaLand.Domains.HybridBox
@@ -14,6 +15,7 @@ ClimaLand.Domains.Column
 ClimaLand.Domains.ColumnEnsemble
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
+ClimaLand.Domains.PointEnsemble
 ClimaLand.Domains.global_domain
 ClimaLand.Domains.global_box_domain
 ClimaLand.Domains.coordinates

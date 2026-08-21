@@ -69,20 +69,27 @@ end
 
 Base.summary(io::IO, domain::AbstractDomain) = show(io, domain)
 
-function Base.show(io::IO, ::MIME"text/plain", domain::Point)
+function Base.show(io::IO, ::MIME"text/plain", domain::AbstractPointDomain)
     if get(io, :compact, false)
         show(io, domain)
     else
-        println(io, "Point{", eltype(domain), "}")
+        println(io, nameof(typeof(domain)), "{", eltype(domain), "}")
         println(io, "  z_sfc: ", domain.z_sfc, " m")
         println(io, "  device: ", _domain_device_str(domain))
     end
 end
 
-Base.show(io::IO, domain::Point) =
-    print(io, "Point{", eltype(domain), "}(z_sfc=", domain.z_sfc, " m)")
+Base.show(io::IO, domain::AbstractPointDomain) = print(
+    io,
+    nameof(typeof(domain)),
+    "{",
+    eltype(domain),
+    "}(z_sfc=",
+    domain.z_sfc,
+    " m)",
+)
 
-Base.summary(io::IO, domain::Point) = show(io, domain)
+Base.summary(io::IO, domain::AbstractPointDomain) = show(io, domain)
 
 function Base.show(io::IO, ::MIME"text/plain", domain::AbstractColumnDomain)
     if get(io, :compact, false)
