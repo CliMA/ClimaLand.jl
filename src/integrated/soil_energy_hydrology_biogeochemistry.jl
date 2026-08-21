@@ -57,7 +57,7 @@ end
     LandSoilBiogeochemistry{FT}(
         forcing,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        domain::Union{ClimaLand.Domains.AbstractColumnDomain, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -84,7 +84,7 @@ function LandSoilBiogeochemistry{FT}(
     forcing,
     toml_dict::CP.ParamDict,
     domain::Union{
-        ClimaLand.Domains.Column,
+        ClimaLand.Domains.AbstractColumnDomain,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
     };

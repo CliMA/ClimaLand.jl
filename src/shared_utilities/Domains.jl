@@ -53,7 +53,15 @@ function coordinates(domain::AbstractDomain)
 end
 
 """
-    Point{FT} <: AbstractDomain{FT}
+    AbstractPointDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for surface domains with no horizontal extent: a single
+`Point` or a `PointEnsemble` of independent points.
+"""
+abstract type AbstractPointDomain{FT} <: AbstractDomain{FT} end
+
+"""
+    Point{FT} <: AbstractPointDomain{FT}
 
 A domain for single column surface variables.
 For models such as ponds, snow, plant hydraulics, etc. Enables consistency
@@ -64,7 +72,7 @@ the Point space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
+struct Point{FT, NT <: NamedTuple} <: AbstractPointDomain{FT}
     "Surface elevation relative to a reference (m)"
     z_sfc::FT
     "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
@@ -120,9 +128,63 @@ function Point(;
     return Point{FT, typeof(space)}(z_sfc, space)
 end
 
+"""
+    PointEnsemble{FT} <: AbstractPointDomain{FT}
+
+A domain made of N independent surface points at arbitrary (long, lat)
+locations, sharing a single surface elevation `z_sfc`.
+
+This is the surface counterpart of a [`ColumnEnsemble`](@ref);
+`space` is a NamedTuple holding the surface space (a point per ensemble
+member).
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct PointEnsemble{FT, NT <: NamedTuple} <: AbstractPointDomain{FT}
+    "Surface elevation relative to a reference (m), shared by all points"
+    z_sfc::FT
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space holding all points"
+    space::NT
+end
 
 """
-    Column{FT} <: AbstractDomain{FT}
+    PointEnsemble(;
+        z_sfc::FT,
+        longlat::AbstractVector{Tuple{FT, FT}},
+        device = ClimaComms.device(),
+    ) where {FT}
+
+Constructor for the `PointEnsemble` domain: N independent surface points
+at the (long, lat) locations in `longlat`, all at elevation `z_sfc`.
+
+The points are created by constructing an intermediate [`ColumnEnsemble`](@ref)
+whose top is at `z_sfc` and extracting its surface.
+"""
+function PointEnsemble(;
+    z_sfc::FT,
+    longlat::AbstractVector{Tuple{FT, FT}},
+    device = ClimaComms.device(),
+) where {FT}
+    ensemble = ColumnEnsemble(;
+        zlim = FT.((z_sfc - 1, z_sfc)),
+        nelements = 2,
+        longlat,
+        device,
+    )
+    return obtain_surface_domain(ensemble)
+end
+
+"""
+    AbstractColumnDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for domains discretized by finite difference in the
+vertical only: a single `Column` or a `ColumnEnsemble` of independent
+columns sharing a vertical mesh.
+"""
+abstract type AbstractColumnDomain{FT} <: AbstractDomain{FT} end
+
+"""
+    Column{FT} <: AbstractColumnDomain{FT}
 A struct holding the necessary information
 to construct a domain, a mesh, a center and face
 space, etc. for use when a finite difference in
@@ -134,7 +196,8 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
+struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractColumnDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
@@ -237,6 +300,118 @@ function Column(;
     )
     fields = get_additional_coordinate_field_data(subsurface_space)
     return Column{FT, typeof(space), typeof(fields)}(
+        zlim,
+        (nelements,),
+        dz_tuple,
+        boundary_names,
+        space,
+        fields,
+    )
+end
+
+"""
+    ColumnEnsemble{FT} <: AbstractColumnDomain{FT}
+A struct holding the necessary information to construct a domain
+made of N independent vertical columns at arbitrary (long, lat)
+locations, sharing a vertical mesh.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct ColumnEnsemble{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractColumnDomain{FT}
+    "Domain interval limits, (zmin, zmax), in meters"
+    zlim::Tuple{FT, FT}
+    "Number of elements used to discretize the interval"
+    nelements::Tuple{Int}
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
+    "Boundary face identifiers"
+    boundary_names::Tuple{Symbol, Symbol}
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NT1
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
+    fields::NT2
+end
+
+"""
+    ColumnEnsemble(;
+        zlim::Tuple{FT, FT},
+        nelements::Int,
+        longlat::AbstractVector{Tuple{FT, FT}},
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+        device = ClimaComms.device(),
+    ) where {FT}
+
+Outer constructor for the 1D `ColumnEnsemble` domain.
+
+See [`Column`](@ref) for usage of this function and a description of possible
+keyword arguments.
+
+This function differs from [`Column`](@ref) as a `ColumnEnsemble` is backed by a
+`MultiColumnFiniteDifferenceSpace` which is an ensemble of N independent
+vertical columns at arbitrary (long, lat) locations.
+"""
+function ColumnEnsemble(;
+    zlim::Tuple{FT, FT},
+    nelements::Int,
+    longlat::AbstractVector{Tuple{FT, FT}},
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+    device = ClimaComms.device(),
+) where {FT}
+    @assert zlim[1] < zlim[2]
+    boundary_names = (:bottom, :top)
+
+    # All columns share the vertical mesh built below.
+    points = [
+        ClimaCore.Geometry.LatLongPoint{FT}(lat, long) for
+        (long, lat) in longlat
+    ]
+    z_min, z_max = zlim
+
+    vertdomain = ClimaCore.Domains.IntervalDomain(
+        ClimaCore.Geometry.ZPoint{FT}(z_min),
+        ClimaCore.Geometry.ZPoint{FT}(z_max);
+        boundary_names = boundary_names,
+    )
+    if isnothing(dz_tuple)
+        z_mesh = ClimaCore.Meshes.IntervalMesh(vertdomain; nelems = nelements)
+    else
+        @assert zlim[2] <= 0
+        z_mesh = ClimaCore.Meshes.IntervalMesh(
+            vertdomain,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements,
+            reverse_mode = true,
+        )
+    end
+
+    subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
+        FT;
+        points,
+        z_elem = nelements,
+        z_min,
+        z_max,
+        device,
+        z_mesh,
+        staggering = ClimaCore.Grids.CellCenter(),
+    )
+
+    surface_space = obtain_surface_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
+    fields = get_additional_coordinate_field_data(subsurface_space)
+    return ColumnEnsemble{FT, typeof(space), typeof(fields)}(
         zlim,
         (nelements,),
         dz_tuple,
@@ -771,6 +946,20 @@ function obtain_surface_domain(c::Column{FT}) where {FT}
 end
 
 """
+    obtain_surface_domain(c::ColumnEnsemble{FT}) where {FT}
+
+Returns the PointEnsemble domain corresponding to the top faces (surfaces)
+of the ColumnEnsemble domain `c`, with one point per column.
+"""
+function obtain_surface_domain(c::ColumnEnsemble{FT}) where {FT}
+    surface_domain = PointEnsemble{FT, typeof((; surface = c.space.surface))}(
+        c.zlim[2],
+        (; surface = c.space.surface),
+    )
+    return surface_domain
+end
+
+"""
     obtain_surface_domain(b::HybridBox{FT}) where {FT}
 
 Returns the Plane domain corresponding to the top face (surface) of the
@@ -833,6 +1022,22 @@ end
 Returns the top level of the face space corresponding to the input space `cs`.
 """
 function obtain_surface_space(cs::ClimaCore.Spaces.FiniteDifferenceSpace)
+    fs = ClimaCore.Spaces.face_space(cs)
+    return ClimaCore.Spaces.level(
+        fs,
+        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
+    )
+end
+
+"""
+    obtain_surface_space(cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace)
+
+Returns the top level (surface) face space of the multi-column center space `cs`,
+a `PointCloudSpace`.
+"""
+function obtain_surface_space(
+    cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace,
+)
     fs = ClimaCore.Spaces.face_space(cs)
     return ClimaCore.Spaces.level(
         fs,
@@ -962,6 +1167,7 @@ function get_lat(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :lat)
@@ -975,6 +1181,7 @@ get_lat(
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 ) = error("`get_lat` is not implemented for subsurface spaces")
 
@@ -992,6 +1199,7 @@ function get_long(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)
@@ -1005,6 +1213,7 @@ get_long(
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 ) = error("`get_long` is not implemented for subsurface spaces")
 
@@ -1082,6 +1291,7 @@ function depth(
     space::Union{
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.CenterFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 )
     zmin, zmax = extrema(
@@ -1163,7 +1373,7 @@ function average_horizontal_resolution_degrees(
 end
 
 average_horizontal_resolution_degrees(
-    domain::Union{Point{FT}, Column{FT}},
+    domain::Union{AbstractPointDomain{FT}, AbstractColumnDomain{FT}},
 ) where {FT} = (FT(1), FT(1))
 
 apply_threshold(field, value) =
@@ -1218,8 +1428,11 @@ function landsea_mask(
     return binary_mask
 end
 
-# Points and Columns do not have a horizontal dim, so a horizontal mask cannot be applied
-landsea_mask(domain::Union{Point, Column}; kwargs...) = nothing
+# Points and columns do not have a horizontal dim, so a horizontal mask cannot be applied
+landsea_mask(
+    domain::Union{AbstractPointDomain, AbstractColumnDomain};
+    kwargs...,
+) = nothing
 
 function landsea_mask(
     domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
@@ -1307,11 +1520,6 @@ function global_domain(
     ),
     interpolation_method = Interpolations.Constant(),
 )
-    if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
-        @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
-        apply_mask = false
-    end
-
     radius = FT(6378.1e3)
     dz_tuple = FT.(dz_tuple)
     depth = FT(depth)
@@ -1398,10 +1606,6 @@ function global_box_domain(
     ),
     interpolation_method = Interpolations.Constant(),
 )
-    if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
-        @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
-        apply_mask = false
-    end
     radius_earth = FT(6.378e6)
     zlim = (-FT(depth), FT(0.0))
     xlim = FT.((π * radius_earth, π * radius_earth))
@@ -1434,8 +1638,15 @@ function global_box_domain(
 
     return domain
 end
-export AbstractDomain
-export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
+export AbstractDomain, AbstractColumnDomain, AbstractPointDomain
+export Column,
+    ColumnEnsemble,
+    Plane,
+    HybridBox,
+    Point,
+    PointEnsemble,
+    SphericalShell,
+    SphericalSurface
 export coordinates,
     obtain_surface_space,
     obtain_surface_domain,

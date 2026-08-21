@@ -102,7 +102,7 @@ end
         forcing,
         LAI,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        domain::Union{ClimaLand.Domains.AbstractColumnDomain, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -145,7 +145,10 @@ function SoilCanopyModel{FT}(
     forcing,
     LAI,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{
+        ClimaLand.Domains.AbstractColumnDomain,
+        ClimaLand.Domains.SphericalShell,
+    };
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,

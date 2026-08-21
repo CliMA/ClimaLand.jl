@@ -56,7 +56,7 @@ end
     SoilSnowModel{FT}(
         forcing,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        domain::Union{ClimaLand.Domains.AbstractColumnDomain, ClimaLand.Domains.SphericalShell},
         Δt;
         soil = Soil.EnergyHydrology{FT}(
             domain,
@@ -87,7 +87,7 @@ function SoilSnowModel{FT}(
     forcing,
     toml_dict::CP.ParamDict,
     domain::Union{
-        ClimaLand.Domains.Column,
+        ClimaLand.Domains.AbstractColumnDomain,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
     },

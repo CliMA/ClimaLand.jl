@@ -33,6 +33,8 @@ import ..Canopy:
 import ..Domains:
     top_center_to_surface,
     AbstractDomain,
+    AbstractColumnDomain,
+    AbstractPointDomain,
     SphericalShell,
     HybridBox,
     Column,

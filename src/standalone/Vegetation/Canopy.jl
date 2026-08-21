@@ -717,7 +717,7 @@ end
         boundary_conditions::B,
         earth_param_set::PSE,
         domain::Union{
-            ClimaLand.Domains.Point,
+            ClimaLand.Domains.AbstractPointDomain,
             ClimaLand.Domains.Plane,
             ClimaLand.Domains.SphericalSurface,
         },
@@ -740,7 +740,7 @@ function CanopyModel{FT}(;
     boundary_conditions::B,
     earth_param_set::PSE,
     domain::Union{
-        ClimaLand.Domains.Point,
+        ClimaLand.Domains.AbstractPointDomain,
         ClimaLand.Domains.Plane,
         ClimaLand.Domains.SphericalSurface,
     },
@@ -774,7 +774,7 @@ end
 """
     function CanopyModel{FT}(
         domain::Union{
-            ClimaLand.Domains.Point,
+            ClimaLand.Domains.AbstractPointDomain,
             ClimaLand.Domains.Plane,
             ClimaLand.Domains.SphericalSurface,
         },
@@ -815,7 +815,7 @@ This value of this argument must be the same across all components in the land m
 """
 function CanopyModel{FT}(
     domain::Union{
-        ClimaLand.Domains.Point,
+        ClimaLand.Domains.AbstractPointDomain,
         ClimaLand.Domains.Plane,
         ClimaLand.Domains.SphericalSurface,
     },
@@ -915,7 +915,7 @@ while for running integrated land models, this should be a list of the individua
 """
 function CanopyModel{FT}(
     domain::Union{
-        ClimaLand.Domains.Point,
+        ClimaLand.Domains.AbstractPointDomain,
         ClimaLand.Domains.Plane,
         ClimaLand.Domains.SphericalSurface,
     },
