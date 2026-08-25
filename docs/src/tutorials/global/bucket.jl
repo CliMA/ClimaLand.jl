@@ -38,12 +38,12 @@ outdir =
 # Set timestep, start_date, stop_date:
 Δt = 900.0
 start_date = DateTime(2008)
-stop_date = start_date + Month(1);
+stop_date = DateTime(2009);
 
 # Create the domain - this is intentionally low resolution,
 # about 4.5 degrees x 4.5 degrees, to run quickly
 # when making the documentation on CPU.
-nelements = (15, 5)
+nelements = (20, 7)
 depth = FT(3.5)
 dz_tuple = FT.((1.0, 0.05))
 domain =
@@ -116,28 +116,28 @@ simulation = LandSimulation(
     user_callbacks = (),
 );
 
-solve!(simulation);
+# solve!(simulation);
 
-# Make some plots:
-short_names = ["lhf", "shf", "wsoil"]
+# # Make some plots:
+# short_names = ["lhf", "shf", "wsoil"]
 
-LandSimVis.make_annual_timeseries(
-    simulation;
-    savedir = ".",
-    short_names,
-    plot_stem_name = "bucket_annual_timeseries",
-)
-# ![](shf_bucket_annual_timeseries.png)
-# ![](lhf_bucket_annual_timeseries.png)
-# ![](wsoil_bucket_annual_timeseries.png)
+# LandSimVis.make_annual_timeseries(
+#     simulation;
+#     savedir = ".",
+#     short_names,
+#     plot_stem_name = "bucket_annual_timeseries",
+# )
+# # ![](shf_bucket_annual_timeseries.png)
+# # ![](lhf_bucket_annual_timeseries.png)
+# # ![](wsoil_bucket_annual_timeseries.png)
 
-LandSimVis.make_heatmaps(
-    simulation;
-    savedir = ".",
-    short_names,
-    date = stop_date,
-    plot_stem_name = "bucket_heatmap",
-)
-# ![](shf_2008-12-01T00:00:00_bucket_heatmap.png)
-# ![](lhf_2008-12-01T00:00:00_bucket_heatmap.png)
-# ![](wsoil_2008-12-01T00:00:00_bucket_heatmap.png)
+# LandSimVis.make_heatmaps(
+#     simulation;
+#     savedir = ".",
+#     short_names,
+#     date = stop_date,
+#     plot_stem_name = "bucket_heatmap",
+# )
+# # ![](shf_2008-12-01T00:00:00_bucket_heatmap.png)
+# # ![](lhf_2008-12-01T00:00:00_bucket_heatmap.png)
+# # ![](wsoil_2008-12-01T00:00:00_bucket_heatmap.png)
