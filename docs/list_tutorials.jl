@@ -34,7 +34,7 @@ tutorials = [
     ],
     "Running global simulations" => [
         "Bucket" => "global/bucket.jl",
-        "Snow, soil, canopy" => "global/snowy_land.jl",
+        # "Snow, soil, canopy" => "global/snowy_land.jl",
     ],
     "Calibrating a ClimaLand model" => [
         "Single site perfect model" => "calibration/perfect_model_site_level_calibration.jl",
