@@ -436,3 +436,20 @@ forward model).
   posterior trajectory); (3) systematic energy bias at forests: LE over, H under
   (Bowen ratio too low) — carbon params touch this only via moisture stress; if
   energy misfit dominates post-calibration, D2 (no energy params) needs revisiting.
+
+
+### Phase 5/6 skill verdict (2026-08-25) — figs 6+7, skill_{prior,posterior}.csv
+
+Calibration extended to 15 iterations; noise-weighted misfit 10.5 → 0.35–0.66
+plateau (~25×). Window oscillation on β_c3/msc → posterior = epoch average of
+iteration means 10–15 (epoch_posterior.jld2). All 21 posterior deliverable runs
+completed clean; per-site monthly-RMSE gate:
+- **LE: 20/21 improved (95%)** — the LE-over bias largely fixed.
+- **NEE: 10/16 improved (62%)** — drylands much better (US-SRG R² +0.30) but
+  **DE-Tha 0.76→1.41 and DK-Sor 1.30→1.85 gC/m²/d degrade >30%** (the global
+  β_c3=21.5 serves drylands at the temperate forests' expense).
+- **H: 4/21 improved (19%)** — small ubiquitous tax (~1–4 W/m²).
+Pre-registered ≥⅔ gate: LE passes, NEE just misses, H fails → NOT a clean pass.
+Decision needed (Renato): accept Scenario-1 posterior as-is (defensible;
+objective improved 25×; document trade-offs) vs PFT-split β_c3 (protocol allows
+PFT-specific params; directly targets the forest/dryland tension; ~5 h rerun).
