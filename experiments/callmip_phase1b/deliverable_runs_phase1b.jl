@@ -231,7 +231,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
     stage = length(ARGS) >= 2 ? ARGS[2] : "Prior"
     params = Float64[]
     if stage == "Posterior"
+        # epoch_posterior.jld2 (minibatch-oscillation consolidation) wins when present
+        epoch = joinpath(@__DIR__, "output_calibration", "epoch_posterior.jld2")
         post = JLD2.load(
+            isfile(epoch) ? epoch :
             joinpath(@__DIR__, "output_calibration", "posterior_ensemble.jld2"),
         )
         params = Float64.(post["ϕ_mean"])
