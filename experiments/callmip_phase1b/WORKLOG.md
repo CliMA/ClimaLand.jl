@@ -407,3 +407,32 @@ Actions:
 Lesson recorded: when using a convenience constructor, ASSERT the components you
 scientifically require (a `@assert !isnothing(land.soilco2)` now belongs in the
 forward model).
+
+
+### Re-verification after soilco2 fix + Phase 5 relaunch (2026-08-19)
+
+- G smoke with soilco2: **5/5**; NEE source range doubles (+0.8 → +1.8 gC/m²/d),
+  LHF/SHF bit-identical (soilco2 has no energy feedback — a good consistency
+  check); member cost 14.5 min (+16%).
+- Deliverable smoke US-SRG Prior: **full chain green** — first Phase 1b NetCDF
+  written and validated against protocol (dims/attrs/units/time axis exact;
+  99.9% valid = the 2 by-design boundary fill days; physics sane for semi-arid
+  grassland). Science note: prior reco floor ~1 gC/m²/d looks high for desert
+  winter — prior bias, calibration's job.
+- Fix committed `b3c0f2200`. **Fresh Phase 5 launched** (10 iterations from
+  scratch, soilco2 active, ~23 min/iter ≈ 4 h). Iteration 1 doubles as the
+  Phase 4 gate re-run — verify at first checkpoint.
+
+
+### All-site prior runs + fig5 (2026-08-25)
+
+- All 21 Cal_Prior deliverable runs completed (every log exit=0) — a third of the
+  final deliverables done, and the prior-skill baseline for the Phase 5 gate.
+- figures/fig5{a,b,c}_prior_vs_obs_all_sites.png: prior vs obs climatology, all sites.
+- Prior-skill read: (1) forest NEE seasonality is in phase, amplitude mixed
+  (over-uptake at DE-Gri/RU-Fyo/US-Ton, under at IT-Lav); (2) the semi-arid
+  cluster (US-SRG/SRM/Whs/Wkg) NEVER shows model uptake while obs have monsoon
+  uptake — the calibration's clearest target (moisture_stress_c already ↑ in the
+  posterior trajectory); (3) systematic energy bias at forests: LE over, H under
+  (Bowen ratio too low) — carbon params touch this only via moisture stress; if
+  energy misfit dominates post-calibration, D2 (no energy params) needs revisiting.
