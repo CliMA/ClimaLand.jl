@@ -33,7 +33,7 @@ tutorials = [
         "Visualization" => "integrated/fluxnet_vis.jl",
     ],
     "Running global simulations" => [
-        # "Bucket" => "global/bucket.jl",
+        "Bucket" => "global/bucket.jl",
         "Snow, soil, canopy" => "global/snowy_land.jl",
     ],
     "Calibrating a ClimaLand model" => [

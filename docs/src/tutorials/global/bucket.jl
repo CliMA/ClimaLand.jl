@@ -38,12 +38,12 @@ outdir =
 # Set timestep, start_date, stop_date:
 Δt = 900.0
 start_date = DateTime(2008)
-stop_date = DateTime(2009);
+stop_date = start_date + Month(1);
 
 # Create the domain - this is intentionally low resolution,
 # about 4.5 degrees x 4.5 degrees, to run quickly
 # when making the documentation on CPU.
-nelements = (20, 7)
+nelements = (15, 5)
 depth = FT(3.5)
 dz_tuple = FT.((1.0, 0.05))
 domain =
