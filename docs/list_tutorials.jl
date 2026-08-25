@@ -33,8 +33,8 @@ tutorials = [
         "Visualization" => "integrated/fluxnet_vis.jl",
     ],
     "Running global simulations" => [
-        "Bucket" => "global/bucket.jl",
-        # "Snow, soil, canopy" => "global/snowy_land.jl",
+        # "Bucket" => "global/bucket.jl",
+        "Snow, soil, canopy" => "global/snowy_land.jl",
     ],
     "Calibrating a ClimaLand model" => [
         "Single site perfect model" => "calibration/perfect_model_site_level_calibration.jl",
