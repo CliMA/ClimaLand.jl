@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - kp/mem-docs # TODO: remove before merging; temporary for docs debugging
     tags: '*'
   pull_request:
 
