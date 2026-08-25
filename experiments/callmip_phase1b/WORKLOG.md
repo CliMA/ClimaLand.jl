@@ -453,3 +453,14 @@ Pre-registered ≥⅔ gate: LE passes, NEE just misses, H fails → NOT a clean 
 Decision needed (Renato): accept Scenario-1 posterior as-is (defensible;
 objective improved 25×; document trade-offs) vs PFT-split β_c3 (protocol allows
 PFT-specific params; directly targets the forest/dryland tension; ~5 h rerun).
+
+
+### Correction: figure PNGs/CSVs were never in git until now (2026-08-25)
+
+The repo root .gitignore blanket-ignores `*.png` (and these CSVs), and
+`git add <dir>` skips ignored files SILENTLY — so every earlier commit message
+claiming to commit figures actually committed only scripts/docs. Fixed with
+figures/.gitignore re-including `*.png`/`*.csv`; all 13 figures + 2 skill CSVs
+now actually tracked. Lesson: after `git add <dir>`, verify with
+`git status --short <dir>` — silent-skip is the same failure class as silent
+`sed` no-ops.
