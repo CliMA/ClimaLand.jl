@@ -73,6 +73,31 @@ SITES = sorted(os.path.basename(f).split("_")[3] for f in glob.glob(f"{D}/ClimaL
 print(f"{len(SITES)} sites with prior files")
 months = np.arange(1, 13)
 all_stats = {}
+
+def best_corner(ax, series, box_w=0.55, box_h=0.14):
+    """Pick the corner whose text box is farthest from any plotted point."""
+    x0, x1 = ax.get_xlim(); y0, y1 = ax.get_ylim()
+    pts = []
+    for xs, ys in series:
+        for x, y in zip(xs, ys):
+            if np.isfinite(y):
+                pts.append(((x - x0) / (x1 - x0), (y - y0) / (y1 - y0)))
+    pts = np.array(pts) if pts else np.zeros((0, 2))
+    candidates = [(0.985, 0.96, "right", "top"), (0.02, 0.96, "left", "top"),
+                  (0.985, 0.05, "right", "bottom"), (0.02, 0.05, "left", "bottom")]
+    best, best_score = candidates[0], -1.0
+    for xf, yf, ha, va in candidates:
+        bx0 = xf - box_w if ha == "right" else xf
+        by0 = yf - box_h if va == "top" else yf
+        if len(pts):
+            dx = np.maximum(np.maximum(bx0 - pts[:, 0], pts[:, 0] - (bx0 + box_w)), 0)
+            dy = np.maximum(np.maximum(by0 - pts[:, 1], pts[:, 1] - (by0 + box_h)), 0)
+            score = float(np.min(np.hypot(dx, dy)))
+        else:
+            score = 1.0
+        if score > best_score:
+            best_score, best = score, (xf, yf, ha, va)
+    return best
 groups = [SITES[i:i + 7] for i in range(0, len(SITES), 7)]
 for gi, group in enumerate(groups):
     fig, axes = plt.subplots(len(group), 3, figsize=(10, 1.75 * len(group) + 1.2))
@@ -87,8 +112,10 @@ for gi, group in enumerate(groups):
             if k == "NEE": ax.axhline(0, color=INK2, lw=0.7)
             r2, rmse, nm = stats[k]
             txt = f"R$^2$={r2:.2f} RMSE={rmse:.2g} (n={nm})" if np.isfinite(r2) else "n<3 months"
-            ax.text(0.985, 0.97, txt, transform=ax.transAxes, ha="right", va="top",
-                    fontsize=6.5, color=INK2)
+            xf, yf, ha, va = best_corner(ax, [(months, model[k]), (months, obs[k])])
+            ax.text(xf, yf, txt, transform=ax.transAxes, ha=ha, va=va,
+                    fontsize=6.5, color=INK2,
+                    bbox=dict(facecolor=SURF, edgecolor="none", alpha=0.75, pad=0.6))
             if r == 0: ax.set_title(("NEE (gC m$^{-2}$ d$^{-1}$)", "LE (W m$^{-2}$)", "H (W m$^{-2}$)")[c], loc="left")
             if c == 0: ax.set_ylabel(site, fontsize=9, fontweight="bold")
             ax.set_xticks([1, 7]); ax.set_xticklabels(["Jan", "Jul"] if r == len(group) - 1 else ["", ""])
