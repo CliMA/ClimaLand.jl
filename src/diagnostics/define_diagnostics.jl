@@ -241,8 +241,8 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "trans",
         long_name = "Canopy Transpiration",
         standard_name = "canopy_transpiration",
-        units = "m s^-1",
-        comments = "The water evaporated from the canopy due to leaf transpiration (flux of water volume, m^3 of water per m^2 of ground).",
+        units = "kg m^-2 s^-1",
+        comments = "The water evaporated from the canopy due to leaf transpiration (flux of water mass, kg of water per m^2 of ground per second).",
         compute! = (out, Y, p, t) ->
             compute_canopy_transpiration!(out, Y, p, t, land_model),
     )

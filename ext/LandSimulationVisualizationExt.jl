@@ -17,6 +17,7 @@ using Printf
 include("land_sim_vis/leaderboard/data_sources.jl")
 include("land_sim_vis/plotting_utils.jl")
 include("land_sim_vis/leaderboard/leaderboard.jl")
+include("land_sim_vis/leaderboard/partitioning.jl")
 include("land_sim_vis/leaderboard/rmse_boxplots.jl")
 """
     make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"])
@@ -77,7 +78,6 @@ function LandSimVis.make_leaderboard_plots(
     # assert that data spans multiple years and is monthly output?
     # check that the short_names include the appropriate variables for the data source?
     diagdir = first(diagnostics).output_writer.output_dir
-    short_names = [d.variable.short_name for d in diagnostics]
     diagnostics_folder_path = diagdir
     leaderboard_base_path = savedir
     for data_source in leaderboard_data_sources
@@ -93,10 +93,9 @@ function LandSimVis.make_leaderboard_plots(
         )
     end
     compute_rmse_boxplots(leaderboard_base_path, diagnostics_folder_path)
-    create_partitioning_plots(
+    compute_partitioning_leaderboard(
         leaderboard_base_path,
         diagnostics_folder_path,
-        short_names,
     )
 end
 
