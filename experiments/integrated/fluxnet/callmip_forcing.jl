@@ -6,6 +6,7 @@
 # same order as the `longlat` vector used to build the domain. All columns
 # share one UTC time axis, so the sites' records must overlap in calendar time.
 
+import ClimaComms
 import ClimaCore
 using Dates
 using NCDatasets
@@ -20,14 +21,18 @@ import ClimaUtilities.TimeVaryingInputs:
 const FSExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
 
 """
-    read_callmip_met(met_nc_path, hour_offset_from_UTC)
+    read_callmip_met(met_nc_path, hour_offset_from_UTC; lai_var = "LAI_alternative")
 
 Read one CalLMIP/PLUMBER2 `*_Met.nc` file fully into memory and return a
 NamedTuple with the UTC timestamps (`UTC = local - hour_offset_from_UTC`), the
 site coordinates and tower height, and the forcing time series in the file's
 native units. The data are assumed gap-filled; missing values are an error.
 """
-function read_callmip_met(met_nc_path, hour_offset_from_UTC)
+function read_callmip_met(
+    met_nc_path,
+    hour_offset_from_UTC;
+    lai_var = "LAI_alternative",
+)
     NCDataset(met_nc_path) do ds
         function read_series(name)
             v = ds[name][1, 1, :]
@@ -52,8 +57,7 @@ function read_callmip_met(met_nc_path, hour_offset_from_UTC)
             CO2air = read_series("CO2air"), # ppm
             Precip = read_series("Precip"), # kg/m^2/s
             VPD = read_series("VPD"),       # hPa
-            LAI = haskey(ds, "LAI_alternative") ?
-                  read_series("LAI_alternative") : nothing,
+            LAI = haskey(ds, lai_var) ? read_series(lai_var) : nothing,
         )
     end
 end
@@ -115,9 +119,7 @@ function prescribed_forcing_callmip(
 
     # Rows of each matrix must follow the column order of the space
     space_long = Array(
-        ClimaCore.Fields.field2array(
-            ClimaLand.Domains.get_long(surface_space),
-        ),
+        ClimaCore.Fields.field2array(ClimaLand.Domains.get_long(surface_space)),
     )
     space_lat = Array(
         ClimaCore.Fields.field2array(ClimaLand.Domains.get_lat(surface_space)),
@@ -162,10 +164,14 @@ function prescribed_forcing_callmip(
         atmos_P_snow = matrix_tvi([zero(s.Precip) for s in aligned])
     end
 
+    # The heights array must live on the space's device (CuArray on GPU),
+    # or downstream broadcasts mix host and device data and throw
     heights = FT[s.atmos_h for s in aligned]
+    device_array =
+        ClimaComms.array_type(ClimaComms.device(surface_space))(heights)
     atmos_h =
         length(heights) == 1 ? heights[1] :
-        ClimaCore.Fields.array2field(heights, surface_space)
+        ClimaCore.Fields.array2field(device_array, surface_space)
 
     atmos = ClimaLand.PrescribedAtmosphere(
         atmos_P_liq,
@@ -260,11 +266,7 @@ function build_callmip_simulation(
     elseif domain_type == :column
         length(sites) == 1 ||
             error("domain_type = :column supports a single site")
-        Column(;
-            zlim,
-            nelements,
-            longlat = FT.((sites[1].long, sites[1].lat)),
-        )
+        Column(; zlim, nelements, longlat = FT.((sites[1].long, sites[1].lat)))
     else
         error("unknown domain_type $domain_type")
     end

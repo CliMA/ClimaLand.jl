@@ -1,0 +1,547 @@
+[ Info: [RU-Fyo Prior] spin-up 5 yr
+┌ Info: Progress
+│   simulation_time = "26 weeks, 12 hours"
+│   n_steps_completed = 35040
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "10.0%"
+│   estimated_sypd = "Inf"
+│   instantaneous_sypd = "0.0 (sdpd_estimate = 0.009)"
+│   date_now = 2026-08-25T13:46:29.720
+└   estimated_finish_date = 2026-08-25T13:46:29.719
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "52 weeks, 1 day"
+│   n_steps_completed = 70080
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "20.0%"
+│   estimated_sypd = "Inf"
+│   instantaneous_sypd = "966.336"
+│   date_now = 2026-08-25T13:47:14.347
+└   estimated_finish_date = 2026-08-25T13:47:14.347
+┌ Info: Progress
+│   simulation_time = "78 weeks, 1 day"
+│   n_steps_completed = 105120
+│   wall_time_per_step = "1 millisecond, 154 microseconds"
+│   wall_time_total = "6 minutes, 44 seconds"
+│   wall_time_remaining = "4 minutes, 43 seconds"
+│   wall_time_spent = "2 minutes, 1 second"
+│   percent_complete = "30.0%"
+│   estimated_sypd = "1067.117"
+│   instantaneous_sypd = "1067.117"
+│   date_now = 2026-08-25T13:47:54.966
+└   estimated_finish_date = 2026-08-25T13:52:38.965
+┌ Info: Progress
+│   simulation_time = "104 weeks, 2 days"
+│   n_steps_completed = 140160
+│   wall_time_per_step = "1 millisecond, 157 microseconds"
+│   wall_time_total = "6 minutes, 45 seconds"
+│   wall_time_remaining = "4 minutes, 3 seconds"
+│   wall_time_spent = "2 minutes, 42 seconds"
+│   percent_complete = "40.0%"
+│   estimated_sypd = "1064.071"
+│   instantaneous_sypd = "1055.037"
+│   date_now = 2026-08-25T13:48:35.683
+└   estimated_finish_date = 2026-08-25T13:52:39.683
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "130 weeks, 2 days"
+│   n_steps_completed = 175200
+│   wall_time_per_step = "1 millisecond, 166 microseconds"
+│   wall_time_total = "6 minutes, 48 seconds"
+│   wall_time_remaining = "3 minutes, 24 seconds"
+│   wall_time_spent = "3 minutes, 24 seconds"
+│   percent_complete = "50.0%"
+│   estimated_sypd = "1056.243"
+│   instantaneous_sypd = "1026.05"
+│   date_now = 2026-08-25T13:49:17.757
+└   estimated_finish_date = 2026-08-25T13:52:42.757
+┌ Info: Progress
+│   simulation_time = "156 weeks, 3 days"
+│   n_steps_completed = 210240
+│   wall_time_per_step = "1 millisecond, 171 microseconds"
+│   wall_time_total = "6 minutes, 50 seconds"
+│   wall_time_remaining = "2 minutes, 44 seconds"
+│   wall_time_spent = "4 minutes, 6 seconds"
+│   percent_complete = "60.0%"
+│   estimated_sypd = "1051.78"
+│   instantaneous_sypd = "1030.02"
+│   date_now = 2026-08-25T13:49:59.669
+└   estimated_finish_date = 2026-08-25T13:52:44.669
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "182 weeks, 3 days"
+│   n_steps_completed = 245280
+│   wall_time_per_step = "1 millisecond, 174 microseconds"
+│   wall_time_total = "6 minutes, 51 seconds"
+│   wall_time_remaining = "2 minutes, 3 seconds"
+│   wall_time_spent = "4 minutes, 48 seconds"
+│   percent_complete = "70.0%"
+│   estimated_sypd = "1049.174"
+│   instantaneous_sypd = "1033.801"
+│   date_now = 2026-08-25T13:50:41.428
+└   estimated_finish_date = 2026-08-25T13:52:45.428
+┌ Info: Progress
+│   simulation_time = "208 weeks, 4 days"
+│   n_steps_completed = 280320
+│   wall_time_per_step = "1 millisecond, 182 microseconds"
+│   wall_time_total = "6 minutes, 54 seconds"
+│   wall_time_remaining = "1 minute, 22 seconds"
+│   wall_time_spent = "5 minutes, 31 seconds"
+│   percent_complete = "80.0%"
+│   estimated_sypd = "1042.2"
+│   instantaneous_sypd = "995.865"
+│   date_now = 2026-08-25T13:51:24.778
+└   estimated_finish_date = 2026-08-25T13:52:47.778
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "234 weeks, 4 days"
+│   n_steps_completed = 315360
+│   wall_time_per_step = "1 millisecond, 185 microseconds"
+│   wall_time_total = "6 minutes, 55 seconds"
+│   wall_time_remaining = "41 seconds, 535 milliseconds"
+│   wall_time_spent = "6 minutes, 13 seconds"
+│   percent_complete = "90.0%"
+│   estimated_sypd = "1039.367"
+│   instantaneous_sypd = "1017.244"
+│   date_now = 2026-08-25T13:52:07.216
+└   estimated_finish_date = 2026-08-25T13:52:49.216
+┌ Info: Progress
+│   simulation_time = "260 weeks, 5 days"
+│   n_steps_completed = 350400
+│   wall_time_per_step = "1 millisecond, 188 microseconds"
+│   wall_time_total = "6 minutes, 56 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "6 minutes, 56 seconds"
+│   percent_complete = "100.0%"
+│   estimated_sypd = "1036.337"
+│   instantaneous_sypd = "1009.845"
+│   date_now = 2026-08-25T13:52:49.966
+└   estimated_finish_date = 2026-08-25T13:52:49.966
+[ Info: [RU-Fyo Prior] production run 2003–2014
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "62 weeks, 4 days"
+│   n_steps_completed = 84135
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "10.0%"
+│   estimated_sypd = "Inf"
+│   instantaneous_sypd = "0.0 (sdpd_estimate = 0.021)"
+│   date_now = 2026-08-25T13:57:05.204
+└   estimated_finish_date = 2026-08-25T13:57:05.204
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "125 weeks, 1 day"
+│   n_steps_completed = 168270
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "20.0%"
+│   estimated_sypd = "Inf"
+│   instantaneous_sypd = "636.381"
+│   date_now = 2026-08-25T13:59:48.089
+└   estimated_finish_date = 2026-08-25T13:59:48.089
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "187 weeks, 5 days"
+│   n_steps_completed = 252405
+│   wall_time_per_step = "1 millisecond, 939 microseconds"
+│   wall_time_total = "27 minutes, 11 seconds"
+│   wall_time_remaining = "19 minutes, 1 second"
+│   wall_time_spent = "8 minutes, 9 seconds"
+│   percent_complete = "30.0%"
+│   estimated_sypd = "635.383"
+│   instantaneous_sypd = "635.383"
+│   date_now = 2026-08-25T14:02:31.231
+└   estimated_finish_date = 2026-08-25T14:21:33.230
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "250 weeks, 2 days"
+│   n_steps_completed = 336540
+│   wall_time_per_step = "1 millisecond, 924 microseconds"
+│   wall_time_total = "26 minutes, 59 seconds"
+│   wall_time_remaining = "16 minutes, 11 seconds"
+│   wall_time_spent = "10 minutes, 47 seconds"
+│   percent_complete = "40.0%"
+│   estimated_sypd = "640.22"
+│   instantaneous_sypd = "655.185"
+│   date_now = 2026-08-25T14:05:09.441
+└   estimated_finish_date = 2026-08-25T14:21:21.441
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "313 weeks, 22 minutes"
+│   n_steps_completed = 420675
+│   wall_time_per_step = "1 millisecond, 935 microseconds"
+│   wall_time_total = "27 minutes, 8 seconds"
+│   wall_time_remaining = "13 minutes, 34 seconds"
+│   wall_time_spent = "13 minutes, 34 seconds"
+│   percent_complete = "50.0%"
+│   estimated_sypd = "636.668"
+│   instantaneous_sypd = "622.843"
+│   date_now = 2026-08-25T14:07:55.867
+└   estimated_finish_date = 2026-08-25T14:21:30.867
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "375 weeks, 4 days"
+│   n_steps_completed = 504810
+│   wall_time_per_step = "1 millisecond, 944 microseconds"
+│   wall_time_total = "27 minutes, 15 seconds"
+│   wall_time_remaining = "10 minutes, 54 seconds"
+│   wall_time_spent = "16 minutes, 21 seconds"
+│   percent_complete = "60.0%"
+│   estimated_sypd = "633.647"
+│   instantaneous_sypd = "618.962"
+│   date_now = 2026-08-25T14:10:43.336
+└   estimated_finish_date = 2026-08-25T14:21:38.336
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "438 weeks, 1 day"
+│   n_steps_completed = 588945
+│   wall_time_per_step = "1 millisecond, 941 microseconds"
+│   wall_time_total = "27 minutes, 13 seconds"
+│   wall_time_remaining = "8 minutes, 9 seconds"
+│   wall_time_spent = "19 minutes, 3 seconds"
+│   percent_complete = "70.0%"
+│   estimated_sypd = "634.633"
+│   instantaneous_sypd = "640.616"
+│   date_now = 2026-08-25T14:13:25.144
+└   estimated_finish_date = 2026-08-25T14:21:35.144
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "500 weeks, 5 days"
+│   n_steps_completed = 673080
+│   wall_time_per_step = "1 millisecond, 932 microseconds"
+│   wall_time_total = "27 minutes, 5 seconds"
+│   wall_time_remaining = "5 minutes, 25 seconds"
+│   wall_time_spent = "21 minutes, 40 seconds"
+│   percent_complete = "80.0%"
+│   estimated_sypd = "637.535"
+│   instantaneous_sypd = "658.618"
+│   date_now = 2026-08-25T14:16:02.530
+└   estimated_finish_date = 2026-08-25T14:21:28.530
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+┌ Info: Progress
+│   simulation_time = "563 weeks, 2 days"
+│   n_steps_completed = 757215
+│   wall_time_per_step = "1 millisecond, 924 microseconds"
+│   wall_time_total = "26 minutes, 59 seconds"
+│   wall_time_remaining = "2 minutes, 41 seconds"
+│   wall_time_spent = "24 minutes, 17 seconds"
+│   percent_complete = "90.0%"
+│   estimated_sypd = "640.164"
+│   instantaneous_sypd = "662.005"
+│   date_now = 2026-08-25T14:18:39.111
+└   estimated_finish_date = 2026-08-25T14:21:21.110
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in photosynthesis
+[ Info: Checking NaNs in acclimated
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+[ Info: Checking NaNs in O2
+[ Info: Checking NaNs in SOC
+[ Info: [RU-Fyo Prior] wrote /home/renatob/ClimaLand.jl/experiments/callmip_phase1b/output_deliverables/ClimaLand.v1_Phase1b_Scen1_RU-Fyo_Cal_Prior.nc
+exit=0

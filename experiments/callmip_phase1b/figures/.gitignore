@@ -1,0 +1,3 @@
+# project documentation figures are versioned on this branch
+!*.png
+!*.csv
