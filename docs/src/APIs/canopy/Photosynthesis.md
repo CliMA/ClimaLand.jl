@@ -48,11 +48,7 @@ ClimaLand.Canopy.compute_Kmm
 ClimaLand.Canopy.intercellular_co2_pmodel
 ClimaLand.Canopy.gs_co2_pmodel
 ClimaLand.Canopy.gs_h2o_pmodel
-ClimaLand.Canopy.compute_mj
-ClimaLand.Canopy.compute_mc
-ClimaLand.Canopy.vcmax_pmodel
 ClimaLand.Canopy.compute_LUE
-ClimaLand.Canopy.compute_mj_with_jmax_limitation
 ClimaLand.Canopy.electron_transport_pmodel
 ClimaLand.Canopy.co2_compensation_pmodel
 ClimaLand.Canopy.quadratic_soil_moisture_stress
