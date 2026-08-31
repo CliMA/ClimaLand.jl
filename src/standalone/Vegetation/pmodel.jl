@@ -422,10 +422,9 @@ function compute_full_pmodel_outputs(
     # Compute intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / Drel)
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -543,19 +542,6 @@ end
         APAR_canopy_moles::FT,
     ) where {FT}
 
-    compute_optimal_capacities(
-        parameters::PModelParameters{FT},
-        constants::PModelConstants{FT},
-        thermo_params,
-        T_canopy::FT,
-        T_air::FT,
-        P_air::FT,
-        q_air::FT,
-        ca::FT,
-        βm::FT,
-        APAR_canopy_moles::FT,
-    ) where {FT}
-
 Compute the instantaneous optimal photosynthetic capacities — the sensitivity of
 stomatal conductance to dryness `ξ`, `Vcmax25`, and `Jmax25` (C3 and C4 variants) —
 from the current environment, following Mengoli et al. (2022). These are the target
@@ -636,8 +622,10 @@ function compute_optimal_capacities(
         ΔHkc,
         ΔHko,
         Drel,
-        ΔHΓstar,
-        Γstar25,
+     ΔHΓstar_c3,
+     Γstar25_c3,
+     ΔHΓstar_c4,
+        Γstar25_c4,
         Ha_Vcmax,
         Hd_Vcmax,
         aS_Vcmax,
@@ -652,19 +640,19 @@ function compute_optimal_capacities(
         Γ_ratio_max,
     ) = constants
     # Compute intermediate values
-    Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
+    Γstar_c3 = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar_c3, Γstar25_c3)
+    Γstar_c4 = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar_c4, Γstar25_c4)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # convert ca from mol/mol to Pa
     ca_pp = ca * P_air
 
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar_c3) / Drel)
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar_c4) / Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
-        Γstar,
+        Γstar_c4,
         VPD,
         vpd_ratio_min,
         Γ_ratio_max,
@@ -672,7 +660,7 @@ function compute_optimal_capacities(
     ci_c4 = intercellular_co2_pmodel(
         ξ_opt_c4,
         ca_pp,
-        Γstar,
+        Γstar_c3,
         VPD,
         vpd_ratio_min,
         Γ_ratio_max,
@@ -680,13 +668,12 @@ function compute_optimal_capacities(
 
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
-    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
-    mc_c3, mc_c4 = compute_mc(Γstar, ci_c3, ci_c4, Kmm)
-    mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
-    mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
-
-    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mprime_c3 / mc_c3
-    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mprime_c4 / mc_c4
+    mj_c3, mj_c4 = compute_mj(Γstar_c3, ci_c3, ci_c4)
+    mc_c3, mc_c4 = compute_mc(Γstar_c4, ci_c3, ci_c4, Kmm)
+    L_c3 = sqrt(1-(cstar/mj_c3)^(2/3));
+    L_c4 = sqrt(1-(cstar/mj_c4)^(2/3));
+    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mj_c3/mc_c3*L_c3
+    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mj_c4/mc_c4*L_c4
 
     inst_temp_scaling_factor_Vcmax = inst_temp_scaling(
         T_canopy,
@@ -702,9 +689,9 @@ function compute_optimal_capacities(
     Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
     Jmax_opt_c3 =
-        4 * ϕ0_c3 * APAR_canopy_moles / sqrt((mj_c3 / (βm * mprime_c3))^2 - 1)
+        βm * 4 * ϕ0_c3 * APAR_canopy_moles / sqrt(1/L_c3^2-1)
     Jmax_opt_c4 =
-        4 * ϕ0_c4 * APAR_canopy_moles / sqrt((mj_c4 / (βm * mprime_c4))^2 - 1)
+        βm * 4 * ϕ0_c4 * APAR_canopy_moles / sqrt(1/L_c4^2-1)
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -722,8 +709,8 @@ function compute_optimal_capacities(
         ξ_c4 = ξ_opt_c4,
         Vcmax25_c3 = Vcmax25_opt_c3,
         Vcmax25_c4 = Vcmax25_opt_c4,
-        Jmax25_c3 = Jmax25_opt_c3,
-        Jmax25_c4 = Jmax25_opt_c4,
+        Jmax_c3 = Jmax_opt_c3,
+        Jmax_c4 = Jmax_opt_c4,
     )
 end
 
@@ -1455,11 +1442,9 @@ is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive c
 at STP and using Vcmax/Jmax = 1.88.
 """
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
-    arg = cstar / mj
-    arg = arg < 0 ? FT(0) : arg
-    arg = 1 - arg^(FT(2 / 3))
-    sqrt_arg = arg < 0 ? FT(0) : sqrt(arg) # avoid complex numbers
-    return FT(mj * sqrt_arg)
+    x = max(mj, FT(0))^FT(2/3)
+    arg = max(x - cstar^FT(2/3), FT(0))
+    return x*sqrt(arg)
 end
 
 
@@ -1563,12 +1548,11 @@ function compute_A0_and_χ(
     # Compute P-model intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
     Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_air, To, ρ_water)
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute optimal ξ and intercellular CO2
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / Drel)
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
