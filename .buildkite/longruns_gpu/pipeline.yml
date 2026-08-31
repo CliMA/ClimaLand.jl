@@ -54,6 +54,7 @@ steps:
         artifact_paths:
           - "snowy_land_pmodel_longrun_gpu/*png"
           - "snowy_land_pmodel_longrun_gpu/*pdf"
+          - "snowy_land_pmodel_longrun_gpu/*csv"
         agents:
           slurm_gpus: 1
           slurm_time: 3:00:00
@@ -101,6 +102,7 @@ steps:
         artifact_paths:
           - "snowy_land_pmodel_opt_lai_longrun_gpu/*png"
           - "snowy_land_pmodel_opt_lai_longrun_gpu/*pdf"
+          - "snowy_land_pmodel_opt_lai_longrun_gpu/*csv"
         agents:
           slurm_gpus: 1
           slurm_time: 3:00:00

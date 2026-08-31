@@ -354,6 +354,63 @@ function _draw_boxplot_panel!(
 end
 
 """
+    save_rmse_boxplots_csv(path, all_panels, n_energy, rmse_current, rmse_prev)
+
+Write the boxplot RMSEs to `path` as CSV, one row per panel.
+
+`compute_rmse_boxplots` renders these numbers into `boxplot_rmse.png` but
+does not record them, so comparing ClimaLand's global RMSE against the
+observational benchmarks from one long run to the next means reading values
+off a figure. These are the annual, global, land-masked RMSEs, which is the
+quantity the surface energy flux targets are stated in terms of.
+
+`cohort_median` is the median of the inlined ILAMB land-hist "other-model"
+values for that panel, so a normalized score can be computed downstream
+without duplicating the cohort. `climaland_rmse_prev` is `NaN` when no
+previous run was supplied, as is `climaland_rmse` when a variable is absent
+from the diagnostics.
+"""
+function save_rmse_boxplots_csv(
+    path,
+    all_panels,
+    n_energy,
+    rmse_current,
+    rmse_prev,
+)
+    open(path, "w") do io
+        println(
+            io,
+            "short_name,panel,data_source,cohort_benchmark,units," *
+            "climaland_rmse,climaland_rmse_prev,cohort_median,cohort_n",
+        )
+        for (col, p) in enumerate(all_panels)
+            units = col <= n_energy ? "W m^-2" : "g m^-2 day^-1"
+            cohort = filter(isfinite, p.others)
+            cohort_median =
+                isempty(cohort) ? NaN : Statistics.median(cohort)
+            println(
+                io,
+                join(
+                    (
+                        p.sim_short_name,
+                        p.title,
+                        p.data_source,
+                        p.bench,
+                        units,
+                        rmse_current[p.sim_short_name],
+                        rmse_prev[p.sim_short_name],
+                        cohort_median,
+                        length(cohort),
+                    ),
+                    ",",
+                ),
+            )
+        end
+    end
+    return path
+end
+
+"""
     compute_rmse_boxplots(leaderboard_base_path,
                           diagnostics_folder_path;
                           prev_diagnostics_folder_path = nothing)
@@ -401,6 +458,16 @@ function compute_rmse_boxplots(
                 p.data_source,
             )
     end
+
+    # Record the RMSEs as data before plotting them, so the numbers survive
+    # even if figure generation later fails
+    save_rmse_boxplots_csv(
+        joinpath(leaderboard_base_path, "boxplot_rmse.csv"),
+        all_panels,
+        n_energy,
+        rmse_current,
+        rmse_prev,
+    )
 
     function _group_y_max(panels)
         vals = Float64[]
