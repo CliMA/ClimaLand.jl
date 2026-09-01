@@ -444,9 +444,19 @@ function compute_full_pmodel_outputs(
     mc_c3 = c3_compute_mc(Γstar, ci_c3, Kmm)
     mc_c4 = c4_compute_mc(Γstar, ci_c4, Kmm) # This is misleading, because we approximate mc = 1
 
-    optimal_capacities = compute_optimal_capacities(parameters, constants, T_canopy, P_air, VPD, ca, βm, APAR)
-    (; ξ_c3, ξ_c4, Jmax25_c3, Jmax25_c4, Vcmax25_c3,Vcmax25_c4) = optimal_capacities
-    
+    optimal_capacities = compute_optimal_capacities(
+        parameters,
+        constants,
+        T_canopy,
+        P_air,
+        VPD,
+        ca,
+        βm,
+        APAR,
+    )
+    (; ξ_c3, ξ_c4, Jmax25_c3, Jmax25_c4, Vcmax25_c3, Vcmax25_c4) =
+        optimal_capacities
+
     blended_output = compute_blended_pmodel_photosynthesis(
         optimal_capacities,
         fractional_c3,
@@ -634,8 +644,8 @@ function compute_optimal_capacities(
     mj_over_mc_c3 = (ci_c3 + Kmm)/(ci_c3+2*Γstar)
     mj_over_mc_c4 = 1
     # Vcmax opt is from Equation 10a of Ren et al.
-    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles *  mj_over_mc_c3 * L_c3
-    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles *  mj_over_mc_c4 * L_c4
+    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mj_over_mc_c3 * L_c3
+    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mj_over_mc_c4 * L_c4
 
     inst_temp_scaling_factor_Vcmax = inst_temp_scaling(
         T_canopy,
@@ -650,8 +660,10 @@ function compute_optimal_capacities(
     Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_factor_Vcmax
     Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
-    Jmax_opt_c3 = βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - (βm*L_c3)^FT(2))
-    Jmax_opt_c4 = βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - (βm*L_c4)^FT(2))
+    Jmax_opt_c3 =
+        βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - (βm*L_c3)^FT(2))
+    Jmax_opt_c4 =
+        βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - (βm*L_c4)^FT(2))
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -840,12 +852,12 @@ function compute_blended_pmodel_photosynthesis(
     thermo_params,
 ) where {FT}
 
-      VPD = Thermodynamics.vapor_pressure_deficit(
+    VPD = Thermodynamics.vapor_pressure_deficit(
         thermo_params,
         T_air,
         P_air,
         q_air,
-      )
+    )
     return compute_blended_pmodel_photosynthesis(
         acclimated,
         fractional_c3,
@@ -948,8 +960,8 @@ function compute_blended_pmodel_photosynthesis(
     Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
-    Aj_c3 = J_c3 *FT(0.25) * c3_compute_mj(Γstar, ci_c3)
-    Aj_c4 = J_c4 *FT(0.25) * c4_compute_mj(Γstar, ci_c4)
+    Aj_c3 = J_c3 * FT(0.25) * c3_compute_mj(Γstar, ci_c3)
+    Aj_c4 = J_c4 * FT(0.25) * c4_compute_mj(Γstar, ci_c4)
     # dark respiration
     # Here we make an assumption about how to relate Rd25 to the acclimated Vcmax25
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
@@ -1219,7 +1231,7 @@ function patek_dimensionless_viscosity(T::FT) where {FT}
     a4 = FT(0.45903)
     b4 = FT(-40)
     x = T/FT(300)
-    μ = a1*x^b1+ a2*x^b2 + a3*x^b3+ a4*x^b4
+    μ = a1*x^b1 + a2*x^b2 + a3*x^b3 + a4*x^b4
     return μ
 end
 
@@ -1230,14 +1242,14 @@ end
     ) where {FT}
 
 Computes η*, the ratio of the viscosity of water at temperature T to that at To = 25˚C.
-"""  
+"""
 function compute_viscosity_ratio(T::FT, To::FT) where {FT}
     μ = patek_dimensionless_viscosity(max(min(T, FT(383.15)), FT(253.15)))
     μ25 = patek_dimensionless_viscosity(To)
     return μ/μ25
 end
 
-            
+
 
 
 """
