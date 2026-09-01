@@ -11,7 +11,6 @@ export get_Vcmax25_leaf,
     get_An_leaf,
     get_Rd_canopy,
     get_An_canopy,
-    get_J_over_Jmax,
     get_GPP,
     net_photosynthesis,
     gross_photosynthesis,
@@ -35,12 +34,6 @@ function update_photosynthesis!(
 end
 
 get_Vcmax_leaf(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used by solar induced fluorescence, diagnostics, autotrophic respiration
-get_J_over_Jmax(
-    Y,
-    p,
-    canopy_model,
-    photosynthesis_model::AbstractPhotosynthesisModel,
-) = nothing # used by solar induced fluorescence
 get_Rd_leaf(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used with autotrophic respiration and diagnostics
 get_An_leaf(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used with Medlyn conductance, autotrophic respiration and diagnostics
 # Farquhar photosynthesis computations which are common to multiple Photosynthesis models
