@@ -174,9 +174,9 @@ const ILAMB_VARIABLES = Dict(
     "trans" => ILAMBMapping(
         "tran",
         "Transpiration",
-        1000.0,
+        1.0,
         "kg m-2 s-1",
-        "m s^-1",
+        "kg m^-2 s^-1",
     ),
     "precip" => ILAMBMapping(
         "pr",

@@ -1224,8 +1224,8 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
 
-        # update SIF
-        update_SIF!(p, Y, canopy.sif, canopy)
+        # update SIF (after photosynthesis!)
+        update_SIF!(p, Y, canopy.sif, canopy.photosynthesis, canopy)
 
         # update stomatal conductance
         update_canopy_conductance!(p, Y, canopy.conductance, canopy)
