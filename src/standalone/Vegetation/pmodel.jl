@@ -362,11 +362,8 @@ Output name         Description (units)
 - "mj"            CO2 limitation factor for light-limited photosynthesis (unitless)
 - "mc"            CO2 limitation factor for Rubisco-limited photosynthesis (unitless)
 - "ci"            Intercellular CO2 concentration (Pa)
-- "iwue"          Intrinsic water use efficiency (Pa)
 - "gs"            Stomatal conductance (mol m^-2 s^-1 Pa^-1)
-- "vcmax"         Maximum rate of carboxlation (mol m^-2 s^-1)
 - "vcmax25"       Vcmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
-- "jmax"          Maximum rate of electron transport (mol m^-2 s^-1)
 - "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
 - "Rd"            Dark respiration rate (mol m^-2 s^-1)
 """
@@ -422,9 +419,10 @@ function compute_full_pmodel_outputs(
     # Compute intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_canopy, To)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / Drel)
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / Drel)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -441,91 +439,41 @@ function compute_full_pmodel_outputs(
         vpd_ratio_min,
         Γ_ratio_max,
     )
-    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
-    mc_c3, mc_c4 = compute_mc(Γstar, ci_c3, ci_c4, Kmm)
-    mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
-    mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
+    mj_c3 = c3_compute_mj(Γstar, ci_c3)
+    mj_c4 = c4_compute_mj(Γstar, ci_c4) # This is misleading, because we approximate mj = 1
+    mc_c3 = c3_compute_mc(Γstar, ci_c3, Kmm)
+    mc_c4 = c4_compute_mc(Γstar, ci_c4, Kmm) # This is misleading, because we approximate mc = 1
 
-    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR * mprime_c3 / mc_c3
-    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR * mprime_c4 / mc_c4
-    inst_temp_scaling_vcmax25 = inst_temp_scaling(
+    optimal_capacities = compute_optimal_capacities(parameters, constants, T_canopy, P_air, VPD, ca, βm, APAR)
+    (; ξ_c3, ξ_c4, Jmax25_c3, Jmax25_c4, Vcmax25_c3,Vcmax25_c4) = optimal_capacities
+    
+    blended_output = compute_blended_pmodel_photosynthesis(
+        optimal_capacities,
+        fractional_c3,
+        P_air,
+        VPD,
+        ca,
         T_canopy,
-        T_canopy,
-        To,
-        Ha_Vcmax,
-        Hd_Vcmax,
-        aS_Vcmax,
-        bS_Vcmax,
-        R,
+        APAR,
+        parameters,
+        constants,
     )
-    Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_vcmax25
-    Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_vcmax25
-
-    # check for negative arg before taking sqrt
-    arg_c3 = (mj_c3 / (βm * mprime_c3))^2 - 1
-    arg_c4 = (mj_c4 / (βm * mprime_c4))^2 - 1
-    Jmax_opt_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg_c3, 0)) + eps(FT))
-    Jmax_opt_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg_c4, 0)) + eps(FT))
-    inst_temp_scaling_Jmax = inst_temp_scaling(
-        T_canopy,
-        T_canopy,
-        To,
-        Ha_Jmax,
-        Hd_Jmax,
-        aS_Jmax,
-        bS_Jmax,
-        R,
-    )
-    Jmax25_opt_c3 = Jmax_opt_c3 / inst_temp_scaling_Jmax
-    Jmax25_opt_c4 = Jmax_opt_c4 / inst_temp_scaling_Jmax
-    J_c3 = electron_transport_pmodel(ϕ0_c3, APAR, Jmax_opt_c3)
-    J_c4 = electron_transport_pmodel(ϕ0_c4, APAR, Jmax_opt_c4)
-
-    Ac_c3 = Vcmax_opt_c3 * mc_c3
-    Ac_c4 = Vcmax_opt_c4 * mc_c4
-    Aj_c3 = J_c3 * mj_c3 / FT(4)
-    Aj_c4 = J_c4 * mj_c4 / FT(4)
-
-    LUE_c3 = compute_LUE(ϕ0_c3, βm, mprime_c3, Mc)
-    LUE_c4 = compute_LUE(ϕ0_c4, βm, mprime_c4, Mc)
-    GPP_c3 = APAR * LUE_c3
-    GPP_c4 = APAR * LUE_c4
-
-    # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
-    iWUE_c3 = (ca_pp - ci_c3) / Drel
-    iWUE_c4 = (ca_pp - ci_c4) / Drel
-    χ_c3 = clamp(ci_c3 / ca_pp, FT(0), FT(1))
-    χ_c4 = clamp(ci_c4 / ca_pp, FT(0), FT(1))
-    gs_c3 = gs_co2_pmodel(χ_c3, ca, Ac_c3)
-    gs_c4 = gs_co2_pmodel(χ_c4, ca, Ac_c4)
-
-    # dark respiration
-    rd =
-        fC3 *
-        (
-            inst_temp_scaling_rd(T_canopy, To, aRd, bRd) /
-            inst_temp_scaling_vcmax25
-        ) *
-        blend(Vcmax_opt_c3, Vcmax_opt_c4, fractional_c3)
+    (; Rd, GPP, An, gs_co2) = blended_output
 
     return (;
-        gpp = blend(GPP_c3, GPP_c4, fractional_c3),
+        gpp = GPP*Mc,
         gammastar = Γstar,
         kmm = Kmm,
         ca = ca_pp,
         ns_star = ηstar,
-        chi = blend(χ_c3, χ_c4, fractional_c3),
         xi = blend(ξ_opt_c3, ξ_opt_c4, fractional_c3),
         mj = blend(mj_c3, mj_c4, fractional_c3),
         mc = blend(mc_c3, mc_c4, fractional_c3),
         ci = blend(ci_c3, ci_c4, fractional_c3),
-        iwue = blend(iWUE_c3, iWUE_c4, fractional_c3),
-        gs = blend(gs_c3, gs_c4, fractional_c3),
-        vcmax = blend(Vcmax_opt_c3, Vcmax_opt_c4, fractional_c3),
-        vcmax25 = blend(Vcmax25_opt_c3, Vcmax25_opt_c4, fractional_c3),
-        jmax = blend(Jmax_opt_c3, Jmax_opt_c4, fractional_c3),
-        jmax25 = blend(Jmax25_opt_c3, Jmax25_opt_c4, fractional_c3),
-        rd = rd,
+        gs = gs_co2,
+        vcmax25 = blend(Vcmax25_c3, Vcmax25_c4, fractional_c3),
+        jmax25 = blend(Jmax25_c3, Jmax25_c4, fractional_c3),
+        rd = Rd,
     )
 end
 
@@ -537,6 +485,19 @@ end
         T_canopy::FT,
         P_air::FT,
         VPD::FT,
+        ca::FT,
+        βm::FT,
+        APAR_canopy_moles::FT,
+    ) where {FT}
+
+    compute_optimal_capacities(
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        thermo_params,
+        T_canopy::FT,
+        T_air::FT,
+        P_air::FT,
+        q_air::FT,
         ca::FT,
         βm::FT,
         APAR_canopy_moles::FT,
@@ -622,10 +583,8 @@ function compute_optimal_capacities(
         ΔHkc,
         ΔHko,
         Drel,
-     ΔHΓstar_c3,
-     Γstar25_c3,
-     ΔHΓstar_c4,
-        Γstar25_c4,
+        ΔHΓstar,
+        Γstar25,
         Ha_Vcmax,
         Hd_Vcmax,
         aS_Vcmax,
@@ -640,19 +599,19 @@ function compute_optimal_capacities(
         Γ_ratio_max,
     ) = constants
     # Compute intermediate values
-    Γstar_c3 = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar_c3, Γstar25_c3)
-    Γstar_c4 = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar_c4, Γstar25_c4)
+    Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_canopy, To)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # convert ca from mol/mol to Pa
     ca_pp = ca * P_air
 
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar_c3) / Drel)
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar_c4) / Drel)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
-        Γstar_c4,
+        Γstar,
         VPD,
         vpd_ratio_min,
         Γ_ratio_max,
@@ -660,7 +619,7 @@ function compute_optimal_capacities(
     ci_c4 = intercellular_co2_pmodel(
         ξ_opt_c4,
         ca_pp,
-        Γstar_c3,
+        Γstar,
         VPD,
         vpd_ratio_min,
         Γ_ratio_max,
@@ -668,12 +627,15 @@ function compute_optimal_capacities(
 
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
-    mj_c3, mj_c4 = compute_mj(Γstar_c3, ci_c3, ci_c4)
-    mc_c3, mc_c4 = compute_mc(Γstar_c4, ci_c3, ci_c4, Kmm)
-    L_c3 = sqrt(1-(cstar/mj_c3)^(2/3));
-    L_c4 = sqrt(1-(cstar/mj_c4)^(2/3));
-    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mj_c3/mc_c3*L_c3
-    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mj_c4/mc_c4*L_c4
+    mj_c3 = c3_compute_mj(Γstar, ci_c3)
+    mj_c4 = c4_compute_mj(Γstar, ci_c4) # This is misleading, because we approximate mj = 1
+    L_c3 = sqrt(1-min(cstar/max(mj_c3, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    L_c4 = sqrt(1-min(cstar/max(mj_c4, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    mj_over_mc_c3 = (ci_c3 + Kmm)/(ci_c3+2*Γstar)
+    mj_over_mc_c4 = 1
+    # Vcmax opt is from Equation 10a of Ren et al.
+    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles *  mj_over_mc_c3 * L_c3
+    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles *  mj_over_mc_c4 * L_c4
 
     inst_temp_scaling_factor_Vcmax = inst_temp_scaling(
         T_canopy,
@@ -688,10 +650,8 @@ function compute_optimal_capacities(
     Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_factor_Vcmax
     Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
-    Jmax_opt_c3 =
-        βm * 4 * ϕ0_c3 * APAR_canopy_moles / sqrt(1/L_c3^2-1)
-    Jmax_opt_c4 =
-        βm * 4 * ϕ0_c4 * APAR_canopy_moles / sqrt(1/L_c4^2-1)
+    Jmax_opt_c3 = βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - βm^2*L_c3^2)
+    Jmax_opt_c4 = βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - βm^2*L_c4^2)
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -709,8 +669,8 @@ function compute_optimal_capacities(
         ξ_c4 = ξ_opt_c4,
         Vcmax25_c3 = Vcmax25_opt_c3,
         Vcmax25_c4 = Vcmax25_opt_c4,
-        Jmax_c3 = Jmax_opt_c3,
-        Jmax_c4 = Jmax_opt_c4,
+        Jmax25_c3 = Jmax25_opt_c3,
+        Jmax25_c4 = Jmax25_opt_c4,
     )
 end
 
@@ -859,48 +819,59 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             q_air,
             c_co2_air,
             T_canopy,
-            fAPAR,
-            PAR,
-            λ_γ_PAR,
+            APAR_canopy_moles,
             parameters,
             constants,
             thermo_params,
-            FT,
         )
 end
 
 function compute_blended_pmodel_photosynthesis(
     acclimated,
-    fractional_c3,
-    P_air,
-    T_air,
-    q_air,
-    c_co2_air,
-    T_canopy,
-    fAPAR,
-    PAR,
-    λ_γ_PAR,
+    fractional_c3::FT,
+    P_air::FT,
+    T_air::FT,
+    q_air::FT,
+    c_co2_air::FT,
+    T_canopy::FT,
+    APAR_canopy_moles::FT,
     parameters,
     constants,
     thermo_params,
-    FT,
-)
-    (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = acclimated
-    ca_pp = c_co2_air * P_air # partial pressure of co2
-    VPD = Thermodynamics.vapor_pressure_deficit(
+) where {FT}
+
+      VPD = Thermodynamics.vapor_pressure_deficit(
         thermo_params,
         T_air,
         P_air,
         q_air,
+      )
+    return compute_blended_pmodel_photosynthesis(
+        acclimated,
+        fractional_c3,
+        P_air,
+        VPD,
+        c_co2_air,
+        T_canopy,
+        APAR_canopy_moles,
+        parameters,
+        constants,
     )
-    APAR_canopy_moles = compute_APAR_canopy_moles(
-        fAPAR,
-        PAR,
-        λ_γ_PAR,
-        constants.lightspeed,
-        constants.planck_h,
-        constants.N_a,
-    )
+end
+
+function compute_blended_pmodel_photosynthesis(
+    acclimated,
+    fractional_c3::FT,
+    P_air::FT,
+    VPD::FT,
+    c_co2_air::FT,
+    T_canopy::FT,
+    APAR_canopy_moles::FT,
+    parameters,
+    constants,
+) where {FT}
+    (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = acclimated
+    ca_pp = c_co2_air * P_air # partial pressure of co2
     Γstar = co2_compensation_pmodel(
         T_canopy,
         constants.To,
@@ -950,7 +921,6 @@ function compute_blended_pmodel_photosynthesis(
     )
     Jmax_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
     Jmax_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
-
     J_c3 = electron_transport_pmodel(
         c3_intrinsic_quantum_yield(T_canopy, parameters),
         APAR_canopy_moles,
@@ -974,15 +944,12 @@ function compute_blended_pmodel_photosynthesis(
     )
     Vcmax_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
     Vcmax_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
-
     Ac_c3 = Vcmax_c3 * c3_compute_mc(Γstar, ci_c3, Kmm)
     Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
-
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
     Aj_c3 = J_c3 / 4 * c3_compute_mj(Γstar, ci_c3)
     Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ci_c4)
-
     # dark respiration
     # Here we make an assumption about how to relate Rd25 to the acclimated Vcmax25
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
@@ -1231,108 +1198,46 @@ end
 
 
 """
-    viscosity_h2o(
+    patek_dimensionless_viscosity(
         T::FT,
-        ρ_water::FT
     ) where {FT}
 
-Computes the viscosity of water in Pa s given temperature T (K) and density ρ_water (kg/m^3)
-according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050].
+Computes the viscosity of water in Pa s given temperature T (K),
+as found by J. Pátek, J. Hrubý, J. Klomfar, M. Součková, and A. H. Harvey,
+J. Phys. Chem. Ref. Data https://doi.org/10.1063/1.304357538, 21 (2009); as presented
+in Equation 37 of Huber et al. (2009) [https://doi.org/10.1063/1.3088050].
 
-Can consider simplifying if this level of precision is not needed
+This formula should not be used outside the range of 253.15 K ≤ T ≤ 383.15 K
 """
-function viscosity_h2o(T::FT, ρ::FT) where {FT <: AbstractFloat}
-    # Reference constants
-    tk_ast = FT(647.096)     # K
-    ρ_ast = FT(322.0)       # kg m⁻³
-    μ_ast = FT(1e-6)        # Pa s
-
-    # Dimensionless variables
-    tbar = T / tk_ast
-    tbarx = sqrt(tbar)
-    tbar2 = tbar * tbar
-    tbar3 = tbar2 * tbar
-    ρbar = ρ / ρ_ast
-
-    # μ0 (Eq. 11 & Table 2)
-    μ0 = (
-        FT(1.67752) + FT(2.20462) / tbar + FT(0.6366564) / tbar2 -
-        FT(0.241605) / tbar3
-    )
-    μ0 = FT(100) * tbarx / μ0
-
-    # Using tuples keeps everything isbits and avoids heap allocation on device
-    # blame the formatter
-    h = (
-        (
-            FT(0.520094),
-            FT(0.0850895),
-            FT(-1.08374),
-            FT(-0.289555),
-            FT(0.0),
-            FT(0.0),
-        ),
-        (
-            FT(0.222531),
-            FT(0.999115),
-            FT(1.88797),
-            FT(1.26613),
-            FT(0.0),
-            FT(0.120573),
-        ),
-        (
-            FT(-0.281378),
-            FT(-0.906851),
-            FT(-0.772479),
-            FT(-0.489837),
-            FT(-0.257040),
-            FT(0.0),
-        ),
-        (FT(0.161913), FT(0.257399), FT(0.0), FT(0.0), FT(0.0), FT(0.0)),
-        (FT(-0.0325372), FT(0.0), FT(0.0), FT(0.0698452), FT(0.0), FT(0.0)),
-        (FT(0.0), FT(0.0), FT(0.0), FT(0.0), FT(0.00872102), FT(0.0)),
-        (FT(0.0), FT(0.0), FT(0.0), FT(-0.00435673), FT(0.0), FT(-0.000593264)),
-    )
-
-    # μ1 (Eq. 12 & Table 3), with Horner evaluation and iterative powers
-    ctbar = inv(tbar) - one(FT)
-    δρ = ρbar - one(FT)
-    μ1 = zero(FT)
-    coef1 = one(FT)
-    @inbounds for i in 1:6
-        coef2 = h[7][i]
-        coef2 = muladd(δρ, coef2, h[6][i])
-        coef2 = muladd(δρ, coef2, h[5][i])
-        coef2 = muladd(δρ, coef2, h[4][i])
-        coef2 = muladd(δρ, coef2, h[3][i])
-        coef2 = muladd(δρ, coef2, h[2][i])
-        coef2 = muladd(δρ, coef2, h[1][i])
-
-        μ1 = muladd(coef1, coef2, μ1)  # accumulate ctbar^(i-1) * coef2
-        coef1 *= ctbar # update ctbar power for next i
-    end
-    μ1 = exp(ρbar * μ1)
-
-    μ_bar = μ0 * μ1
-    μ = μ_bar * μ_ast
+function patek_dimensionless_viscosity(T::FT) where {FT}
+    a1 = FT(280.68)
+    b1 = FT(-1.9)
+    a2 = FT(511.45)
+    b2 = FT(-7.7)
+    a3 = FT(61.131)
+    b3 = FT(-19.6)
+    a4 = FT(0.45903)
+    b4 = FT(-40)
+    x = T/FT(300)
+    μ = a1*x^b1+ a2*x^b2 + a3*x^b3+ a4*x^b4
     return μ
 end
-
 
 """
     compute_viscosity_ratio(
         T::FT,
         To::FT,
-        ρ_water::FT
     ) where {FT}
 
 Computes η*, the ratio of the viscosity of water at temperature T to that at To = 25˚C.
-"""
-function compute_viscosity_ratio(T::FT, To::FT, ρ_water::FT) where {FT}
-    η25 = viscosity_h2o(To, ρ_water)
-    ηstar = viscosity_h2o(T, ρ_water) / η25
-    return FT(ηstar)
+"""  
+function compute_viscosity_ratio(T::FT, To::FT) where {FT}
+    μ = patek_dimensionless_viscosity(max(min(T, FT(383.15)), FT(253.15)))
+    μ25 = patek_dimensionless_viscosity(To)
+    return μ/μ25
 end
+
+            
 
 
 """
@@ -1432,26 +1337,9 @@ function gs_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
 end
 
 """
-    compute_mj_with_jmax_limitation(
-        mj::FT,
-        cstar::FT
-    ) where {FT}
-
-Computes m' such that Aj = ϕ0 APAR * m' (a LUE model) by assuming that dA/dJmax = c
-is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
-at STP and using Vcmax/Jmax = 1.88.
-"""
-function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
-    x = max(mj, FT(0))^FT(2/3)
-    arg = max(x - cstar^FT(2/3), FT(0))
-    return x*sqrt(arg)
-end
-
-
-"""
     compute_LUE(
         ϕ0::FT,
-        β::FT,
+        βm::FT,
         mprime::FT,
         Mc::FT
     ) where {FT}
@@ -1460,8 +1348,8 @@ Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`�
 moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
 in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
 """
-function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
-    return ϕ0 * β * mprime * Mc
+function compute_LUE(ϕ0::FT, βm::FT, mprime::FT, Mc::FT) where {FT}
+    return ϕ0 * βm * mprime * Mc
 end
 
 """
@@ -1548,11 +1436,12 @@ function compute_A0_and_χ(
     # Compute P-model intermediate values
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
     Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_air, To)
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute optimal ξ and intercellular CO2
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / Drel)
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / Drel)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -1570,14 +1459,13 @@ function compute_A0_and_χ(
         Γ_ratio_max,
     )
 
-    # Compute mj and m' (with Jmax limitation)
-    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
-    mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
-    mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
-
+    mj_c3 = c3_compute_mj(Γstar, ci_c3)
+    mj_c4 = c4_compute_mj(Γstar, ci_c4) # This is misleading, because we approximate mj = 1
+    L_c3 = sqrt(1-min(cstar/max(mj_c3, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    L_c4 = sqrt(1-min(cstar/max(mj_c4, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
     # Compute LUE with actual βm (soil moisture stress)
-    LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mprime_c3, Mc)
-    LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mprime_c4, Mc)
+    LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mj_c3*L_c3, Mc)
+    LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mj_c4*L_c4, Mc)
 
     # χ = ci/ca at the growing-season VPD, as the LAI_max water limitation requires
     ci_gs_c3 = intercellular_co2_pmodel(
@@ -1605,24 +1493,6 @@ function compute_A0_and_χ(
     )
 end
 
-"""
-    vcmax_pmodel(
-        ϕ0::FT,
-        APAR::FT,
-        mprime::FT,
-        mc::FT
-        βm::FT
-    ) where {FT}
-
-Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using
-the intrinsic quantum yield (`ϕ0`), absorbed photosynthetically active radiation (`APAR`),
-Jmax-adjusted capacity (`mprime`), a Rubisco-limited capacity (`mc`), and empirical
-soil moisture stress factor (`βm`). See Eqns 16 and 6 in Stocker et al. (2020).
-"""
-function vcmax_pmodel(ϕ0::FT, APAR::FT, mprime::FT, mc::FT, βm::FT) where {FT}
-    Vcmax = βm * ϕ0 * APAR * mprime / mc
-    return Vcmax
-end
 
 """
     electron_transport_pmodel(
@@ -1709,43 +1579,41 @@ function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
     )
 end
 
+
 """
-    compute_mj(args...)
+    c3_compute_mj(args...)
 
-Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants)
-and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj
-for both c3 and c4.
+Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants);
 """
-function compute_mj(Γstar, ci_c3, ci_c4)
-    return (c3_compute_mj(Γstar, ci_c3), c4_compute_mj(Γstar, ci_c4))
-end
-
-
 function c3_compute_mj(Γstar::FT, ci::FT) where {FT}
     mj = (ci - Γstar) / (ci + 2 * Γstar) # eqn 11 in Stocker et al. (2020)
     return mj
 end
+"""
+    c4_compute_mj(args...)
 
+Computes the unitless factor `mj = 1` for C4 plants
+for both c3 and c4.
+"""
 function c4_compute_mj(::FT, ::FT) where {FT}
     return FT(1.0)
 end
 
 """
-    compute_mc(args...)
+    c3_compute_mc(args...)
 
-Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
-and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj
-for both c3 and c4.
+Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants).
 """
-function compute_mc(Γstar, ci_c3, ci_c4, Kmm)
-    return (c3_compute_mc(Γstar, ci_c3, Kmm), c4_compute_mc(Γstar, ci_c4, Kmm))
-end
-
 function c3_compute_mc(Γstar::FT, ci::FT, Kmm::FT) where {FT}
     mc = (ci - Γstar) / (ci + Kmm) # eqn 7 in Stocker et al. (2020)
     return mc
 end
 
+"""
+    c4_compute_mc(args...)
+
+Computes the unitless factor `mc = 1` (for C4 plants).
+"""
 function c4_compute_mc(::FT, ::FT, ::FT) where {FT}
     return FT(1)
 end
