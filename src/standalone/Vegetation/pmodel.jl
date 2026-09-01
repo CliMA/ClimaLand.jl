@@ -650,8 +650,8 @@ function compute_optimal_capacities(
     Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_factor_Vcmax
     Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
-    Jmax_opt_c3 = βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - βm^2*L_c3^2)
-    Jmax_opt_c4 = βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - βm^2*L_c4^2)
+    Jmax_opt_c3 = βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - (βm*L_c3)^FT(2))
+    Jmax_opt_c4 = βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - (βm*L_c4)^FT(2))
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -948,8 +948,8 @@ function compute_blended_pmodel_photosynthesis(
     Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
-    Aj_c3 = J_c3 / 4 * c3_compute_mj(Γstar, ci_c3)
-    Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ci_c4)
+    Aj_c3 = J_c3 *FT(0.25) * c3_compute_mj(Γstar, ci_c3)
+    Aj_c4 = J_c4 *FT(0.25) * c4_compute_mj(Γstar, ci_c4)
     # dark respiration
     # Here we make an assumption about how to relate Rd25 to the acclimated Vcmax25
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
@@ -1191,7 +1191,7 @@ function quadratic_intrinsic_quantum_yield(
     if T < FT(0)
         return FT(0)
     else
-        ϕ = ϕa0 + ϕa1 * T + ϕa2 * T^2
+        ϕ = ϕa0 + ϕa1 * T + ϕa2 * T^FT(2)
         return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
     end
 end
