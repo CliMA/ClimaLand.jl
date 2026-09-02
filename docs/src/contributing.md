@@ -33,7 +33,8 @@ to merge into the main branch.
 ### Unit testing
 
 Unit tests are defined in the `test/` folder, and are all listed in the file
-`test/runtests.jl`, which allows them to easily be called together.
+`test/runtests.jl`, which runs them in parallel with ParallelTestRunner.jl. Each
+test file runs in its own sandbox module, so it must be self-contained.
 In our CI, these tests are run via Github Actions on a variety of operating
 systems and Julia versions. We also use downgrade tests to check the lower limits
 of our Julia package compat bounds, and downstream tests to verify compatibility

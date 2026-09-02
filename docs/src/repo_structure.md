@@ -121,4 +121,8 @@ subfolders:
 - aqua.jl: Contains code quality assurance tests tha use Aqua.jl
 - Project.toml: Specifies dependencies needed for testing
 - runtests.jl: When `test` is ran from the package manager, this file is ran. It can also be
-manually ran using the `test` environment. This file runs all the other test scripts.
+manually ran using the `test` environment. This file lists the test scripts to run and
+executes them in parallel across worker processes with ParallelTestRunner.jl. Pass a name
+prefix (e.g. `Pkg.test("ClimaLand"; test_args = ["standalone/Soil"])`) to run a subset, or
+`--list` to print the available test names. The ILAMB setup test in
+`experiments/ilamb/tests` is also run from here.
