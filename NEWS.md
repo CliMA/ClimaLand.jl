@@ -5,9 +5,19 @@ main
 
 v1.12.0
 ----
-- ![][badge-✨feature] Partitioning leaderboard, zonal-mean, and interannual-spread panels PR[#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
-- ![][badge-✨feature] Change initial condition function name from set_subseasonal to set_from_era5land PR[#1858](https://github.com/CliMA/ClimaLand.jl/pull/1858)
-  
+- ![][badge-✨feature] Partitioning leaderboard, zonal-mean, and
+  interannual-spread panels.
+  PR [#1836](https://github.com/CliMA/ClimaLand.jl/pull/1836)
+- ![][badge-✨feature] Change initial condition function name from
+  set_subseasonal to set_from_era5land.
+  PR [#1858](https://github.com/CliMA/ClimaLand.jl/pull/1858)
+- ![][badge-✨feature] Add a `ColumnEnsemble` domain: a `Column` alias holding
+  an ensemble of independent columns. PR
+  [#1826](https://github.com/CliMA/ClimaLand.jl/pull/1826)
+- ![][badge-✨feature] Use the `WorkerBackend` for calibration on Derecho, so
+  workers start as soon as they are available and are packed onto a single node
+  to save GPU hours. PR [#1860](https://github.com/CliMA/ClimaLand.jl/pull/1860)
+
 v1.11.2
 -------
 - ![][badge-✨feature] Add a restart test for the global land model with the P-model
