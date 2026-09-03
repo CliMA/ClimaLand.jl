@@ -377,9 +377,11 @@ function snow_bulk_temperature(
     _T_ref = FT(LP.T_0(earth_param_set))
     _LH_f0 = FT(LP.LH_f0(earth_param_set))
     cp_s = specific_heat_capacity(q_l, earth_param_set)
-    return _T_ref +
-           (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
-           (_ρ_l * cp_s * (S_safe + _ΔS))
+    T =
+        _T_ref +
+        (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
+        (_ρ_l * cp_s * (S_safe + _ΔS))
+    return T
 end
 
 """
@@ -506,7 +508,7 @@ function phase_change_flux(
         energy_from_q_l_and_swe(S_safe, q_l, ΔS, earth_param_set)
     Upred = U - energy_flux * Δt
     energy_excess = Upred - energy_at_T_freeze
-
+    Tb = snow_bulk_temperature(U, S, q_l, ΔS, earth_param_set)
     _LH_f0 = LP.LH_f0(earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _cp_i = LP.cp_i(earth_param_set)
@@ -514,7 +516,7 @@ function phase_change_flux(
     _T_ref = LP.T_0(earth_param_set)
     _T_freeze = LP.T_freeze(earth_param_set)
     if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / Δt / _ρ_liq /
+        return -energy_excess / Δt / FT(6) / _ρ_liq /
                ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
     else
         return FT(0)
@@ -976,7 +978,7 @@ function solve_for_surface_temp_at_a_point(
     )
     return output.T_sfc
 end
-
+#=
 """
     surface_residual_flux(
         T_sfc_root::FT,
@@ -1001,7 +1003,7 @@ function surface_residual_flux(
     return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
            FT(0)
 end
-
+=#
 """
     update_surf_temp!(model::SnowModel, surf_temp::EquilibriumGradientTemperatureModel, SW_net, LW_down, Y, p, t)
 
@@ -1050,15 +1052,6 @@ function update_surf_temp!(
         surf_temp,
     )
 
-    #set residual flux using values if T_sfc > T_freeze:
-    p.snow.surf_residual_flux .= surface_residual_flux.(
-        p.snow.T_sfc,
-        p.snow.κ,
-        p.snow.ρ_snow,
-        p.snow.z_snow,
-        model.parameters.earth_param_set,
-    )
-
     #reset T_sfc accordingly:
     p.snow.T_sfc .= min.(_T_freeze, p.snow.T_sfc)
     return nothing
@@ -1090,7 +1083,13 @@ end
 
 Returns any residual surface flux as defined by the surface temperature parameterization choice.
 """
-function get_residual_surface_flux(surf_temp::BulkSurfaceTemperatureModel, Y, p)
+function get_residual_surface_flux(
+    surf_temp::BulkSurfaceTemperatureModel,
+    _,
+    Y,
+    p,
+    eps,
+)
     return FTfromY(Y)(0)
 end
 
@@ -1101,8 +1100,18 @@ Returns any residual surface flux as defined by the surface temperature paramete
 """
 function get_residual_surface_flux(
     surf_temp::EquilibriumGradientTemperatureModel,
+    prognostic_land_components::Val{(:snow,)},
     Y,
     p,
+    earth_param_set,
 )
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    κ = p.snow.κ
+    @. p.snow.surf_residual_flux =
+        (
+            p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
+            p.snow.R_n + κ * (p.snow.T_sfc - p.snow.T)
+        )/(_LH_f0*_ρ_l)
     return p.snow.surf_residual_flux
 end
