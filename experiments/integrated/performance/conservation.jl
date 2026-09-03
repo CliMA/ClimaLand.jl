@@ -43,13 +43,13 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
 );
 forcing = (; atmos, radiation);
 
-#LAI = TimeVaryingInput((t) -> 1.0)
+LAI = TimeVaryingInput((t) -> 1.0)
 # Prescribed LAI (default): read LAI from MODIS data.
-LAI = ClimaLand.Canopy.prescribed_lai_modis(
-    surface_space,
-    start_date,
-    stop_date,
-)
+#LAI = ClimaLand.Canopy.prescribed_lai_modis(
+#    surface_space,
+#    start_date,
+#    stop_date,
+#)
 land = LandModel{FT}(
     forcing,
     LAI,
