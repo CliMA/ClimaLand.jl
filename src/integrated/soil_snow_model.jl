@@ -384,7 +384,6 @@ NVTX.@annotate function snow_boundary_fluxes!(
         P_snow +
         (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
-
     @. p.snow.liquid_water_flux =
         (
             P_liq + p.snow.turbulent_fluxes.vapor_flux * p.snow.q_l -
@@ -406,7 +405,6 @@ NVTX.@annotate function snow_boundary_fluxes!(
     p.snow.total_energy_flux .=
         e_flux_falling_snow .+
         (
-            Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
             p.snow.R_n .- p.snow.energy_runoff .- p.ground_heat_flux .+
             e_flux_falling_rain

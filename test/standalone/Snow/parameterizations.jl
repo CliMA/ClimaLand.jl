@@ -144,23 +144,6 @@ for FT in (Float32, Float64)
             param_set,
         )
         @test d1 ≈ FT(0.5)
-        resid_flux_1 = Snow.surface_residual_flux(
-            FT(250),
-            κ_surf_test,
-            ρ_surf_test,
-            FT(log(2)),
-            param_set,
-        )
-        @test resid_flux_1 == FT(0)
-        resid_flux_2 = Snow.surface_residual_flux(
-            _T_freeze + FT(2),
-            κ_surf_test,
-            ρ_surf_test,
-            FT(log(2)),
-            param_set,
-        )
-        @test resid_flux_2 ≈ FT(-4 * κ_surf_test)
-
         κ_surf_test = FT(0.08)
         ρ_surf_test = FT(500)
         T_sfc_test = FT(272)
