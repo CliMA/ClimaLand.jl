@@ -187,17 +187,6 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
-[holding_capacity_of_water_in_snow]
-value = 0.0
-type = "float"
-description = "Volumetric holding capacity of liquid water in a snowpack (unitless)."
-
-[wet_snow_hydraulic_conductivity]
-value = 1e-4
-type = "float"
-description = "Hydraulic conductivity of wet snow (m s⁻¹)."
-
-
 # Snow thermal conductivity parameters
 ["jordan_linear_snow_thermal_conductivity"]
 value = 0.07

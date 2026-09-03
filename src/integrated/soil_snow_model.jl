@@ -384,7 +384,7 @@ NVTX.@annotate function snow_boundary_fluxes!(
         P_snow +
         (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
-    residual_flux = ClimaLand.Snow.get_residual_surface_flux(
+    residual_melt_flux = Snow.get_residual_surface_flux(
         model.parameters.surf_temp,
         Y,
         p,
@@ -393,7 +393,7 @@ NVTX.@annotate function snow_boundary_fluxes!(
     @. p.snow.liquid_water_flux =
         (
             P_liq + p.snow.turbulent_fluxes.vapor_flux * p.snow.q_l -
-            p.snow.water_runoff + residual_flux
+            p.snow.water_runoff + residual_melt_flux
         ) * p.snow.snow_cover_fraction
 
     e_flux_falling_snow = Snow.energy_flux_falling_snow(

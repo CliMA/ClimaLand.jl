@@ -29,15 +29,15 @@ NeuralSnow =
 
 # Site-specific quantities
 # Error if no site argument is provided
-#if length(ARGS) < 1
-#    @error("Please provide a site name as command line argument")
-#else
-#    SITE_NAME = ARGS[1]
-#end
-SITE_NAME = "cdp"
+if length(ARGS) < 1
+    @error("Please provide a site name as command line argument")
+else
+    SITE_NAME = ARGS[1]
+end
 climaland_dir = pkgdir(ClimaLand)
 
 USE_NEURAL_MODELS = true
+USE_BULK_SFC_TEMP = false
 
 FT = Float32
 context = ClimaComms.context()
@@ -57,7 +57,9 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((long, lat)))
 
-surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+surf_temp =
+    USE_BULK_SFC_TEMP ? Snow.BulkSurfaceTemperatureModel{FT}() :
+    Snow.EquilibriumGradientTemperatureModel{FT}()
 
 density =
     USE_NEURAL_MODELS ? NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt) :
@@ -68,10 +70,11 @@ density =
     NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt) :
     Snow.ConstantAlbedoModel(α)
 
+temp_tag = USE_BULK_SFC_TEMP ? "surftemp" : "gradtemp"
 neural_tag = USE_NEURAL_MODELS ? "default" : "neural"
 
 savedir = generate_output_path(
-    "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(neural_tag)",
+    "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(neural_tag)_$(temp_tag)",
 )
 
 model = ClimaLand.Snow.SnowModel(
