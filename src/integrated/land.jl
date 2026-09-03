@@ -997,11 +997,17 @@ NVTX.@annotate function snow_boundary_fluxes!(
         P_snow * (1 - p.lake_fraction) +
         (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
+    residual_flux = ClimaLand.Snow.get_residual_surface_flux(
+        model.parameters.surf_temp,
+        Y,
+        p,
+        model.parameters.earth_param_set,
+    )
 
     @. p.snow.liquid_water_flux =
         (
             P_liq + p.snow.turbulent_fluxes.vapor_flux * p.snow.q_l -
-            p.snow.water_runoff
+            p.snow.water_runoff + residual_flux
         ) * p.snow.snow_cover_fraction
 
     e_flux_falling_snow = Snow.energy_flux_falling_snow(
@@ -1016,12 +1022,11 @@ NVTX.@annotate function snow_boundary_fluxes!(
     )
 
     residual_surface_flux =
-        Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p)
+        Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p, model.parameters.earth_param_set)
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
     @. p.snow.total_energy_flux =
         e_flux_falling_snow * (1 - p.lake_fraction) +
         (
-            residual_surface_flux +
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +

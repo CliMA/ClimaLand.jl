@@ -129,7 +129,6 @@ function snow_boundary_fluxes!(
         p.snow.snow_cover_fraction
     residual_flux = get_residual_surface_flux(
         model.parameters.surf_temp,
-        prognostic_land_components,
         Y,
         p,
         model.parameters.earth_param_set,

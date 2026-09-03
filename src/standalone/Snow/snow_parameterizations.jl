@@ -1085,7 +1085,6 @@ Returns any residual surface flux as defined by the surface temperature paramete
 """
 function get_residual_surface_flux(
     surf_temp::BulkSurfaceTemperatureModel,
-    _,
     Y,
     p,
     eps,
@@ -1100,7 +1099,6 @@ Returns any residual surface flux as defined by the surface temperature paramete
 """
 function get_residual_surface_flux(
     surf_temp::EquilibriumGradientTemperatureModel,
-    prognostic_land_components::Val{(:snow,)},
     Y,
     p,
     earth_param_set,
