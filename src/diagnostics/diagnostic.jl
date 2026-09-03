@@ -173,13 +173,13 @@ nlayers(space::Spaces.AbstractSpace) = Spaces.nlevels(space)
 
 """
     nlayers(::Spaces.PointSpace)
-    nlayers(::Spaces.PointCloudSpace)
+    nlayers(::Spaces.MultiPointSpace)
 
 Returns the number of layers in the vertical; this is one
-for the PointSpace and PointCloudSpace.
+for the PointSpace and MultiPointSpace.
 """
 nlayers(::Spaces.PointSpace) = 1
-nlayers(::Spaces.PointCloudSpace) = 1
+nlayers(::Spaces.MultiPointSpace) = 1
 
 """
     diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic; layer = nothing)

@@ -1,6 +1,6 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.12.0"
+version = "1.12.1"
 authors = ["Clima Land Team"]
 
 [deps]
@@ -48,12 +48,12 @@ SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 Adapt = "4.6.1"
 CairoMakie = "0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.22"
-ClimaComms = "0.6.2"
-ClimaCore = "0.15.1"
-ClimaDiagnostics = "0.3.8"
+ClimaComms = "0.6.4"
+ClimaCore = "0.16"
+ClimaDiagnostics = "0.3.9"
 ClimaParams = "1.0.8"
 ClimaTimeSteppers = "0.8.11, 0.9, 0.10"
-ClimaUtilities = "0.1.31"
+ClimaUtilities = "0.1.32"
 DataFrames = "1.4"
 Dates = "1"
 DelimitedFiles = "1.9.1"

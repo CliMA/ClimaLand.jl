@@ -604,7 +604,7 @@ function call_count_nans_state(
     space::Union{
         ClimaCore.Spaces.AbstractSpectralElementSpace,
         ClimaCore.Spaces.AbstractPointSpace,
-        ClimaCore.Spaces.PointCloudSpace,
+        ClimaCore.Spaces.MultiPointSpace,
     };
     mask = nothing,
     verbose = false,
