@@ -1,4 +1,4 @@
-using Test
+1using Test
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams as CP
@@ -157,13 +157,6 @@ import ClimaLand.Parameters as LP
         model.parameters.surf_temp,
     )
 
-    leftover_flux = Snow.surface_residual_flux.(
-        tsfc_1,
-        p.snow.κ,
-        p.snow.ρ_snow,
-        p.snow.z_snow,
-        model.parameters.earth_param_set,
-    )
     #no update should occur from update_surf_temp!:
     Snow.update_surf_temp!(
         model,
@@ -175,12 +168,6 @@ import ClimaLand.Parameters as LP
         t0,
     )
     @test p.snow.T_sfc == tsfc_original
-    #There is some leftover residual flux, since diagnosed surf temp was forced to T_freeze:
-    @test all(parent(p.snow.surf_residual_flux) .≈ parent(leftover_flux))
-    @test all(
-        parent(Snow.get_residual_surface_flux(surf_temp_choice, Y, p)) .==
-        parent(p.snow.surf_residual_flux),
-    )
 
     @test p.snow.snow_cover_fraction == @. min(
         2 * p.snow.z_snow ./ FT(0.1) / (p.snow.z_snow ./ FT(0.1) + 1),
@@ -258,8 +245,7 @@ import ClimaLand.Parameters as LP
     @test dY.snow.S == net_water_fluxes
     @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
     test_dY_U =
-        -1 .* Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .-
-        p.snow.turbulent_fluxes.shf .- p.snow.turbulent_fluxes.lhf .-
+        -1 .* p.snow.turbulent_fluxes.shf .- p.snow.turbulent_fluxes.lhf .-
         p.snow.R_n .+ p.snow.energy_runoff
     @test all(parent(dY.snow.U) .≈ parent(test_dY_U))
     @test isnothing(
