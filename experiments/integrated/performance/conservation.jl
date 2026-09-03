@@ -20,12 +20,13 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Year(3)
+stop_date = start_date + Year(1)
 Δt_seconds = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
     nelements = 15,
-                                  longlat = FT.((-92.0, 38.7441)),
+                                  # longlat = FT.((-92.0, 38.7441)),
+                                  longlat = FT.((-55.0, -3.0)),
     zlim = FT.((-15, 0)),
 );
 
@@ -43,13 +44,13 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
 );
 forcing = (; atmos, radiation);
 
-#LAI = TimeVaryingInput((t) -> 1.0)
+LAI = TimeVaryingInput((t) -> 1.0)
 # Prescribed LAI (default): read LAI from MODIS data.
-LAI = ClimaLand.Canopy.prescribed_lai_modis(
-    surface_space,
-    start_date,
-    stop_date,
-)
+#LAI = ClimaLand.Canopy.prescribed_lai_modis(
+#    surface_space,
+#    start_date,
+#    stop_date,
+#)
 land = LandModel{FT}(
     forcing,
     LAI,
