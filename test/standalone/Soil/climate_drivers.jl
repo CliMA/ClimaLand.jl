@@ -140,8 +140,6 @@ for FT in (Float32, Float64)
             @test propertynames(p.soil.turbulent_fluxes) ==
                   (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice)
             @test propertynames(p.soil) == (
-                :total_water,
-                :total_energy,
                 :K,
                 :ψ,
                 :θ_l,
