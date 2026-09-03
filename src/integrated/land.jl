@@ -957,7 +957,6 @@ function make_exp_tendency(land::LandModel)
             )
             energy_subsurface_runoff =
                 :R_ess ∈ propertynames(p.soil) ? p.soil.R_ess : FT(0)
-            residual = Snow.get_residual_surface_flux(land.snow.parameters.surf_temp, Y, p)
             Tc = ClimaLand.Canopy.canopy_temperature(land.canopy.energy, land.canopy, Y, p)
             lai_contribution = p.scratch3
             @. lai_contribution = lai_tendency * land.canopy.energy.parameters.ac_canopy * Tc
@@ -967,7 +966,7 @@ function make_exp_tendency(land::LandModel)
                 (
                     p.snow.turbulent_fluxes.lhf +
                     p.snow.turbulent_fluxes.shf +
-                    p.snow.R_n + residual
+                    p.snow.R_n
                 ) * p.snow.snow_cover_fraction +
                 p.bare_soil_fraction * (
                     p.soil.turbulent_fluxes.lhf +
