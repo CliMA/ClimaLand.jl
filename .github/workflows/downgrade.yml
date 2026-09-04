@@ -17,10 +17,12 @@ concurrency:
 
 jobs:
   test:
+    name: downgrade ${{ matrix.version }} - ${{ matrix.test_group }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         version: ['1.10', '1.12']
+        test_group: ['core', 'simulations']
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
@@ -50,3 +52,5 @@ jobs:
           mode: 'forcedeps'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        env:
+          CLIMALAND_TEST_GROUP: ${{ matrix.test_group }}
