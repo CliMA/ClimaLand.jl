@@ -9,6 +9,7 @@ import Dates
 import ClimaUtilities
 import ClimaCore
 
+@testset "Bucket model restart test" begin
 # First, run a simulation for 3 hours, saving a checkpoint every hour.
 # Then, restart the simulation after hour 2 and complete the simulation up to hour 3.
 # Compare the final states, they should be identical.
@@ -109,3 +110,5 @@ for p in propertynames(Y.bucket)
 end
 
 rm(output_dir; recursive = true)
+
+end

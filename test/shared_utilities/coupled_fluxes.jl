@@ -16,6 +16,7 @@ import ClimaLand.Parameters as LP
 using ClimaCore
 using ClimaUtilities.TimeManager: ITime
 
+@testset "Coupled fluxes tests" begin
 FT = Float64
 context = ClimaComms.context()
 nelements = (101, 15)
@@ -146,3 +147,4 @@ for field in (:lhf, :shf, :vapor_flux)
     @test sum(isnan.(parent(getproperty(cache, field)))) == 0
 end
 @test sum(isnan.(parent(p.bucket.R_n))) == 0
+end

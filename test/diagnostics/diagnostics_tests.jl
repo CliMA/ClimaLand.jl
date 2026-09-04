@@ -172,6 +172,7 @@ end
     @test mean(rn.data) != 0.0
 end
 
+@testset "Model diagnostics tests" begin
 # Define some variables to reuse for each model
 FT = Float32
 default_params_filepath =
@@ -380,8 +381,8 @@ end
     # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
-    atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
-    radiation = CoupledRadiativeFluxes{FT}()
+    local atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
+    local radiation = CoupledRadiativeFluxes{FT}()
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     LAI = TimeVaryingInput((t) -> FT(1.0))
     model = ClimaLand.SoilCanopyModel{FT}(
@@ -595,4 +596,6 @@ end
     output_writer =
         ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
     @test output_writer isa ClimaDiagnostics.Writers.DictWriter
+end
+
 end

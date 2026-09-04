@@ -295,6 +295,7 @@ function check_ocean_values_Y(Y, binary_mask; val = 0.0)
 end
 
 
+@testset "Global LandModel tests" begin
 context = ClimaComms.context()
 nelements = (101, 15)
 Δt = 450.0
@@ -681,6 +682,8 @@ end
     )
     u = sol.u[end]
     check_ocean_values_Y(u, binary_mask;)
+end
+
 end
 
 @testset "Default LandModel with inland waters" begin

@@ -10,6 +10,7 @@ ClimaComms.@import_required_backends
 import ClimaLand
 using ClimaLand.Canopy
 
+@testset "PFTs parameter tests" begin
 # Test that PFTs cannot be created without all required parameters
 
 # Create a valid parameter set for a PFT
@@ -123,5 +124,7 @@ param_set = params_from_pfts(cover_fractions, pfts)
 i = 1
 for param in keys(pft_params)
     @test param_set[i] == pft_params[param]
-    global i += 1
+    i += 1
+end
+
 end

@@ -9,6 +9,7 @@ import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, step!
 using Dates
 
+@testset "Integrated land model restart test" begin
 # Integrate the global land model (soil, snow, soil CO2, inland water, and a
 # canopy which uses the P-model for photosynthesis; this is the configuration of
 # experiments/long_runs/snowy_land_pmodel.jl) for `n_steps`, saving a checkpoint
@@ -186,3 +187,5 @@ end
 end
 
 rm(root_path; recursive = true)
+
+end

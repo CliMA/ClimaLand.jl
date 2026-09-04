@@ -7,6 +7,8 @@ import ClimaLand
 import ClimaParams as CP
 import ClimaLand.Parameters as LP
 using Dates
+
+@testset "Soil snow test" begin
 FT = Float32
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
@@ -218,4 +220,6 @@ ClimaLand.Snow.snow_boundary_fluxes!(
         earth_param_set,
     )
     @test T_bot_cap == _T_freeze
+end
+
 end
