@@ -9,217 +9,224 @@ import ClimaLand.Parameters as LP
 using Dates
 
 @testset "Soil snow test" begin
-FT = Float32
-toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
-domain =
-    ClimaLand.Domains.global_domain(FT; nelements = (5, 15), apply_mask = false)
-(atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
-forcing = (; atmos, radiation)
-Δt = FT(180.0)
-snow = Snow.SnowModel(
-    FT,
-    ClimaLand.Domains.obtain_surface_domain(domain),
-    forcing,
-    toml_dict,
-    Δt;
-    prognostic_land_components = (:snow, :soil),
-    α_snow = Snow.ConstantAlbedoModel(toml_dict["snow_albedo"]),
-    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, FT(1)),
-)
-land_model = ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt; snow)
-
-Y, p, coords = ClimaLand.initialize(land_model)
-p_soil_alone = deepcopy(p)
-for lsm_aux_var in (
-    :excess_water_flux,
-    :excess_heat_flux,
-    :ground_heat_flux,
-    :snow_T_bot,
-    :effective_soil_sfc_T,
-    :sfc_scratch,
-    :subsfc_scratch,
-    :effective_soil_sfc_depth,
-)
-    @test lsm_aux_var ∈ propertynames(p)
-end
-@test typeof(land_model.soil.boundary_conditions.top) <:
-      ClimaLand.Soil.AtmosDrivenFluxBC
-@test land_model.soil.boundary_conditions.top.prognostic_land_components ==
-      (:snow, :soil)
-src = ClimaLand.PartialAreaSoilSublimation{FT}()
-@test src ∈ land_model.soil.sources
-@test ClimaLand.get_drivers(land_model) == (atmos, radiation)
-# Set initial conditions for a case with *no snow on ground*
-function init_soil!(Y, z, params)
-    ν = params.ν
-    FT = eltype(ν)
-    @. Y.soil.ϑ_l = ν / 2
-    Y.soil.θ_i .= 0.05
-    T = FT(273)
-    ρc_s = @. ClimaLand.Soil.volumetric_heat_capacity(
-        ν / 2,
-        FT(0),
-        params.ρc_ds,
-        params.earth_param_set,
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    domain = ClimaLand.Domains.global_domain(
+        FT;
+        nelements = (5, 15),
+        apply_mask = false,
     )
-    Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy.(
-        FT(0),
-        ρc_s,
-        T,
-        params.earth_param_set,
+    (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
+    forcing = (; atmos, radiation)
+    Δt = FT(180.0)
+    snow = Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components = (:snow, :soil),
+        α_snow = Snow.ConstantAlbedoModel(toml_dict["snow_albedo"]),
+        scf = Snow.WuWuSnowCoverFractionModel(toml_dict, FT(1)),
     )
-end
-function init_snow!(Y, S, params)
-    Y.snow.S .= S
-    Y.snow.S_l .= 0
-    @. Y.snow.U = ClimaLand.Snow.energy_from_q_l_and_swe(
-        Y.snow.S,
-        0.0f0,
-        params.ΔS,
-        params.earth_param_set,
+    land_model =
+        ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt; snow)
+
+    Y, p, coords = ClimaLand.initialize(land_model)
+    p_soil_alone = deepcopy(p)
+    for lsm_aux_var in (
+        :excess_water_flux,
+        :excess_heat_flux,
+        :ground_heat_flux,
+        :snow_T_bot,
+        :effective_soil_sfc_T,
+        :sfc_scratch,
+        :subsfc_scratch,
+        :effective_soil_sfc_depth,
     )
-end
+        @test lsm_aux_var ∈ propertynames(p)
+    end
+    @test typeof(land_model.soil.boundary_conditions.top) <:
+          ClimaLand.Soil.AtmosDrivenFluxBC
+    @test land_model.soil.boundary_conditions.top.prognostic_land_components ==
+          (:snow, :soil)
+    src = ClimaLand.PartialAreaSoilSublimation{FT}()
+    @test src ∈ land_model.soil.sources
+    @test ClimaLand.get_drivers(land_model) == (atmos, radiation)
+    # Set initial conditions for a case with *no snow on ground*
+    function init_soil!(Y, z, params)
+        ν = params.ν
+        FT = eltype(ν)
+        @. Y.soil.ϑ_l = ν / 2
+        Y.soil.θ_i .= 0.05
+        T = FT(273)
+        ρc_s = @. ClimaLand.Soil.volumetric_heat_capacity(
+            ν / 2,
+            FT(0),
+            params.ρc_ds,
+            params.earth_param_set,
+        )
+        Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy.(
+            FT(0),
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
+    end
+    function init_snow!(Y, S, params)
+        Y.snow.S .= S
+        Y.snow.S_l .= 0
+        @. Y.snow.U = ClimaLand.Snow.energy_from_q_l_and_swe(
+            Y.snow.S,
+            0.0f0,
+            params.ΔS,
+            params.earth_param_set,
+        )
+    end
 
-t = Float64(0)
-init_soil!(Y, coords.subsurface.z, land_model.soil.parameters)
-init_snow!(Y, 0.0f0, land_model.snow.parameters)
+    t = Float64(0)
+    init_soil!(Y, coords.subsurface.z, land_model.soil.parameters)
+    init_snow!(Y, 0.0f0, land_model.snow.parameters)
 
-set_initial_cache! = make_set_initial_cache(land_model)
-set_initial_cache!(p, Y, t)
-# Make sure snow boundary fluxes are zero
-@test all(parent(p.snow.total_energy_flux) .≈ 0)
-@test all(parent(p.snow.total_water_flux) .≈ 0)
-# Make sure the boundary conditions match bare soil result
-set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
-p_soil_alone.bare_soil_fraction .= 1 .- p_soil_alone.snow.snow_cover_fraction
-set_soil_initial_cache!(p_soil_alone, Y, t)
-@test p.soil.top_bc == p_soil_alone.soil.top_bc
-dY_soil_snow = deepcopy(Y) .* 0
-dY_soil_alone = deepcopy(Y) .* 0
-ClimaLand.source!(
-    dY_soil_alone,
-    ClimaLand.Soil.SoilSublimation{FT}(),
-    Y,
-    p_soil_alone,
-    land_model.soil,
-)
-ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
-@test dY_soil_alone.soil == dY_soil_snow.soil
-
-
-# Repeat now with snow cover fraction of 1
-init_snow!(Y, 1.0f0, land_model.snow.parameters)
-set_initial_cache!(p, Y, t)
-# Make sure the boundary conditions for soil are correct since that is what the LandHydrology methods
-# affect
-@test all(
-    parent(p.soil.top_bc.water) .≈
-    parent(p.excess_water_flux .+ p.snow.water_runoff),
-)
-@test all(
-    parent(p.soil.top_bc.heat) .≈ parent(
-        p.excess_heat_flux .+ p.snow.snow_cover_fraction .* p.ground_heat_flux,
-    ),
-)
-dY_soil_snow = deepcopy(Y) .* 0
-ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
-@test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
-
-# Make sure soil boundary flux method also worked
-G = deepcopy(p.ground_heat_flux)
-p_snow_alone = deepcopy(p)
-ClimaLand.Snow.snow_boundary_fluxes!(
-    land_model.snow.boundary_conditions,
-    Val((:snow,)),
-    land_model.snow,
-    Y,
-    p_snow_alone,
-    t,
-)
-ClimaLand.Snow.snow_boundary_fluxes!(
-    land_model.snow.boundary_conditions,
-    Val((:snow, :soil)),
-    land_model.snow,
-    Y,
-    p,
-    t,
-)
-@test all(
-    parent(p_snow_alone.snow.total_energy_flux .- p.snow.total_energy_flux) .≈
-    parent(p.snow.snow_cover_fraction .* p.ground_heat_flux),
-)
-
-@testset "snow_T_bottom analytic limits and cap" begin
-    κ = FT(0.3)
-    ρ = FT(300)
-    g_eff = FT(1.2)
-    T_soil = FT(272.0)
-    Tbar = FT(263.0)
-    T_sfc = FT(255.0)
-    _T_freeze = FT(LP.T_freeze(earth_param_set))
-
-    # Reproduces the documented closed-form solution
-    z = FT(1.5)
-    d = ClimaLand.Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
-    expected = min(
-        (2 * Tbar - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
-        (g_eff / κ * (z - d) + 1 + (z - d) / z),
-        _T_freeze,
+    set_initial_cache! = make_set_initial_cache(land_model)
+    set_initial_cache!(p, Y, t)
+    # Make sure snow boundary fluxes are zero
+    @test all(parent(p.snow.total_energy_flux) .≈ 0)
+    @test all(parent(p.snow.total_water_flux) .≈ 0)
+    # Make sure the boundary conditions match bare soil result
+    set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
+    p_soil_alone.bare_soil_fraction .=
+        1 .- p_soil_alone.snow.snow_cover_fraction
+    set_soil_initial_cache!(p_soil_alone, Y, t)
+    @test p.soil.top_bc == p_soil_alone.soil.top_bc
+    dY_soil_snow = deepcopy(Y) .* 0
+    dY_soil_alone = deepcopy(Y) .* 0
+    ClimaLand.source!(
+        dY_soil_alone,
+        ClimaLand.Soil.SoilSublimation{FT}(),
+        Y,
+        p_soil_alone,
+        land_model.soil,
     )
-    @test ClimaLand.snow_T_bottom(
-        κ,
-        g_eff,
-        T_soil,
-        Tbar,
-        T_sfc,
-        z,
-        ρ,
-        earth_param_set,
-    ) == expected
+    ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
+    @test dY_soil_alone.soil == dY_soil_snow.soil
 
-    # Deep snow (d << z): T_bot -> (2 T̄ + g_eff z/κ T_soil) / (g_eff z/κ + 2)
-    z_deep = FT(100.0)
-    T_bot_deep = ClimaLand.snow_T_bottom(
-        κ,
-        g_eff,
-        T_soil,
-        Tbar,
-        T_sfc,
-        z_deep,
-        ρ,
-        earth_param_set,
-    )
-    deep_limit =
-        (2 * Tbar + g_eff * z_deep / κ * T_soil) / (g_eff * z_deep / κ + 2)
-    @test T_bot_deep ≈ deep_limit rtol = FT(1e-2)
 
-    # Shallow snow (d -> z): T_bot -> 2 T̄ - T_sfc
-    z_thin = FT(1e-4)
-    T_bot_thin = ClimaLand.snow_T_bottom(
-        κ,
-        g_eff,
-        T_soil,
-        Tbar,
-        T_sfc,
-        z_thin,
-        ρ,
-        earth_param_set,
+    # Repeat now with snow cover fraction of 1
+    init_snow!(Y, 1.0f0, land_model.snow.parameters)
+    set_initial_cache!(p, Y, t)
+    # Make sure the boundary conditions for soil are correct since that is what the LandHydrology methods
+    # affect
+    @test all(
+        parent(p.soil.top_bc.water) .≈
+        parent(p.excess_water_flux .+ p.snow.water_runoff),
     )
-    @test T_bot_thin ≈ 2 * Tbar - T_sfc rtol = FT(1e-2)
+    @test all(
+        parent(p.soil.top_bc.heat) .≈ parent(
+            p.excess_heat_flux .+
+            p.snow.snow_cover_fraction .* p.ground_heat_flux,
+        ),
+    )
+    dY_soil_snow = deepcopy(Y) .* 0
+    ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
+    @test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
 
-    # Warm soil drives T_bot above freezing -> capped at T_freeze
-    T_bot_cap = ClimaLand.snow_T_bottom(
-        κ,
-        g_eff,
-        FT(290.0),
-        FT(272.0),
-        FT(271.0),
-        z,
-        ρ,
-        earth_param_set,
+    # Make sure soil boundary flux method also worked
+    G = deepcopy(p.ground_heat_flux)
+    p_snow_alone = deepcopy(p)
+    ClimaLand.Snow.snow_boundary_fluxes!(
+        land_model.snow.boundary_conditions,
+        Val((:snow,)),
+        land_model.snow,
+        Y,
+        p_snow_alone,
+        t,
     )
-    @test T_bot_cap == _T_freeze
-end
+    ClimaLand.Snow.snow_boundary_fluxes!(
+        land_model.snow.boundary_conditions,
+        Val((:snow, :soil)),
+        land_model.snow,
+        Y,
+        p,
+        t,
+    )
+    @test all(
+        parent(
+            p_snow_alone.snow.total_energy_flux .- p.snow.total_energy_flux,
+        ) .≈ parent(p.snow.snow_cover_fraction .* p.ground_heat_flux),
+    )
+
+    @testset "snow_T_bottom analytic limits and cap" begin
+        κ = FT(0.3)
+        ρ = FT(300)
+        g_eff = FT(1.2)
+        T_soil = FT(272.0)
+        Tbar = FT(263.0)
+        T_sfc = FT(255.0)
+        _T_freeze = FT(LP.T_freeze(earth_param_set))
+
+        # Reproduces the documented closed-form solution
+        z = FT(1.5)
+        d = ClimaLand.Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
+        expected = min(
+            (2 * Tbar - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
+            (g_eff / κ * (z - d) + 1 + (z - d) / z),
+            _T_freeze,
+        )
+        @test ClimaLand.snow_T_bottom(
+            κ,
+            g_eff,
+            T_soil,
+            Tbar,
+            T_sfc,
+            z,
+            ρ,
+            earth_param_set,
+        ) == expected
+
+        # Deep snow (d << z): T_bot -> (2 T̄ + g_eff z/κ T_soil) / (g_eff z/κ + 2)
+        z_deep = FT(100.0)
+        T_bot_deep = ClimaLand.snow_T_bottom(
+            κ,
+            g_eff,
+            T_soil,
+            Tbar,
+            T_sfc,
+            z_deep,
+            ρ,
+            earth_param_set,
+        )
+        deep_limit =
+            (2 * Tbar + g_eff * z_deep / κ * T_soil) / (g_eff * z_deep / κ + 2)
+        @test T_bot_deep ≈ deep_limit rtol = FT(1e-2)
+
+        # Shallow snow (d -> z): T_bot -> 2 T̄ - T_sfc
+        z_thin = FT(1e-4)
+        T_bot_thin = ClimaLand.snow_T_bottom(
+            κ,
+            g_eff,
+            T_soil,
+            Tbar,
+            T_sfc,
+            z_thin,
+            ρ,
+            earth_param_set,
+        )
+        @test T_bot_thin ≈ 2 * Tbar - T_sfc rtol = FT(1e-2)
+
+        # Warm soil drives T_bot above freezing -> capped at T_freeze
+        T_bot_cap = ClimaLand.snow_T_bottom(
+            κ,
+            g_eff,
+            FT(290.0),
+            FT(272.0),
+            FT(271.0),
+            z,
+            ρ,
+            earth_param_set,
+        )
+        @test T_bot_cap == _T_freeze
+    end
 
 end
