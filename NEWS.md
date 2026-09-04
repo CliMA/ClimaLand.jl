@@ -2,6 +2,7 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Update compat to ClimaCore v0.16 PR[#1869](https://github.com/CliMA/ClimaLand.jl/pull/1869)
 
 v1.12.0
 ----

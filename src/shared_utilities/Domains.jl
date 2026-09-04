@@ -61,7 +61,7 @@ For models such as ponds, snow, plant hydraulics, etc. Enables consistency
 in variable initialization across all domains.
 
 `space` is a NamedTuple holding the surface space which is a `PointSpace` for a
-single point, or a `PointCloudSpace` for an ensemble of points (see
+single point, or a `MultiPointSpace` for an ensemble of points (see
 [`PointEnsemble`](@ref)).
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -126,7 +126,7 @@ end
     PointEnsemble{FT}
 
 An alias for a [`Point`](@ref) domain whose surface space is a
-`ClimaCore.Spaces.PointCloudSpace`, holding an ensemble of independent points
+`ClimaCore.Spaces.MultiPointSpace`, holding an ensemble of independent points
 rather than a single point.
 
 A `PointEnsemble` is obtained as the surface domain of a
@@ -134,7 +134,7 @@ A `PointEnsemble` is obtained as the surface domain of a
 """
 const PointEnsemble{FT} = Point{
     FT,
-    <:NamedTuple{(:surface,), <:Tuple{ClimaCore.Spaces.PointCloudSpace}},
+    <:NamedTuple{(:surface,), <:Tuple{ClimaCore.Spaces.MultiPointSpace}},
 }
 
 """
@@ -272,14 +272,14 @@ end
 
 An alias for a [`Column`](@ref) domain holding an ensemble of independent
 columns, backed by a `ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace`
-(subsurface) and a `ClimaCore.Spaces.PointCloudSpace` (surface).
+(subsurface) and a `ClimaCore.Spaces.MultiPointSpace` (surface).
 """
 const ColumnEnsemble{FT} = Column{
     FT,
     <:NamedTuple{
         (:surface, :subsurface, :subsurface_face),
         <:Tuple{
-            ClimaCore.Spaces.PointCloudSpace,
+            ClimaCore.Spaces.MultiPointSpace,
             ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace,
             ClimaCore.Spaces.FaceMultiColumnFiniteDifferenceSpace,
         },
@@ -341,7 +341,7 @@ function ColumnEnsemble(;
         )
     end
 
-    subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
+    subsurface_space = ClimaCore.CommonSpaces.MultiColumnSpace(
         FT;
         points,
         z_elem = nelements,
@@ -1096,7 +1096,7 @@ function get_lat(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
-        ClimaCore.Spaces.PointCloudSpace,
+        ClimaCore.Spaces.MultiPointSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :lat)
@@ -1128,7 +1128,7 @@ function get_long(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
-        ClimaCore.Spaces.PointCloudSpace,
+        ClimaCore.Spaces.MultiPointSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)

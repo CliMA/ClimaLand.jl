@@ -172,233 +172,60 @@ end
     @test mean(rn.data) != 0.0
 end
 
-# Define some variables to reuse for each model
-FT = Float32
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT);
+@testset "Model diagnostics tests" begin
+    # Define some variables to reuse for each model
+    FT = Float32
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT);
 
-zmax = FT(0)
-zmin = FT(-1.0)
-longlat = FT.((-118.1, 34.1))
-domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
-surface_space = domain.space.surface;
+    zmax = FT(0)
+    zmin = FT(-1.0)
+    longlat = FT.((-118.1, 34.1))
+    domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
+    surface_space = domain.space.surface;
 
-start_date = DateTime(2008);
-stop_date = start_date + Second(60 * 60 * 72);
-dt = 1000.0;
+    start_date = DateTime(2008);
+    stop_date = start_date + Second(60 * 60 * 72);
+    dt = 1000.0;
 
-atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    start_date,
-    stop_date,
-    surface_space,
-    toml_dict,
-    FT;
-    use_lowres_forcing = true,
-);
-
-@testset "EnergyHydrology diagnostics" begin
-    model = Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
-
-    function set_ic!(Y, p, t0, model)
-        Y.soil.ϑ_l .= FT(0.24)
-        Y.soil.θ_i .= FT(0.0)
-        T = FT(290.15)
-        ρc_s = Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            model.parameters.ρc_ds,
-            model.parameters.earth_param_set,
-        )
-        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            model.parameters.earth_param_set,
-        )
-    end
-
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "sie", "swp"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
-
-    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
-        model,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
-
-    simulation = LandSimulation(
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
-        dt,
-        model;
-        set_ic!,
-        diagnostics,
-        user_callbacks = (),
-    )
-
-    # Test that the diagnostics were correctly created and computed once at initialization
-    @test keys(simulation.diagnostics[1].output_writer.dict) ==
-          Set(["swp_1000s_inst", "swc_1000s_inst", "sie_1000s_inst"])
-    @test length(
-        simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
-    ) == 1 # number of diagnostic computations so far
-    @test all(
-        ClimaCore.Fields.field2array(
-            simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
-        ) .== FT(0.24),
-    )
-
-    # Step the simulation once to compute diagnostics again
-    step!(simulation)
-
-    @test length(
-        simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
-    ) == 2 # number of diagnostic computations so far
-    # Check that the SWC values have changed after the second computation
-    @test simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1] !=
-          simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[2]
-end
-
-@testset "LandModel diagnostics" begin
-    LAI = TimeVaryingInput((t) -> FT(1.0))
-    model = Soil.LandModel{FT}(
-        (; atmos, radiation),
-        LAI,
+        surface_space,
         toml_dict,
-        domain,
-        dt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-    )
+        FT;
+        use_lowres_forcing = true,
+    );
 
-    function set_ic!(Y, p, t0, model)
-        Y.soil.ϑ_l .= FT(0.24)
-        Y.soil.θ_i .= FT(0.0)
-        T = FT(290.15)
-        ρc_s = Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            model.soil.parameters.ρc_ds,
-            model.soil.parameters.earth_param_set,
-        )
-        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            model.soil.parameters.earth_param_set,
-        )
+    @testset "EnergyHydrology diagnostics" begin
+        model =
+            Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
 
-        Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        function set_ic!(Y, p, t0, model)
+            Y.soil.ϑ_l .= FT(0.24)
+            Y.soil.θ_i .= FT(0.0)
+            T = FT(290.15)
+            ρc_s = Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                model.parameters.ρc_ds,
+                model.parameters.earth_param_set,
+            )
+            Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                T,
+                model.parameters.earth_param_set,
+            )
+        end
 
-        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
-        Y.canopy.energy.T = FT(297.5)
-        p.canopy.biomass.area_index.leaf .= FT(0.3)
-        p.canopy.biomass.area_index.stem .= FT(0)
-        p.canopy.biomass.area_index.root .= FT(0.3)
-        return
-    end
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["swc", "sie", "swp"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
 
-    ClimaLand.make_compute_imp_tendency(::ClimaLand.LandModel) =
-        Returns(nothing)
-    ClimaLand.make_exp_tendency(::ClimaLand.LandModel) = Returns(nothing)
-    ClimaLand.make_update_aux(::ClimaLand.LandModel) = Returns(nothing)
-    ClimaLand.make_update_boundary_fluxes(::ClimaLand.LandModel) =
-        Returns(nothing)
-    ClimaLand.make_compute_jacobian(::ClimaLand.LandModel) = Returns(nothing)
-    Y, _, _ = initialize(model)
-    ClimaLand.initialize_jacobian(::typeof(Y)) =
-        ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "ct", "sco2"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
-
-    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
-        model,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
-
-    simulation = LandSimulation(
-        start_date,
-        stop_date,
-        dt,
-        model;
-        set_ic!,
-        diagnostics,
-        user_callbacks = (),
-        updateat = nothing,
-    )
-
-    # Test that the diagnostics were correctly created and computed once at initialization
-    @test keys(simulation.diagnostics[1].output_writer.dict) ==
-          Set(["swc_1000s_inst", "ct_1000s_inst", "sco2_1000s_inst"])
-    @test all(
-        ClimaCore.Fields.field2array(
-            simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
-        ) .== FT(0.24),
-    )
-    @test all(
-        ClimaCore.Fields.field2array(
-            simulation.diagnostics[1].output_writer.dict["ct_1000s_inst"].vals[1],
-        ) .== FT(297.5),
-    )
-    @test all(
-        ClimaCore.Fields.field2array(
-            simulation.diagnostics[1].output_writer.dict["sco2_1000s_inst"].vals[1],
-        ) .== FT(0.000412),
-    )
-
-    snow_diag_vars = ["snowtbot", "ghf", "snowk", "snowtsfc", "snowtb"]
-    possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
-    for v in snow_diag_vars
-        @test v in possible
-    end
-    snow_diags = ClimaLand.Diagnostics.default_diagnostics(
-        model,
-        start_date;
-        output_writer = ClimaDiagnostics.Writers.DictWriter(),
-        output_vars = snow_diag_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
-    @test length(snow_diags) == length(snow_diag_vars)
-end
-
-@testset "CanopyModel invalid windspeed diagnostic (coupled)" begin
-    # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
-    surface_space = domain.space.surface
-    atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
-    atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
-    radiation = CoupledRadiativeFluxes{FT}()
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    LAI = TimeVaryingInput((t) -> FT(1.0))
-    model = ClimaLand.SoilCanopyModel{FT}(
-        (; atmos, radiation, ground),
-        LAI,
-        toml_dict,
-        domain,
-    )
-
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["ws"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
-
-    # This will fail because wind speed is not an available diagnostic in this setup
-    @test_throws AssertionError diagnostics =
-        ClimaLand.Diagnostics.default_diagnostics(
+        diagnostics = ClimaLand.Diagnostics.default_diagnostics(
             model,
             start_date;
             output_writer,
@@ -407,192 +234,374 @@ end
             reduction_type,
             dt,
         )
-end
 
-@testset "Invalid diagnostic variable" begin
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    LAI = TimeVaryingInput((t) -> FT(1.0))
-    model = ClimaLand.SoilCanopyModel{FT}(
-        (; atmos, radiation, ground),
-        LAI,
-        toml_dict,
-        domain,
-    )
+        simulation = LandSimulation(
+            start_date,
+            stop_date,
+            dt,
+            model;
+            set_ic!,
+            diagnostics,
+            user_callbacks = (),
+        )
 
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "ct", "invalid_diagnostic"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
+        # Test that the diagnostics were correctly created and computed once at initialization
+        @test keys(simulation.diagnostics[1].output_writer.dict) ==
+              Set(["swp_1000s_inst", "swc_1000s_inst", "sie_1000s_inst"])
+        @test length(
+            simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
+        ) == 1 # number of diagnostic computations so far
+        @test all(
+            ClimaCore.Fields.field2array(
+                simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
+            ) .== FT(0.24),
+        )
 
-    # This will fail because "invalid_diagnostic" is not an available diagnostic for this model
-    @test_throws AssertionError ClimaLand.Diagnostics.default_diagnostics(
-        model,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
-end
+        # Step the simulation once to compute diagnostics again
+        step!(simulation)
 
-@testset "Test runoff diagnostics" begin
-    # TOPMODELRunoff by default
-    model_topmodelrunoff =
-        Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
+        @test length(
+            simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
+        ) == 2 # number of diagnostic computations so far
+        # Check that the SWC values have changed after the second computation
+        @test simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1] !=
+              simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[2]
+    end
 
-    # Set up diagnostics with variables "sr" and "ssr"
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["sr", "ssr"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
-    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
-        model_topmodelrunoff,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
+    @testset "LandModel diagnostics" begin
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        model = Soil.LandModel{FT}(
+            (; atmos, radiation),
+            LAI,
+            toml_dict,
+            domain,
+            dt;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        )
 
-    simulation = LandSimulation(
-        start_date,
-        stop_date,
-        dt,
-        model_topmodelrunoff;
-        diagnostics,
-        user_callbacks = (),
-    )
+        function set_ic!(Y, p, t0, model)
+            Y.soil.ϑ_l .= FT(0.24)
+            Y.soil.θ_i .= FT(0.0)
+            T = FT(290.15)
+            ρc_s = Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                model.soil.parameters.ρc_ds,
+                model.soil.parameters.earth_param_set,
+            )
+            Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                T,
+                model.soil.parameters.earth_param_set,
+            )
 
-    # Test that the diagnostics were correctly created
-    @test keys(simulation.diagnostics[1].output_writer.dict) ==
-          Set(["sr_1000s_inst", "ssr_1000s_inst"])
+            Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-    # SurfaceRunoff
-    model_surfacerunoff = Soil.EnergyHydrology{FT}(
-        domain,
-        (; atmos, radiation),
-        toml_dict;
-        runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
-    )
+            Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
+            Y.canopy.energy.T = FT(297.5)
+            p.canopy.biomass.area_index.leaf .= FT(0.3)
+            p.canopy.biomass.area_index.stem .= FT(0)
+            p.canopy.biomass.area_index.root .= FT(0.3)
+            return
+        end
 
-    # Set up diagnostics with variables "sr" and "ssr"
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["sr"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
-    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
-        model_surfacerunoff,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
+        ClimaLand.make_compute_imp_tendency(::ClimaLand.LandModel) =
+            Returns(nothing)
+        ClimaLand.make_exp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+        ClimaLand.make_update_aux(::ClimaLand.LandModel) = Returns(nothing)
+        ClimaLand.make_update_boundary_fluxes(::ClimaLand.LandModel) =
+            Returns(nothing)
+        ClimaLand.make_compute_jacobian(::ClimaLand.LandModel) =
+            Returns(nothing)
+        Y, _, _ = initialize(model)
+        ClimaLand.initialize_jacobian(::typeof(Y)) =
+            ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["swc", "ct", "sco2"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
 
-    simulation = LandSimulation(
-        start_date,
-        stop_date,
-        dt,
-        model_surfacerunoff;
-        diagnostics,
-        user_callbacks = (),
-    )
+        diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+            model,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
 
-    # Test that the diagnostics were correctly created
-    @test keys(simulation.diagnostics[1].output_writer.dict) ==
-          Set(["sr_1000s_inst"])
+        simulation = LandSimulation(
+            start_date,
+            stop_date,
+            dt,
+            model;
+            set_ic!,
+            diagnostics,
+            user_callbacks = (),
+            updateat = nothing,
+        )
 
-    # NoRunoff
-    model_norunoff = Soil.EnergyHydrology{FT}(
-        domain,
-        (; atmos, radiation),
-        toml_dict;
-        runoff = ClimaLand.Soil.Runoff.NoRunoff(),
-    )
+        # Test that the diagnostics were correctly created and computed once at initialization
+        @test keys(simulation.diagnostics[1].output_writer.dict) ==
+              Set(["swc_1000s_inst", "ct_1000s_inst", "sco2_1000s_inst"])
+        @test all(
+            ClimaCore.Fields.field2array(
+                simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
+            ) .== FT(0.24),
+        )
+        @test all(
+            ClimaCore.Fields.field2array(
+                simulation.diagnostics[1].output_writer.dict["ct_1000s_inst"].vals[1],
+            ) .== FT(297.5),
+        )
+        @test all(
+            ClimaCore.Fields.field2array(
+                simulation.diagnostics[1].output_writer.dict["sco2_1000s_inst"].vals[1],
+            ) .== FT(0.000412),
+        )
 
-    # Set up diagnostics with variables "sr" and "ssr"
-    output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["sr"]
-    reduction_period = :every_dt
-    reduction_type = :instantaneous
+        snow_diag_vars = ["snowtbot", "ghf", "snowk", "snowtsfc", "snowtb"]
+        possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
+        for v in snow_diag_vars
+            @test v in possible
+        end
+        snow_diags = ClimaLand.Diagnostics.default_diagnostics(
+            model,
+            start_date;
+            output_writer = ClimaDiagnostics.Writers.DictWriter(),
+            output_vars = snow_diag_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+        @test length(snow_diags) == length(snow_diag_vars)
+    end
 
-    # This will fail because "invalid_diagnostic" is not an available diagnostic for this model
-    @test_throws AssertionError ClimaLand.Diagnostics.default_diagnostics(
-        model_norunoff,
-        start_date;
-        output_writer,
-        output_vars,
-        reduction_period,
-        reduction_type,
-        dt,
-    )
-end
+    @testset "CanopyModel invalid windspeed diagnostic (coupled)" begin
+        # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+        surface_space = domain.space.surface
+        atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
+        local atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
+        local radiation = CoupledRadiativeFluxes{FT}()
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        model = ClimaLand.SoilCanopyModel{FT}(
+            (; atmos, radiation, ground),
+            LAI,
+            toml_dict,
+            domain,
+        )
 
-@testset "Default diagnostic writers" begin
-    FT = Float32
-    start_date = DateTime(2008)
-    # Spherical domain
-    d = global_domain(FT)
-    num_x1, num_x2, num_z =
-        ClimaLand.Diagnostics.default_diagnostic_num_points(d)
-    @test num_x1 == d.nelements[1] * 4
-    @test num_x2 == d.nelements[1] * 2
-    @test num_z == d.nelements[2]
-    output_writer =
-        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
-    @test output_writer.num_points == (num_x1, num_x2, num_z)
-    @test output_writer.start_date == start_date
-    @test output_writer.hpts[1] ==
-          collect(range(-180.0; step = 360.0 / num_x1, length = num_x1))
-    @test output_writer.hpts[2] ==
-          collect(range(-90.0; step = 180.0 / num_x2, length = num_x2))
-    # Cartesian globe
-    d = global_box_domain(FT)
-    output_writer =
-        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
-    @test output_writer.num_points == (360, 180, 15)
-    @test output_writer.start_date == start_date
-    @test output_writer.hpts[1] ==
-          collect(range(-180.0; step = 1.0, length = 360))
-    @test output_writer.hpts[2] ==
-          collect(range(-90.0; step = 1.0, length = 180))
-    # Carestian region
-    d = HybridBox(;
-        xlim = FT.((-1e3, 1e3)),
-        ylim = FT.((-1e3, 1e3)),
-        zlim = FT.((-1.0, 0.0)),
-        nelements = (10, 10, 10),
-        longlat = FT.((0.0, 0.0)),
-    )
-    output_writer =
-        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
-    @test output_writer.num_points == (10, 10, 10)
-    @test output_writer.start_date == start_date
-    radius_earth = 6.378e6
-    @test output_writer.hpts[1] == unique(
-        Array(parent(ClimaCore.Fields.coordinate_field(d.space.surface).long))[:],
-    )
-    @test output_writer.hpts[2] == unique(
-        Array(parent(ClimaCore.Fields.coordinate_field(d.space.surface).lat))[:],
-    )
-    # Cartesian box, no long lat
-    d = HybridBox(;
-        xlim = FT.((0.0, 1.0)),
-        ylim = FT.((0.0, 1.0)),
-        zlim = FT.((0.0, 1.0)),
-        nelements = (10, 10, 10),
-    )
-    num_points = ClimaLand.Diagnostics.default_diagnostic_num_points(d)
-    @test num_points == d.nelements
-    output_writer =
-        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
-    @test output_writer.num_points == num_points
-    #Column
-    d = Column(; zlim = FT.((0.0, 1.0)), nelements = 20)
-    output_writer =
-        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
-    @test output_writer isa ClimaDiagnostics.Writers.DictWriter
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["ws"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
+
+        # This will fail because wind speed is not an available diagnostic in this setup
+        @test_throws AssertionError diagnostics =
+            ClimaLand.Diagnostics.default_diagnostics(
+                model,
+                start_date;
+                output_writer,
+                output_vars,
+                reduction_period,
+                reduction_type,
+                dt,
+            )
+    end
+
+    @testset "Invalid diagnostic variable" begin
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        model = ClimaLand.SoilCanopyModel{FT}(
+            (; atmos, radiation, ground),
+            LAI,
+            toml_dict,
+            domain,
+        )
+
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["swc", "ct", "invalid_diagnostic"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
+
+        # This will fail because "invalid_diagnostic" is not an available diagnostic for this model
+        @test_throws AssertionError ClimaLand.Diagnostics.default_diagnostics(
+            model,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+    end
+
+    @testset "Test runoff diagnostics" begin
+        # TOPMODELRunoff by default
+        model_topmodelrunoff =
+            Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
+
+        # Set up diagnostics with variables "sr" and "ssr"
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["sr", "ssr"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
+        diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+            model_topmodelrunoff,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+
+        simulation = LandSimulation(
+            start_date,
+            stop_date,
+            dt,
+            model_topmodelrunoff;
+            diagnostics,
+            user_callbacks = (),
+        )
+
+        # Test that the diagnostics were correctly created
+        @test keys(simulation.diagnostics[1].output_writer.dict) ==
+              Set(["sr_1000s_inst", "ssr_1000s_inst"])
+
+        # SurfaceRunoff
+        model_surfacerunoff = Soil.EnergyHydrology{FT}(
+            domain,
+            (; atmos, radiation),
+            toml_dict;
+            runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+        )
+
+        # Set up diagnostics with variables "sr" and "ssr"
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["sr"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
+        diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+            model_surfacerunoff,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+
+        simulation = LandSimulation(
+            start_date,
+            stop_date,
+            dt,
+            model_surfacerunoff;
+            diagnostics,
+            user_callbacks = (),
+        )
+
+        # Test that the diagnostics were correctly created
+        @test keys(simulation.diagnostics[1].output_writer.dict) ==
+              Set(["sr_1000s_inst"])
+
+        # NoRunoff
+        model_norunoff = Soil.EnergyHydrology{FT}(
+            domain,
+            (; atmos, radiation),
+            toml_dict;
+            runoff = ClimaLand.Soil.Runoff.NoRunoff(),
+        )
+
+        # Set up diagnostics with variables "sr" and "ssr"
+        output_writer = ClimaDiagnostics.Writers.DictWriter()
+        output_vars = ["sr"]
+        reduction_period = :every_dt
+        reduction_type = :instantaneous
+
+        # This will fail because "invalid_diagnostic" is not an available diagnostic for this model
+        @test_throws AssertionError ClimaLand.Diagnostics.default_diagnostics(
+            model_norunoff,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+    end
+
+    @testset "Default diagnostic writers" begin
+        FT = Float32
+        start_date = DateTime(2008)
+        # Spherical domain
+        d = global_domain(FT)
+        num_x1, num_x2, num_z =
+            ClimaLand.Diagnostics.default_diagnostic_num_points(d)
+        @test num_x1 == d.nelements[1] * 4
+        @test num_x2 == d.nelements[1] * 2
+        @test num_z == d.nelements[2]
+        output_writer =
+            ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+        @test output_writer.num_points == (num_x1, num_x2, num_z)
+        @test output_writer.start_date == start_date
+        @test output_writer.hpts[1] ==
+              collect(range(-180.0; step = 360.0 / num_x1, length = num_x1))
+        @test output_writer.hpts[2] ==
+              collect(range(-90.0; step = 180.0 / num_x2, length = num_x2))
+        # Cartesian globe
+        d = global_box_domain(FT)
+        output_writer =
+            ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+        @test output_writer.num_points == (360, 180, 15)
+        @test output_writer.start_date == start_date
+        @test output_writer.hpts[1] ==
+              collect(range(-180.0; step = 1.0, length = 360))
+        @test output_writer.hpts[2] ==
+              collect(range(-90.0; step = 1.0, length = 180))
+        # Carestian region
+        d = HybridBox(;
+            xlim = FT.((-1e3, 1e3)),
+            ylim = FT.((-1e3, 1e3)),
+            zlim = FT.((-1.0, 0.0)),
+            nelements = (10, 10, 10),
+            longlat = FT.((0.0, 0.0)),
+        )
+        output_writer =
+            ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+        @test output_writer.num_points == (10, 10, 10)
+        @test output_writer.start_date == start_date
+        radius_earth = 6.378e6
+        @test output_writer.hpts[1] == unique(
+            Array(
+                parent(ClimaCore.Fields.coordinate_field(d.space.surface).long),
+            )[:],
+        )
+        @test output_writer.hpts[2] == unique(
+            Array(
+                parent(ClimaCore.Fields.coordinate_field(d.space.surface).lat),
+            )[:],
+        )
+        # Cartesian box, no long lat
+        d = HybridBox(;
+            xlim = FT.((0.0, 1.0)),
+            ylim = FT.((0.0, 1.0)),
+            zlim = FT.((0.0, 1.0)),
+            nelements = (10, 10, 10),
+        )
+        num_points = ClimaLand.Diagnostics.default_diagnostic_num_points(d)
+        @test num_points == d.nelements
+        output_writer =
+            ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+        @test output_writer.num_points == num_points
+        #Column
+        d = Column(; zlim = FT.((0.0, 1.0)), nelements = 20)
+        output_writer =
+            ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+        @test output_writer isa ClimaDiagnostics.Writers.DictWriter
+    end
+
 end
