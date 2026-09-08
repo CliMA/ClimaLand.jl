@@ -20,13 +20,13 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Year(1)
+stop_date = start_date + Year(3)
 Δt_seconds = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
     nelements = 15,
-                                  # longlat = FT.((-92.0, 38.7441)),
-                                  longlat = FT.((-55.0, -3.0)),
+                                   longlat = FT.((-92.0, 38.7441)),
+                                  #longlat = FT.((-55.0, -3.0)),
     zlim = FT.((-15, 0)),
 );
 
@@ -51,13 +51,27 @@ LAI = TimeVaryingInput((t) -> 1.0)
 #    start_date,
 #    stop_date,
 #)
+
+prognostic_land_components = (:canopy, :snow, :soil)
+surf_temp = ClimaLand.Snow.BulkSurfaceTemperatureModel{FT}()
+snow = ClimaLand.Snow.SnowModel(
+    FT,
+    ClimaLand.Domains.obtain_surface_domain(domain),
+    forcing,
+    toml_dict,
+    Δt_seconds;
+    surf_temp,
+    prognostic_land_components
+)
 land = LandModel{FT}(
     forcing,
     LAI,
     toml_dict,
     domain,
     Δt_seconds;
+    prognostic_land_components,
     conservation = true,
+    snow
 );
 saveat = Second(Int(Δt_seconds))
 saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
