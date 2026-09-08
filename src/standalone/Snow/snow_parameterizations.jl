@@ -1051,7 +1051,7 @@ function update_surf_temp!(
 end
 
 """
-    get_residual_melt_flux(surf_temp::BulkSurfaceTemperatureModel, Y, p)
+    get_residual_melt_flux(surf_temp::BulkSurfaceTemperatureModel, Y, p, earth_param_set)
 
 Returns any residual melt flux as defined by the surface temperature parameterization choice.
 """
@@ -1059,22 +1059,23 @@ function get_residual_melt_flux(
     surf_temp::BulkSurfaceTemperatureModel,
     Y,
     p,
-    eps,
+    earth_param_set,
 )
     return FTfromY(Y)(0)
 end
 
 """
-    get_residual_melt_flux(surf_temp::EquilibriumGradientTemperatureModel, Y, p)
+    get_residual_melt_flux(surf_temp::EquilibriumGradientTemperatureModel, Y, p, earth_param_set)
 
 Returns any residual melt flux as defined by the surface temperature parameterization choice;
 The EquilibriumGradientTemperatureModel parameterization solves for `T_sfc` satisfying
-`F_sfc(T_sfc) = (LH + SH + R_n) = -κ(T_sfc - T)/d = 0 `. In the case where the solved T_sfc is larger than
-T_freeze, we use T_freeze, and the residual of `F_sfc(T_sfc) + κ(T_sfc - T)/d` is interpreted as an 
-energy flux that goes phase change, and not changing the temperature. This function computes that 
-additional flux of liquid water.
+`F_sfc(T_sfc) + κ(T_sfc - T)/d = 0`, where `F_sfc = LH + SH + R_n`.
+When the surface temperature is capped at T_freeze, any excess surface heating
+goes to phase change. This function stores the corresponding liquid water flux
+in `p.snow.surf_residual_flux` [m/s], per unit snow-covered area.
 
-A negative value indicates increasing liquid water.
+A negative value indicates increasing liquid water. The flux is zero for
+snow-free columns and surfaces below freezing.
 """
 function get_residual_melt_flux(
     surf_temp::EquilibriumGradientTemperatureModel,
@@ -1082,21 +1083,28 @@ function get_residual_melt_flux(
     p,
     earth_param_set,
 )
+    FT = FTfromY(Y)
     _LH_f0 = LP.LH_f0(earth_param_set)
     _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
     κ = p.snow.κ
     ρ = p.snow.ρ_snow
     z = p.snow.z_snow
-    @. p.snow.surf_residual_flux =
-        (
-            p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n +
-            κ * (p.snow.T_sfc - p.snow.T)/surface_temp_scaling_length(
-                κ,
-                ρ,
-                z,
-                earth_param_set,
-            )
-        )/(_LH_f0*_ρ_l)
+    @. p.snow.surf_residual_flux = ifelse(
+        (z > 0) & (p.snow.T_sfc >= _T_freeze),
+        min(
+            (
+                p.snow.turbulent_fluxes.lhf +
+                p.snow.turbulent_fluxes.shf +
+                p.snow.R_n +
+                κ * (p.snow.T_sfc - p.snow.T) / max(
+                    surface_temp_scaling_length(κ, ρ, z, earth_param_set),
+                    eps(FT),
+                )
+            ) / (_LH_f0 * _ρ_l),
+            FT(0),
+        ),
+        FT(0),
+    )
     return p.snow.surf_residual_flux
 end

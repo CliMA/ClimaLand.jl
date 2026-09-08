@@ -2,6 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Count snow surface melt only once in the liquid-water
+  budget and keep residual melt finite in snow-free columns and zero below freezing.
 - Update compat to ClimaCore v0.16 PR[#1869](https://github.com/CliMA/ClimaLand.jl/pull/1869)
 
 v1.12.0
