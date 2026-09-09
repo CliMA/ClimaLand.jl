@@ -1476,7 +1476,7 @@ function prescribed_forcing_era5(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
-    h_atmos = FT(10)
+    h_atmos = FT(30)
 
     atmos = PrescribedAtmosphere(
         precip,
