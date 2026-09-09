@@ -624,6 +624,9 @@ function get_possible_diagnostics(model::LandModel)
         "snowtbot",
         "snowk",
         "ghf",
+        "soilrn",
+        "soillhf",
+        "soilshf",
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))

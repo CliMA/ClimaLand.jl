@@ -616,3 +616,132 @@ function FluxnetSimulations.get_comparison_data(
         precip,
     )
 end
+
+"""
+    prescribed_forcing_netcdf(
+        met_nc_path,
+        lat, long, hour_offset_from_UTC, atmos_h,
+        start_date, toml_dict::CP.ParamDict, FT;
+        split_precip = true, gustiness = 1,
+    )
+
+Constructs `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` from a
+site-level FLUXNET-style NetCDF forcing file.
+
+Expected variables in the NetCDF file:
+- `Tair`   : air temperature (K)
+- `Wind`   : wind speed (m/s)
+- `Qair`   : specific humidity (kg/kg)
+- `Psurf`  : surface pressure (Pa)
+- `SWdown` : downwelling shortwave radiation (W/m²)
+- `LWdown` : downwelling longwave radiation (W/m²)
+- `CO2air` : atmospheric CO₂ concentration (ppm); converted to mol/mol
+- `Precip` : precipitation rate (kg/m²/s); sign-flipped to negative
+- `VPD`    : vapor pressure deficit (hPa); used for snow-fraction calculation
+
+The time variable must have units of the form "seconds since YYYY-MM-DD HH:MM:SS"
+as decoded by NCDatasets. Spatial dimensions are expected to be (x=1, y=1, time=N)
+so that indexing `[1, 1, :]` returns the full time series.
+
+`hour_offset_from_UTC` is the local standard time offset (e.g. +1 for CET).
+`start_date` must be in UTC.
+"""
+function FluxnetSimulations.prescribed_forcing_netcdf(
+    met_nc_path,
+    lat,
+    long,
+    hour_offset_from_UTC,
+    atmos_h,
+    start_date,
+    toml_dict::CP.ParamDict,
+    FT;
+    split_precip = true,
+    gustiness = 1,
+)
+    earth_param_set = LP.LandParameters(toml_dict)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    # Build a TimeVaryingInput from a time vector and raw data array,
+    # dropping NaN/-9999 fill-value entries.
+    function tvi_from_netcdf(times, values; preprocess_func = identity)
+        valid = .!isnan.(values) .& (values .!= -9999)
+        return TimeVaryingInput(times[valid], preprocess_func.(values[valid]))
+    end
+
+    NCDataset(met_nc_path, "r") do ds
+        # NCDatasets decodes CF time to DateTime; convert to seconds since start_date
+        # The NetCDF time is in local standard time, so subtract the UTC offset.
+        time_vals = ds["time"][:]
+        seconds_since_start_date = Float64[
+            Second(t - Hour(hour_offset_from_UTC) - start_date).value
+            for t in time_vals
+        ]
+
+        atmos_T_data  = Float64.(coalesce.(ds["Tair"][1, 1, :],   NaN))
+        atmos_u_data  = Float64.(coalesce.(ds["Wind"][1, 1, :],   NaN))
+        atmos_q_data  = Float64.(coalesce.(ds["Qair"][1, 1, :],   NaN))
+        atmos_P_data  = Float64.(coalesce.(ds["Psurf"][1, 1, :],  NaN))
+        SW_d_data     = Float64.(coalesce.(ds["SWdown"][1, 1, :], NaN))
+        LW_d_data     = Float64.(coalesce.(ds["LWdown"][1, 1, :], NaN))
+        c_co2_data    = Float64.(coalesce.(ds["CO2air"][1, 1, :], NaN))
+        # `Precip` is a mass flux in kg/m^2/s; divide by ρ_water (1000 kg/m^3) to
+        # get the volume flux in m/s that ClimaLand's PrescribedAtmosphere expects.
+        precip_data   = Float64.(coalesce.(ds["Precip"][1, 1, :], NaN)) ./ 1000
+        VPD_data      = Float64.(coalesce.(ds["VPD"][1, 1, :],    NaN))
+
+        atmos_T = tvi_from_netcdf(seconds_since_start_date, atmos_T_data)
+        atmos_u = tvi_from_netcdf(seconds_since_start_date, atmos_u_data)
+        atmos_q = tvi_from_netcdf(seconds_since_start_date, atmos_q_data)
+        atmos_P = tvi_from_netcdf(seconds_since_start_date, atmos_P_data)
+        SW_d    = tvi_from_netcdf(seconds_since_start_date, SW_d_data)
+        LW_d    = tvi_from_netcdf(seconds_since_start_date, LW_d_data)
+        # CO2air in the file is ppm; convert to mol/mol
+        c_co2   = tvi_from_netcdf(seconds_since_start_date, c_co2_data;
+                                   preprocess_func = x -> x * 1e-6)
+
+        if split_precip
+            # VPD is in hPa; Tair is in K → pass T in °C to snow_precip_fraction
+            snow_frac_data = snow_precip_fraction.(
+                atmos_T_data .- 273.15, VPD_data; thermo_params)
+            rain_data = @. -precip_data * (1 - snow_frac_data)
+            snow_data = @. -precip_data * snow_frac_data
+            atmos_P_liq  = tvi_from_netcdf(seconds_since_start_date, rain_data)
+            atmos_P_snow = tvi_from_netcdf(seconds_since_start_date, snow_data)
+        else
+            atmos_P_liq  = tvi_from_netcdf(seconds_since_start_date, precip_data;
+                                            preprocess_func = x -> -x)
+            atmos_P_snow = tvi_from_netcdf(seconds_since_start_date, precip_data;
+                                            preprocess_func = x -> zero(x))
+        end
+
+        atmos = ClimaLand.PrescribedAtmosphere(
+            atmos_P_liq,
+            atmos_P_snow,
+            atmos_T,
+            atmos_u,
+            atmos_q,
+            atmos_P,
+            start_date,
+            atmos_h,
+            toml_dict;
+            c_co2,
+        )
+
+        cos_zenith_angle = (t, s) -> default_cos_zenith_angle(
+            t, s;
+            insol_params = earth_param_set.insol_params,
+            longitude    = long,
+            latitude     = lat,
+        )
+        radiation = ClimaLand.PrescribedRadiativeFluxes(
+            FT,
+            SW_d,
+            LW_d,
+            start_date;
+            cosθs     = cos_zenith_angle,
+            toml_dict = toml_dict,
+        )
+
+        return (; atmos, radiation)
+    end
+end
