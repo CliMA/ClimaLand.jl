@@ -380,7 +380,7 @@ function snow_precip_fraction(T_in_C, VPD_in_hPa; thermo_params)
         Thermodynamics.Liquid(),
     )
     e = esat - VPD_in_Pa
-    RH = e / esat
+    RH = e / esat * 100
     α = -10.04
     β = 1.41
     γ = 0.09
