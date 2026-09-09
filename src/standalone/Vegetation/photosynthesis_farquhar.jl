@@ -408,13 +408,6 @@ get_An_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.An * p.canopy.biomass.area_index.leaf)
 get_GPP(p, m::FarquharModel) = p.canopy.photosynthesis.GPP
 
-function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
-    Jmax = compute_Jmax_leaf(Y, p, canopy, m) # lazy
-    J = compute_J_leaf(Y, p, canopy, m) # lazy
-    FT = eltype(canopy.earth_param_set)
-    return @. lazy(J / max(Jmax, sqrt(eps(FT))))
-end
-
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     (; Vcmax25, ΔHJmax, To) = m.parameters
