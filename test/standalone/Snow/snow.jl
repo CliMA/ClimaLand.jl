@@ -157,13 +157,6 @@ import ClimaLand.Parameters as LP
         model.parameters.surf_temp,
     )
 
-    leftover_flux = Snow.surface_residual_flux.(
-        tsfc_1,
-        p.snow.κ,
-        p.snow.ρ_snow,
-        p.snow.z_snow,
-        model.parameters.earth_param_set,
-    )
     #no update should occur from update_surf_temp!:
     Snow.update_surf_temp!(
         model,
@@ -175,12 +168,20 @@ import ClimaLand.Parameters as LP
         t0,
     )
     @test p.snow.T_sfc == tsfc_original
-    #There is some leftover residual flux, since diagnosed surf temp was forced to T_freeze:
-    @test all(parent(p.snow.surf_residual_flux) .≈ parent(leftover_flux))
-    @test all(
-        parent(Snow.get_residual_surface_flux(surf_temp_choice, Y, p)) .==
-        parent(p.snow.surf_residual_flux),
-    )
+    earth_param_set = model.parameters.earth_param_set
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    @test p.snow.surf_residual_flux ≈
+          (
+        p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
+        p.snow.R_n .+
+        p.snow.κ .* (p.snow.T_sfc .- p.snow.T) ./
+        ClimaLand.Snow.surface_temp_scaling_length.(
+            p.snow.κ,
+            p.snow.ρ_snow,
+            p.snow.z_snow,
+            earth_param_set,
+        )
+    ) ./ (_LH_f0 * _ρ_l)
 
     @test p.snow.snow_cover_fraction == @. min(
         2 * p.snow.z_snow ./ FT(0.1) / (p.snow.z_snow ./ FT(0.1) + 1),
@@ -225,7 +226,8 @@ import ClimaLand.Parameters as LP
         Y.snow.U,
         Y.snow.S,
         p.snow.q_l,
-        p.snow.applied_energy_flux,
+        p.snow.applied_energy_flux -
+        _ρ_l * _LH_f0 * p.snow.surf_residual_flux * p.snow.snow_cover_fraction,
         model.parameters.Δt,
         model.parameters.ΔS,
         model.parameters.earth_param_set,
@@ -256,10 +258,11 @@ import ClimaLand.Parameters as LP
         p.snow.water_runoff
     )
     @test dY.snow.S == net_water_fluxes
-    @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
+    @test all(parent(p.snow.phase_change_flux) .== 0)
+    @test all(parent(dY.snow.S_l) .> 0)
+    @test dY.snow.S_l ≈ .-p.snow.surf_residual_flux
     test_dY_U =
-        -1 .* Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .-
-        p.snow.turbulent_fluxes.shf .- p.snow.turbulent_fluxes.lhf .-
+        -1 .* p.snow.turbulent_fluxes.shf .- p.snow.turbulent_fluxes.lhf .-
         p.snow.R_n .+ p.snow.energy_runoff
     @test all(parent(dY.snow.U) .≈ parent(test_dY_U))
     @test isnothing(
@@ -332,5 +335,108 @@ import ClimaLand.Parameters as LP
     set_initial_cache!(p, Y, t0)
     # Check if aux update occurred correctly
     @test all(parent(p.snow.T_sfc) .== parent(p.snow.T))
-    @test Snow.get_residual_surface_flux(surf_temp_choice, Y, p) == FT(0)
+    @test Snow.get_residual_melt_flux(
+        surf_temp_choice,
+        Y,
+        p,
+        model.parameters.earth_param_set,
+    ) == FT(0)
+end
+
+@testset "Surface melt accounting, $FT" for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
+    Δt = FT(180)
+    parameters = SnowParameters(toml_dict, Δt)
+    earth_param_set = parameters.earth_param_set
+    T_freeze = LP.T_freeze(earth_param_set)
+    ρL_f = LP.ρ_cloud_liq(earth_param_set) * LP.LH_f0(earth_param_set)
+    start_date = DateTime(2005)
+    precip = TimeVaryingInput(t -> FT(0))
+    atmos = ClimaLand.PrescribedAtmosphere(
+        precip,
+        precip,
+        TimeVaryingInput(t -> FT(290)),
+        TimeVaryingInput(t -> FT(10)),
+        TimeVaryingInput(t -> FT(0.003)),
+        TimeVaryingInput(t -> FT(101325)),
+        start_date,
+        FT(3),
+        toml_dict,
+    )
+    rad = ClimaLand.PrescribedRadiativeFluxes(
+        FT,
+        TimeVaryingInput(t -> FT(300)),
+        TimeVaryingInput(t -> FT(350)),
+        start_date,
+    )
+    model = SnowModel(;
+        parameters,
+        domain = Point(; z_sfc = FT(0)),
+        boundary_conditions = Snow.AtmosDrivenSnowBC(atmos, rad),
+    )
+    Y, p, _ = ClimaLand.initialize(model)
+    dY = similar(Y)
+    set_initial_cache! = ClimaLand.make_set_initial_cache(model)
+    exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
+    t = FT(0)
+
+    @testset "Isothermal melt, S=$S, q_l=$q_l" for S in (FT(0.001), FT(0.1)),
+        q_l in (FT(0), FT(0.01))
+
+        Y.snow.S .= S
+        Y.snow.S_l .= S * q_l
+        Y.snow.U .=
+            Snow.energy_from_q_l_and_swe(S, q_l, parameters.ΔS, earth_param_set)
+        set_initial_cache!(p, Y, t)
+        exp_tendency!(dY, Y, p, t)
+        @test all(parent(p.snow.T_sfc) .== T_freeze)
+        @test all(parent(p.snow.water_runoff) .== 0)
+        @test all(parent(p.snow.surf_residual_flux) .< 0)
+        @test all(parent(dY.snow.S_l) .> 0)
+        # Remove evaporation to compare the phase change with its energy supply.
+        melt_energy = @. ρL_f * (
+            dY.snow.S_l +
+            p.snow.turbulent_fluxes.vapor_flux *
+            p.snow.q_l *
+            p.snow.snow_cover_fraction
+        )
+        @test isapprox(melt_energy, dY.snow.U; rtol = FT(1e-4))
+        @test all(
+            abs.(parent(p.snow.phase_change_flux)) .<=
+            FT(1e-4) .* abs.(parent(p.snow.surf_residual_flux)),
+        )
+        S_next = @. Y.snow.S + Δt * dY.snow.S
+        S_l_next = @. Y.snow.S_l + Δt * dY.snow.S_l
+        @test all(0 .<= parent(S_l_next) .<= parent(S_next))
+    end
+
+    @testset "Snow-free column, T=$T" for T in (FT(270), T_freeze)
+        Y.snow.S .= 0
+        Y.snow.S_l .= 0
+        Y.snow.U .=
+            Snow.energy_from_T_and_swe(FT(0), T, parameters.ΔS, earth_param_set)
+        set_initial_cache!(p, Y, t)
+        exp_tendency!(dY, Y, p, t)
+        @test all(iszero, parent(dY.snow.S))
+        @test all(iszero, parent(dY.snow.U))
+        @test all(iszero, parent(dY.snow.S_l))
+        @test all(isfinite, parent(dY))
+    end
+
+    @testset "Residual melt limits" begin
+        p.snow.T_sfc .= T_freeze
+        p.snow.turbulent_fluxes.lhf .= 0
+        p.snow.turbulent_fluxes.shf .= 0
+        p.snow.z_snow .= eps(FT)^2
+        p.snow.T .= T_freeze
+        p.snow.R_n .= FT(-1000)
+        residual = Snow.get_residual_melt_flux(
+            parameters.surf_temp,
+            Y,
+            p,
+            earth_param_set,
+        )
+        @test all(isfinite, parent(residual))
+        @test all(parent(residual) .≈ FT(-1000) / ρL_f)
+    end
 end

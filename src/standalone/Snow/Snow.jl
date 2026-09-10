@@ -934,17 +934,29 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         )
         # We now estimate the phase change flux: if the applied energy flux is such that T > T_f on the next step, use the residual after warming to T_f to melt snow
         # This estimate uses the current S and q_l.
+        earth_param_set = model.parameters.earth_param_set
+        residual_melt_flux = get_residual_melt_flux(
+            model.parameters.surf_temp,
+            Y,
+            p,
+            earth_param_set,
+        )
+        _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+        _LH_f0 = LP.LH_f0(earth_param_set)
+        # Energy already used for surface melt cannot also melt the bulk snow.
         @. p.snow.phase_change_flux = phase_change_flux(
             Y.snow.U,
             Y.snow.S,
             p.snow.q_l,
-            p.snow.applied_energy_flux,
+            p.snow.applied_energy_flux -
+            _ρ_l * _LH_f0 * residual_melt_flux * p.snow.snow_cover_fraction,
             model.parameters.Δt,
             model.parameters.ΔS,
-            model.parameters.earth_param_set,
+            earth_param_set,
         )
         @. p.snow.liquid_water_flux +=
-            p.snow.phase_change_flux * p.snow.snow_cover_fraction
+            p.snow.phase_change_flux +
+            residual_melt_flux * p.snow.snow_cover_fraction
         @. p.snow.liquid_water_flux = clip_liquid_water_flux(
             Y.snow.S_l,
             Y.snow.S,

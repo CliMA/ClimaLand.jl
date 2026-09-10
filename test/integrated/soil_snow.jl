@@ -94,6 +94,7 @@ using Dates
     # Make sure snow boundary fluxes are zero
     @test all(parent(p.snow.total_energy_flux) .≈ 0)
     @test all(parent(p.snow.total_water_flux) .≈ 0)
+    @test all(iszero, parent(p.snow.liquid_water_flux))
     # Make sure the boundary conditions match bare soil result
     set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
     p_soil_alone.bare_soil_fraction .=
