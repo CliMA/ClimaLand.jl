@@ -100,8 +100,9 @@ prognostic_domain_names(m::AbstractModel) = ()
 
 Returns the prognostic variable types for the model in the form of a tuple.
 
-Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)`
- defined. Common examples
+Types provided must have a `zero` defined for them; composite types are
+zeroed elementwise by wrapping them in a `ClimaCore.Utilities.AutoBroadcaster`.
+Common examples
  include
 - Float64, Float32 for scalar variables (a scalar value at each
 coordinate point)
@@ -137,8 +138,9 @@ auxiliary_domain_names(m::AbstractModel) = ()
 
 Returns the auxiliary variable types for the model in the form of a tuple.
 
-Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)`
-defined. Common examples include
+Types provided must have a `zero` defined for them; composite types are
+zeroed elementwise by wrapping them in a `ClimaCore.Utilities.AutoBroadcaster`.
+Common examples include
 - `Float64`, `Float32` for scalar variables (a scalar value at each
 coordinate point)
 - `SVector{k,Float64}` for a mutable but statically sized array of
@@ -433,7 +435,12 @@ function initialize_vars(keys, types, domain_names, state, model_name)
         return (; model_name => nothing)
     else
         zero_states = map(zip(types, domain_names)) do (T, D)
-            zero_instance = ClimaCore.RecursiveApply.rzero(T)
+            # `T` may be composite (e.g. a `NamedTuple` of fluxes), which
+            # `Base.zero` cannot build on its own; wrapping it in an
+            # `AutoBroadcaster` maps `zero` over its elements.
+            zero_instance = ClimaCore.Utilities.drop_auto_broadcasters(
+                zero(ClimaCore.Utilities.add_auto_broadcasters(T)),
+            )
             f = map(_ -> zero_instance, getproperty(state, D))
             fill!(ClimaCore.Fields.field_values(f), zero_instance)
             f

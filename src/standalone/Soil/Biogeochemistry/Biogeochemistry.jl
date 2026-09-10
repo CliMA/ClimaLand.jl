@@ -7,7 +7,7 @@ using ClimaCore
 using LazyBroadcast: lazy
 import ...Parameters as LP
 using ClimaCore.MatrixFields
-import ClimaCore.MatrixFields: @name, ⋅
+import ClimaCore.MatrixFields: @name
 using NVTX
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
@@ -1144,10 +1144,10 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         # The derivative of the residual with respect to the prognostic variable
         ∂CO2res∂CO2 = matrix[@name(soilco2.CO2), @name(soilco2.CO2)]
         @. p.soilco2.bidiag_matrix_scratch =
-            gradc2f_matrix() ⋅
+            gradc2f_matrix() *
             MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff)
         @. p.soilco2.full_bidiag_matrix_scratch =
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D)) ⋅
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D)) *
             p.soilco2.bidiag_matrix_scratch
         if haskey(p.soilco2, :dfluxBCdY)
             topBC_op = Operators.SetBoundaryOperator(
@@ -1164,14 +1164,14 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         end
         @. ∂CO2res∂CO2 =
             float(dtγ) *
-            (divf2c_matrix() ⋅ p.soilco2.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soilco2.full_bidiag_matrix_scratch) - (I,)
 
         ∂O2res∂O2 = matrix[@name(soilco2.O2), @name(soilco2.O2)]
         @. p.soilco2.bidiag_matrix_scratch =
-            gradc2f_matrix() ⋅
+            gradc2f_matrix() *
             MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff_o2)
         @. p.soilco2.full_bidiag_matrix_scratch =
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D_o2)) ⋅
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D_o2)) *
             p.soilco2.bidiag_matrix_scratch
         if haskey(p.soilco2, :dfluxBCdY_o2)
             topBC_op_o2 = Operators.SetBoundaryOperator(
@@ -1188,7 +1188,7 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         end
         @. ∂O2res∂O2 =
             float(dtγ) *
-            (divf2c_matrix() ⋅ p.soilco2.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soilco2.full_bidiag_matrix_scratch) - (I,)
     end
     return compute_jacobian!
 end

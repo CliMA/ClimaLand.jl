@@ -257,7 +257,7 @@ spherical shell domain with the model
 `lateral_flag` set to true.
 
 The horizontal contributions are
-computed using the WeakDivergence and Gradient operators.
+computed using the weak-form Divergence and the Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
@@ -267,7 +267,7 @@ function horizontal_components!(
     p::NamedTuple,
     z::ClimaCore.Fields.Field,
 )
-    hdiv = Operators.WeakDivergence()
+    hdiv = Operators.Divergence{Operators.WeakForm}()
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
@@ -421,12 +421,12 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
         # due to fusing of broadcasted expressions involving matrices
         # First, the gradient of ∂ψ∂ϑ
         @. p.soil.bidiag_matrix_scratch =
-            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+            gradc2f_matrix() * MatrixFields.DiagonalMatrixRow(
                 ClimaLand.Soil.dψdϑ(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s),
             )
         # Then the full flux term
         @. p.soil.full_bidiag_matrix_scratch =
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) *
             p.soil.bidiag_matrix_scratch
 
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
@@ -451,7 +451,7 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
         negative_dtγ = FT(-float(dtγ))
         @. ∂ϑres∂ϑ =
             negative_dtγ *
-            (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
 
     end
     return compute_jacobian!

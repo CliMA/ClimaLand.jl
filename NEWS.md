@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Replace the deprecated ClimaCore spellings that ClimaCore removed in v0.16
+  with their current equivalents: the `MatrixFields` matrix product `⋅` is
+  now `*` (in `energy_hydrology.jl`, `rre.jl` and `Biogeochemistry.jl`, and
+  `⋅` is no longer imported anywhere), `Operators.WeakDivergence()` is
+  `Operators.Divergence{Operators.WeakForm}()`, and
+  `ClimaCore.RecursiveApply.rzero(T)` is
+  `ClimaCore.Utilities.drop_auto_broadcasters(zero(ClimaCore.Utilities.add_auto_broadcasters(T)))`.
+  All three are spelling changes; results are unchanged. Note that the last two
+  require ClimaCore v0.15 and v0.14.52 respectively, so the `[compat]` bound on
+  ClimaCore must be raised before these take effect.
 - ![][badge-🔥behavioralΔ] use the Sturm et al snow thermal K parameterization, ROSETTA parameters,
    and new spun up initial conditions. PR [#1772](https://github.com/CliMA/ClimaLand.jl/pull/1766)
 - ![][badge-✨feature] Add selectable snow thermal conductivity parameterizations

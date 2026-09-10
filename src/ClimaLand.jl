@@ -142,7 +142,12 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords)
     types = lsm_aux_types(land)
     domains = lsm_aux_domain_names(land)
     additional_aux = map(zip(types, domains)) do (T, domain)
-        zero_instance = ClimaCore.RecursiveApply.rzero(T)
+        # `T` may be composite (e.g. a `NamedTuple` of fluxes), which
+        # `Base.zero` cannot build on its own; wrapping it in an
+        # `AutoBroadcaster` maps `zero` over its elements.
+        zero_instance = ClimaCore.Utilities.drop_auto_broadcasters(
+            zero(ClimaCore.Utilities.add_auto_broadcasters(T)),
+        )
         f = map(_ -> zero_instance, getproperty(land_coords, domain))
         fill!(ClimaCore.Fields.field_values(f), zero_instance)
         f
