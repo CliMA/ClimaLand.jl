@@ -512,7 +512,7 @@ function phase_change_flux(
     _cp_l = LP.cp_l(earth_param_set)
     _T_ref = LP.T_0(earth_param_set)
     _T_freeze = LP.T_freeze(earth_param_set)
-    if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
+    if energy_excess > 0 || (energy_excess < 0 && q_l > sqrt(eps(FT)))
         return -energy_excess / Δt / _ρ_liq /
                ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
     else
