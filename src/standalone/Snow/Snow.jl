@@ -955,8 +955,8 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
             earth_param_set,
         )
         @. p.snow.liquid_water_flux +=
-            (residual_melt_flux+p.snow.phase_change_flux) *
-            p.snow.snow_cover_fraction
+            p.snow.phase_change_flux +
+            residual_melt_flux * p.snow.snow_cover_fraction
         @. p.snow.liquid_water_flux = clip_liquid_water_flux(
             Y.snow.S_l,
             Y.snow.S,
