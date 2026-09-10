@@ -257,7 +257,7 @@ spherical shell domain with the model
 `lateral_flag` set to true.
 
 The horizontal contributions are
-computed using the weak-form Divergence and the Gradient operators.
+computed using the WeakDivergence and Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
@@ -267,7 +267,10 @@ function horizontal_components!(
     p::NamedTuple,
     z::ClimaCore.Fields.Field,
 )
-    hdiv = Operators.Divergence{Operators.WeakForm}()
+    # TODO: ClimaCore v0.16 removes `WeakDivergence` in favour of
+    # `Divergence{WeakForm}`, but `WeakForm` only exists from v0.15.0 and this
+    # package still pins v0.14.5x. Switch when the ClimaCore bound is raised.
+    hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
