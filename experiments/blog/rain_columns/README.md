@@ -20,4 +20,4 @@ julia +1.12 --startup-file=no --project=../../../.buildkite snippet.jl        # 
 python3 build_html.py
 ```
 
-The budget figure and the numbers in the text are storm run minus no-storm control, so both runs are needed.
+The budget figure, the bars in the animation, and the numbers in the text are storm run minus no-storm control, so both runs are needed. `FRAME=12,720` renders single animation frames as PNGs instead of the movies; `ANIMATE=false` skips the animation.

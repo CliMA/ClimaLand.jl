@@ -151,33 +151,46 @@ begin
 end
 
 # ---- Figure 4: the animation
+# Each panel: the soil column colored by water content (storm run), and the fate of the storm's own water as
+# cumulative bars (storm run minus no-storm control): ran off, evaporated, transpired above the surface, drained
+# below it, and a gauge inside the column for what is still stored, all on one scale.
+# Root lengths mark the 20th to 95th percentiles of the exponential root profile.
+root_quantiles(rd) = [min(-rd * log(1 - q), DEPTH) for q in (0.2, 0.4, 0.6, 0.8, 0.95)]
 function draw_plant!(ax, cover, rooting_depth)
     if cover == "forest"
-        poly!(ax, Rect(0.46, 0.0, 0.08, 0.45); color = "#6D4C41")
-        for (cy, rr) in ((0.55, 0.30), (0.75, 0.26), (0.92, 0.2))
-            poly!(ax, Circle(Point2f(0.5, cy), rr); color = "#2E7D32")
+        x = 0.8
+        poly!(ax, Rect(x - 0.04, 0.0, 0.08, 0.45); color = "#6D4C41")
+        for (cy, rr) in ((0.55, 0.22), (0.73, 0.19), (0.87, 0.15))
+            poly!(ax, Circle(Point2f(x, cy), rr); color = "#2E7D32")
+        end
+        for (L, dx) in zip(root_quantiles(rooting_depth), (0.12, -0.14, 0.06, -0.05, 0.0))
+            lines!(ax, [x, x + dx], [0.0, -L]; color = "#8D6E63", linewidth = 2)
         end
     elseif cover == "grass"
-        for x in 0.1:0.06:0.9
-            lines!(ax, [x, x + 0.03 * sign(0.5 - x)], [0.0, 0.18 + 0.05 * sin(20x)]; color = "#7CB342", linewidth = 3)
+        for x in 0.6:0.05:0.95
+            lines!(ax, [x, x + 0.03 * sign(0.78 - x)], [0.0, 0.16 + 0.05 * sin(20x)]; color = "#7CB342", linewidth = 3)
         end
-    end
-    if cover != "bare"   # schematic roots, longer for the deeper rooting-depth parameter
-        for (x0, x1, f) in ((0.5, 0.5, 1.0), (0.5, 0.25, 0.65), (0.5, 0.75, 0.7), (0.5, 0.35, 0.4), (0.5, 0.65, 0.5))
-            lines!(ax, [x0, x1], [0.0, -rooting_depth * f * 2.5]; color = "#8D6E63", linewidth = 2)   # longest root ≈ 2.5 e-folding depths
+        qs = root_quantiles(rooting_depth)
+        for (x, L) in zip(0.62:0.04:0.94, repeat(qs, 2))
+            lines!(ax, [x, x + 0.01], [0.0, -L]; color = "#8D6E63", linewidth = 1.5)
         end
     end
 end
 
-function animate(path; framerate = 12)
+const BARS = ((:runoff, "ran off", col.runoff, 0.03), (:soilevap, "evaporated", col.soilevap, 0.22), (:trans, "transpired", col.trans, 0.41))
+const BARW = 0.12
+function build_animation()
     fig = Figure(size = (1250, 700), fontsize = 15, backgroundcolor = :white)
     title = Observable("")
     Label(fig[0, 1:length(CASES)], title; fontsize = 22, font = :bold, tellwidth = false)
     θobs = Dict{String, Observable{Matrix{Float64}}}()
-    pond = Dict{String, Observable{Vector{Point2f}}}(); drainbox = Dict{String, Observable{Vector{Point2f}}}()
-    rlabel = Dict{String, Observable{String}}(); dlabel = Dict{String, Observable{String}}(); elabel = Dict{String, Observable{String}}()
-    arrow_len = Dict{String, Observable{Float64}}()
+    bars = Dict{Tuple{String, Symbol}, Observable{Vector{Point2f}}}(); blabel = Dict{Tuple{String, Symbol}, Observable{String}}()
+    blabelpos = Dict{Tuple{String, Symbol}, Observable{Float64}}()
+    drainbox = Dict{String, Observable{Vector{Point2f}}}(); dlabel = Dict{String, Observable{String}}()
+    stored = Dict{String, Observable{Vector{Point2f}}}(); slabel = Dict{String, Observable{String}}(); spos = Dict{String, Observable{Point2f}}()
     rain = Observable(Point2f[])
+    scale = 0.45 / P_MM    # 50 mm of water → 0.45 m on the drawing
+    zb = -DEPTH - 0.05
     for (i, c) in enumerate(CASES)
         d = cases[c]
         ax = Axis(fig[1, i]; title = label(c), aspect = DataAspect(), limits = ((-0.05, 1.05), (-DEPTH - 0.75, 1.35)))
@@ -185,47 +198,75 @@ function animate(path; framerate = 12)
         θobs[c] = Observable(reshape(d.θ[:, 1], 1, :))
         heatmap!(ax, [0.0, 1.0], faces_from_centers(d.z), θobs[c]; colormap = θcmap, colorrange = θrange)
         lines!(ax, [0, 1, 1, 0, 0], [0, 0, -DEPTH, -DEPTH, 0]; color = :black, linewidth = 1)
-        pond[c] = Observable(Point2f[(0, 0), (1, 0), (1, 0), (0, 0)])
-        poly!(ax, pond[c]; color = ("#4C78A8", 0.85))
-        zb = -DEPTH - 0.05
+        for (k, name, cc, x0) in BARS
+            (k == :trans && cover_of(c) == "bare") && continue
+            bars[(c, k)] = Observable(Point2f[(x0, 0), (x0 + BARW, 0), (x0 + BARW, 0), (x0, 0)])
+            poly!(ax, bars[(c, k)]; color = cc, strokecolor = :white, strokewidth = 0.5)
+            blabel[(c, k)] = Observable(""); blabelpos[(c, k)] = Observable(0.03)
+            text!(ax, x0 + BARW / 2, blabelpos[(c, k)]; text = blabel[(c, k)], align = (:center, :bottom), fontsize = 11, color = cc)
+        end
         drainbox[c] = Observable(Point2f[(0.2, zb), (0.8, zb), (0.8, zb), (0.2, zb)])
         poly!(ax, drainbox[c]; color = ("#72B7B2", 0.9))
-        rlabel[c] = Observable(""); dlabel[c] = Observable(""); elabel[c] = Observable("")
-        text!(ax, 0.02, 0.02, text = rlabel[c], align = (:left, :bottom), fontsize = 12, color = "#1F3F66")
-        text!(ax, 0.5, zb - 0.03, text = dlabel[c], align = (:center, :top), fontsize = 12, color = "#1F5F5C")
-        arrow_len[c] = Observable(0.0)
-        lines!(ax, lift(l -> [Point2f(0.9, 0.05), Point2f(0.9, 0.05 + l)], arrow_len[c]); color = "#E45756", linewidth = 4)
-        scatter!(ax, lift(l -> [Point2f(0.9, 0.05 + l)], arrow_len[c]); color = "#E45756", marker = :utriangle, markersize = 18)
+        dlabel[c] = Observable("")
+        text!(ax, 0.5, lift(p -> p[3][2] - 0.03, drainbox[c]), text = dlabel[c], align = (:center, :top), fontsize = 12, color = "#1F5F5C")
+        # stored: the storm's water still in the soil, a gauge inside the column from a mid-depth baseline
+        z0 = -DEPTH / 2
+        lines!(ax, [0.04, 0.16], [z0, z0]; color = :white, linewidth = 1.5)
+        stored[c] = Observable(Point2f[(0.04, z0), (0.16, z0), (0.16, z0), (0.04, z0)])
+        poly!(ax, stored[c]; color = col.stored, strokecolor = :white, strokewidth = 1)
+        spos[c] = Observable(Point2f(0.19, z0)); slabel[c] = Observable("")
+        poly!(ax, lift(p -> Rect(p[1] - 0.01, p[2] - 0.045, 0.4, 0.09), spos[c]); color = (:white, 0.8))
+        text!(ax, spos[c]; text = slabel[c], align = (:left, :center), fontsize = 11, color = :black)
         scatter!(ax, rain; color = "#4C78A8", marker = :vline, markersize = 12)
-        text!(ax, 0.98, 1.3, text = elabel[c], align = (:right, :top), fontsize = 12, color = "#B03A2E")
         draw_plant!(ax, cover_of(c), cover_of(c) == "bare" ? 0.0 : plants[cover_of(c)].rooting_depth)
     end
     Colorbar(fig[1, length(CASES) + 1]; colormap = θcmap, colorrange = θrange, label = "soil water content (m³/m³)")
-    Label(fig[2, 1:length(CASES)], @sprintf("Each column is %.0f m of soil. Blue = water that ran off (it has left the column) · teal = drained out of the bottom · red arrow = evaporation + transpiration (24 h mean) · roots are schematic", DEPTH);
-        fontsize = 12, tellwidth = false)
+    Label(fig[2, 1:length(CASES)], @sprintf("%.0f m of soil per column, colored by water content. Bars follow the storm's own 50 mm (this run minus the same column without the storm), cumulative and on one scale: ran off (blue), evaporated (red), transpired (green), drained out of the bottom (teal), still stored in the soil (gray). Roots mark the 20th–95th percentiles of the root profile.", DEPTH);
+        fontsize = 11, tellwidth = false, word_wrap = true)
     hours = cases[CASES[1]].hours
-    frames = vcat(1:1:48, 54:6:length(hours))
-    scale = 0.45 / P_MM    # 50 mm of runoff or drainage → 0.45 m on the drawing
-    record(fig, path, frames; framerate) do k
+    function update!(k)
         h = hours[k]; day = floor(Int, (h - 1e-9) / 24); hod = h - 24day
         title[] = @sprintf("Day %d, %02d:00 %s", day + 1, round(Int, hod), k <= STORM_HOURS ? "— raining (50 mm in 12 h)" : "")
         rain[] = k <= STORM_HOURS ? [Point2f(rand(), 0.3 + rand()) for _ in 1:60] : Point2f[]
         for c in CASES
             d = cases[c]
             θobs[c][] = reshape(d.θ[:, k], 1, :)
-            R = sum(d.runoff[1:k]) * scale; D = sum(d.drain[1:k]) * scale
-            pond[c][] = Point2f[(0, 0), (1, 0), (1, R), (0, R)]
-            zb = -DEPTH - 0.05
-            drainbox[c][] = Point2f[(0.2, zb), (0.8, zb), (0.8, zb - D), (0.2, zb - D)]
-            rlabel[c][] = R > 0 ? @sprintf("ran off %.0f mm", sum(d.runoff[1:k])) : ""
-            dlabel[c][] = @sprintf("drained %.1f mm", sum(d.drain[1:k]))
-            k0 = max(1, k - 23); et24 = sum(d.soilevap[k0:k] .+ d.trans[k0:k]) * 24 / (k - k0 + 1)
-            arrow_len[c][] = 0.12 * et24
-            elabel[c][] = @sprintf("%.1f mm/day\nto the air", max(et24, 0.0))
+            hprev = -1.0
+            e = ctrl[c]
+            for (kk, name, cc, x0) in BARS
+                haskey(bars, (c, kk)) || continue
+                v = sum(getproperty(d, kk)[1:k]) - sum(getproperty(e, kk)[1:k]); h = max(v, 0.0) * scale
+                lift_ = abs(h - hprev) < 0.07 ? 0.07 : 0.0   # stagger labels of neighbours at similar heights
+                bars[(c, kk)][] = Point2f[(x0, 0), (x0 + BARW, 0), (x0 + BARW, h), (x0, h)]
+                blabelpos[(c, kk)][] = h + lift_ + 0.03
+                blabel[(c, kk)][] = v > 0.5 ? @sprintf("%.0f mm", v) : ""
+                hprev = h
+            end
+            D = max(sum(d.drain[1:k]) - sum(e.drain[1:k]), 0.0)
+            drainbox[c][] = Point2f[(0.2, zb), (0.8, zb), (0.8, zb - D * scale), (0.2, zb - D * scale)]
+            dlabel[c][] = @sprintf("drained %.1f mm", D)
+            ΔS = max(d.storage[k] - e.storage[k], 0.0); z0 = -DEPTH / 2
+            stored[c][] = Point2f[(0.04, z0), (0.16, z0), (0.16, z0 + ΔS * scale), (0.04, z0 + ΔS * scale)]
+            spos[c][] = Point2f(0.19, z0 + ΔS * scale); slabel[c][] = @sprintf("stored %+.0f mm", ΔS)
         end
     end
+    return fig, update!
 end
-if get(ENV, "ANIMATE", "true") == "true"
+
+function animate(path; framerate = 12)
+    fig, update! = build_animation()
+    hours = cases[CASES[1]].hours
+    frames = vcat(1:1:48, 54:6:length(hours))
+    record(fig, path, frames; framerate) do k
+        update!(k)
+    end
+end
+if haskey(ENV, "FRAME")   # render single frames (hour indices, comma-separated) instead of the movies
+    fig, update! = build_animation()
+    for k in parse.(Int, split(ENV["FRAME"], ","))
+        update!(k); save(joinpath(FIGDIR, "frame_$(k).png"), fig; px_per_unit = 2)
+    end
+elseif get(ENV, "ANIMATE", "true") == "true"
     animate(joinpath(FIGDIR, "rain_columns.gif"))
     animate(joinpath(FIGDIR, "rain_columns.mp4"))
 end
