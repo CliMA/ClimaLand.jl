@@ -63,10 +63,11 @@ while i < len(lines):
         m = re.match(r"!\[(.*?)\]\((.*?)\)", l); i += 1
         while not lines[i].strip(): i += 1
         cap = lines[i].strip(); i += 1
-        cap = re.sub(r"^\*\*\*(.+?)\*\*(.*)\*$", r"<b>\1</b>\2", cap)
+        cap = re.sub(r"^\*\*\*(.+?)\*\*(.*)\*$", r"**\1**\2", cap)   # bold lead-in, then plain caption text
+        cap = inline(cap).replace("<strong>", "<b>", 1).replace("</strong>", "</b>", 1)
         wrap_close()
         out.append('<div class="wide">\n<figure>\n  <img src="%s" alt="%s">\n  <figcaption>%s</figcaption>\n</figure>\n</div>'
-                   % (m.group(2), html.escape(m.group(1), quote=True), inline(cap)))
+                   % (m.group(2), html.escape(m.group(1), quote=True), cap))
         wrap_open(); continue
     if l.startswith("```"):
         j = i + 1

@@ -102,7 +102,7 @@ end
 
 # ---- Figure 2: where did the storm's water go? (storm run minus no-storm control)
 begin
-    fig = Figure(size = (1000, 480), fontsize = 15)
+    fig = Figure(size = (900, 480), fontsize = 15)
     ax = Axis(fig[1, 1]; xlabel = "mm of water, 30 days after the storm", yticks = (1:length(CASES), label.(CASES)),
         title = "Where did the storm's 50 mm go?", yreversed = true)
     keys_ = (:R, :D, :E, :T, :retained)
@@ -115,14 +115,8 @@ begin
             v > 0.3 && barplot!(ax, [i], [v]; offset = x0, direction = :x, color = cc, strokewidth = 0.5, strokecolor = :white)
             x0 += max(v, 0.0)
         end
-        # what the same column loses in the same month without any storm
-        ctl = budget[c].control
-        lbl = ctl.T > 0.5 ? @sprintf("without the storm it would still lose %.0f mm to the air\n(%.0f mm of it through the plants)", ctl.E + ctl.T, ctl.T) :
-                            @sprintf("without the storm it would still lose %.0f mm to the air", ctl.E + ctl.T)
-        text!(ax, P_MM + 2, i; text = lbl, align = (:left, :center), fontsize = 11, color = :gray30)
     end
-    vlines!(ax, [0.0, P_MM]; color = :black)
-    xlims!(ax, -2, 108)
+    xlims!(ax, 0, P_MM)
     elems = [PolyElement(color = cc) for cc in colors_]
     Legend(fig[2, 1], elems, collect(names_); orientation = :horizontal, nbanks = 1, framevisible = false)
     save(joinpath(FIGDIR, "budget.png"), fig; px_per_unit = 2)
