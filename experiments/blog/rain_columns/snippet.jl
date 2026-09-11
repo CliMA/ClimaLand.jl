@@ -84,18 +84,22 @@ end
 out_bare = run(bare, ["swc", "et"])
 out_forest = run(forest, ["swc", "et"])
 
-# --- plot: soil water content through depth and time, and the water returned to the air
+# --- plot: the bare column through time, both columns' profiles on day 30, and the water returned to the air
 z = vec(parent(domain.fields.z))
 swc(w) = (d = w["swc_1h_average"]; ts = sort(collect(keys(d))); (float.(ts) ./ 86400, reduce(hcat, vec(parent(d[t])) for t in ts)))
 et(w, scale) = (d = w["et_1h_average"]; ts = sort(collect(keys(d))); (float.(ts) ./ 86400, [only(parent(d[t])) * scale for t in ts]))
-fig = Figure(size = (1000, 640))
-for (i, (name, w)) in enumerate(("bare loam" => out_bare, "loam + forest" => out_forest))
-    days, θ = swc(w)
-    ax = Axis(fig[1, i]; title = name, xlabel = "days since the storm", ylabel = "depth (m)")
-    hm = heatmap!(ax, days, z, permutedims(θ); colormap = :YlGnBu, colorrange = (0, 0.45))
-    i == 2 && Colorbar(fig[1, 3], hm; label = "soil water content (m³/m³)")
-end
-ax = Axis(fig[2, 1:2]; xlabel = "days since the storm", ylabel = "water to the air (mm/day)")
+days, θ_bare = swc(out_bare); _, θ_forest = swc(out_forest)
+θ0 = loam.θ_r + Soil.inverse_matric_potential(loam.hydrology_cm, -2.0) * (loam.ν - loam.θ_r)
+fig = Figure(size = (1000, 700))
+ax = Axis(fig[1, 1]; title = "bare loam", xlabel = "days since the storm", ylabel = "depth (m)")
+hm = heatmap!(ax, days, z, permutedims(θ_bare); colormap = :YlGnBu, colorrange = (0, 0.45))
+Colorbar(fig[1, 2], hm; label = "soil water content (m³/m³)")
+ax = Axis(fig[1, 3]; title = "profiles on day 30", xlabel = "soil water content (m³/m³)")
+vlines!(ax, [θ0]; color = :gray, linestyle = :dash, label = "before the storm")
+lines!(ax, θ_bare[:, end], z; linewidth = 3, label = "bare loam")
+lines!(ax, θ_forest[:, end], z; linewidth = 3, label = "loam + forest")
+axislegend(ax; position = :lb)
+ax = Axis(fig[2, 1:3]; xlabel = "days since the storm", ylabel = "water to the air (mm/day)")
 lines!(ax, et(out_bare, 8.64e7)...; label = "bare loam", linewidth = 2)       # soil model: m/s → mm/day
 lines!(ax, et(out_forest, 86400.0)...; label = "loam + forest", linewidth = 2) # coupled model: kg/m²/s → mm/day
 axislegend(ax)
