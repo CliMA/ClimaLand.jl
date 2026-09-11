@@ -25,11 +25,12 @@ OUTDIR = get(ENV, "OUTDIR", "out")
 DT = parse(Float64, get(ENV, "DT", "60"))
 PLANT_A = parse(Float64, get(ENV, "PLANT_A", "5e-5"))
 STORM_MM = parse(Float64, get(ENV, "STORM_MM", "50"))   # 0 gives the no-storm control
+DEPTH = parse(Float64, get(ENV, "DEPTH", "1"))          # column depth in m
 mkpath(OUTDIR)
 
 # ---------------------------------------------------------------- domain
 long, lat = FT(-92.2), FT(38.7)              # Missouri: sets sun angle & default maps
-domain = Column(; zlim = (FT(-2), FT(0)), nelements = 30, dz_tuple = (FT(0.2), FT(0.025)), longlat = (long, lat))
+domain = Column(; zlim = (FT(-DEPTH), FT(0)), nelements = 30, dz_tuple = (FT(0.2), FT(0.025)), longlat = (long, lat))
 surface_domain = obtain_surface_domain(domain)
 
 # ---------------------------------------------------------------- idealized forcing
@@ -65,9 +66,11 @@ soils = Dict(
     "loam" => (; ν = 0.43, θ_r = 0.078, α = 3.6, n = 1.56, K_sat = 2.89e-6, quartz = 0.4),
     "clay" => (; ν = 0.38, θ_r = 0.068, α = 0.8, n = 1.09, K_sat = 5.56e-7, quartz = 0.2),
 )
+# rooting_depth is the e-folding depth of an exponential root profile (not renormalized to the column):
+# 95% of the grass roots lie in the top 0.3 m, 92% of the forest roots in the top 1 m
 plants = Dict(
-    "grass" => (; LAI = 2.0, height = 0.5, rooting_depth = 0.3),
-    "forest" => (; LAI = 5.0, height = 2.0, rooting_depth = 1.0),
+    "grass" => (; LAI = 2.0, height = 0.5, rooting_depth = parse(Float64, get(ENV, "ROOT_GRASS", "0.1"))),
+    "forest" => (; LAI = 5.0, height = 2.0, rooting_depth = parse(Float64, get(ENV, "ROOT_FOREST", "0.4"))),
 )
 
 function make_soil(s; kwargs...)

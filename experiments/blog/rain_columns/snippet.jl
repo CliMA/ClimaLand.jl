@@ -1,4 +1,4 @@
-# Where does the rain go? A 2 m soil column, bare or under a forest,
+# Where does the rain go? A 1 m soil column, bare or under a forest,
 # hit by a 50 mm storm on the first night of an idealized July, then 29 dry days.
 using Dates, ClimaLand, ClimaLand.Soil, ClimaLand.Canopy, CairoMakie
 using ClimaLand.Domains: Column, obtain_surface_domain
@@ -12,7 +12,7 @@ params = LP.LandParameters(toml_dict)
 
 # --- the place and the weather
 long, lat = -92.2, 38.7                 # Missouri: sets the sun's path and default parameter maps
-domain = Column(; zlim = (-2.0, 0.0), nelements = 30, dz_tuple = (0.2, 0.025), longlat = (long, lat))
+domain = Column(; zlim = (-1.0, 0.0), nelements = 30, dz_tuple = (0.2, 0.025), longlat = (long, lat))
 start_date = DateTime(2010, 7, 1, 6)    # 00:00 local time
 seconds(t) = float(t)                   # simulation time → seconds since start_date
 raining(t) = seconds(t) < 12 * 3600     # 50 mm between midnight and noon on day 1
@@ -39,13 +39,13 @@ soil(; kw...) = Soil.EnergyHydrology{FT}(domain, forcing, toml_dict; retention_p
     runoff = Soil.Runoff.SurfaceRunoff(), bottom_bc = Soil.EnergyWaterFreeDrainage(), kw...)
 bare = soil()
 
-# --- the same soil under a forest: 5 m² of leaves per m² of ground, roots reaching ~1 m
+# --- the same soil under a forest: 5 m² of leaves per m² of ground, roots through the whole meter
 components = (:canopy, :soil, :soilco2)
 surface = obtain_surface_domain(domain)
 LAI = TimeVaryingInput(t -> 5.0)
 canopy = Canopy.CanopyModel{FT}(surface, (; atmos, radiation, ground = ClimaLand.PrognosticGroundConditions{FT}()), LAI, toml_dict;
     prognostic_land_components = components,
-    biomass = Canopy.PrescribedBiomassModel{FT}(surface, LAI, toml_dict; rooting_depth = 1.0, height = 2.0),
+    biomass = Canopy.PrescribedBiomassModel{FT}(surface, LAI, toml_dict; rooting_depth = 0.4, height = 2.0),   # root density ∝ exp(z / rooting_depth)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(surface, toml_dict; retention_model = Canopy.LinearRetentionCurve{FT}(5e-5)),
     photosynthesis = Canopy.FarquharModel{FT}(surface, toml_dict),
     conductance = Canopy.MedlynConductanceModel{FT}(surface, toml_dict))

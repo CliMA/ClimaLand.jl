@@ -14,7 +14,7 @@ P_MM = 50.0
 soils = Dict("sand" => (; ν = 0.43, θ_r = 0.045, α = 14.5, n = 2.68),
              "loam" => (; ν = 0.43, θ_r = 0.078, α = 3.6, n = 1.56),
              "clay" => (; ν = 0.38, θ_r = 0.068, α = 0.8, n = 1.09))
-plants = Dict("grass" => (; LAI = 2.0, height = 0.5, rooting_depth = 0.3), "forest" => (; LAI = 5.0, height = 2.0, rooting_depth = 1.0))
+plants = Dict("grass" => (; LAI = 2.0, height = 0.5, rooting_depth = 0.1), "forest" => (; LAI = 5.0, height = 2.0, rooting_depth = 0.4))
 PLANT_A = parse(Float64, get(ENV, "PLANT_A", "5e-5")); PLANT_NU = 0.2
 STORM_HOURS = 12
 θ_vg(s, ψ) = (m = 1 - 1 / s.n; s.θ_r + (s.ν - s.θ_r) * (1 + (s.α * abs(ψ))^s.n)^(-m))
@@ -63,6 +63,7 @@ function process(name, results)
     CaseData(name, hours, z, dz, θ, runoff, drain, soilevap, trans, storage, θ0, lwp, msf, plant_store, rootflux)
 end
 cases = Dict(c => process(c, results) for c in CASES)
+DEPTH = -minimum(faces_from_centers(cases[CASES[1]].z))   # column depth (m)
 ctrl = Dict(c => process(c, control) for c in CASES)
 daily(v) = [sum(v[(24i + 1):(24i + 24)]) for i in 0:(length(v) ÷ 24 - 1)]
 
@@ -106,7 +107,7 @@ begin
     ax = Axis(fig[1, 1]; xlabel = "mm of water, 30 days after the storm", yticks = (1:length(CASES), label.(CASES)),
         title = "Where did the storm's 50 mm go?", yreversed = true)
     keys_ = (:R, :D, :E, :T, :retained)
-    names_ = ("surface runoff", "drained below 2 m", "evaporated from soil", "transpired by plants", "still in the soil")
+    names_ = ("surface runoff", @sprintf("drained below %.0f m", DEPTH), "evaporated from soil", "transpired by plants", "still in the soil")
     colors_ = (col.runoff, col.drain, col.soilevap, col.trans, col.stored)
     for (i, c) in enumerate(CASES)
         b = budget[c].storm; x0 = 0.0
@@ -163,7 +164,7 @@ function draw_plant!(ax, cover, rooting_depth)
     end
     if cover != "bare"   # schematic roots, longer for the deeper rooting-depth parameter
         for (x0, x1, f) in ((0.5, 0.5, 1.0), (0.5, 0.25, 0.65), (0.5, 0.75, 0.7), (0.5, 0.35, 0.4), (0.5, 0.65, 0.5))
-            lines!(ax, [x0, x1], [0.0, -rooting_depth * f * 1.5]; color = "#8D6E63", linewidth = 2)
+            lines!(ax, [x0, x1], [0.0, -rooting_depth * f * 2.5]; color = "#8D6E63", linewidth = 2)   # longest root ≈ 2.5 e-folding depths
         end
     end
 end
@@ -179,18 +180,19 @@ function animate(path; framerate = 12)
     rain = Observable(Point2f[])
     for (i, c) in enumerate(CASES)
         d = cases[c]
-        ax = Axis(fig[1, i]; title = label(c), aspect = DataAspect(), limits = ((-0.05, 1.05), (-2.75, 1.35)))
+        ax = Axis(fig[1, i]; title = label(c), aspect = DataAspect(), limits = ((-0.05, 1.05), (-DEPTH - 0.75, 1.35)))
         hidedecorations!(ax); hidespines!(ax)
         θobs[c] = Observable(reshape(d.θ[:, 1], 1, :))
         heatmap!(ax, [0.0, 1.0], faces_from_centers(d.z), θobs[c]; colormap = θcmap, colorrange = θrange)
-        lines!(ax, [0, 1, 1, 0, 0], [0, 0, -2, -2, 0]; color = :black, linewidth = 1)
+        lines!(ax, [0, 1, 1, 0, 0], [0, 0, -DEPTH, -DEPTH, 0]; color = :black, linewidth = 1)
         pond[c] = Observable(Point2f[(0, 0), (1, 0), (1, 0), (0, 0)])
         poly!(ax, pond[c]; color = ("#4C78A8", 0.85))
-        drainbox[c] = Observable(Point2f[(0.2, -2.05), (0.8, -2.05), (0.8, -2.05), (0.2, -2.05)])
+        zb = -DEPTH - 0.05
+        drainbox[c] = Observable(Point2f[(0.2, zb), (0.8, zb), (0.8, zb), (0.2, zb)])
         poly!(ax, drainbox[c]; color = ("#72B7B2", 0.9))
         rlabel[c] = Observable(""); dlabel[c] = Observable(""); elabel[c] = Observable("")
         text!(ax, 0.02, 0.02, text = rlabel[c], align = (:left, :bottom), fontsize = 12, color = "#1F3F66")
-        text!(ax, 0.5, -2.08, text = dlabel[c], align = (:center, :top), fontsize = 12, color = "#1F5F5C")
+        text!(ax, 0.5, zb - 0.03, text = dlabel[c], align = (:center, :top), fontsize = 12, color = "#1F5F5C")
         arrow_len[c] = Observable(0.0)
         lines!(ax, lift(l -> [Point2f(0.9, 0.05), Point2f(0.9, 0.05 + l)], arrow_len[c]); color = "#E45756", linewidth = 4)
         scatter!(ax, lift(l -> [Point2f(0.9, 0.05 + l)], arrow_len[c]); color = "#E45756", marker = :utriangle, markersize = 18)
@@ -199,7 +201,7 @@ function animate(path; framerate = 12)
         draw_plant!(ax, cover_of(c), cover_of(c) == "bare" ? 0.0 : plants[cover_of(c)].rooting_depth)
     end
     Colorbar(fig[1, length(CASES) + 1]; colormap = θcmap, colorrange = θrange, label = "soil water content (m³/m³)")
-    Label(fig[2, 1:length(CASES)], "Each column is 2 m of soil. Blue = water that ran off (it has left the column) · teal = drained below 2 m · red arrow = evaporation + transpiration (24 h mean) · roots are schematic";
+    Label(fig[2, 1:length(CASES)], @sprintf("Each column is %.0f m of soil. Blue = water that ran off (it has left the column) · teal = drained out of the bottom · red arrow = evaporation + transpiration (24 h mean) · roots are schematic", DEPTH);
         fontsize = 12, tellwidth = false)
     hours = cases[CASES[1]].hours
     frames = vcat(1:1:48, 54:6:length(hours))
@@ -213,7 +215,8 @@ function animate(path; framerate = 12)
             θobs[c][] = reshape(d.θ[:, k], 1, :)
             R = sum(d.runoff[1:k]) * scale; D = sum(d.drain[1:k]) * scale
             pond[c][] = Point2f[(0, 0), (1, 0), (1, R), (0, R)]
-            drainbox[c][] = Point2f[(0.2, -2.05), (0.8, -2.05), (0.8, -2.05 - D), (0.2, -2.05 - D)]
+            zb = -DEPTH - 0.05
+            drainbox[c][] = Point2f[(0.2, zb), (0.8, zb), (0.8, zb - D), (0.2, zb - D)]
             rlabel[c][] = R > 0 ? @sprintf("ran off %.0f mm", sum(d.runoff[1:k])) : ""
             dlabel[c][] = @sprintf("drained %.1f mm", sum(d.drain[1:k]))
             k0 = max(1, k - 23); et24 = sum(d.soilevap[k0:k] .+ d.trans[k0:k]) * 24 / (k - k0 + 1)

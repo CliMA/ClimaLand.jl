@@ -67,7 +67,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 <header>
   <div class="eyebrow">CliMA software stack · Part N · ClimaLand.jl</div>
   <h1>A sponge, a straw, and fifty millimeters of rain</h1>
-  <p class="dek">The same storm falls on five patches of ground. A month later, one holds almost all of the water and another has lost more than it received. ClimaLand.jl, the land model of the CliMA Earth system model, shows why.</p>
+  <p class="dek">The same storm falls on five patches of ground. A month later the water has gone five different ways, and one patch has lost more than it received. ClimaLand.jl, the land model of the CliMA Earth system model, shows why.</p>
   <div class="byline">By Alexis Renchon and the ClimaLand team · September 2026</div>
 </header>
 
@@ -86,7 +86,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 <div class="wide">
 <figure>
   <img src="figs/rain_columns.gif" alt="Animation of five soil columns over 30 days after a 50 mm storm: bare sand, bare loam, bare clay, loam with grass, and loam with a forest. Color shows soil water content; blue above the clay column grows with surface runoff; red arrows show water returned to the air.">
-  <figcaption><b>The same storm on five columns.</b> Each column is two meters of soil, colored by water content, simulated hour by hour with ClimaLand for thirty days after a 50 mm storm that falls between midnight and noon on day 1. Blue above a column is water that ran off and has left the column; the bar below is what drained out of the bottom; the red arrow is the water returned to the air by evaporation and transpiration over the last 24 hours. Roots are schematic. The weather is idealized and identical for all five: 19 to 31 °C, 50 percent relative humidity, clear skies once the storm has passed.</figcaption>
+  <figcaption><b>The same storm on five columns.</b> Each column is one meter of soil, colored by water content, simulated hour by hour with ClimaLand for thirty days after a 50 mm storm that falls between midnight and noon on day 1. Blue above a column is water that ran off and has left the column; the bar below is what drained out of the bottom; the red arrow is the water returned to the air by evaporation and transpiration over the last 24 hours. Roots are schematic. The weather is idealized and identical for all five: 19 to 31 °C, 50 percent relative humidity, clear skies once the storm has passed.</figcaption>
 </figure>
 </div>
 
@@ -105,13 +105,13 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 <div class="wide">
 <figure>
   <img src="figs/hovmoller.png" alt="Three panels of soil water content versus depth and time for bare sand, bare loam, and bare clay after a 50 mm storm.">
-  <figcaption><b>Water content through depth and time</b> in the three bare columns. Each title gives the fate of the storm's 50 mm (the small remainder drained out of the bottom), computed as the storm run minus the no-storm run. In sand the wetting front races downward and the surface is dry within hours. In loam the front reaches about 40 cm on the first day and then spreads slowly deeper while the surface dries. In clay the surface cannot admit rain at 4 mm per hour, so most of it runs off.</figcaption>
+  <figcaption><b>Water content through depth and time</b> in the three bare columns. Each title gives the fate of the storm's 50 mm, computed as the storm run minus the no-storm run. In sand the wetting front races downward, reaches the bottom of the column in days, and the surface is dry within hours. In loam the front reaches about 40 cm on the first day and then spreads slowly deeper while the surface dries. In clay the surface cannot admit rain at 4 mm per hour, so most of it runs off.</figcaption>
 </figure>
 </div>
 
 <div class="wrap">
 
-<p>The three textures send the same fifty millimeters to three different fates. <strong>Sand swallows it.</strong> The surface dries within hours, and once the top few centimeters are dry they slow further evaporation to a trickle: only 4 mm of the storm evaporates in a month, and 46 mm is still in the column, most of it below one meter and still creeping downward. <strong>Loam keeps about half.</strong> The storm wets the top half meter, capillary flow keeps feeding the drying surface, and 27 mm of the storm evaporates, most of it in the first week; the other 23 mm remains, spread between 30 cm and 1.5 m. <strong>Clay refuses it.</strong> With a saturated conductivity of about two millimeters per hour, the surface takes in only a fraction of the rain: 35 mm of the 50 runs off, 9 mm evaporates, and about 5 mm stays. The clay column also evaporates 25 mm of its own water over a month with no storm at all, because it started nearly saturated; the storm barely changes that.</p>
+<p>The three textures send the same fifty millimeters to three different fates. <strong>Sand passes it down.</strong> The surface dries within hours, and once the top few centimeters are dry they slow further evaporation to a trickle: only 4 mm of the storm evaporates in a month. The wetting front reaches the bottom of the meter within days, 27 mm has drained out toward groundwater by the end of the month, and the other 19 mm is still on its way down. <strong>Loam sends half back to the sky and keeps the rest.</strong> The storm wets the top half meter, capillary flow keeps feeding the drying surface, and 27 mm of the storm evaporates, most of it in the first week; 2 mm drains, and the remaining 21 mm sits in the lower half of the column. <strong>Clay refuses it.</strong> With a saturated conductivity of about two millimeters per hour, the surface takes in only a fraction of the rain: 35 mm of the 50 runs off, 9 mm evaporates, 2 mm drains, and about 4 mm stays. The clay column also evaporates 24 mm of its own water over a month with no storm at all, because it started nearly saturated; the storm barely changes that.</p>
 
 <p>All of these numbers come out of the same equations, driven by the same weather, using representative hydraulic and thermal properties for each texture.</p>
 
@@ -121,7 +121,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 
 <p>Stomata close as the tension rises, trading photosynthesis for safety from the embolisms that would break the water column. ClimaLand's canopy model represents this chain with a leaf area and a root profile, a plant hydraulics model that tracks the water potential inside the plant, root uptake from each soil layer driven by the potential difference, and a moisture-stress factor that restricts photosynthesis and stomatal conductance as the leaf potential falls past a set threshold, here two megapascals.</p>
 
-<p>We added two idealized covers to the loam column: a grassland with two square meters of leaf per square meter of ground and most of its roots in the top 30 cm, and a forest with five square meters of leaf, a taller canopy, and roots reaching about a meter down. The two covers differ in leaf area and height as well as in roots, so what follows is the effect of the whole package.</p>
+<p>We added two idealized covers to the loam column: a grassland with two square meters of leaf per square meter of ground and 95 percent of its roots in the top 30 cm, and a forest with five square meters of leaf, a taller canopy, and roots spread through the whole meter. The two covers differ in leaf area and height as well as in roots, so what follows is the effect of the whole package.</p>
 
 </div>
 
@@ -134,7 +134,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 
 <div class="wrap">
 
-<p>In the first week the forest returns nine millimeters a day to the air, more than the bare loam ever manages, because its roots reach water that surface evaporation cannot. That water is not free. By day nine the loam within reach of the roots has dried enough that the forest's leaves reach a tension of two megapascals at midday, and over the next three days the stress factor falls from 0.9 to 0.2. Transpiration drops to what the drying soil can supply, and photosynthesis with it. The grass, on shallower roots, follows a few days later. Both keep returning water vapor to the air for weeks after the bare soils have gone quiet.</p>
+<p>In the first week the forest returns nine millimeters a day to the air, more than the bare loam ever manages, because its roots reach water that surface evaporation cannot. That water is not free. The grass, with its roots confined to the top 30 cm, is the first to run short: on day eight its leaves reach a tension of two megapascals at midday and the model's stress factor starts to fall. The forest, drawing on the whole meter, gets there a day later, and over the following three days its stress factor drops from 0.9 to 0.2. Transpiration falls to what the drying soil can supply, and photosynthesis with it. Both covers keep returning water vapor to the air for weeks after the bare soils have gone quiet.</p>
 
 </div>
 
@@ -147,7 +147,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:48px 0;}
 
 <div class="wrap">
 
-<p>Under grass and forest the storm is mostly gone within the month: 44 of the 50 mm went back to the air, 30 to 35 of them through the plants. The more striking number is not in the figure. With no rain at all, the forest column transpires 72 mm in a month and the grass 45 mm, drawn from what the soil held before the storm. Vegetation does not wait for rain; it spends the sponge's reserve. Over the thirty days the forest returned 123 mm to the air, more than twice the storm, and finished the month with 48 mm less in its soil than it started with. This is the everyday physics behind two things that sound like paradoxes: that planting trees can dry the ground beneath them, and that a transpiring canopy stays cooler than dry bare ground on a summer afternoon while drying the soil faster.</p>
+<p>Under grass and forest the storm is mostly gone within the month: 42 to 46 of the 50 mm went back to the air, 30 to 38 of them through the plants. The more striking number is not in the figure. With no rain at all, the forest column transpires 61 mm in a month and the grass 27 mm, drawn from what the soil held before the storm. Vegetation does not wait for rain; it spends the sponge's reserve. Over the thirty days the forest returned 113 mm to the air, more than twice the storm, and finished the month with 36 mm less in its soil than it started with. This is the everyday physics behind two things that sound like paradoxes: that planting trees can dry the ground beneath them, and that a transpiring canopy stays cooler than dry bare ground on a summer afternoon while drying the soil faster.</p>
 
 <h2>One model for the land, from a column to the globe</h2>
 
@@ -166,13 +166,13 @@ soil(; kw...) = Soil.EnergyHydrology{FT}(domain, forcing, toml_dict; retention_p
     runoff = Soil.Runoff.SurfaceRunoff(), bottom_bc = Soil.EnergyWaterFreeDrainage(), kw...)
 bare = soil()
 
-# --- the same soil under a forest: 5 m² of leaves per m² of ground, roots reaching ~1 m
+# --- the same soil under a forest: 5 m² of leaves per m² of ground, roots through the whole meter
 components = (:canopy, :soil, :soilco2)
 surface = obtain_surface_domain(domain)
 LAI = TimeVaryingInput(t -&gt; 5.0)
 canopy = Canopy.CanopyModel{FT}(surface, (; atmos, radiation, ground = ClimaLand.PrognosticGroundConditions{FT}()), LAI, toml_dict;
     prognostic_land_components = components,
-    biomass = Canopy.PrescribedBiomassModel{FT}(surface, LAI, toml_dict; rooting_depth = 1.0, height = 2.0),
+    biomass = Canopy.PrescribedBiomassModel{FT}(surface, LAI, toml_dict; rooting_depth = 0.4, height = 2.0),   # root density ∝ exp(z / rooting_depth)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(surface, toml_dict; retention_model = Canopy.LinearRetentionCurve{FT}(5e-5)),
     photosynthesis = Canopy.FarquharModel{FT}(surface, toml_dict),
     conductance = Canopy.MedlynConductanceModel{FT}(surface, toml_dict))
@@ -195,7 +195,7 @@ out_forest = run(forest, ["swc", "et"])</code></pre>
 <div class="wide">
 <figure>
   <img src="where_does_the_rain_go.png" alt="Output of the script: a heatmap of soil water content for bare loam, day-30 profiles for bare loam and loam with forest, and a time series of water returned to the air.">
-  <figcaption><b>What the script produces.</b> Top right is the take-home in one panel: after a month the bare loam still holds most of what the storm left, as a wet layer between 30 cm and about 1.5 m, to the right of the pre-storm line, because evaporation only dries the top few centimeters. Under the forest the whole profile sits to the left of that line: the roots have taken the storm and more. The bottom panel shows the hourly rhythm behind the daily totals; its rates are hourly means expressed in mm per day, so the afternoon peaks are not daily totals. Change the soil, the leaf area, or the rooting depth, and rerun.</figcaption>
+  <figcaption><b>What the script produces.</b> Top right is the take-home in one panel: after a month the bare loam still holds most of what the storm left, as a wet layer below 30 cm, to the right of the pre-storm line, because evaporation only dries the top few centimeters. Under the forest the whole profile sits to the left of that line: the roots have taken the storm and more. The bottom panel shows the hourly rhythm behind the daily totals; its rates are hourly means expressed in mm per day, so the afternoon peaks are not daily totals. Change the soil, the leaf area, or the rooting depth, and rerun.</figcaption>
 </figure>
 </div>
 
@@ -205,9 +205,9 @@ out_forest = run(forest, ["swc", "et"])</code></pre>
 
 <div class="note">
   <span class="eyebrow">Notes on the setup</span>
-  <p><strong>Weather.</strong> The forcing is idealized so that the five columns differ only in soil and vegetation: a clear-sky July at 38.7 °N with air at 19 to 31 °C, 50 percent relative humidity, a 2 m/s wind, and the sun's path computed for the date; the storm brings 95 percent humidity and overcast skies for its twelve hours. All columns start at a matric potential of −2 m (about −20 kPa) at every depth, with free drainage at 2 m. The no-storm control is the same month with the rain, the humidity spike, and the clouds removed.</p>
+  <p><strong>Weather.</strong> The forcing is idealized so that the five columns differ only in soil and vegetation: a clear-sky July at 38.7 °N with air at 19 to 31 °C, 50 percent relative humidity, a 2 m/s wind, and the sun's path computed for the date; the storm brings 95 percent humidity and overcast skies for its twelve hours. All columns start at a matric potential of −2 m (about −20 kPa) at every depth, with free drainage out of the bottom at 1 m. The no-storm control is the same month with the rain, the humidity spike, and the clouds removed.</p>
   <p><strong>Soils.</strong> Van Genuchten parameters are the textbook values of Carsel and Parrish (1988): sand (porosity 0.43, residual 0.045, α = 14.5 m⁻¹, n = 2.68, Ksat = 8.3 × 10⁻⁵ m/s), loam (0.43, 0.078, 3.6, 1.56, 2.9 × 10⁻⁶) and clay (0.38, 0.068, 0.8, 1.09, 5.6 × 10⁻⁷). The clay's 70 percent runoff follows from the model's infiltration rule, which caps infiltration at what the saturated surface can conduct; field clays with cracks and worm channels admit water faster than that.</p>
-  <p><strong>Plants.</strong> Grass: leaf area index 2, canopy height 0.5 m, root e-folding depth 0.3 m. Forest: leaf area index 5, height 2 m, root e-folding depth 1 m. Root density decays exponentially with depth, so both covers have some roots below those depths. Two choices depart from ClimaLand's defaults. We use the Farquhar photosynthesis model with Medlyn stomatal conductance, under which the moisture-stress factor acts on stomata within the hour; the default P-model applies the same factor through a two-week acclimation of photosynthetic capacity, which suits seasonal simulations but left leaf potentials falling with no stomatal response in a dry-down this short. And we lowered the plant's water storage capacitance to about ten millimeters per megapascal for the forest, because the default lets a model canopy transpire from its own tissue water for weeks. With this value the forest's leaf potential fell by 2.6 MPa over the month, so about 26 mm of its transpiration came from that store; real stands likely hold less, and this part of the model is being revised (<a href="https://github.com/CliMA/ClimaLand.jl/issues/1873">issue 1873</a>). All numbers in this post are model results under these assumptions, not a validation against observations.</p>
+  <p><strong>Plants.</strong> Grass: leaf area index 2, canopy height 0.5 m, root e-folding depth 0.1 m. Forest: leaf area index 5, height 2 m, root e-folding depth 0.4 m. Root density decays exponentially with depth and the profile is not renormalized to the column, so these values put 95 percent of the grass roots in the top 30 cm and 92 percent of the forest roots inside the one-meter column. Two choices depart from ClimaLand's defaults. We use the Farquhar photosynthesis model with Medlyn stomatal conductance, under which the moisture-stress factor acts on stomata within the hour; the default P-model applies the same factor through a two-week acclimation of photosynthetic capacity, which suits seasonal simulations but left leaf potentials falling with no stomatal response in a dry-down this short. And we lowered the plant's water storage capacitance to about ten millimeters per megapascal for the forest, because the default lets a model canopy transpire from its own tissue water for weeks. With this value the forest's leaf potential fell by 2.7 MPa over the month, so about 27 mm of its transpiration came from that store; real stands likely hold less, and this part of the model is being revised (<a href="https://github.com/CliMA/ClimaLand.jl/issues/1873">issue 1873</a>). All numbers in this post are model results under these assumptions, not a validation against observations.</p>
 </div>
 
 <hr>
