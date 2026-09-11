@@ -1,5 +1,7 @@
 # Where does the rain go? One storm on five columns: sand, loam, clay (bare),
 # and loam under grass and under forest. Idealized July weather, 30-day dry-down.
+# Run once with the storm (OUTDIR=out) and once with STORM_MM=0 (OUTDIR=out_control):
+# the difference is the fate of the storm water itself.
 using Dates, Statistics, Serialization
 import ClimaParams as CP
 import ClimaDiagnostics
@@ -22,6 +24,7 @@ CASES = split(get(ENV, "CASES", "sand_bare,loam_bare,clay_bare,loam_grass,loam_f
 OUTDIR = get(ENV, "OUTDIR", "out")
 DT = parse(Float64, get(ENV, "DT", "60"))
 PLANT_A = parse(Float64, get(ENV, "PLANT_A", "5e-5"))
+STORM_MM = parse(Float64, get(ENV, "STORM_MM", "50"))   # 0 gives the no-storm control
 mkpath(OUTDIR)
 
 # ---------------------------------------------------------------- domain
@@ -33,10 +36,10 @@ surface_domain = obtain_surface_domain(domain)
 start_date = DateTime(2010, 7, 1, 6)          # 00:00 local (UTC-6)
 stop_date = start_date + Day(NDAYS)
 hour_of_day(t) = mod(float(t) / 3600, 24)
-STORM_HOURS = 12                              # 50 mm of rain, midnight to noon on day 1
-raining(t) = float(t) < STORM_HOURS * 3600
-precip(t) = raining(t) ? -50e-3 / (STORM_HOURS * 3600) : 0.0  # m/s, negative = downward
-T_air(t) = 298.15 + 6 * sin(2π * (hour_of_day(t) - 9) / 24)  # 22–34 °C, peak 15:00
+STORM_HOURS = 12                              # the storm falls midnight to noon on day 1
+raining(t) = STORM_MM > 0 && float(t) < STORM_HOURS * 3600
+precip(t) = raining(t) ? -STORM_MM * 1e-3 / (STORM_HOURS * 3600) : 0.0  # m/s, negative = downward
+T_air(t) = 298.15 + 6 * sin(2π * (hour_of_day(t) - 9) / 24)  # 19–31 °C, peak 15:00
 RH(t) = raining(t) ? 0.95 : 0.5
 function q_air(t)
     e_sat = TD.saturation_vapor_pressure(thermo_params, T_air(t), TD.Liquid())

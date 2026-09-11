@@ -17,7 +17,7 @@ start_date = DateTime(2010, 7, 1, 6)    # 00:00 local time
 seconds(t) = float(t)                   # simulation time → seconds since start_date
 raining(t) = seconds(t) < 12 * 3600     # 50 mm between midnight and noon on day 1
 precip(t) = raining(t) ? -50e-3 / (12 * 3600) : 0.0
-T_air(t) = 298.15 + 6 * sin(2π * (seconds(t) / 3600 - 9) / 24)   # 22–34 °C, warmest at 15:00
+T_air(t) = 298.15 + 6 * sin(2π * (seconds(t) / 3600 - 9) / 24)   # 19–31 °C, warmest at 15:00
 function q_air(t)                                            # 50 % relative humidity (95 % in the rain)
     e = (raining(t) ? 0.95 : 0.5) * TD.saturation_vapor_pressure(LP.thermodynamic_parameters(params), T_air(t), TD.Liquid())
     return 0.622e / (101325 - 0.378e)

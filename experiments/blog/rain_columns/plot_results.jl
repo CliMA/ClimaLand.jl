@@ -2,10 +2,12 @@ using Serialization, Statistics, Printf
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-RESULTS = get(ENV, "RESULTS", "full/results.jls")
+RESULTS = get(ENV, "RESULTS", "out/results.jls")
+CONTROL = get(ENV, "CONTROL", "out_control/results.jls")   # same cases run with STORM_MM=0
 FIGDIR = get(ENV, "FIGDIR", "figs")
 mkpath(FIGDIR)
 results = deserialize(RESULTS)
+control = deserialize(CONTROL)
 CASES = filter(c -> haskey(results, c), split(get(ENV, "PLOT_CASES", "sand_bare,loam_bare,clay_bare,loam_grass,loam_forest"), ","))
 P_MM = 50.0
 
@@ -35,7 +37,7 @@ struct CaseData
     storage::Vector{Float64}       # mm, column water (θ·dz summed), per hour
     θ0::Float64; lwp::Vector{Float64}; msf::Vector{Float64}; plant_store::Vector{Float64}; rootflux::Vector{Float64}
 end
-function process(name)
+function process(name, results)
     r = results[name]; z = r["z"]; f = faces_from_centers(z); dz = diff(f)
     hours = r["swc_1h_average"].times ./ 3600
     θ = reduce(hcat, r["swc_1h_average"].data)
@@ -60,25 +62,27 @@ function process(name)
     θ0 = θ_vg(soils[soil_of(name)], -2.0)
     CaseData(name, hours, z, dz, θ, runoff, drain, soilevap, trans, storage, θ0, lwp, msf, plant_store, rootflux)
 end
-cases = Dict(c => process(c) for c in CASES)
+cases = Dict(c => process(c, results) for c in CASES)
+ctrl = Dict(c => process(c, control) for c in CASES)
 daily(v) = [sum(v[(24i + 1):(24i + 24)]) for i in 0:(length(v) ÷ 24 - 1)]
 
-# ---- water budget table
-println("case | runoff | drainage | soil evap | transpiration | root uptake | Δplant | ΔS(model) | ΔS(residual)")
+# ---- water budget: totals for the storm run, the no-storm control, and their difference (the storm's own fate)
+totals(d) = (; R = sum(d.runoff), D = sum(d.drain), E = sum(d.soilevap), T = sum(d.trans),
+    ΔS = d.storage[end] - d.θ0 * sum(d.dz) * 1000, Δplant = d.plant_store[end] - d.plant_store[1])
 budget = Dict{String, NamedTuple}()
+println("case          run   | runoff | drainage | soil evap | transp | ΔS soil | Δplant")
 for c in CASES
-    d = cases[c]
-    R, D, E, T = sum(d.runoff), sum(d.drain), sum(d.soilevap), sum(d.trans)
-    S0 = d.θ0 * sum(d.dz) * 1000
-    ΔS_model = d.storage[end] - S0
-    ΔS_resid = P_MM - R - D - E - T
-    Δplant = d.plant_store[end] - d.plant_store[1]; U = sum(d.rootflux)
-    budget[c] = (; R, D, E, T, ΔS = ΔS_resid, ΔS_model, Δplant)
-    @printf("%-12s %6.1f %8.1f %9.1f %13.1f %11.1f %7.1f %10.1f %12.1f\n", c, R, D, E, T, U, Δplant, ΔS_model, ΔS_resid)
+    a, b = totals(cases[c]), totals(ctrl[c])
+    storm = (; R = a.R - b.R, D = a.D - b.D, E = a.E - b.E, T = a.T - b.T, retained = P_MM - (a.R - b.R) - (a.D - b.D) - (a.E - b.E) - (a.T - b.T))
+    budget[c] = (; storm, total = a, control = b)
+    for (tag, x) in (("storm", a), ("control", b))
+        @printf("%-12s %-8s %6.1f %8.1f %9.1f %8.1f %8.1f %7.1f\n", c, tag, x.R, x.D, x.E, x.T, x.ΔS, x.Δplant)
+    end
+    @printf("%-12s %-8s %6.1f %8.1f %9.1f %8.1f   retained %.1f of %.0f\n", "", "storm−ctl", storm.R, storm.D, storm.E, storm.T, storm.retained, P_MM)
 end
 
 # ---- colors
-col = (; runoff = "#4C78A8", drain = "#72B7B2", soilevap = "#E45756", trans = "#54A24B", stored = "#B8B8B8", deficit = "#F58518")
+col = (; runoff = "#4C78A8", drain = "#72B7B2", soilevap = "#E45756", trans = "#54A24B", stored = "#B8B8B8", baseline = "#D9D9D9")
 θcmap = :YlGnBu; θrange = (0.0, 0.45)
 
 # ---- Figure 1: Hovmöller for the three bare soils
@@ -86,8 +90,8 @@ begin
     fig = Figure(size = (1200, 420), fontsize = 15)
     bare = filter(c -> cover_of(c) == "bare", CASES)
     for (i, c) in enumerate(bare)
-        d = cases[c]; b = budget[c]
-        ax = Axis(fig[1, i]; title = @sprintf("%s\nrunoff %.0f mm · drained %.0f mm · evaporated %.0f mm", label(c), b.R, b.D, b.E),
+        d = cases[c]; b = budget[c].storm
+        ax = Axis(fig[1, i]; title = @sprintf("%s\nran off %.1f · evaporated %.1f · retained %.1f mm", label(c), b.R, b.E, b.retained),
             xlabel = "days since the storm", ylabel = i == 1 ? "depth (m)" : "", titlesize = 14)
         heatmap!(ax, d.hours ./ 24, faces_from_centers(d.z), permutedims(d.θ); colormap = θcmap, colorrange = θrange)
         i > 1 && hideydecorations!(ax; grid = false)
@@ -96,33 +100,31 @@ begin
     save(joinpath(FIGDIR, "hovmoller.png"), fig; px_per_unit = 2)
 end
 
-# ---- Figure 2: where did the 50 mm go?
+# ---- Figure 2: where did the storm's water go? (storm run minus no-storm control)
 begin
-    fig = Figure(size = (1000, 440), fontsize = 15)
-    ax = Axis(fig[1, 1]; xlabel = "mm of water (30 days after a 50 mm storm)", yticks = (1:length(CASES), label.(CASES)),
-        title = "Where did the rain go?", yreversed = true)
-    keys_ = (:runoff, :drain, :soilevap, :trans, :stored)
-    names_ = ("surface runoff", "drained below 2 m", "evaporated from soil", "transpired by plants", "still stored in soil")
+    fig = Figure(size = (1000, 480), fontsize = 15)
+    ax = Axis(fig[1, 1]; xlabel = "mm of water, 30 days after the storm", yticks = (1:length(CASES), label.(CASES)),
+        title = "Where did the storm's 50 mm go?", yreversed = true)
+    keys_ = (:R, :D, :E, :T, :retained)
+    names_ = ("surface runoff", "drained below 2 m", "evaporated from soil", "transpired by plants", "still in the soil")
+    colors_ = (col.runoff, col.drain, col.soilevap, col.trans, col.stored)
     for (i, c) in enumerate(CASES)
-        b = budget[c]
-        vals = [b.R, b.D, b.E, b.T, max(b.ΔS, 0.0)]
-        x0 = 0.0
-        for (k, v) in zip(keys_, vals)
-            v > 0 && barplot!(ax, [i], [v]; offset = x0, direction = :x, color = getproperty(col, k), strokewidth = 0.5, strokecolor = :white)
-            x0 += v
+        b = budget[c].storm; x0 = 0.0
+        for (k, cc) in zip(keys_, colors_)
+            v = getproperty(b, k)
+            v > 0.3 && barplot!(ax, [i], [v]; offset = x0, direction = :x, color = cc, strokewidth = 0.5, strokecolor = :white)
+            x0 += max(v, 0.0)
         end
-        if b.ΔS < 0   # plants spent more than the storm delivered
-            barplot!(ax, [i], [b.ΔS]; direction = :x, color = (col.deficit, 0.9), strokewidth = 0.5, strokecolor = :white)
-            lbl = b.Δplant < -1 ? @sprintf("%.0f mm from pre-storm storage\n(%.0f mm of it from the plants' own tissue)", -b.ΔS, -b.Δplant) : @sprintf("%.0f mm from pre-storm\nsoil water", -b.ΔS)
-            text!(ax, b.ΔS - 1.5, i; text = lbl, align = (:right, :center), fontsize = 11)
-        end
+        # what the same column loses in the same month without any storm
+        ctl = budget[c].control
+        lbl = ctl.T > 0.5 ? @sprintf("without the storm it would still lose %.0f mm to the air\n(%.0f mm of it through the plants)", ctl.E + ctl.T, ctl.T) :
+                            @sprintf("without the storm it would still lose %.0f mm to the air", ctl.E + ctl.T)
+        text!(ax, P_MM + 2, i; text = lbl, align = (:left, :center), fontsize = 11, color = :gray30)
     end
-    vlines!(ax, [0.0]; color = :black); vlines!(ax, [P_MM]; color = :black, linestyle = :dash)
-    xlims!(ax, -145, 135)
-    text!(ax, P_MM + 0.5, 0.45; text = "the 50 mm storm", align = (:left, :center), fontsize = 11)
-    elems = [PolyElement(color = getproperty(col, k)) for k in keys_]
-    push!(elems, PolyElement(color = col.deficit)); 
-    Legend(fig[2, 1], elems, [names_..., "drawn from pre-storm storage"]; orientation = :horizontal, nbanks = 2, framevisible = false)
+    vlines!(ax, [0.0, P_MM]; color = :black)
+    xlims!(ax, -2, 108)
+    elems = [PolyElement(color = cc) for cc in colors_]
+    Legend(fig[2, 1], elems, collect(names_); orientation = :horizontal, nbanks = 1, framevisible = false)
     save(joinpath(FIGDIR, "budget.png"), fig; px_per_unit = 2)
 end
 
@@ -137,14 +139,14 @@ begin
     end
     axislegend(ax1; position = :rt, framevisible = false)
     ax2 = Axis(fig[2, 1]; ylabel = "leaf water potential (MPa)", xlabel = "days since the storm")
-    ax3 = Axis(fig[2, 1]; ylabel = "stomatal opening factor (0–1)", yaxisposition = :right)
+    ax3 = Axis(fig[2, 1]; ylabel = "moisture-stress factor (0–1)", yaxisposition = :right)
     hidespines!(ax3); hidexdecorations!(ax3)
     for c in filter(c -> cover_of(c) != "bare", CASES)
         d = cases[c]
         lwp_daymin = [minimum(d.lwp[(24i + 1):(24i + 24)]) for i in 0:(length(d.lwp) ÷ 24 - 1)]
         msf_daymean = [mean(d.msf[(24i + 1):(24i + 24)]) for i in 0:(length(d.msf) ÷ 24 - 1)]
-        lines!(ax2, 1:length(lwp_daymin), lwp_daymin; color = get(cs, c, :black), linewidth = 3, label = "$(label(c)): daily minimum leaf water potential")
-        lines!(ax3, 1:length(msf_daymean), msf_daymean; color = get(cs, c, :black), linewidth = 3, linestyle = :dash, label = "$(label(c)): stomatal factor")
+        lines!(ax2, 1:length(lwp_daymin), lwp_daymin; color = get(cs, c, :black), linewidth = 3, label = "$(label(c)): leaf water potential, daily minimum")
+        lines!(ax3, 1:length(msf_daymean), msf_daymean; color = get(cs, c, :black), linewidth = 3, linestyle = :dash, label = "$(label(c)): moisture-stress factor, daily mean")
     end
     ylims!(ax3, -0.05, 1.05)
     axislegend(ax2; position = :lb, framevisible = false, labelsize = 12)
@@ -165,7 +167,7 @@ function draw_plant!(ax, cover, rooting_depth)
             lines!(ax, [x, x + 0.03 * sign(0.5 - x)], [0.0, 0.18 + 0.05 * sin(20x)]; color = "#7CB342", linewidth = 3)
         end
     end
-    if cover != "bare"   # roots to scale: most roots above the rooting-depth parameter
+    if cover != "bare"   # schematic roots, longer for the deeper rooting-depth parameter
         for (x0, x1, f) in ((0.5, 0.5, 1.0), (0.5, 0.25, 0.65), (0.5, 0.75, 0.7), (0.5, 0.35, 0.4), (0.5, 0.65, 0.5))
             lines!(ax, [x0, x1], [0.0, -rooting_depth * f * 1.5]; color = "#8D6E63", linewidth = 2)
         end
@@ -203,7 +205,7 @@ function animate(path; framerate = 12)
         draw_plant!(ax, cover_of(c), cover_of(c) == "bare" ? 0.0 : plants[cover_of(c)].rooting_depth)
     end
     Colorbar(fig[1, length(CASES) + 1]; colormap = θcmap, colorrange = θrange, label = "soil water content (m³/m³)")
-    Label(fig[2, 1:length(CASES)], "Each column is 2 m of soil. Blue pond = cumulative surface runoff · teal bar = cumulative drainage below 2 m · red arrow = evaporation + transpiration (24 h mean) · roots drawn to scale";
+    Label(fig[2, 1:length(CASES)], "Each column is 2 m of soil. Blue = water that ran off (it has left the column) · teal = drained below 2 m · red arrow = evaporation + transpiration (24 h mean) · roots are schematic";
         fontsize = 12, tellwidth = false)
     hours = cases[CASES[1]].hours
     frames = vcat(1:1:48, 54:6:length(hours))
@@ -218,7 +220,7 @@ function animate(path; framerate = 12)
             R = sum(d.runoff[1:k]) * scale; D = sum(d.drain[1:k]) * scale
             pond[c][] = Point2f[(0, 0), (1, 0), (1, R), (0, R)]
             drainbox[c][] = Point2f[(0.2, -2.05), (0.8, -2.05), (0.8, -2.05 - D), (0.2, -2.05 - D)]
-            rlabel[c][] = R > 0 ? @sprintf("runoff %.0f mm", sum(d.runoff[1:k])) : ""
+            rlabel[c][] = R > 0 ? @sprintf("ran off %.0f mm", sum(d.runoff[1:k])) : ""
             dlabel[c][] = @sprintf("drained %.1f mm", sum(d.drain[1:k]))
             k0 = max(1, k - 23); et24 = sum(d.soilevap[k0:k] .+ d.trans[k0:k]) * 24 / (k - k0 + 1)
             arrow_len[c][] = 0.12 * et24
@@ -226,6 +228,8 @@ function animate(path; framerate = 12)
         end
     end
 end
-animate(joinpath(FIGDIR, "rain_columns.gif"))
-animate(joinpath(FIGDIR, "rain_columns.mp4"))
+if get(ENV, "ANIMATE", "true") == "true"
+    animate(joinpath(FIGDIR, "rain_columns.gif"))
+    animate(joinpath(FIGDIR, "rain_columns.mp4"))
+end
 println("figures written to ", FIGDIR)
