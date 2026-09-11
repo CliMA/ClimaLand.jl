@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bucket · ClimaLand.jl</title><meta name="title" content="Bucket · ClimaLand.jl"/><meta property="og:title" content="Bucket · ClimaLand.jl"/><meta property="twitter:title" content="Bucket · ClimaLand.jl"/><meta name="description" content="Documentation for ClimaLand.jl."/><meta property="og:description" content="Documentation for ClimaLand.jl."/><meta property="twitter:description" content="Documentation for ClimaLand.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="ClimaLand.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">ClimaLand.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Running your first simulation</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorials</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">Running standalone component simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/bucket_tutorial/">Bucket</a></li><li><input class="collapse-toggle" id="menuitem-3-1-2" type="checkbox"/><label class="tocitem" for="menuitem-3-1-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/boundary_conditions/">Boundary conditions</a></li><li><a class="tocitem" href="../../standalone/Soil/richards_equation/">Richards Equation</a></li><li><a class="tocitem" href="../../standalone/Soil/soil_energy_hydrology/">Energy and Hydrology</a></li><li><input class="collapse-toggle" id="menuitem-3-1-2-4" type="checkbox"/><label class="tocitem" for="menuitem-3-1-2-4"><span class="docs-label">Phase Changes</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/freezing_front/">Modeling a freezing front in unsaturated soil</a></li><li><a class="tocitem" href="../../standalone/Soil/phase_change_analytic/">The Stefan problem</a></li></ul></li><li><a class="tocitem" href="../../standalone/Soil/layered_soil/">Layered Soil</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation/">Coarse Sand Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation_gilat_loess/">Gilat Loess Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/sublimation/">Bare soil site</a></li><li><a class="tocitem" href="../../standalone/Soil/changing_soil_parameterizations/">Changing soil parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-1-3" type="checkbox"/><label class="tocitem" for="menuitem-3-1-3"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Canopy/default_canopy/">Default canopy</a></li><li><a class="tocitem" href="../../standalone/Canopy/canopy_tutorial/">Default canopy fluxtower simulation </a></li><li><a class="tocitem" href="../../standalone/Canopy/changing_canopy_parameterizations/">Changing canopy parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-1-4" type="checkbox"/><label class="tocitem" for="menuitem-3-1-4"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Snow/base_tutorial/">Base tutorial</a></li><li><a class="tocitem" href="../../standalone/Snow/data_tutorial/">Data tutorial</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Running Fluxnet simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../integrated/soil_canopy_fluxnet_tutorial/">Canopy and soil</a></li><li><a class="tocitem" href="../../integrated/snowy_land_fluxnet_tutorial/">Canopy, soil, and snow</a></li><li><a class="tocitem" href="../../integrated/changing_snowy_land_parameterizations/">Changing LandModel parameterizations</a></li><li><a class="tocitem" href="../../integrated/fluxnet_data/">Data processing</a></li><li><a class="tocitem" href="../../integrated/fluxnet_vis/">Visualization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3-3"><span class="docs-label">Running global simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li class="is-active"><a class="tocitem" href>Bucket</a></li><li><a class="tocitem" href="../snowy_land/">Snow, soil, canopy</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-4" type="checkbox"/><label class="tocitem" for="menuitem-3-4"><span class="docs-label">Calibrating a ClimaLand model</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../calibration/perfect_model_site_level_calibration/">Single site perfect model</a></li><li><a class="tocitem" href="../../calibration/obs_site_level_calibration/">Single site observations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Running coupled simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/coupled_bucket/">Coupled bucket model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">For model developers</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/model_tutorial/">Intro to standalone models</a></li><li><input class="collapse-toggle" id="menuitem-3-6-2" type="checkbox"/><label class="tocitem" for="menuitem-3-6-2"><span class="docs-label">Intro to multi-component models</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/LSM_single_column_tutorial/">Single column tutorial</a></li><li><a class="tocitem" href="../../integrated/handling_soil_fluxes/">Adjusting boundary conditions for the soil</a></li><li><a class="tocitem" href="../../integrated/handling_snow_fluxes/">Adjusting boundary conditions for the snow</a></li></ul></li><li><a class="tocitem" href="../../standalone/Usage/domain_tutorial/">Intro to ClimaLand Domains</a></li><li><a class="tocitem" href="../../shared_utilities/driver_tutorial/">Intro to forced site-level runs</a></li><li><a class="tocitem" href="../../shared_utilities/timestepping/">Intro to implicit/explicit timestepping</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Model Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">Vegetation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-1-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1-1"><span class="docs-label">Radiative transfer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/beer_model/">Beer model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/twostream_model/">Two-Stream model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-2" type="checkbox"/><label class="tocitem" for="menuitem-4-1-2"><span class="docs-label">Photosynthesis</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/farquhar_model/">Farquhar model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/optimality_model/">Optimality model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-3" type="checkbox"/><label class="tocitem" for="menuitem-4-1-3"><span class="docs-label">Stomatal conductance</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/stomatal_conductance/medlyn_model/">Medlyn model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-4" type="checkbox"/><label class="tocitem" for="menuitem-4-1-4"><span class="docs-label">Plant hydraulics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/plant_hydraulics/van_genuchten_model/">Van Genuchten model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-2-1" type="checkbox"/><label class="tocitem" for="menuitem-4-2-1"><span class="docs-label">Physics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/physics/richards_model/">Richards model</a></li><li><a class="tocitem" href="../../../standalone/pages/soil/physics/energy_model/">Energy+Hydrology model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2-2"><span class="docs-label">Biogeochemistry</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/biogeochemistry/DAMM_model/">DAMM model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/><label class="tocitem" for="menuitem-4-3"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/snow/snow_model/">Snow model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">Additional resources</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../model_structure/">Model structure</a></li><li><a class="tocitem" href="../../../repo_structure/">Repository structure</a></li><li><input class="collapse-toggle" id="menuitem-5-3" type="checkbox"/><label class="tocitem" for="menuitem-5-3"><span class="docs-label">Analyzing model output</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-5-3-1" type="checkbox"/><label class="tocitem" for="menuitem-5-3-1"><span class="docs-label">Diagnostics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../diagnostics/users_diagnostics/">For users</a></li><li><a class="tocitem" href="../../../diagnostics/developers_diagnostics/">For developers</a></li><li><a class="tocitem" href="../../../diagnostics/available_diagnostics/">Available diagnostics</a></li></ul></li><li><a class="tocitem" href="../../../leaderboard/leaderboard/">Leaderboard</a></li></ul></li><li><a class="tocitem" href="../../../architectures/">Running on GPU or with MPI</a></li><li><a class="tocitem" href="../../../calibration/">Calibration</a></li><li><a class="tocitem" href="../../../restarts/">Restarting a simulation</a></li><li><input class="collapse-toggle" id="menuitem-5-7" type="checkbox"/><label class="tocitem" for="menuitem-5-7"><span class="docs-label">Software utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../itime/">ITime type</a></li><li><a class="tocitem" href="../../../shared_utilities/">Shared utilities</a></li></ul></li><li><a class="tocitem" href="../../../physical_units/">Physical units</a></li><li><a class="tocitem" href="../../../julia/">Julia background</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">APIs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1" type="checkbox"/><label class="tocitem" for="menuitem-6-1"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/Soil/">Soil Energy and Hydrology</a></li><li><a class="tocitem" href="../../../APIs/SoilBiogeochemistry/">Soil Biogeochemistry</a></li><li><a class="tocitem" href="../../../APIs/SoilAlbedo/">Soil Albedo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/canopy/Canopy/">Canopy Models</a></li><li><a class="tocitem" href="../../../APIs/canopy/PlantHydraulics/">Plant Hydraulics</a></li><li><a class="tocitem" href="../../../APIs/canopy/Photosynthesis/">Canopy Photosynthesis</a></li><li><a class="tocitem" href="../../../APIs/canopy/RadiativeTransfer/">Canopy Radiative Transfer</a></li><li><a class="tocitem" href="../../../APIs/canopy/CanopyEnergy/">Canopy Energy</a></li><li><a class="tocitem" href="../../../APIs/canopy/StomatalConductance/">Canopy Stomatal Conductance</a></li><li><a class="tocitem" href="../../../APIs/canopy/AutotrophicRespiration/">Canopy Autotrophic Respiration</a></li></ul></li><li><a class="tocitem" href="../../../APIs/SurfaceWater/">Surface Water Models</a></li><li><a class="tocitem" href="../../../APIs/Bucket/">Bucket Model</a></li><li><a class="tocitem" href="../../../APIs/Snow/">Snow Model</a></li><li><a class="tocitem" href="../../../APIs/ClimaLand/">Integrated Models</a></li><li><input class="collapse-toggle" id="menuitem-6-7" type="checkbox"/><label class="tocitem" for="menuitem-6-7"><span class="docs-label">Shared Utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/AbstractModels/">Abstract Models and Functions</a></li><li><a class="tocitem" href="../../../APIs/Simulations/">Simulations</a></li><li><a class="tocitem" href="../../../APIs/Domains/">Domains</a></li><li><a class="tocitem" href="../../../APIs/Drivers/">Drivers</a></li></ul></li><li><a class="tocitem" href="../../../APIs/parameters/">Parameters</a></li></ul></li><li><a class="tocitem" href="../../../contributing/">Contributor guide</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Running global simulations</a></li><li class="is-active"><a href>Bucket</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bucket</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl/../../../.." title="View source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Global-bucket-run"><a class="docs-heading-anchor" href="#Global-bucket-run">Global bucket run</a><a id="Global-bucket-run-1"></a><a class="docs-heading-anchor-permalink" href="#Global-bucket-run" title="Permalink"></a></h1><p>The code sets up and runs the bucket model  on a spherical domain, using ERA5 data.</p><p>First we import a lot of packages:</p><pre><code class="language-julia hljs">import ClimaComms
+using ClimaCore
+using ClimaUtilities
+import Interpolations
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+ClimaComms.@import_required_backends
+import ClimaTimeSteppers as CTS
+import ClimaParams as CP
+using ClimaLand.Bucket:
+    BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
+import ClimaLand
+import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
+using Dates
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+import ClimaLand.LandSimVis as LandSimVis;</code></pre><p>Set the simulation float type, determine the context (MPI or on a single node), and device type. Create a default output directory for diagnostics.</p><pre><code class="language-julia hljs">const FT = Float64;
+context = ClimaComms.context()
+ClimaComms.init(context)
+device = ClimaComms.device()
+device_suffix = device isa ClimaComms.CPUSingleThreaded ? &quot;cpu&quot; : &quot;gpu&quot;
+root_path = &quot;bucket_longrun_$(device_suffix)&quot;
+diagnostics_outdir = joinpath(root_path, &quot;global_diagnostics&quot;)
+outdir =
+    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir);</code></pre><p>Set timestep, start<em>date, stop</em>date:</p><pre><code class="language-julia hljs">Δt = 900.0
+start_date = DateTime(2008)
+stop_date = DateTime(2009);</code></pre><p>Create the domain - this is intentionally low resolution, about 4.5 degrees x 4.5 degrees, to run quickly when making the documentation on CPU.</p><pre><code class="language-julia hljs">nelements = (20, 7)
+depth = FT(3.5)
+dz_tuple = FT.((1.0, 0.05))
+domain =
+    ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple);</code></pre><p>Parameters:</p><pre><code class="language-julia hljs">earth_param_set = LP.LandParameters(FT)
+α_snow = FT(0.8)
+albedo = PrescribedBaregroundAlbedo{FT}(α_snow, domain.space.surface)
+bucket_parameters = BucketModelParameters(
+    FT;
+    albedo,
+    σS_c = FT(0.2),
+    W_f = FT(0.2),
+    z_0m = FT(1e-3),
+    z_0b = FT(1e-3),
+    κ_soil = FT(1.5),
+    ρc_soil = FT(2e6),
+    τc = FT(float(Δt)),
+);</code></pre><p>Low-resolution forcing data from ERA5 is used here, but high-resolution should be used for production runs.</p><pre><code class="language-julia hljs">era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
+    context,
+    lowres = true,
+)
+atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    era5_ncdata_path,
+    domain.space.surface,
+    start_date,
+    earth_param_set,
+    FT;
+    max_wind_speed = 25.0,
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    regridder_type = :InterpolationsRegridder,
+);</code></pre><p>Make the model:</p><pre><code class="language-julia hljs">bucket = BucketModel(
+    parameters = bucket_parameters,
+    domain = domain,
+    atmosphere = atmos,
+    radiation = radiation,
+);</code></pre><p>Create a function which sets the initial conditions. This should have the argument structure (Y,p,t, model) in order to be used by the <code>LandSimulation</code> struct, below:</p><pre><code class="language-julia hljs">function set_ic!(Y, p, t, bucket)
+    coords = ClimaCore.Fields.coordinate_field(Y.bucket.T)
+    T_sfc_0 = 271.0
+    @. Y.bucket.T = T_sfc_0 + 40 * cosd(coords.lat)^4
+    Y.bucket.W .= 0.15
+    Y.bucket.Ws .= 0.0
+    Y.bucket.σS .= 0.0
+end</code></pre><pre><code class="nohighlight hljs">set_ic! (generic function with 1 method)</code></pre><p>Define timestepper and ODE algorithm</p><pre><code class="language-julia hljs">timestepper = CTS.RK4()
+timestepper = CTS.ExplicitAlgorithm(timestepper);</code></pre><p>Create the simulation and solve it:</p><pre><code class="language-julia hljs">simulation = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    bucket;
+    set_ic!,
+    timestepper,
+    outdir,
+);
+
+solve!(simulation);</code></pre><pre><code class="nohighlight hljs">┌ Info: Progress
+│   simulation_time = &quot;1 week, 3 days&quot;
+│   n_steps_completed = 1000
+│   wall_time_per_step = &quot;0 seconds&quot;
+│   wall_time_total = &quot;0 seconds&quot;
+│   wall_time_remaining = &quot;0 seconds&quot;
+│   wall_time_spent = &quot;0 seconds&quot;
+│   percent_complete = &quot;2.8%&quot;
+│   estimated_sypd = &quot;Inf&quot;
+│   date_now = 2025-09-17T19:44:27.342
+└   estimated_finish_date = 2025-09-17T19:44:27.342
+┌ Info: Progress
+│   simulation_time = &quot;2 weeks, 6 days&quot;
+│   n_steps_completed = 2000
+│   wall_time_per_step = &quot;0 seconds&quot;
+│   wall_time_total = &quot;0 seconds&quot;
+│   wall_time_remaining = &quot;0 seconds&quot;
+│   wall_time_spent = &quot;0 seconds&quot;
+│   percent_complete = &quot;5.7%&quot;
+│   estimated_sypd = &quot;Inf&quot;
+│   date_now = 2025-09-17T19:44:38.942
+└   estimated_finish_date = 2025-09-17T19:44:38.942
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;4 weeks, 3 days&quot;
+│   n_steps_completed = 3000
+│   wall_time_per_step = &quot;23 milliseconds, 805 microseconds&quot;
+│   wall_time_total = &quot;13 minutes, 56 seconds&quot;
+│   wall_time_remaining = &quot;12 minutes, 45 seconds&quot;
+│   wall_time_spent = &quot;1 minute, 11 seconds&quot;
+│   percent_complete = &quot;8.5%&quot;
+│   estimated_sypd = &quot;103.51&quot;
+│   date_now = 2025-09-17T19:45:14.935
+└   estimated_finish_date = 2025-09-17T19:58:00.935
+┌ Info: Progress
+│   simulation_time = &quot;5 weeks, 6 days&quot;
+│   n_steps_completed = 4000
+│   wall_time_per_step = &quot;21 milliseconds, 405 nanoseconds&quot;
+│   wall_time_total = &quot;12 minutes, 17 seconds&quot;
+│   wall_time_remaining = &quot;10 minutes, 53 seconds&quot;
+│   wall_time_spent = &quot;1 minute, 24 seconds&quot;
+│   percent_complete = &quot;11.4%&quot;
+│   estimated_sypd = &quot;117.334&quot;
+│   date_now = 2025-09-17T19:45:27.237
+└   estimated_finish_date = 2025-09-17T19:56:21.237
+┌ Info: Progress
+│   simulation_time = &quot;7 weeks, 3 days&quot;
+│   n_steps_completed = 5000
+│   wall_time_per_step = &quot;19 milliseconds, 264 microseconds&quot;
+│   wall_time_total = &quot;11 minutes, 16 seconds&quot;
+│   wall_time_remaining = &quot;9 minutes, 40 seconds&quot;
+│   wall_time_spent = &quot;1 minute, 36 seconds&quot;
+│   percent_complete = &quot;14.2%&quot;
+│   estimated_sypd = &quot;127.905&quot;
+│   date_now = 2025-09-17T19:45:39.559
+└   estimated_finish_date = 2025-09-17T19:55:20.559
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;8 weeks, 6 days&quot;
+│   n_steps_completed = 6000
+│   wall_time_per_step = &quot;18 milliseconds, 217 microseconds&quot;
+│   wall_time_total = &quot;10 minutes, 40 seconds&quot;
+│   wall_time_remaining = &quot;8 minutes, 50 seconds&quot;
+│   wall_time_spent = &quot;1 minute, 49 seconds&quot;
+│   percent_complete = &quot;17.1%&quot;
+│   estimated_sypd = &quot;135.256&quot;
+│   date_now = 2025-09-17T19:45:52.541
+└   estimated_finish_date = 2025-09-17T19:54:43.541
+┌ Info: Progress
+│   simulation_time = &quot;10 weeks, 2 days&quot;
+│   n_steps_completed = 7000
+│   wall_time_per_step = &quot;17 milliseconds, 404 microseconds&quot;
+│   wall_time_total = &quot;10 minutes, 11 seconds&quot;
+│   wall_time_remaining = &quot;8 minutes, 9 seconds&quot;
+│   wall_time_spent = &quot;2 minutes, 1 second&quot;
+│   percent_complete = &quot;19.9%&quot;
+│   estimated_sypd = &quot;141.574&quot;
+│   date_now = 2025-09-17T19:46:05.069
+└   estimated_finish_date = 2025-09-17T19:54:15.069
+┌ Info: Progress
+│   simulation_time = &quot;11 weeks, 6 days&quot;
+│   n_steps_completed = 8000
+│   wall_time_per_step = &quot;16 milliseconds, 815 microseconds&quot;
+│   wall_time_total = &quot;9 minutes, 50 seconds&quot;
+│   wall_time_remaining = &quot;7 minutes, 36 seconds&quot;
+│   wall_time_spent = &quot;2 minutes, 14 seconds&quot;
+│   percent_complete = &quot;22.8%&quot;
+│   estimated_sypd = &quot;146.538&quot;
+│   date_now = 2025-09-17T19:46:17.757
+└   estimated_finish_date = 2025-09-17T19:53:54.757
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;13 weeks, 2 days&quot;
+│   n_steps_completed = 9000
+│   wall_time_per_step = &quot;16 milliseconds, 355 microseconds&quot;
+│   wall_time_total = &quot;9 minutes, 34 seconds&quot;
+│   wall_time_remaining = &quot;7 minutes, 7 seconds&quot;
+│   wall_time_spent = &quot;2 minutes, 27 seconds&quot;
+│   percent_complete = &quot;25.6%&quot;
+│   estimated_sypd = &quot;150.661&quot;
+│   date_now = 2025-09-17T19:46:30.430
+└   estimated_finish_date = 2025-09-17T19:53:38.430
+┌ Info: Progress
+│   simulation_time = &quot;14 weeks, 6 days&quot;
+│   n_steps_completed = 10000
+│   wall_time_per_step = &quot;16 milliseconds, 3 microseconds&quot;
+│   wall_time_total = &quot;9 minutes, 22 seconds&quot;
+│   wall_time_remaining = &quot;6 minutes, 42 seconds&quot;
+│   wall_time_spent = &quot;2 minutes, 40 seconds&quot;
+│   percent_complete = &quot;28.5%&quot;
+│   estimated_sypd = &quot;153.967&quot;
+│   date_now = 2025-09-17T19:46:43.274
+└   estimated_finish_date = 2025-09-17T19:53:26.274
+┌ Info: Progress
+│   simulation_time = &quot;16 weeks, 2 days&quot;
+│   n_steps_completed = 11000
+│   wall_time_per_step = &quot;15 milliseconds, 718 microseconds&quot;
+│   wall_time_total = &quot;9 minutes, 12 seconds&quot;
+│   wall_time_remaining = &quot;6 minutes, 19 seconds&quot;
+│   wall_time_spent = &quot;2 minutes, 52 seconds&quot;
+│   percent_complete = &quot;31.3%&quot;
+│   estimated_sypd = &quot;156.765&quot;
+│   date_now = 2025-09-17T19:46:56.135
+└   estimated_finish_date = 2025-09-17T19:53:16.135
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;17 weeks, 6 days&quot;
+│   n_steps_completed = 12000
+│   wall_time_per_step = &quot;15 milliseconds, 516 microseconds&quot;
+│   wall_time_total = &quot;9 minutes, 5 seconds&quot;
+│   wall_time_remaining = &quot;5 minutes, 58 seconds&quot;
+│   wall_time_spent = &quot;3 minutes, 6 seconds&quot;
+│   percent_complete = &quot;34.2%&quot;
+│   estimated_sypd = &quot;158.808&quot;
+│   date_now = 2025-09-17T19:47:09.427
+└   estimated_finish_date = 2025-09-17T19:53:08.427
+┌ Info: Progress
+│   simulation_time = &quot;19 weeks, 2 days&quot;
+│   n_steps_completed = 13000
+│   wall_time_per_step = &quot;15 milliseconds, 358 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 59 seconds&quot;
+│   wall_time_remaining = &quot;5 minutes, 39 seconds&quot;
+│   wall_time_spent = &quot;3 minutes, 19 seconds&quot;
+│   percent_complete = &quot;37.0%&quot;
+│   estimated_sypd = &quot;160.437&quot;
+│   date_now = 2025-09-17T19:47:22.895
+└   estimated_finish_date = 2025-09-17T19:53:02.895
+┌ Info: Progress
+│   simulation_time = &quot;20 weeks, 5 days&quot;
+│   n_steps_completed = 14000
+│   wall_time_per_step = &quot;15 milliseconds, 229 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 55 seconds&quot;
+│   wall_time_remaining = &quot;5 minutes, 21 seconds&quot;
+│   wall_time_spent = &quot;3 minutes, 33 seconds&quot;
+│   percent_complete = &quot;39.8%&quot;
+│   estimated_sypd = &quot;161.794&quot;
+│   date_now = 2025-09-17T19:47:36.450
+└   estimated_finish_date = 2025-09-17T19:52:58.450
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;22 weeks, 2 days&quot;
+│   n_steps_completed = 15000
+│   wall_time_per_step = &quot;15 milliseconds, 116 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 51 seconds&quot;
+│   wall_time_remaining = &quot;5 minutes, 4 seconds&quot;
+│   wall_time_spent = &quot;3 minutes, 46 seconds&quot;
+│   percent_complete = &quot;42.7%&quot;
+│   estimated_sypd = &quot;163.01&quot;
+│   date_now = 2025-09-17T19:47:49.975
+└   estimated_finish_date = 2025-09-17T19:52:54.975
+┌ Info: Progress
+│   simulation_time = &quot;23 weeks, 5 days&quot;
+│   n_steps_completed = 16000
+│   wall_time_per_step = &quot;15 milliseconds, 11 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 47 seconds&quot;
+│   wall_time_remaining = &quot;4 minutes, 47 seconds&quot;
+│   wall_time_spent = &quot;4 minutes, 189 milliseconds&quot;
+│   percent_complete = &quot;45.5%&quot;
+│   estimated_sypd = &quot;164.141&quot;
+│   date_now = 2025-09-17T19:48:03.425
+└   estimated_finish_date = 2025-09-17T19:52:51.425
+┌ Info: Progress
+│   simulation_time = &quot;25 weeks, 2 days&quot;
+│   n_steps_completed = 17000
+│   wall_time_per_step = &quot;14 milliseconds, 920 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 44 seconds&quot;
+│   wall_time_remaining = &quot;4 minutes, 30 seconds&quot;
+│   wall_time_spent = &quot;4 minutes, 13 seconds&quot;
+│   percent_complete = &quot;48.4%&quot;
+│   estimated_sypd = &quot;165.142&quot;
+│   date_now = 2025-09-17T19:48:16.890
+└   estimated_finish_date = 2025-09-17T19:52:47.890
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;26 weeks, 5 days&quot;
+│   n_steps_completed = 18000
+│   wall_time_per_step = &quot;14 milliseconds, 846 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 41 seconds&quot;
+│   wall_time_remaining = &quot;4 minutes, 14 seconds&quot;
+│   wall_time_spent = &quot;4 minutes, 27 seconds&quot;
+│   percent_complete = &quot;51.2%&quot;
+│   estimated_sypd = &quot;165.966&quot;
+│   date_now = 2025-09-17T19:48:30.477
+└   estimated_finish_date = 2025-09-17T19:52:45.477
+┌ Info: Progress
+│   simulation_time = &quot;28 weeks, 1 day&quot;
+│   n_steps_completed = 19000
+│   wall_time_per_step = &quot;14 milliseconds, 776 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 39 seconds&quot;
+│   wall_time_remaining = &quot;3 minutes, 58 seconds&quot;
+│   wall_time_spent = &quot;4 minutes, 40 seconds&quot;
+│   percent_complete = &quot;54.1%&quot;
+│   estimated_sypd = &quot;166.759&quot;
+│   date_now = 2025-09-17T19:48:43.983
+└   estimated_finish_date = 2025-09-17T19:52:42.983
+┌ Info: Progress
+│   simulation_time = &quot;29 weeks, 5 days&quot;
+│   n_steps_completed = 20000
+│   wall_time_per_step = &quot;14 milliseconds, 707 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 36 seconds&quot;
+│   wall_time_remaining = &quot;3 minutes, 42 seconds&quot;
+│   wall_time_spent = &quot;4 minutes, 54 seconds&quot;
+│   percent_complete = &quot;56.9%&quot;
+│   estimated_sypd = &quot;167.535&quot;
+│   date_now = 2025-09-17T19:48:57.390
+└   estimated_finish_date = 2025-09-17T19:52:40.390
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;31 weeks, 1 day&quot;
+│   n_steps_completed = 21000
+│   wall_time_per_step = &quot;14 milliseconds, 639 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 34 seconds&quot;
+│   wall_time_remaining = &quot;3 minutes, 26 seconds&quot;
+│   wall_time_spent = &quot;5 minutes, 7 seconds&quot;
+│   percent_complete = &quot;59.8%&quot;
+│   estimated_sypd = &quot;168.317&quot;
+│   date_now = 2025-09-17T19:49:10.663
+└   estimated_finish_date = 2025-09-17T19:52:37.663
+┌ Info: Progress
+│   simulation_time = &quot;32 weeks, 5 days&quot;
+│   n_steps_completed = 22000
+│   wall_time_per_step = &quot;14 milliseconds, 587 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 32 seconds&quot;
+│   wall_time_remaining = &quot;3 minutes, 11 seconds&quot;
+│   wall_time_spent = &quot;5 minutes, 20 seconds&quot;
+│   percent_complete = &quot;62.6%&quot;
+│   estimated_sypd = &quot;168.922&quot;
+│   date_now = 2025-09-17T19:49:24.149
+└   estimated_finish_date = 2025-09-17T19:52:36.149
+┌ Info: Progress
+│   simulation_time = &quot;34 weeks, 1 day&quot;
+│   n_steps_completed = 23000
+│   wall_time_per_step = &quot;14 milliseconds, 531 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 30 seconds&quot;
+│   wall_time_remaining = &quot;2 minutes, 56 seconds&quot;
+│   wall_time_spent = &quot;5 minutes, 34 seconds&quot;
+│   percent_complete = &quot;65.5%&quot;
+│   estimated_sypd = &quot;169.57&quot;
+│   date_now = 2025-09-17T19:49:37.454
+└   estimated_finish_date = 2025-09-17T19:52:34.454
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;35 weeks, 5 days&quot;
+│   n_steps_completed = 24000
+│   wall_time_per_step = &quot;14 milliseconds, 487 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 29 seconds&quot;
+│   wall_time_remaining = &quot;2 minutes, 41 seconds&quot;
+│   wall_time_spent = &quot;5 minutes, 47 seconds&quot;
+│   percent_complete = &quot;68.3%&quot;
+│   estimated_sypd = &quot;170.077&quot;
+│   date_now = 2025-09-17T19:49:50.946
+└   estimated_finish_date = 2025-09-17T19:52:32.946
+┌ Info: Progress
+│   simulation_time = &quot;37 weeks, 1 day&quot;
+│   n_steps_completed = 25000
+│   wall_time_per_step = &quot;14 milliseconds, 449 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 27 seconds&quot;
+│   wall_time_remaining = &quot;2 minutes, 26 seconds&quot;
+│   wall_time_spent = &quot;6 minutes, 1 second&quot;
+│   percent_complete = &quot;71.2%&quot;
+│   estimated_sypd = &quot;170.533&quot;
+│   date_now = 2025-09-17T19:50:04.466
+└   estimated_finish_date = 2025-09-17T19:52:31.466
+┌ Info: Progress
+│   simulation_time = &quot;38 weeks, 4 days&quot;
+│   n_steps_completed = 26000
+│   wall_time_per_step = &quot;14 milliseconds, 399 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 25 seconds&quot;
+│   wall_time_remaining = &quot;2 minutes, 11 seconds&quot;
+│   wall_time_spent = &quot;6 minutes, 14 seconds&quot;
+│   percent_complete = &quot;74.0%&quot;
+│   estimated_sypd = &quot;171.117&quot;
+│   date_now = 2025-09-17T19:50:17.632
+└   estimated_finish_date = 2025-09-17T19:52:29.632
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;40 weeks, 1 day&quot;
+│   n_steps_completed = 27000
+│   wall_time_per_step = &quot;14 milliseconds, 341 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 23 seconds&quot;
+│   wall_time_remaining = &quot;1 minute, 56 seconds&quot;
+│   wall_time_spent = &quot;6 minutes, 27 seconds&quot;
+│   percent_complete = &quot;76.8%&quot;
+│   estimated_sypd = &quot;171.815&quot;
+│   date_now = 2025-09-17T19:50:30.453
+└   estimated_finish_date = 2025-09-17T19:52:27.453
+┌ Info: Progress
+│   simulation_time = &quot;41 weeks, 4 days&quot;
+│   n_steps_completed = 28000
+│   wall_time_per_step = &quot;14 milliseconds, 283 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 21 seconds&quot;
+│   wall_time_remaining = &quot;1 minute, 41 seconds&quot;
+│   wall_time_spent = &quot;6 minutes, 39 seconds&quot;
+│   percent_complete = &quot;79.7%&quot;
+│   estimated_sypd = &quot;172.513&quot;
+│   date_now = 2025-09-17T19:50:43.169
+└   estimated_finish_date = 2025-09-17T19:52:25.169
+┌ Info: Progress
+│   simulation_time = &quot;43 weeks, 1 day&quot;
+│   n_steps_completed = 29000
+│   wall_time_per_step = &quot;14 milliseconds, 219 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 19 seconds&quot;
+│   wall_time_remaining = &quot;1 minute, 27 seconds&quot;
+│   wall_time_spent = &quot;6 minutes, 52 seconds&quot;
+│   percent_complete = &quot;82.5%&quot;
+│   estimated_sypd = &quot;173.286&quot;
+│   date_now = 2025-09-17T19:50:55.604
+└   estimated_finish_date = 2025-09-17T19:52:23.604
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;44 weeks, 4 days&quot;
+│   n_steps_completed = 30000
+│   wall_time_per_step = &quot;14 milliseconds, 171 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 17 seconds&quot;
+│   wall_time_remaining = &quot;1 minute, 12 seconds&quot;
+│   wall_time_spent = &quot;7 minutes, 5 seconds&quot;
+│   percent_complete = &quot;85.4%&quot;
+│   estimated_sypd = &quot;173.876&quot;
+│   date_now = 2025-09-17T19:51:08.377
+└   estimated_finish_date = 2025-09-17T19:52:21.377
+┌ Info: Progress
+│   simulation_time = &quot;46 weeks, 22 hours&quot;
+│   n_steps_completed = 31000
+│   wall_time_per_step = &quot;14 milliseconds, 109 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 15 seconds&quot;
+│   wall_time_remaining = &quot;58 seconds, 355 milliseconds&quot;
+│   wall_time_spent = &quot;7 minutes, 17 seconds&quot;
+│   percent_complete = &quot;88.2%&quot;
+│   estimated_sypd = &quot;174.643&quot;
+│   date_now = 2025-09-17T19:51:20.619
+└   estimated_finish_date = 2025-09-17T19:52:19.619
+┌ Info: Progress
+│   simulation_time = &quot;47 weeks, 4 days&quot;
+│   n_steps_completed = 32000
+│   wall_time_per_step = &quot;14 milliseconds, 37 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 13 seconds&quot;
+│   wall_time_remaining = &quot;44 seconds, 22 milliseconds&quot;
+│   wall_time_spent = &quot;7 minutes, 29 seconds&quot;
+│   percent_complete = &quot;91.1%&quot;
+│   estimated_sypd = &quot;175.532&quot;
+│   date_now = 2025-09-17T19:51:32.441
+└   estimated_finish_date = 2025-09-17T19:52:17.441
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+┌ Info: Progress
+│   simulation_time = &quot;49 weeks, 18 hours&quot;
+│   n_steps_completed = 33000
+│   wall_time_per_step = &quot;13 milliseconds, 976 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 11 seconds&quot;
+│   wall_time_remaining = &quot;29 seconds, 854 milliseconds&quot;
+│   wall_time_spent = &quot;7 minutes, 41 seconds&quot;
+│   percent_complete = &quot;93.9%&quot;
+│   estimated_sypd = &quot;176.295&quot;
+│   date_now = 2025-09-17T19:51:44.475
+└   estimated_finish_date = 2025-09-17T19:52:14.475
+┌ Info: Progress
+│   simulation_time = &quot;50 weeks, 4 days&quot;
+│   n_steps_completed = 34000
+│   wall_time_per_step = &quot;13 milliseconds, 920 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 9 seconds&quot;
+│   wall_time_remaining = &quot;15 seconds, 814 milliseconds&quot;
+│   wall_time_spent = &quot;7 minutes, 53 seconds&quot;
+│   percent_complete = &quot;96.8%&quot;
+│   estimated_sypd = &quot;177.005&quot;
+│   date_now = 2025-09-17T19:51:56.544
+└   estimated_finish_date = 2025-09-17T19:52:12.544
+┌ Info: Progress
+│   simulation_time = &quot;52 weeks, 14 hours&quot;
+│   n_steps_completed = 35000
+│   wall_time_per_step = &quot;13 milliseconds, 865 microseconds&quot;
+│   wall_time_total = &quot;8 minutes, 7 seconds&quot;
+│   wall_time_remaining = &quot;1 second, 885 milliseconds&quot;
+│   wall_time_spent = &quot;8 minutes, 5 seconds&quot;
+│   percent_complete = &quot;99.6%&quot;
+│   estimated_sypd = &quot;177.715&quot;
+│   date_now = 2025-09-17T19:52:08.519
+└   estimated_finish_date = 2025-09-17T19:52:10.519
+[ Info: Checking NaNs in bucket
+[ Info: Checking NaNs in W
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in Ws
+[ Info: Checking NaNs in σS
+</code></pre><p>Make some plots:</p><pre><code class="language-julia hljs">short_names = [&quot;lhf&quot;, &quot;shf&quot;, &quot;wsoil&quot;]
+
+LandSimVis.make_annual_timeseries(
+    simulation;
+    savedir = &quot;.&quot;,
+    short_names,
+    plot_stem_name = &quot;bucket_annual_timeseries&quot;,
+)</code></pre><p><img src="../shf_bucket_annual_timeseries.png" alt/> <img src="../lhf_bucket_annual_timeseries.png" alt/> <img src="../wsoil_bucket_annual_timeseries.png" alt/></p><pre><code class="language-julia hljs">LandSimVis.make_heatmaps(
+    simulation;
+    savedir = &quot;.&quot;,
+    short_names,
+    date = stop_date,
+    plot_stem_name = &quot;bucket_heatmap&quot;,
+)</code></pre><p><img src="shf_bucket_heatmap.png" alt/> <img src="lhf_bucket_heatmap.png" alt/> <img src="wsoil_bucket_heatmap.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../integrated/fluxnet_vis/">« Visualization</a><a class="docs-footer-nextpage" href="../snowy_land/">Snow, soil, canopy »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 17 September 2025 20:13">Wednesday 17 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
