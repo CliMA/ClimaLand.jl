@@ -154,8 +154,8 @@ end
 # Each panel: the soil column colored by water content (storm run), and the fate of the storm's own water as
 # cumulative bars (storm run minus no-storm control): ran off, evaporated, transpired above the surface, drained
 # below it, and a gauge inside the column for what is still stored, all on one scale.
-# Root lengths mark the 20th to 95th percentiles of the exponential root profile.
-root_quantiles(rd) = [min(-rd * log(1 - q), DEPTH) for q in (0.2, 0.4, 0.6, 0.8, 0.95)]
+# Root lengths mark the 20th to 90th percentiles of the exponential root profile.
+root_quantiles(rd) = [min(-rd * log(1 - q), DEPTH) for q in (0.2, 0.4, 0.6, 0.75, 0.9)]
 function draw_plant!(ax, cover, rooting_depth)
     if cover == "forest"
         x = 0.8
@@ -177,8 +177,8 @@ function draw_plant!(ax, cover, rooting_depth)
     end
 end
 
-const BARS = ((:runoff, "ran off", col.runoff, 0.03), (:soilevap, "evaporated", col.soilevap, 0.22), (:trans, "transpired", col.trans, 0.41))
-const BARW = 0.12
+const BARS = ((:runoff, "ran off", col.runoff, 0.02), (:soilevap, "evaporated", col.soilevap, 0.24), (:trans, "transpired", col.trans, 0.46))
+const BARW = 0.1
 function build_animation()
     fig = Figure(size = (1250, 700), fontsize = 15, backgroundcolor = :white)
     title = Observable("")
@@ -221,26 +221,26 @@ function build_animation()
         draw_plant!(ax, cover_of(c), cover_of(c) == "bare" ? 0.0 : plants[cover_of(c)].rooting_depth)
     end
     Colorbar(fig[1, length(CASES) + 1]; colormap = θcmap, colorrange = θrange, label = "soil water content (m³/m³)")
-    Label(fig[2, 1:length(CASES)], @sprintf("%.0f m of soil per column, colored by water content. Bars follow the storm's own 50 mm (this run minus the same column without the storm), cumulative and on one scale: ran off (blue), evaporated (red), transpired (green), drained out of the bottom (teal), still stored in the soil (gray). Roots mark the 20th–95th percentiles of the root profile.", DEPTH);
+    elems = [PolyElement(color = cc) for cc in (col.runoff, col.soilevap, col.trans, "#72B7B2", col.stored)]
+    Legend(fig[2, 1:length(CASES)], elems, ["ran off", "evaporated from the soil", "transpired by the plants", "drained out of the bottom", "still stored in the soil"];
+        orientation = :horizontal, framevisible = false, labelsize = 13, tellwidth = false)
+    Label(fig[3, 1:length(CASES)], @sprintf("%.0f m of soil per column, colored by water content. The bars follow the storm's own 50 mm (this run minus the same column without the storm), cumulative and on one scale. Roots mark the 20th–90th percentiles of the root profile.", DEPTH);
         fontsize = 11, tellwidth = false, word_wrap = true)
     hours = cases[CASES[1]].hours
     function update!(k)
         h = hours[k]; day = floor(Int, (h - 1e-9) / 24); hod = h - 24day
         title[] = @sprintf("Day %d, %02d:00 %s", day + 1, round(Int, hod), k <= STORM_HOURS ? "— raining (50 mm in 12 h)" : "")
-        rain[] = k <= STORM_HOURS ? [Point2f(rand(), 0.3 + rand()) for _ in 1:60] : Point2f[]
+        rain[] = k <= STORM_HOURS ? [Point2f(rand(), 0.02 + 1.25 * rand()) for _ in 1:70] : Point2f[]
         for c in CASES
             d = cases[c]
             θobs[c][] = reshape(d.θ[:, k], 1, :)
-            hprev = -1.0
             e = ctrl[c]
             for (kk, name, cc, x0) in BARS
                 haskey(bars, (c, kk)) || continue
                 v = sum(getproperty(d, kk)[1:k]) - sum(getproperty(e, kk)[1:k]); h = max(v, 0.0) * scale
-                lift_ = abs(h - hprev) < 0.07 ? 0.07 : 0.0   # stagger labels of neighbours at similar heights
                 bars[(c, kk)][] = Point2f[(x0, 0), (x0 + BARW, 0), (x0 + BARW, h), (x0, h)]
-                blabelpos[(c, kk)][] = h + lift_ + 0.03
+                blabelpos[(c, kk)][] = h + 0.03
                 blabel[(c, kk)][] = v > 0.5 ? @sprintf("%.0f mm", v) : ""
-                hprev = h
             end
             D = max(sum(d.drain[1:k]) - sum(e.drain[1:k]), 0.0)
             drainbox[c][] = Point2f[(0.2, zb), (0.8, zb), (0.8, zb - D * scale), (0.2, zb - D * scale)]
