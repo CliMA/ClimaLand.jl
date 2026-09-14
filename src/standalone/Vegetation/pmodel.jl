@@ -295,6 +295,9 @@ Defines the auxiliary vars of the P-model:
     `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4`, holding the instantaneous optimal
     capacities — the target that the prognostic acclimated capacities
     `Y.canopy.photosynthesis.acclimated` relax toward (see `prognostic_vars`).
+- `fractional_c3`: the C3 fraction the photosynthesis is blended with, set by
+    `update_fractional_c3!`: the model's static value, or the C3/C4 competition
+    of a biomass model that has one.
 """
 # Element type of the optimal / acclimated capacity variables.
 _pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
@@ -302,12 +305,14 @@ _pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
     NTuple{6, FT},
 }
 
-ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous, :optimal)
+ClimaLand.auxiliary_vars(model::PModel) =
+    (:instantaneous, :optimal, :fractional_c3)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
     _pmodel_capacities_type(FT),
+    FT,
 )
-ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface)
+ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
 
 # The P-model's prognostic variable is the acclimated optimal capacities, a
 # `RunningMean` time-integrated variable held in `Y` and advanced smoothly by the
@@ -822,10 +827,11 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         APAR_canopy_moles,
     )
 
+    update_fractional_c3!(p, Y, canopy.biomass, canopy)
     @. p.canopy.photosynthesis.instantaneous =
         compute_blended_pmodel_photosynthesis(
             Y.canopy.photosynthesis.acclimated,
-            model.fractional_c3,
+            p.canopy.photosynthesis.fractional_c3,
             P_air,
             T_air,
             q_air,
@@ -836,6 +842,21 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants,
             thermo_params,
         )
+end
+
+"""
+    update_fractional_c3!(p, Y, biomass::AbstractBiomassModel, canopy)
+
+Writes the C3 fraction the P-model blends with into
+`p.canopy.photosynthesis.fractional_c3`. This default takes the P-model's static
+value; a biomass model with a C3/C4 competition (`ZhouOptimalLAIModel`) overrides it.
+
+It is written on every cache update rather than seeded once so that a checkpoint
+restart, whose `set_ic!` skips the component initial conditions, gets the right value.
+"""
+function update_fractional_c3!(p, Y, biomass::AbstractBiomassModel, canopy)
+    p.canopy.photosynthesis.fractional_c3 .= canopy.photosynthesis.fractional_c3
+    return nothing
 end
 
 function compute_blended_pmodel_photosynthesis(
@@ -1009,7 +1030,7 @@ get_Vcmax25_canopy(Y, p, m::PModel) = @. lazy(
     blend(
         Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
         Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
-        m.fractional_c3,
+        p.canopy.photosynthesis.fractional_c3,
     ),
 )
 
@@ -1017,7 +1038,7 @@ get_Vcmax25_leaf(Y, p, m::PModel) = @. lazy(
     blend(
         Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
         Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
-        m.fractional_c3,
+        p.canopy.photosynthesis.fractional_c3,
     ) /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
@@ -1390,8 +1411,9 @@ which depends on temperature and pressure only.
 - `vpd_gs::FT`: Growing-season mean vapor pressure deficit (Pa)
 
 # Returns
-- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), and
-  `χ = ci/ca` at the growing-season VPD (unitless)
+- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), the
+  pure-C3 and pure-C4 potential GPP `A0_c3`/`A0_c4` that the C3/C4 competition
+  compares, and `χ = ci/ca` at the growing-season VPD (unitless)
 """
 function compute_A0_and_χ(
     fractional_c3::FT,
@@ -1488,6 +1510,8 @@ function compute_A0_and_χ(
     # in kg C per mol photon, so dividing by Mc returns it in mol C m^-2 s^-1.
     return (;
         A0 = PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3) / Mc,
+        A0_c3 = PPFD * LUE_daily_c3 / Mc,
+        A0_c4 = PPFD * LUE_daily_c4 / Mc,
         χ = blend(ci_gs_c3, ci_gs_c4, fractional_c3) / ca_pp,
     )
 end
