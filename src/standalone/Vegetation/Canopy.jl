@@ -7,8 +7,7 @@ using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
 using NVTX
-import ClimaCore.MatrixFields: @name, ⋅
-import ClimaCore.RecursiveApply: ⊠
+import ClimaCore.MatrixFields: @name
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
@@ -1183,10 +1182,7 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
         ClimaLand.TopBoundary(),
     )
     additional_aux = map(zip(types, domains)) do (T, domain)
-        zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        f = map(_ -> zero_instance, getproperty(coords, domain))
-        fill!(ClimaCore.Fields.field_values(f), zero_instance)
-        f
+        f = zeros(T, axes(getproperty(coords, domain)))
     end
     return NamedTuple{vars}(additional_aux)
 end
