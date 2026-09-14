@@ -257,8 +257,8 @@ function compute_SIF_at_a_point_pmodel(
     # The following Jmax and Vcmax are canopy level
     Jmax_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
     Jmax_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
-    # If Jmax = 0, J/Jmax = 1. If APAR = 0, J = 0 and J/Jmax is zero
-    # If both are true the expression for J is not defined, but this would return 1
+    # If Jmax = 0, J/Jmax = 1. If APAR = 0, Jmax is also zero
+    # and this would return 1
     x_c3 = max(4 * ϕ0_c3 * APAR_canopy_moles, eps(FT))
     x_c4 = max(4 * ϕ0_c4 * APAR_canopy_moles, eps(FT))
     J_over_Jmax_c3 = 1/sqrt(1+(Jmax_c3/x_c3)^2)
