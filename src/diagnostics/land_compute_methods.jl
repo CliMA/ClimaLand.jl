@@ -290,6 +290,18 @@ end
 
 @diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_annual
 
+@diagnostic_compute "a0c3_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0c3_annual
+
+@diagnostic_compute "a0c4_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0c4_annual
+
+# Fraction of C3 photosynthesis (1 = all C3, 0 = all C4). From the optimal-LAI C3/C4
+# competition unless that is off (optimal_lai_online_c3c4 = 0), then the static CLM map.
+@diagnostic_compute "fractional_c3" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.photosynthesis.fractional_c3
+
 # precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
 # limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
 function compute_precip_annual!(

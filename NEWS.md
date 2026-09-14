@@ -2,6 +2,17 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length,
+  C3 fraction) now track the simulated climate rather than a frozen map, through five new
+  time-integrated variables in `Y`. Potential GPP drops its soil-moisture stress, so water
+  limitation enters once through `f0·P/A0`; the aridity index behind `f0` uses FAO-56
+  Penman-Monteith reference ET; `z`/`sigma`/`alpha` recalibrated to 29.2/1.01/0.202, and
+  the P-model, moisture-stress and canopy-flux defaults updated from a separate calibration.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` drops the `optimal_lai_inputs` keyword — it is now
+  `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
+  is renamed `optimal_lai_f0_max`. The artifact is still read by `set_ic!` to seed trailing totals.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 - Fix the 10 cm soil water mass diagnostic for standalone soil models, register
   the optimal-LAI and soil CO2 ppm diagnostics only for models that support
   them, and fix the default time interpolation of the perturbed ERA5 drivers.
