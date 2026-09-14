@@ -143,10 +143,7 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords)
     types = lsm_aux_types(land)
     domains = lsm_aux_domain_names(land)
     additional_aux = map(zip(types, domains)) do (T, domain)
-        zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        f = map(_ -> zero_instance, getproperty(land_coords, domain))
-        fill!(ClimaCore.Fields.field_values(f), zero_instance)
-        f
+        zeros(T, axes(getproperty(land_coords, domain)))
     end
     return NamedTuple{vars}(additional_aux)
 end

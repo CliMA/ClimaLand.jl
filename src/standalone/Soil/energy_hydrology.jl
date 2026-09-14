@@ -501,7 +501,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         # First, the gradient of ∂ψ∂ϑ
         # This term is used again below, so we do not alter it once we have made it
         @. p.soil.bidiag_matrix_scratch =
-            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+            gradc2f_matrix() * MatrixFields.DiagonalMatrixRow(
                 ClimaLand.Soil.dψdϑ(
                     hydrology_cm,
                     Y.soil.ϑ_l,
@@ -513,7 +513,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         # Now the full Darcy flux term. This term is the one that gets altered with the BC
         # contribution in place, below
         @. p.soil.full_bidiag_matrix_scratch =
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) *
             p.soil.bidiag_matrix_scratch
 
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
@@ -538,7 +538,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         negative_dtγ = FT(-float(dtγ))
         @. ∂ϑres∂ϑ =
             negative_dtγ *
-            (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
 
         # Now create the flux term for ∂ρe∂ϑ using bidiag_matrix_scratch
         # This overwrites full_bidiag_matrix_scratch
@@ -550,14 +550,14 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                         model.parameters.earth_param_set,
                     ) * p.soil.K,
                 ),
-            ) ⋅ p.soil.bidiag_matrix_scratch
+            ) * p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ϑ =
             negative_dtγ *
-            (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
 
         # Now overwrite bidiag_matrix_scratch and full_bidiag scratch for the ρe ρe bidiagonal
         @. p.soil.bidiag_matrix_scratch =
-            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+            gradc2f_matrix() * MatrixFields.DiagonalMatrixRow(
                 1 / ClimaLand.Soil.volumetric_heat_capacity(
                     p.soil.θ_l,
                     Y.soil.θ_i,
@@ -566,11 +566,11 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 ),
             )
         @. p.soil.full_bidiag_matrix_scratch =
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) *
             p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ρe =
             negative_dtγ *
-            (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
     end
     return compute_jacobian!
 end
@@ -599,6 +599,9 @@ NVTX.@annotate function horizontal_components!(
     p::NamedTuple,
     z::ClimaCore.Fields.Field,
 )
+    # TODO: ClimaCore v0.16 removes `WeakDivergence` in favour of
+    # `Divergence{WeakForm}`, but `WeakForm` only exists from v0.15.0 and this
+    # package still pins v0.14.5x. Switch when the ClimaCore bound is raised.
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
