@@ -915,10 +915,13 @@ function make_exp_tendency(land::LandModel)
         if land.conservation
             subsurface_runoff =
                 :R_ss ∈ propertynames(p.soil) ? p.soil.R_ss : FT(0)
-
+            # To do - future PR: move this computation to a method
+            # specific to biomass type
             lai_prev = p.scratch1
             evaluate!(lai_prev, land.canopy.biomass.plant_area_index.LAI, ITime(t.counter - Int(land.snow.parameters.Δt), t.period, t.epoch))
-            lai_tendency = p.scratch2
+            @. lai_prev = Canopy.clip(lai_prev, FT(0.05))
+            Canopy.mask_biomass!(p, Val(land.canopy.boundary_conditions.prognostic_land_components))
+            lai_tendency = p.lai_tendency
             @. lai_tendency = (p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
             dz = land.canopy.biomass.height
             lai_contribution = p.scratch3
