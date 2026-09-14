@@ -771,7 +771,7 @@ function ClimaLand.make_compute_exp_tendency(
                 p.canopy.photosynthesis.optimal,
                 Y.canopy.photosynthesis.acclimated,
                 reduction,
-            ) ⊠ (exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
+            ) * (exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
     end
     return compute_exp_tendency!
 end

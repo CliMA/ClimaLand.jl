@@ -1,7 +1,5 @@
 export TimeIntegratedVariable, RunningMean, RunningSum, TimeIntegral
 
-import ClimaCore.RecursiveApply: ⊟, ⊠, rdiv
-
 """
     AbstractTimeReduction
 
@@ -140,10 +138,6 @@ time_integrated_prognostic_domain_names(vars) =
 # Return the tendency dX/dt of the chosen reduction, given the instantaneous quantity
 # `f` and the current state `X`. Meant to be broadcast into the destination `dY` field:
 #     @. dY.component.name = apply_time_reduction(f, Y.component.name, r)
-# Written with ClimaCore.RecursiveApply operators (`⊟`, `⊠`, `rdiv`) so `f` and `X` may be
-# scalar-valued or have a structured element type (e.g. a NamedTuple-valued field, as for
-# the P-model capacities); for scalar `FT` these are the ordinary `(f - X)/τ` and
-# `(f τ - X)/τ_long`.
-@inline apply_time_reduction(f, X, r::RunningMean) = rdiv(f ⊟ X, r.τ)
-@inline apply_time_reduction(f, X, r::RunningSum) = rdiv(f ⊠ r.τ ⊟ X, r.τ_long)
+@inline apply_time_reduction(f, X, r::RunningMean) = (f - X) / r.τ
+@inline apply_time_reduction(f, X, r::RunningSum) = (f * r.τ - X) / r.τ_long
 @inline apply_time_reduction(f, X, ::TimeIntegral) = f
