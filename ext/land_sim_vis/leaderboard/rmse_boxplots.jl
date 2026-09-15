@@ -133,18 +133,19 @@ const _CARBON_PANELS = (
 )
 
 """
-    _annual_global_rmse(diagnostics_folder_path, short_name, data_source;
-                        spin_up_months = 12)
+    _annual_global_errors(diagnostics_folder_path, short_name, data_source;
+                          spin_up_months = 12)
 
-Compute the global, annual-mean RMSE of ClimaLand `short_name` against the
-benchmark indicated by `data_source` (`"ILAMB"` or `"ERA5"`). The pipeline
-mirrors `compute_seasonal_leaderboard`: spinup removed, windowed to overlap,
-resampled, time-averaged, then `ClimaAnalysis.global_rmse` with the same mask.
+Compute the global, annual-mean RMSE and bias of ClimaLand `short_name`
+against the benchmark indicated by `data_source` (`"ILAMB"` or `"ERA5"`). The
+pipeline mirrors `compute_seasonal_leaderboard`: spinup removed, windowed to
+overlap, resampled, time-averaged, then `ClimaAnalysis.global_rmse` and
+`ClimaAnalysis.global_bias` with the same mask.
 
-Returns `NaN` if the variable is not in the simulation directory or in the
-benchmark.
+Returns `(; rmse, bias)`, both `NaN` if the variable is not in the simulation
+directory or in the benchmark.
 """
-function _annual_global_rmse(
+function _annual_global_errors(
     diagnostics_folder_path,
     short_name,
     data_source;
@@ -158,7 +159,7 @@ function _annual_global_rmse(
         ClimaAnalysis.SimDir(diagnostics_folder_path),
     )
     (short_name in available_vars(data_loader) && short_name in available) ||
-        return NaN
+        return (; rmse = NaN, bias = NaN)
 
     sim_var = get(sim_dir, short_name)
     obs_var = get(data_loader, short_name)
@@ -188,7 +189,10 @@ function _annual_global_rmse(
     mask_fn = mask_dict[short_name](sim_var, obs_var)
     sim_avg = ClimaAnalysis.average_time(sim_var)
     obs_avg = ClimaAnalysis.average_time(obs_var)
-    return ClimaAnalysis.global_rmse(sim_avg, obs_avg; mask = mask_fn)
+    return (;
+        rmse = ClimaAnalysis.global_rmse(sim_avg, obs_avg; mask = mask_fn),
+        bias = ClimaAnalysis.global_bias(sim_avg, obs_avg; mask = mask_fn),
+    )
 end
 
 # Box-and-whisker statistics with Tukey-style 1.5*IQR fences clipped to data
@@ -354,21 +358,24 @@ function _draw_boxplot_panel!(
 end
 
 """
-    save_rmse_boxplots_csv(path, all_panels, n_energy, rmse_current, rmse_prev)
+    save_rmse_boxplots_csv(path, all_panels, n_energy, rmse_current,
+                           rmse_prev, bias_current, bias_prev)
 
-Write the boxplot RMSEs to `path` as CSV, one row per panel.
+Write the boxplot errors to `path` as CSV, one row per panel.
 
-`compute_rmse_boxplots` renders these numbers into `boxplot_rmse.png` but
-does not record them, so comparing ClimaLand's global RMSE against the
+`compute_rmse_boxplots` renders these RMSEs into `boxplot_rmse.png` but does
+not record them, so comparing ClimaLand's global error against the
 observational benchmarks from one long run to the next means reading values
-off a figure. These are the annual, global, land-masked RMSEs, which is the
-quantity the surface energy flux targets are stated in terms of.
+off a figure. These are the annual, global, land-masked errors, which is the
+quantity the surface energy flux targets are stated in terms of. The signed
+global bias is written alongside the RMSE so it is visible whether a flux runs
+high or low; the figure shows only RMSE.
 
 `cohort_median` is the median of the inlined ILAMB land-hist "other-model"
-values for that panel, so a normalized score can be computed downstream
-without duplicating the cohort. `climaland_rmse_prev` is `NaN` when no
-previous run was supplied, as is `climaland_rmse` when a variable is absent
-from the diagnostics.
+RMSE values for that panel, so a normalized score can be computed downstream
+without duplicating the cohort. The `_prev` columns are `NaN` when no previous
+run was supplied, as are the current values when a variable is absent from
+the diagnostics.
 """
 function save_rmse_boxplots_csv(
     path,
@@ -376,35 +383,34 @@ function save_rmse_boxplots_csv(
     n_energy,
     rmse_current,
     rmse_prev,
+    bias_current,
+    bias_prev,
 )
     open(path, "w") do io
         println(
             io,
             "short_name,panel,data_source,cohort_benchmark,units," *
-            "climaland_rmse,climaland_rmse_prev,cohort_median,cohort_n",
+            "climaland_rmse,climaland_rmse_prev,climaland_bias," *
+            "climaland_bias_prev,cohort_median,cohort_n",
         )
         for (col, p) in enumerate(all_panels)
             units = col <= n_energy ? "W m^-2" : "g m^-2 day^-1"
             cohort = filter(isfinite, p.others)
-            cohort_median =
-                isempty(cohort) ? NaN : Statistics.median(cohort)
-            println(
-                io,
-                join(
-                    (
-                        p.sim_short_name,
-                        p.title,
-                        p.data_source,
-                        p.bench,
-                        units,
-                        rmse_current[p.sim_short_name],
-                        rmse_prev[p.sim_short_name],
-                        cohort_median,
-                        length(cohort),
-                    ),
-                    ",",
-                ),
+            cohort_median = isempty(cohort) ? NaN : Statistics.median(cohort)
+            fields = (
+                p.sim_short_name,
+                p.title,
+                p.data_source,
+                p.bench,
+                units,
+                rmse_current[p.sim_short_name],
+                rmse_prev[p.sim_short_name],
+                bias_current[p.sim_short_name],
+                bias_prev[p.sim_short_name],
+                cohort_median,
+                length(cohort),
             )
+            println(io, join(_csv_field.(fields), ","))
         end
     end
     return path
@@ -444,29 +450,38 @@ function compute_rmse_boxplots(
 
     rmse_current = Dict{String, Float64}()
     rmse_prev = Dict{String, Float64}()
+    bias_current = Dict{String, Float64}()
+    bias_prev = Dict{String, Float64}()
     for p in all_panels
-        rmse_current[p.sim_short_name] = _annual_global_rmse(
+        current = _annual_global_errors(
             diagnostics_folder_path,
             p.sim_short_name,
             p.data_source,
         )
-        rmse_prev[p.sim_short_name] =
-            isnothing(prev_diagnostics_folder_path) ? NaN :
-            _annual_global_rmse(
+        prev =
+            isnothing(prev_diagnostics_folder_path) ?
+            (; rmse = NaN, bias = NaN) :
+            _annual_global_errors(
                 prev_diagnostics_folder_path,
                 p.sim_short_name,
                 p.data_source,
             )
+        rmse_current[p.sim_short_name] = current.rmse
+        rmse_prev[p.sim_short_name] = prev.rmse
+        bias_current[p.sim_short_name] = current.bias
+        bias_prev[p.sim_short_name] = prev.bias
     end
 
-    # Record the RMSEs as data before plotting them, so the numbers survive
-    # even if figure generation later fails
+    # Record the RMSEs and biases as data before plotting, so the numbers
+    # survive even if figure generation later fails
     save_rmse_boxplots_csv(
         joinpath(leaderboard_base_path, "boxplot_rmse.csv"),
         all_panels,
         n_energy,
         rmse_current,
         rmse_prev,
+        bias_current,
+        bias_prev,
     )
 
     function _group_y_max(panels)

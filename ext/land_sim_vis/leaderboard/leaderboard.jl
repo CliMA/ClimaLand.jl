@@ -443,6 +443,72 @@ function _get_data_loader(data_source)
 end
 
 """
+    _csv_field(x)
+
+Render `x` as a CSV field, quoting it only if it contains a comma, double
+quote, or newline, so free-text values such as units or benchmark labels
+cannot shift later columns.
+"""
+function _csv_field(x)
+    s = string(x)
+    occursin(r"[\",\n]", s) || return s
+    return "\"" * replace(s, "\"" => "\"\"") * "\""
+end
+
+"""
+    _init_global_stats_csv(path, label_columns)
+
+Create the CSV at `path`, replacing any existing file, with a header of
+`short_name`, the `label_columns`, and the global statistics columns. Returns
+`path`.
+
+`compute_monthly_leaderboard` and `compute_seasonal_leaderboard` compute a
+global mean, RMSE, and bias per month or season for each variable but
+otherwise record them only in their `*_global_rmse_and_bias_graphs.png`
+figures; these files hold the same values as data.
+"""
+function _init_global_stats_csv(path, label_columns)
+    header = (
+        "short_name",
+        label_columns...,
+        "global_mean",
+        "global_rmse",
+        "global_bias",
+        "units",
+    )
+    open(io -> println(io, join(header, ",")), path, "w")
+    return path
+end
+
+"""
+    _append_global_stats_csv(path, short_name, labels, mean_vec, rmse_vec,
+                             bias_vec, units)
+
+Append one row per element of `labels` to the CSV at `path`, pairing each
+label tuple with the matching global mean, RMSE, and bias. Rows are appended
+per variable before that variable is plotted, so values for the variables
+already processed are kept if plotting a later one fails.
+"""
+function _append_global_stats_csv(
+    path,
+    short_name,
+    labels,
+    mean_vec,
+    rmse_vec,
+    bias_vec,
+    units,
+)
+    open(path, "a") do io
+        for (label, mean, rmse, bias) in
+            zip(labels, mean_vec, rmse_vec, bias_vec)
+            fields = (short_name, label..., mean, rmse, bias, units)
+            println(io, join(_csv_field.(fields), ","))
+        end
+    end
+    return path
+end
+
+"""
     compute_monthly_leaderboard(leaderboard_base_path,
                                 diagnostics_folder_path,
                                 data_source)
@@ -613,6 +679,15 @@ function compute_monthly_leaderboard(
         )
     end
 
+    # Also record the per-month global mean, RMSE, and bias as data
+    stats_path = _init_global_stats_csv(
+        joinpath(
+            leaderboard_base_path,
+            "$(data_source)_global_rmse_and_bias.csv",
+        ),
+        ("date",),
+    )
+
     # Plot month (x-axis) and global bias and global RMSE (y-axis)
     fig = CairoMakie.Figure(size = (250 + 450 * length(short_names), 900))
     fig_rmse_bias = fig[1, 1] = CairoMakie.GridLayout()
@@ -654,6 +729,19 @@ function compute_monthly_leaderboard(
                 ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
             end for t in times
         ]
+        row_dates = Dates.Date.(
+            Dates.DateTime(sim_var.attributes["start_date"]) .+
+            Dates.Second.(times),
+        )
+        _append_global_stats_csv(
+            stats_path,
+            short_name,
+            tuple.(row_dates),
+            sim_vec,
+            rmse_vec,
+            bias_vec,
+            ClimaAnalysis.units(sim_var),
+        )
 
         ax_sim = CairoMakie.Axis(
             fig_rmse_bias[1, col],
@@ -1210,6 +1298,15 @@ function compute_seasonal_leaderboard(
         fig_sim_ann,
     )
 
+    # Also record the per-season global mean, RMSE, and bias as data
+    stats_path = _init_global_stats_csv(
+        joinpath(
+            leaderboard_base_path,
+            "$(data_source)_seasonal_global_rmse_and_bias.csv",
+        ),
+        ("season", "year"),
+    )
+
     # Make plot with seasons on x-axis and RMSE and bias on the y-axis
     # Rows correspond to short names
     # Cols correspond to SIM and ANN
@@ -1246,6 +1343,18 @@ function compute_seasonal_leaderboard(
                 ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
             end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
+        season_labels = [
+            (sim_var.attributes["season"], get(sim_var.attributes, "year", "")) for sim_var in sim_vars
+        ]
+        _append_global_stats_csv(
+            stats_path,
+            short_name,
+            season_labels,
+            sim_vec,
+            rmse_vec,
+            bias_vec,
+            ClimaAnalysis.units(first(sim_vars)),
+        )
 
         # Partition by seasons
         # Map each season to a number for plotting

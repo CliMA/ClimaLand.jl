@@ -4,13 +4,15 @@ main
 ----
 - Bug fix in SIF computation PR[#1877](https://github.com/CliMA/ClimaLand.jl/pull/1877)
 - Update compat to ClimaTimeSteppers v1 PR[#1878](https://github.com/CliMA/ClimaLand.jl/pull/1878)
-- ![][badge-✨feature] `compute_rmse_boxplots` now also writes `boxplot_rmse.csv`
-  next to `boxplot_rmse.png`, with one row per panel giving ClimaLand's annual
-  global RMSE, the previous run's value, and the cohort median. These numbers
-  previously existed only as pixels in the figure, so tracking the surface
-  energy flux errors across long runs meant reading them off a plot. The CSV is
-  written before the figure, so the values survive a plotting failure, and the
-  longrun pipeline now uploads `*csv` for the two runs that produce it.
+- ![][badge-✨feature] The global leaderboards now write their error metrics as
+  CSV next to the figures, which previously held them only as pixels:
+  `boxplot_rmse.csv` (annual global RMSE and signed bias per panel, the previous
+  run's values, and the cohort median RMSE), plus
+  `<data_source>_global_rmse_and_bias.csv` and
+  `<data_source>_seasonal_global_rmse_and_bias.csv` (global mean, RMSE, and bias
+  per variable for each month, and for each season and year). This makes the
+  surface flux errors trackable across long runs without reading values off
+  plots. The longrun pipeline uploads `*csv` for the runs that produce them.
 
 v1.12.1
 ----
