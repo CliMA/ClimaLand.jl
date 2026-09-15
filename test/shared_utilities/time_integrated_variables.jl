@@ -10,7 +10,6 @@ import ClimaLand:
     RunningSum,
     TimeIntegral,
     apply_time_reduction
-import ClimaCore.RecursiveApply: ⊠
 using ClimaLand.Domains: Column
 
 # A minimal explicit model whose prognostic variables are entirely a set of
@@ -342,12 +341,12 @@ end
         reduction = RunningMean(τ),
         element_type = nt_type,
     )
-    # the P-model weights its tendency by a window `w` with `⊠`, as here
+    # the P-model weights its tendency by a window `w` with `*`, as here
     weighted!(dY, Y, p, w) =
-        @. dY.nt.X = apply_time_reduction(p.finst, Y.nt.X, spec.reduction) ⊠ w
+        @. dY.nt.X = apply_time_reduction(p.finst, Y.nt.X, spec.reduction) * w
 
     # (A) a constant weight `c` scales the reduction rate by exactly `c` on both
-    # NamedTuple components — exercises `⊠` on a structured (NamedTuple-valued) field.
+    # NamedTuple components — exercises `*` on a structured (NamedTuple-valued) field.
     c = FT(0.25)
     Y, _, _ = initialize(ntmodel((spec,)))
     p = (; finst = fill_inst!(Y))
