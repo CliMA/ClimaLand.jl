@@ -1,5 +1,5 @@
 using ClimaCore.MatrixFields
-import ClimaCore.MatrixFields: @name, ⋅
+import ClimaCore.MatrixFields: @name
 using ClimaCore: Spaces
 import LinearAlgebra
 import LinearAlgebra: I
