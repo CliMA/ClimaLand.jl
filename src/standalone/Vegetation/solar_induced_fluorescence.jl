@@ -186,6 +186,7 @@ function compute_SIF_at_a_point_farquhar(
 ) where {FT}
     APAR_leaf_moles = APAR_canopy_moles/max(LAI, eps(FT))
     (; θj, ϕ, ΔHJmax, To) = photo_parameters
+    # In the Farquhar model we have implemented, Jmax is proportional to Vcmax at the leaf level and should never be zero in vegetated areas.
     Jmax = max_electron_transport_farquhar(Vcmax25_leaf, ΔHJmax, Tc, To, R)
     J_over_Jmax = electron_transport_farquhar(APAR_leaf_moles, Jmax, θj, ϕ)/Jmax
     return sif_755_lee_model(
@@ -256,16 +257,12 @@ function compute_SIF_at_a_point_pmodel(
     # The following Jmax and Vcmax are canopy level
     Jmax_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
     Jmax_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
-    J_over_Jmax_c3 =
-        electron_transport_pmodel(ϕ0_c3, APAR_canopy_moles, Jmax_c3)/max(
-            Jmax_c3,
-            eps(FT),
-        )
-    J_over_Jmax_c4 =
-        electron_transport_pmodel(ϕ0_c4, APAR_canopy_moles, Jmax_c4)/max(
-            Jmax_c4,
-            eps(FT),
-        )
+    # If Jmax = 0, J/Jmax = 1. If APAR = 0, Jmax is also zero
+    # and this would return 1
+    x_c3 = max(4 * ϕ0_c3 * APAR_canopy_moles, eps(FT))
+    x_c4 = max(4 * ϕ0_c4 * APAR_canopy_moles, eps(FT))
+    J_over_Jmax_c3 = 1/sqrt(1+(Jmax_c3/x_c3)^2)
+    J_over_Jmax_c4 = 1/sqrt(1+(Jmax_c4/x_c4)^2)
     # Lee et al 2015 formula uses leaf level Vcmax25
     Vcmax25_leaf_c4 = Vcmax25_c4/max(LAI, eps(FT))
     Vcmax25_leaf_c3 = Vcmax25_c3/max(LAI, eps(FT))
@@ -316,7 +313,7 @@ function sif_755_lee_model(
 
     x = 1 - J_over_Jmax
     kn = (kn_p1 * x - kn_p2) * x
-    ϕp0 = kp / max(kf + kp + kn, eps(FT))
+    ϕp0 = kp / max(kf + kp + kd, eps(FT))
     ϕp = J_over_Jmax * ϕp0
     ϕf = kf / max(kf + kd + kn, eps(FT)) * (1 - ϕp)
     κ = kappa_p1 * Vcmax25_leaf * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
