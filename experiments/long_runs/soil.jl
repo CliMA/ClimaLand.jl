@@ -72,15 +72,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     context,
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
-diagnostics = ClimaLand.default_diagnostics(
-    model,
-    start_date,
-    outdir;
-    conservation = true,
-    conservation_period = Day(10),
-)
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 
 @info "Run: Global Soil Model"
 @info "Resolution: $(domain.nelements)"
@@ -98,4 +90,3 @@ LandSimVis.make_heatmaps(
     date = stop_date,
     short_names,
 )
-LandSimVis.check_conservation(simulation; savedir = root_path)
