@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.12.2
+----
 - Bug fix in SIF computation PR[#1877](https://github.com/CliMA/ClimaLand.jl/pull/1877)
 - Update compat to ClimaTimeSteppers v1 PR[#1878](https://github.com/CliMA/ClimaLand.jl/pull/1878)
 
