@@ -432,37 +432,65 @@ function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
 end
 
 """
-    c3_fraction_from_competition(A0c3_annual, A0c4_annual, Mc, fapar, parameters)
+    canopy_composition_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
 
-C3 fraction from the C3/C4 competition of Lavergne et al. (2022), as implemented in
-pyrealm, on the trailing per-pathway potential GPP `A0c3_annual`/`A0c4_annual`
-(mol CO2 m^-2 yr^-1); `Mc` is the molar mass of carbon (kg mol^-1) and `fapar` the
-realized fAPAR. The proportional C4 GPP advantage `(A0c4 − A0c3)/A0c3` goes through a
-logistic to an expected C4 fraction, which is then reduced by the proportion of C3
-tree cover estimated from the C3 GPP, since C4 grasses are shaded out under trees.
-Returns `1 − frac_c4`.
+Partition of the canopy into C3 trees, C3 grasses and C4 grasses from the C3/C4
+competition of Lavergne et al. (2022), as implemented in pyrealm, on the trailing
+per-pathway potential GPP `A0c3_annual`/`A0c4_annual` and the trailing realized C3
+GPP `GPPc3_annual` (the potential scaled by fAPAR; all mol CO2 m^-2 yr^-1); `Mc` is
+the molar mass of carbon (kg mol^-1). Returns a `NamedTuple`
+`(; tree, c3_grass, c4_grass)` summing to one.
+
+The fractions are shares of productivity, not of ground area: the proportional C4 GPP
+advantage `(A0c4 − A0c3)/A0c3` goes through a logistic to an expected C4 share of
+the open canopy, and the tree share is the C3 tree cover estimated from the annual
+realized C3 GPP, normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses
+are shaded out under trees, so the C4 and C3 grass shares are the open-canopy split
+scaled by `1 − tree`.
 """
-function c3_fraction_from_competition(
+function canopy_composition_from_competition(
     A0c3_annual::FT,
     A0c4_annual::FT,
+    GPPc3_annual::FT,
     Mc::FT,
-    fapar::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
     (; c3c4_k, c3c4_q, tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
     a0c3 = max(A0c3_annual, eps(FT))
-    # The advantage is a ratio, so the fAPAR scaling to realized GPP cancels.
     adv = (A0c4_annual - a0c3) / a0c3
     # pyrealm scales the advantage by exp(1/(1+TC)) with TC the observed tree
     # cover; with no such input, TC = 0 leaves the divisor ℯ.
-    frac_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
-    # The tree-cover relation is fitted to realized annual GPP (kg C m^-2 yr^-1),
-    # so the potential a0c3 is scaled by the realized fAPAR.
-    gppc3 = a0c3 * Mc * fapar
+    open_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
+    # The tree-cover relation is fitted to annual realized GPP in kg C m^-2 yr^-1.
+    gppc3 = max(GPPc3_annual, FT(0)) * Mc
     tc(g) = tc_a * g^tc_b + tc_c
-    prop_trees = clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
-    frac_c4 *= (1 - prop_trees)
-    return 1 - frac_c4
+    tree = clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
+    c4_grass = open_c4 * (1 - tree)
+    c3_grass = (1 - open_c4) * (1 - tree)
+    return (; tree, c3_grass, c4_grass)
+end
+
+"""
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
+
+C3 fraction of the canopy, `1 − c4_grass` of
+`canopy_composition_from_competition` (trees are all C3).
+"""
+function c3_fraction_from_competition(
+    A0c3_annual::FT,
+    A0c4_annual::FT,
+    GPPc3_annual::FT,
+    Mc::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    composition = canopy_composition_from_competition(
+        A0c3_annual,
+        A0c4_annual,
+        GPPc3_annual,
+        Mc,
+        parameters,
+    )
+    return 1 - composition.c4_grass
 end
 
 """

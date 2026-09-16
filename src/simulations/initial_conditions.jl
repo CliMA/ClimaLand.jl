@@ -358,13 +358,14 @@ end
         ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
             context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
         ),
+        max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
     ) where {FT}
 
 Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
 `A0_annual`, `precip_annual`, `PET_annual`, `VPDA0_annual`, `growing_days`,
-`A0c3_annual`, `A0c4_annual`) from the netCDF file at `ic_path`, which must contain
-`lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0` on a (lon, lat)
-grid.
+`A0c3_annual`, `A0c4_annual`, `GPPc3_annual`) from the netCDF file at `ic_path`,
+which must contain `lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0`
+on a (lon, lat) grid.
 
 With the default path, `LAI` starts from the MODIS observation, which shortens the
 spin-up. The annual totals start at their climatological values, which are their
@@ -381,6 +382,12 @@ No per-pathway climatology exists, so `A0c3_annual` and `A0c4_annual` both start
 `a0_annual`. The competition then sees no GPP advantage at `t = 0`, so the online
 C3 fraction starts near-uniform, not at the static map, and only diverges from it
 as the two totals separate.
+
+`GPPc3_annual`, the realized C3 GPP the tree cover is estimated from, is seeded as
+`A0c3_annual` scaled by the fAPAR of the MODIS annual maximum LAI (`max_lai`) rather
+than of `lai_init`, a single-date snapshot: over a year the potential GPP is
+concentrated in the leafy season, so the peak fAPAR is the closer estimate of the
+GPP-weighted annual value.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -390,6 +397,7 @@ function set_canopy_component_initial_conditions!(
     ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
         context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
     ),
+    max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
 ) where {FT}
     ic = ClimaLand.Canopy.optimal_lai_initial_conditions(
         axes(Y.canopy.biomass.LAI),
@@ -409,6 +417,9 @@ function set_canopy_component_initial_conditions!(
     Y.canopy.biomass.growing_days .= ic.GSL
     Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
     Y.canopy.biomass.A0c4_annual .= Y.canopy.biomass.A0_annual
+    k = model.parameters.k
+    @. Y.canopy.biomass.GPPc3_annual =
+        Y.canopy.biomass.A0c3_annual * (1 - exp(-k * max_lai))
     return nothing
 end
 

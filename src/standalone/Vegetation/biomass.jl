@@ -438,11 +438,12 @@ instantaneous steady-state target `L_opt`:
     dprecip_annual/dt = (year·P_inst  - precip_annual) / τ_long,
     dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
 
-Five further 1-year `RunningSum`s carry the climate the LAI formulas respond to:
+Six further 1-year `RunningSum`s carry the climate the LAI formulas respond to:
 `PET_annual` (with `precip_annual`, the aridity index behind `f0`), `VPDA0_annual`
 (with `A0_annual`, the A0-weighted growing-season VPD `vpd_gs`), `growing_days`
-(the growing-season length `GSL`), and `A0c3_annual`/`A0c4_annual`, the per-pathway
-potential GPP the C3/C4 competition compares.
+(the growing-season length `GSL`), `A0c3_annual`/`A0c4_annual`, the per-pathway
+potential GPP the C3/C4 competition compares, and `GPPc3_annual`, the C3 potential
+GPP scaled by the realized fAPAR, from which the competition estimates tree cover.
 
 Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
 smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
@@ -515,6 +516,13 @@ function ZhouOptimalLAIModel{FT}(
             ),
         ),
         ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :GPPc3_annual,
+            reduction = ClimaLand.RunningSum(
+                365 * seconds_per_day,
+                tau_long_term,
+            ),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
             name = :LAI,
             reduction = ClimaLand.RunningMean(
                 seconds_per_day / parameters.alpha,
@@ -551,11 +559,15 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
 - `vpd_gs`: A0-weighted mean VPD (Pa), for the water-limitation term of LAI_max
 - `f0`: fraction of precipitation available for transpiration (dimensionless), from the aridity index
+- `composition.tree, composition.c3_grass, composition.c4_grass`: shares of the canopy
+  from the C3/C4 competition (dimensionless, summing to one); see
+  `canopy_composition_from_competition`
 
-`GSL`, `vpd_gs` and `f0` are derived in `update_biomass!` from the trailing totals in `Y`.
+`GSL`, `vpd_gs` and `f0` are derived in `update_biomass!` from the trailing totals in `Y`;
+`composition` in `update_fractional_c3!`.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0)
+    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
     NamedTuple{(:A0, :A0_c3, :A0_c4, :χ), NTuple{4, FT}},
@@ -563,9 +575,10 @@ ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    NamedTuple{(:tree, :c3_grass, :c4_grass), NTuple{3, FT}},
 )
 ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
     ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
@@ -616,9 +629,12 @@ end
 """
     update_fractional_c3!(p, Y, biomass::ZhouOptimalLAIModel, canopy)
 
-Sets the C3 fraction from the C3/C4 competition on the trailing per-pathway
-potential GPP (`A0c3_annual`, `A0c4_annual`). With `optimal_lai_online_c3c4 = 0`
-it is the P-model's static value instead.
+Sets the canopy `composition` (tree, C3 grass, C4 grass shares) from the C3/C4
+competition on the trailing per-pathway potential GPP (`A0c3_annual`, `A0c4_annual`)
+and the trailing realized C3 GPP (`GPPc3_annual`), and the C3 fraction as its tree
+plus C3 grass share. With `optimal_lai_online_c3c4 = 0`
+the C3 fraction is the P-model's static value instead; `composition` still reports
+the competition, as the static map carries no tree/grass split.
 """
 function update_fractional_c3!(
     p,
@@ -628,17 +644,18 @@ function update_fractional_c3!(
 ) where {FT}
     parameters = biomass.parameters
     online_c3c4 = parameters.online_c3c4
-    k = parameters.k
     Mc = canopy.photosynthesis.constants.Mc
     static_c3 = canopy.photosynthesis.fractional_c3
+    @. p.canopy.biomass.composition = canopy_composition_from_competition(
+        Y.canopy.biomass.A0c3_annual,
+        Y.canopy.biomass.A0c4_annual,
+        Y.canopy.biomass.GPPc3_annual,
+        Mc,
+        parameters,
+    )
     @. p.canopy.photosynthesis.fractional_c3 =
-        online_c3c4 * c3_fraction_from_competition(
-            Y.canopy.biomass.A0c3_annual,
-            Y.canopy.biomass.A0c4_annual,
-            Mc,
-            1 - exp(-k * Y.canopy.biomass.LAI),  # realized fAPAR
-            parameters,
-        ) + (1 - online_c3c4) * static_c3
+        online_c3c4 * (1 - p.canopy.biomass.composition.c4_grass) +
+        (1 - online_c3c4) * static_c3
     return nothing
 end
 
@@ -769,6 +786,14 @@ function ClimaLand.make_compute_exp_tendency(
             p.canopy.biomass.OptVars.A0_c4,
             Y.canopy.biomass.A0c4_annual,
             tivs.A0c4_annual.reduction,
+        )
+        # The tree-cover relation is fitted to annual realized GPP, so the C3
+        # potential is scaled by the realized fAPAR before the yearly total.
+        @. dY.canopy.biomass.GPPc3_annual = apply_time_reduction(
+            p.canopy.biomass.OptVars.A0_c3 *
+            (1 - exp(-parameters.k * Y.canopy.biomass.LAI)),
+            Y.canopy.biomass.GPPc3_annual,
+            tivs.GPPc3_annual.reduction,
         )
         @. dY.canopy.biomass.LAI = apply_time_reduction(
             p.canopy.biomass.L_opt,

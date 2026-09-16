@@ -394,6 +394,39 @@ function define_diagnostics!(land_model, possible_diags)
             compute_fractional_c3!(out, Y, p, t, land_model),
     )
 
+    # Canopy composition from the C3/C4 competition (always the competition's value,
+    # even with optimal_lai_online_c3c4 = 0)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ftr",
+        long_name = "Tree Share of Canopy Productivity",
+        standard_name = "tree_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C3 trees, from the C3/C4 competition (the Lavergne tree-cover relation on realized C3 GPP, normalized at canopy closure). ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_tree!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fc3g",
+        long_name = "C3 Grass Share of Canopy Productivity",
+        standard_name = "c3_grass_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C3 grasses, from the C3/C4 competition. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c3_grass!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fc4g",
+        long_name = "C4 Grass Share of Canopy Productivity",
+        standard_name = "c4_grass_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C4 grasses, from the C3/C4 competition; fc3 = 1 - fc4g when the competition is on. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c4_grass!(out, Y, p, t, land_model),
+    )
+
     # Moisture stress factor
     conditional_add_diagnostic_variable!(
         possible_diags;
