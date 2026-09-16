@@ -8,7 +8,7 @@ FIGDIR = get(ENV, "FIGDIR", "figs")
 mkpath(FIGDIR)
 results = deserialize(RESULTS)
 control = deserialize(CONTROL)
-CASES = filter(c -> haskey(results, c), split(get(ENV, "PLOT_CASES", "sand_bare,loam_bare,clay_bare,loam_grass,loam_forest"), ","))
+CASES = filter(c -> haskey(results, c), split(get(ENV, "PLOT_CASES", "sand_bare,loam_bare,clay_bare,loam_forest"), ","))
 P_MM = 50.0
 
 soils = Dict("sand" => (; ν = 0.43, θ_r = 0.045, α = 14.5, n = 2.68),
@@ -86,24 +86,9 @@ end
 col = (; runoff = "#4C78A8", drain = "#72B7B2", soilevap = "#E45756", trans = "#54A24B", stored = "#B8B8B8", baseline = "#D9D9D9")
 θcmap = :YlGnBu; θrange = (0.0, 0.45)
 
-# ---- Figure 1: Hovmöller for the three bare soils
+# ---- Figure 1: where did the storm's water go? (storm run minus no-storm control)
 begin
-    fig = Figure(size = (1200, 420), fontsize = 15)
-    bare = filter(c -> cover_of(c) == "bare", CASES)
-    for (i, c) in enumerate(bare)
-        d = cases[c]; b = budget[c].storm
-        ax = Axis(fig[1, i]; title = @sprintf("%s\nran off %.1f · evaporated %.1f · retained %.1f mm", label(c), b.R, b.E, b.retained),
-            xlabel = "days since the storm", ylabel = i == 1 ? "depth (m)" : "", titlesize = 14)
-        heatmap!(ax, d.hours ./ 24, faces_from_centers(d.z), permutedims(d.θ); colormap = θcmap, colorrange = θrange)
-        i > 1 && hideydecorations!(ax; grid = false)
-    end
-    Colorbar(fig[1, length(bare) + 1]; colormap = θcmap, colorrange = θrange, label = "soil water content (m³ water / m³ soil)")
-    save(joinpath(FIGDIR, "hovmoller.png"), fig; px_per_unit = 2)
-end
-
-# ---- Figure 2: where did the storm's water go? (storm run minus no-storm control)
-begin
-    fig = Figure(size = (900, 480), fontsize = 15)
+    fig = Figure(size = (900, 60 + 90 * length(CASES)), fontsize = 15)
     ax = Axis(fig[1, 1]; xlabel = "mm of water, 30 days after the storm", yticks = (1:length(CASES), label.(CASES)),
         title = "Where did the storm's 50 mm go?", yreversed = true)
     keys_ = (:R, :D, :E, :T, :retained)
@@ -123,26 +108,31 @@ begin
     save(joinpath(FIGDIR, "budget.png"), fig; px_per_unit = 2)
 end
 
-# ---- Figure 3: daily evapotranspiration and the plants' "straw"
+# ---- Figure 2: the straw. Evaporation + transpiration of the loam pair (storm run solid, no-storm control dashed),
+# and the forest's leaf water potential and moisture-stress factor.
 begin
     fig = Figure(size = (1000, 640), fontsize = 15)
-    ax1 = Axis(fig[1, 1]; ylabel = "water returned to the air (mm / day)", title = "Evaporation + transpiration after the storm", xlabel = "")
+    ax1 = Axis(fig[1, 1]; ylabel = "evaporation + transpiration (mm / day)", title = "Water returned to the air by the loam column", xlabel = "")
     cs = Dict("sand_bare" => "#E0A458", "loam_bare" => "#E45756", "clay_bare" => "#8C564B", "loam_grass" => "#9BD770", "loam_forest" => "#2E7D32")
-    for c in CASES
-        d = cases[c]; e = daily(d.soilevap .+ d.trans)
-        lines!(ax1, 1:length(e), e; label = label(c), color = get(cs, c, :black), linewidth = 3)
+    pair = filter(c -> soil_of(c) == "loam", CASES)
+    for c in pair
+        e = daily(cases[c].soilevap .+ cases[c].trans); e0 = daily(ctrl[c].soilevap .+ ctrl[c].trans)
+        lines!(ax1, 1:length(e), e; label = "$(label(c)), after the storm", color = get(cs, c, :black), linewidth = 3)
+        lines!(ax1, 1:length(e0), e0; label = "$(label(c)), no storm", color = get(cs, c, :black), linewidth = 2, linestyle = :dash)
     end
     axislegend(ax1; position = :rt, framevisible = false)
     ax2 = Axis(fig[2, 1]; ylabel = "leaf water potential (MPa)", xlabel = "days since the storm")
     ax3 = Axis(fig[2, 1]; ylabel = "moisture-stress factor (0–1)", yaxisposition = :right)
     hidespines!(ax3); hidexdecorations!(ax3)
-    for c in filter(c -> cover_of(c) != "bare", CASES)
+    for c in filter(c -> cover_of(c) != "bare", pair)
         d = cases[c]
         lwp_daymin = [minimum(d.lwp[(24i + 1):(24i + 24)]) for i in 0:(length(d.lwp) ÷ 24 - 1)]
         msf_daymean = [mean(d.msf[(24i + 1):(24i + 24)]) for i in 0:(length(d.msf) ÷ 24 - 1)]
-        lines!(ax2, 1:length(lwp_daymin), lwp_daymin; color = get(cs, c, :black), linewidth = 3, label = "$(label(c)): leaf water potential, daily minimum")
-        lines!(ax3, 1:length(msf_daymean), msf_daymean; color = get(cs, c, :black), linewidth = 3, linestyle = :dash, label = "$(label(c)): moisture-stress factor, daily mean")
+        lines!(ax2, 1:length(lwp_daymin), lwp_daymin; color = get(cs, c, :black), linewidth = 3, label = "leaf water potential, daily minimum")
+        lines!(ax3, 1:length(msf_daymean), msf_daymean; color = get(cs, c, :black), linewidth = 3, linestyle = :dot, label = "moisture-stress factor, daily mean")
     end
+    hlines!(ax2, [-2.0]; color = (:black, 0.4), linestyle = :dash, linewidth = 1)
+    text!(ax2, 29.5, -1.95; text = "stress factor 0.5 at −2 MPa", align = (:right, :bottom), fontsize = 12, color = (:black, 0.6))
     ylims!(ax3, -0.05, 1.05)
     axislegend(ax2; position = :lb, framevisible = false, labelsize = 12)
     axislegend(ax3; position = :rt, framevisible = false, labelsize = 12)
@@ -150,7 +140,7 @@ begin
     save(joinpath(FIGDIR, "et_timeseries.png"), fig; px_per_unit = 2)
 end
 
-# ---- Figure 4: the animation
+# ---- Figure 3: the animation
 # Each panel: the soil column colored by water content (storm run), and the fate of the storm's own water as
 # cumulative bars (storm run minus no-storm control): ran off, evaporated, transpired above the surface, drained
 # below it, and a gauge inside the column for what is still stored, all on one scale.
@@ -180,7 +170,7 @@ end
 const BARS = ((:runoff, "ran off", col.runoff, 0.02), (:soilevap, "evaporated", col.soilevap, 0.24), (:trans, "transpired", col.trans, 0.46))
 const BARW = 0.1
 function build_animation()
-    fig = Figure(size = (1250, 700), fontsize = 15, backgroundcolor = :white)
+    fig = Figure(size = (250 * length(CASES) + 100, 700), fontsize = 15, backgroundcolor = :white)
     title = Observable("")
     Label(fig[0, 1:length(CASES)], title; fontsize = 22, font = :bold, tellwidth = false)
     θobs = Dict{String, Observable{Matrix{Float64}}}()

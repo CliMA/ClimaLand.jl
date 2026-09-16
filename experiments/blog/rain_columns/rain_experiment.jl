@@ -1,5 +1,5 @@
-# Where does the rain go? One storm on five columns: sand, loam, clay (bare),
-# and loam under grass and under forest. Idealized July weather, 30-day dry-down.
+# Where does the rain go? One storm on four columns: sand, loam, clay (bare),
+# and loam under a forest (CASES=...,loam_grass adds a grassland). Idealized July weather, 30-day dry-down.
 # Run once with the storm (OUTDIR=out) and once with STORM_MM=0 (OUTDIR=out_control):
 # the difference is the fate of the storm water itself.
 using Dates, Statistics, Serialization
@@ -20,7 +20,7 @@ earth_param_set = LP.LandParameters(toml_dict)
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
 NDAYS = parse(Int, get(ENV, "NDAYS", "30"))
-CASES = split(get(ENV, "CASES", "sand_bare,loam_bare,clay_bare,loam_grass,loam_forest"), ",")
+CASES = split(get(ENV, "CASES", "sand_bare,loam_bare,clay_bare,loam_forest"), ",")
 OUTDIR = get(ENV, "OUTDIR", "out")
 DT = parse(Float64, get(ENV, "DT", "60"))
 PLANT_A = parse(Float64, get(ENV, "PLANT_A", "5e-5"))

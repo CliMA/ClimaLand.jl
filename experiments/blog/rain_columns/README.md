@@ -5,7 +5,8 @@ Draft of the ClimaLand.jl post for the CliMA software-stack series.
 - `blog.md`: the post. `blog.html` is the styled preview, rendered from it by `build_html.py`
   (which also inserts the code excerpt from `snippet.jl`); `style.css` is the preview's stylesheet.
 - `snippet.jl`: the reader-facing script linked from the post (bare loam + forest, ~1 min).
-- `rain_experiment.jl`: all five cases; env vars `CASES`, `NDAYS`, `DT`, `PLANT_A`, `STORM_MM`, `OUTDIR`.
+- `rain_experiment.jl`: the four cases (bare sand, loam, clay; loam + forest); env vars `CASES`, `NDAYS`, `DT`, `PLANT_A`, `STORM_MM`, `OUTDIR`.
+  `CASES=...,loam_grass` adds a grassland that is not in the post.
 - `plot_results.jl`: figures, water budget table, and the animation.
 - `figs/`, `where_does_the_rain_go.png`: the outputs used in the post (committed).
 
