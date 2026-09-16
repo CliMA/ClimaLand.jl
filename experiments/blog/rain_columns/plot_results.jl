@@ -108,23 +108,21 @@ begin
     save(joinpath(FIGDIR, "budget.png"), fig; px_per_unit = 2)
 end
 
-# ---- Figure 2: the straw. Evaporation + transpiration of the loam pair (storm run solid, no-storm control dashed),
+# ---- Figure 2: the straw. Evaporation + transpiration of every column after the storm,
 # and the forest's leaf water potential and moisture-stress factor.
 begin
     fig = Figure(size = (1000, 640), fontsize = 15)
-    ax1 = Axis(fig[1, 1]; ylabel = "evaporation + transpiration (mm / day)", title = "Water returned to the air by the loam column", xlabel = "")
+    ax1 = Axis(fig[1, 1]; ylabel = "evaporation + transpiration (mm / day)", title = "Water returned to the air after the storm", xlabel = "")
     cs = Dict("sand_bare" => "#E0A458", "loam_bare" => "#E45756", "clay_bare" => "#8C564B", "loam_grass" => "#9BD770", "loam_forest" => "#2E7D32")
-    pair = filter(c -> soil_of(c) == "loam", CASES)
-    for c in pair
-        e = daily(cases[c].soilevap .+ cases[c].trans); e0 = daily(ctrl[c].soilevap .+ ctrl[c].trans)
-        lines!(ax1, 1:length(e), e; label = "$(label(c)), after the storm", color = get(cs, c, :black), linewidth = 3)
-        lines!(ax1, 1:length(e0), e0; label = "$(label(c)), no storm", color = get(cs, c, :black), linewidth = 2, linestyle = :dash)
+    for c in CASES
+        e = daily(cases[c].soilevap .+ cases[c].trans)
+        lines!(ax1, 1:length(e), e; label = label(c), color = get(cs, c, :black), linewidth = 3)
     end
     axislegend(ax1; position = :rt, framevisible = false)
     ax2 = Axis(fig[2, 1]; ylabel = "leaf water potential (MPa)", xlabel = "days since the storm")
     ax3 = Axis(fig[2, 1]; ylabel = "moisture-stress factor (0–1)", yaxisposition = :right)
     hidespines!(ax3); hidexdecorations!(ax3)
-    for c in filter(c -> cover_of(c) != "bare", pair)
+    for c in filter(c -> cover_of(c) != "bare", CASES)
         d = cases[c]
         lwp_daymin = [minimum(d.lwp[(24i + 1):(24i + 24)]) for i in 0:(length(d.lwp) ÷ 24 - 1)]
         msf_daymean = [mean(d.msf[(24i + 1):(24i + 24)]) for i in 0:(length(d.msf) ÷ 24 - 1)]
