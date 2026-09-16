@@ -108,14 +108,15 @@ begin
     save(joinpath(FIGDIR, "budget.png"), fig; px_per_unit = 2)
 end
 
-# ---- Figure 2: the straw. Evaporation + transpiration of every column after the storm,
+# ---- Figure 2: the straw. The storm's water returned to the air each day (storm run minus no-storm control),
 # and the forest's leaf water potential and moisture-stress factor.
 begin
     fig = Figure(size = (1000, 640), fontsize = 15)
-    ax1 = Axis(fig[1, 1]; ylabel = "evaporation + transpiration (mm / day)", title = "Water returned to the air after the storm", xlabel = "")
+    ax1 = Axis(fig[1, 1]; ylabel = "storm water evaporated + transpired (mm / day)", title = "The storm's water returned to the air", xlabel = "")
     cs = Dict("sand_bare" => "#E0A458", "loam_bare" => "#E45756", "clay_bare" => "#8C564B", "loam_grass" => "#9BD770", "loam_forest" => "#2E7D32")
+    hlines!(ax1, [0.0]; color = (:black, 0.3), linewidth = 1)
     for c in CASES
-        e = daily(cases[c].soilevap .+ cases[c].trans)
+        e = daily(cases[c].soilevap .+ cases[c].trans) .- daily(ctrl[c].soilevap .+ ctrl[c].trans)
         lines!(ax1, 1:length(e), e; label = label(c), color = get(cs, c, :black), linewidth = 3)
     end
     axislegend(ax1; position = :rt, framevisible = false)
