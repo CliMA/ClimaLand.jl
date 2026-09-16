@@ -85,6 +85,7 @@ using ClimaCore
                 :growing_days,
                 :A0c3_annual,
                 :A0c4_annual,
+                :GPPc3_annual,
                 :LAI,
             )
             @test Canopy.prognostic_vars(model) == optlai_prog
@@ -226,16 +227,16 @@ using ClimaCore
         end
 
         @testset "c3_fraction_from_competition for FT = $FT" begin
-            # The tree-cover term uses realized GPP (a0c3·Mc·fapar), so a sparser
-            # canopy means less tree shading, more C4 and a lower C3 fraction.
+            # The tree-cover term uses the realized C3 GPP (a0c3·fapar), so a
+            # sparser canopy means less tree shading, more C4 and a lower C3 fraction.
             Mc = FT(0.012)  # kg C per mol
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
             f =
                 (a3, a4, fapar) -> Canopy.c3_fraction_from_competition(
                     a3,
                     a4,
+                    a3 * fapar,
                     Mc,
-                    fapar,
                     params,
                 )
             c3_sparse = f(FT(100), FT(130), FT(0.5))
@@ -254,6 +255,51 @@ using ClimaCore
                 v = f(args...)
                 @test FT(0) <= v <= FT(1)
             end
+        end
+
+        @testset "canopy_composition_from_competition for FT = $FT" begin
+            Mc = FT(0.012)  # kg C per mol
+            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
+            g =
+                (a3, a4, fapar) -> Canopy.canopy_composition_from_competition(
+                    a3,
+                    a4,
+                    a3 * fapar,
+                    Mc,
+                    params,
+                )
+            for args in (
+                (FT(100), FT(130), FT(0.5)),
+                (FT(120), FT(40), FT(0.8)),
+                (FT(40), FT(120), FT(0.3)),
+                (FT(400), FT(500), FT(1.0)),
+            )
+                c = g(args...)
+                @test all(FT(0) .<= (c.tree, c.c3_grass, c.c4_grass) .<= FT(1))
+                @test c.tree + c.c3_grass + c.c4_grass ≈ FT(1)
+                # trees are all C3
+                a3, a4, fapar = args
+                @test Canopy.c3_fraction_from_competition(
+                    a3,
+                    a4,
+                    a3 * fapar,
+                    Mc,
+                    params,
+                ) ≈ c.tree + c.c3_grass
+            end
+            # below the tree-cover threshold GPP (≈0.6 kg C m^-2 yr^-1) there
+            # are no trees, so the open-canopy split is the whole canopy
+            sparse = g(FT(40), FT(120), FT(0.3))
+            @test sparse.tree == FT(0)
+            @test sparse.c4_grass > sparse.c3_grass
+            # above canopy closure (tc_gpp_ref = 2.8 kg C m^-2 yr^-1) everything is
+            # trees: C4 grasses are shaded out whatever their advantage
+            closed = g(FT(400), FT(500), FT(1.0))
+            @test closed.tree == FT(1)
+            @test closed.c4_grass == FT(0)
+            # a sparser canopy lowers the tree share
+            @test g(FT(150), FT(150), FT(0.4)).tree <
+                  g(FT(150), FT(150), FT(0.9)).tree
         end
 
         @testset "f0_from_aridity / aridity_from_f0 for FT = $FT" begin
@@ -456,6 +502,13 @@ using ClimaCore
             # no per-pathway climatology exists, so both start at the blended total
             @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual
             @test scalar(Y.canopy.biomass.A0c4_annual) ≈ A0_annual
+            # the realized C3 GPP is seeded with the fAPAR of the MODIS max LAI,
+            # not of the (winter) lai_init snapshot
+            max_lai = scalar(Canopy.modis_max_lai(surface_space))
+            k = model.parameters.k
+            GPPc3_annual = scalar(Y.canopy.biomass.GPPc3_annual)
+            @test GPPc3_annual ≈ A0_annual * (1 - exp(-k * max_lai))
+            @test GPPc3_annual > A0_annual * (1 - exp(-k * LAI))
         end
     end
 end

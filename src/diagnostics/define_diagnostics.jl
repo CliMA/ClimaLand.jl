@@ -388,6 +388,36 @@ function define_diagnostics!(land_model, possible_diags)
             compute_fractional_c3!(out, Y, p, t, land_model),
     )
 
+    # Canopy composition from the C3/C4 competition (always the competition's value,
+    # even with optimal_lai_online_c3c4 = 0)
+    add_diagnostic_variable!(
+        short_name = "ftr",
+        long_name = "Fraction Tree",
+        standard_name = "fraction_tree",
+        units = "",
+        comments = "Share of canopy productivity from C3 trees, from the C3/C4 competition: the tree cover expected at the realized C3 GPP relative to canopy closure. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_tree!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "fc3g",
+        long_name = "Fraction C3 Grass",
+        standard_name = "fraction_c3_grass",
+        units = "",
+        comments = "Share of canopy productivity from C3 grasses, from the C3/C4 competition. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c3_grass!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "fc4g",
+        long_name = "Fraction C4 Grass",
+        standard_name = "fraction_c4_grass",
+        units = "",
+        comments = "Share of canopy productivity from C4 grasses, from the C3/C4 competition; fc3 = 1 - fc4g when the competition is on. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c4_grass!(out, Y, p, t, land_model),
+    )
+
     # Moisture stress factor
     conditional_add_diagnostic_variable!(
         possible_diags;

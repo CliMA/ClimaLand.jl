@@ -8,6 +8,11 @@ main
   limitation enters once through `f0·P/A0`; the aridity index behind `f0` uses FAO-56
   Penman-Monteith reference ET; `z`/`sigma`/`alpha` recalibrated to 29.2/1.01/0.202, and
   the P-model, moisture-stress and canopy-flux defaults updated from a separate calibration.
+  The C3/C4 competition also stores the canopy composition it resolves (tree, C3 grass, C4
+  grass shares) in `p.canopy.biomass.composition`, with diagnostics `ftr`, `fc3g`, `fc4g`;
+  its tree cover is now estimated from a sixth accumulator, the trailing-year realized C3
+  GPP `GPPc3_annual`, instead of the annual potential times the instantaneous fAPAR, so
+  the tree share no longer follows the seasonal cycle of LAI.
   PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 - ![][badge-💥breaking] `ZhouOptimalLAIModel` drops the `optimal_lai_inputs` keyword — it is now
   `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
