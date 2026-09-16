@@ -346,6 +346,26 @@ function define_diagnostics!(land_model, possible_diags)
             compute_a0_annual!(out, Y, p, t, land_model),
     )
 
+    # Pure-C3 and pure-C4 annual potential GPP (drive the dynamic C3/C4 competition)
+    add_diagnostic_variable!(
+        short_name = "a0c3",
+        long_name = "Annual Potential GPP, C3 pathway",
+        standard_name = "annual_potential_gpp_c3",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Smoothed 1-year total of pure-C3 potential GPP; with a0c4 sets the C3/C4 competition.",
+        compute! = (out, Y, p, t) ->
+            compute_a0c3_annual!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "a0c4",
+        long_name = "Annual Potential GPP, C4 pathway",
+        standard_name = "annual_potential_gpp_c4",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Smoothed 1-year total of pure-C4 potential GPP; with a0c3 sets the C3/C4 competition.",
+        compute! = (out, Y, p, t) ->
+            compute_a0c4_annual!(out, Y, p, t, land_model),
+    )
+
     # Annual precipitation (from optimal LAI model)
     add_diagnostic_variable!(
         short_name = "pra",
@@ -355,6 +375,47 @@ function define_diagnostics!(land_model, possible_diags)
         comments = "Smoothed 1-year precipitation total, used by the optimal LAI model water limitation.",
         compute! = (out, Y, p, t) ->
             compute_precip_annual!(out, Y, p, t, land_model),
+    )
+
+    # Fraction of C3 photosynthesis (dynamic C3/C4 competition when enabled)
+    add_diagnostic_variable!(
+        short_name = "fc3",
+        long_name = "Fraction C3 Photosynthesis",
+        standard_name = "fraction_c3_photosynthesis",
+        units = "",
+        comments = "Fraction of C3 (vs C4) photosynthesis, 1 = all C3. From the optimal-LAI C3/C4 competition, unless it is turned off (optimal_lai_online_c3c4 = 0), which holds it at the static CLM map.",
+        compute! = (out, Y, p, t) ->
+            compute_fractional_c3!(out, Y, p, t, land_model),
+    )
+
+    # Canopy composition from the C3/C4 competition (always the competition's value,
+    # even with optimal_lai_online_c3c4 = 0)
+    add_diagnostic_variable!(
+        short_name = "ftr",
+        long_name = "Fraction Tree",
+        standard_name = "fraction_tree",
+        units = "",
+        comments = "Share of canopy productivity from C3 trees, from the C3/C4 competition: the tree cover expected at the realized C3 GPP relative to canopy closure. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_tree!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "fc3g",
+        long_name = "Fraction C3 Grass",
+        standard_name = "fraction_c3_grass",
+        units = "",
+        comments = "Share of canopy productivity from C3 grasses, from the C3/C4 competition. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c3_grass!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "fc4g",
+        long_name = "Fraction C4 Grass",
+        standard_name = "fraction_c4_grass",
+        units = "",
+        comments = "Share of canopy productivity from C4 grasses, from the C3/C4 competition; fc3 = 1 - fc4g when the competition is on. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c4_grass!(out, Y, p, t, land_model),
     )
 
     # Moisture stress factor
