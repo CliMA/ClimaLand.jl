@@ -6,6 +6,7 @@ using LazyBroadcast: lazy
 import ClimaCore: Fields, Spaces
 using NVTX
 include("Artifacts.jl")
+include("shared_utilities/climacore_compat.jl")
 include("shared_utilities/Parameters.jl")
 import .Parameters as LP
 import ClimaParams as CP
