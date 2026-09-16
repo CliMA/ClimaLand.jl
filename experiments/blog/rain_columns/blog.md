@@ -3,7 +3,7 @@
 
 *CliMA software stack · Part N · ClimaLand.jl*
 
-# A sponge, a straw, and fifty millimeters of rain
+# Where does the rain go? One storm on four soils with ClimaLand.jl
 
 The same storm falls on four patches of ground. A month later the water has gone four different ways, and one patch has lost more than it received. ClimaLand.jl, the land model of the CliMA Earth system model, shows why.
 
@@ -11,7 +11,7 @@ The same storm falls on four patches of ground. A month later the water has gone
 
 Part N of our tour of the CliMA software stack. The series began with [why we built a new Earth system model](https://clima.caltech.edu/2026/07/28/an-entirely-new-earth-system-model-the-first-in-decades/); last week covered [how model parameters are learned from data](https://clima.caltech.edu/2026/09/08/from-tuning-by-hand-to-learning-from-data-climaparams-jl-and-climacalibrate-jl/).
 
-Picture a July night in the middle of a continent. A storm drops fifty millimeters of rain in twelve hours: fifty liters on every square meter, a layer of water five centimeters deep. After the storm, clear weather returns. Where does the water go?
+Picture a July night in the middle of a continent. A storm drops fifty millimeters of rain in twelve hours: fifty liters on every square meter, a layer of water five centimeters deep. After the storm, clear weather returns. Where does it go?
 
 A raindrop on land has four exits. It can **run off** the surface into a ditch and a river. It can **drain** down through the soil toward groundwater. It can **evaporate** from the wet ground. Or it can be pulled up through roots and leaves and **transpired** by a plant. Averaged over the continents, the last two exits together return roughly sixty percent of the rain to the atmosphere, and transpiration is the larger of the two.
 

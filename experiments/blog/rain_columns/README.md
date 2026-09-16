@@ -1,4 +1,4 @@
-# Blog post draft: "A sponge, a straw, and fifty millimeters of rain"
+# Blog post draft: "Where does the rain go? One storm on four soils with ClimaLand.jl"
 
 Draft of the ClimaLand.jl post for the CliMA software-stack series.
 
