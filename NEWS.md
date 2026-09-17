@@ -44,7 +44,7 @@ v1.11.2
 v1.11.1
 -------
 - ![][badge-🔥behavioralΔ] Add support for ClimaCore v0.15.
-  PR [#1883](https://github.com/CliMA/ClimaLand.jl/pull/1883)
+  PR [#XXXX](https://github.com/CliMA/ClimaLand.jl/pull/XXXX)
 - ![][badge-✨feature] Add a `TimeIntegratedVariable` utility for prognostic time-integrated
   variables — a running mean/sum or plain time-integral stored in `Y` and advanced by the
   time-stepper (no callback, checkpoint/restart-safe). PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
