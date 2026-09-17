@@ -87,7 +87,7 @@ function update_SIF!(
     Vcmax25_c4 = Y.canopy.photosynthesis.acclimated.Vcmax25_c4
     Jmax25_c3 = Y.canopy.photosynthesis.acclimated.Jmax25_c3
     Jmax25_c4 = Y.canopy.photosynthesis.acclimated.Jmax25_c4
-    LAI = p.canopy.biomass.area_index.leaf;
+    LAI = p.canopy.biomass.area_index.leaf
     fraction_c3 = photosynthesis_model.fractional_c3
     @. SIF = compute_SIF_at_a_point_pmodel(
         APAR_canopy_moles,
@@ -184,11 +184,12 @@ function compute_SIF_at_a_point_farquhar(
     sif_parameters::SIFParameters{FT},
     photo_parameters::FarquharParameters{FT},
 ) where {FT}
-    APAR_leaf_moles = APAR_canopy_moles/max(LAI, eps(FT))
+    APAR_leaf_moles = APAR_canopy_moles / max(LAI, eps(FT))
     (; θj, ϕ, ΔHJmax, To) = photo_parameters
     # In the Farquhar model we have implemented, Jmax is proportional to Vcmax at the leaf level and should never be zero in vegetated areas.
     Jmax = max_electron_transport_farquhar(Vcmax25_leaf, ΔHJmax, Tc, To, R)
-    J_over_Jmax = electron_transport_farquhar(APAR_leaf_moles, Jmax, θj, ϕ)/Jmax
+    J_over_Jmax =
+        electron_transport_farquhar(APAR_leaf_moles, Jmax, θj, ϕ) / Jmax
     return sif_755_lee_model(
         sif_parameters,
         J_over_Jmax,
@@ -261,11 +262,11 @@ function compute_SIF_at_a_point_pmodel(
     # and this would return 1
     x_c3 = max(4 * ϕ0_c3 * APAR_canopy_moles, eps(FT))
     x_c4 = max(4 * ϕ0_c4 * APAR_canopy_moles, eps(FT))
-    J_over_Jmax_c3 = 1/sqrt(1+(Jmax_c3/x_c3)^2)
-    J_over_Jmax_c4 = 1/sqrt(1+(Jmax_c4/x_c4)^2)
+    J_over_Jmax_c3 = 1 / sqrt(1 + (Jmax_c3 / x_c3)^2)
+    J_over_Jmax_c4 = 1 / sqrt(1 + (Jmax_c4 / x_c4)^2)
     # Lee et al 2015 formula uses leaf level Vcmax25
-    Vcmax25_leaf_c4 = Vcmax25_c4/max(LAI, eps(FT))
-    Vcmax25_leaf_c3 = Vcmax25_c3/max(LAI, eps(FT))
+    Vcmax25_leaf_c4 = Vcmax25_c4 / max(LAI, eps(FT))
+    Vcmax25_leaf_c3 = Vcmax25_c3 / max(LAI, eps(FT))
     SIF_755_c3 = sif_755_lee_model(
         sif_parameters,
         J_over_Jmax_c3,
@@ -282,7 +283,7 @@ function compute_SIF_at_a_point_pmodel(
         Tc,
         T_freeze,
     )
-    return SIF_755_c3*fraction_c3+(1-fraction_c3)*SIF_755_c4
+    return SIF_755_c3 * fraction_c3 + (1 - fraction_c3) * SIF_755_c4
 end
 
 """

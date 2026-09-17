@@ -307,9 +307,9 @@ end
         FT;
         nelements = nelements,
         mask_threshold = FT(0.99),
-    );
-    surface_space = domain.space.surface;
-    start_date = DateTime(2008);
+    )
+    surface_space = domain.space.surface
+    start_date = DateTime(2008)
     stop_date = start_date + Second(Δt)
     forcing = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -324,7 +324,7 @@ end
         domain.space.surface,
         start_date,
         stop_date,
-    );
+    )
 
     land = LandModel{FT}(
         forcing,
@@ -333,7 +333,7 @@ end
         domain,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-    );
+    )
 
     @test domain == ClimaLand.get_domain(land)
     @test ClimaComms.context(land) == ClimaComms.context()

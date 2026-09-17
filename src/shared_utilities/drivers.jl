@@ -36,7 +36,6 @@ export AbstractAtmosphericDrivers,
     prescribed_analytic_forcing,
     default_cos_zenith_angle,
     prescribed_forcing_crujra
-
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
 
@@ -423,7 +422,7 @@ function turbulent_fluxes!(
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
-
+    rsl = roughness_sublayer_model(model)
     dest .= turbulent_fluxes_at_a_point.(
         momentum_fluxes, # return_extra_fluxes
         p.drivers.P,
@@ -441,6 +440,7 @@ function turbulent_fluxes!(
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         gustiness,
+        rsl,
         earth_param_set,
     )
     return nothing
@@ -484,6 +484,7 @@ end
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         gustiness,
+        rsl,
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -524,6 +525,7 @@ function compute_turbulent_fluxes_at_a_point(
     update_∂T_sfc∂T,
     update_∂q_sfc∂T,
     gustiness,
+    rsl,
     earth_param_set,
 ) where {FT}
 
@@ -531,7 +533,12 @@ function compute_turbulent_fluxes_at_a_point(
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set) # used to compute surface potential
 
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = SurfaceFluxes.SurfaceFluxConfig(
+        roughness_model,
+        gustiness,
+        SurfaceFluxes.MoistModel(),
+        rsl,
+    )
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
@@ -767,15 +774,21 @@ function surface_displacement_height(model::AbstractModel, Y, p)
 end
 
 """
+    roughness_sublayer_model(model)
+
+Returns the roughness sublayer parameterization for your model. The default
+is no roughness sublayer considered.
+"""
+function roughness_sublayer_model(model)
+    SurfaceFluxes.NoRoughnessSubLayer()
+end
+
+
+"""
     get_update_surface_temperature_function(model::AbstractModel, Y, p)
 
 Returns the SurfaceFluxes `update_T_sfc` function for `model`.
 
-This is only required if the output of `component_temperature` does not coincide
-with the temperature that should be used to compute turbulent fluxes.
-
-Extending this function for your model is only necessary if you need to
-compute surface fluxes using the functions in this file.
 """
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
 

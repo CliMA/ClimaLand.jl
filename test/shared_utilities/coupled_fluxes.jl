@@ -29,9 +29,9 @@ using ClimaUtilities.TimeManager: ITime
         FT;
         nelements = nelements,
         mask_threshold = FT(0.99),
-    );
-    surface_space = domain.space.surface;
-    start_date = DateTime(2008);
+    )
+    surface_space = domain.space.surface
+    start_date = DateTime(2008)
     stop_date = start_date + Second(Δt)
     gustiness = FT(1)
     Δh = ClimaCore.Fields.zeros(surface_space) .+ 10
@@ -49,7 +49,7 @@ using ClimaUtilities.TimeManager: ITime
         domain.space.surface,
         start_date,
         stop_date,
-    );
+    )
 
     land = LandModel{FT}(
         forcing,
@@ -58,7 +58,7 @@ using ClimaUtilities.TimeManager: ITime
         domain,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-    );
+    )
 
     Y, p, cds = ClimaLand.initialize(land)
     # Set drivers (We assume the coupler will have done this)
@@ -109,16 +109,16 @@ using ClimaUtilities.TimeManager: ITime
 
     # Repeat with Bucket
     albedo =
-        ClimaLand.Bucket.PrescribedBaregroundAlbedo(toml_dict, surface_space);
-    τc = FT(3600);
-    parameters = ClimaLand.Bucket.BucketModelParameters(toml_dict; albedo, τc);
-    radiation = ClimaLand.Bucket.CoupledRadiativeFluxes{FT}();
+        ClimaLand.Bucket.PrescribedBaregroundAlbedo(toml_dict, surface_space)
+    τc = FT(3600)
+    parameters = ClimaLand.Bucket.BucketModelParameters(toml_dict; albedo, τc)
+    radiation = ClimaLand.Bucket.CoupledRadiativeFluxes{FT}()
     bucket = ClimaLand.Bucket.BucketModel(;
         parameters,
         domain,
         atmosphere = atmos,
         radiation,
-    );
+    )
 
     Y, p, cds = ClimaLand.initialize(bucket)
     # Set drivers (We assume the coupler will have done this)
