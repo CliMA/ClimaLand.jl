@@ -1163,7 +1163,7 @@ function top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
     N = ClimaCore.Spaces.nlevels(face_space)
     sfc_level =
         ClimaCore.Fields.level(face_field, ClimaCore.Utilities.PlusHalf(N - 1))
-    # Project onto surface space
+    # Reassign the values to the surface space
     return ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(sfc_level),
         surface_space,
@@ -1185,7 +1185,7 @@ function bottom_face_to_surface(
 )
     sfc_level =
         ClimaCore.Fields.level(face_field, ClimaCore.Utilities.PlusHalf(0))
-    # Project onto surface space
+    # Reassign the values to the surface space
     return ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(sfc_level),
         surface_space,
