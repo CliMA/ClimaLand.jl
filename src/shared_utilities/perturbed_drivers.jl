@@ -92,7 +92,7 @@ end
                              gustiness=1,
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                             time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))),
+                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder,
                              interpolation_method = Interpolations.Constant(),)
 
@@ -114,9 +114,7 @@ function prescribed_perturbed_temperature_era5(
     gustiness = 1,
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(
-        PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))),
-    ),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )
@@ -290,7 +288,7 @@ end
                              gustiness=1,
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                             time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))),
+                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder,
                              interpolation_method = Interpolations.Constant(),)
 
@@ -312,9 +310,7 @@ function prescribed_perturbed_rh_era5(
     gustiness = 1,
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(
-        PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))),
-    ),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )

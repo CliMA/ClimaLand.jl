@@ -328,6 +328,16 @@ end
     SoilCanopyModel,
     LandModel,
 } get_Rd_canopy(p, get_canopy(land_model).photosynthesis)
+@diagnostic_compute "photosynthesis_net_leaf" Union{
+    CanopyModel,
+    SoilCanopyModel,
+    LandModel,
+} get_An_leaf(p, get_canopy(land_model).photosynthesis)
+@diagnostic_compute "respiration_leaf" Union{
+    CanopyModel,
+    SoilCanopyModel,
+    LandModel,
+} get_Rd_leaf(p, get_canopy(land_model).photosynthesis)
 @diagnostic_compute "vcmax25" Union{CanopyModel, SoilCanopyModel, LandModel} get_Vcmax25_canopy(
     Y,
     p,
@@ -503,7 +513,7 @@ function compute_10cm_water_mass!(
     soil = get_soil(land_model)
     ∫Hθdz = p.soil.sfc_scratch
     Hθ = p.soil.sub_sfc_scratch
-    z = land_model.soil.domain.fields.z
+    z = soil.domain.fields.z
     depth = FT(-0.1)
     earth_param_set = soil.parameters.earth_param_set
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
@@ -512,22 +522,21 @@ function compute_10cm_water_mass!(
     @. Hθ = (p.soil.θ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
 
-    # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
-    # to the integral above not exactly representing 10cm.
-    # To adjust, divide by the ∫heaviside(z, depth) dz, and then multiply by 10cm
-    H = p.subsfc_scratch
-    @. H = heaviside(z, depth)
-    ∫Hdz = p.sfc_scratch
-    column_integral_definite!(∫Hdz, H)
-
     if isnothing(out)
         out = zeros(soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = ∫Hθdz / ∫Hdz * FT(0.1)
-        return out
-    else
-        @. out = ∫Hθdz / ∫Hdz * FT(0.1)
     end
+    # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
+    # to the integral above not exactly representing 10cm.
+    # To adjust, divide by the ∫heaviside(z, depth) dz, and then multiply by 10cm.
+    # `Hθ` is no longer needed, so its scratch space holds the heaviside function, and
+    # `out` holds its integral until the final division.
+    H = Hθ
+    @. H = heaviside(z, depth)
+    ∫Hdz = out
+    column_integral_definite!(∫Hdz, H)
+    @. out = ∫Hθdz / ∫Hdz * FT(0.1)
+    return out
 end
 function compute_soil_albedo!(
     out,
@@ -663,9 +672,9 @@ function compute_soilco2_ppm!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, SoilCO2Model{FT}},
 ) where {FT}
-    params = land_model.soilco2.parameters
+    params = get_soilco2(land_model).parameters
     M_C = FT(params.M_C)
     R = FT(LP.gas_constant(params.earth_param_set))
 
@@ -1110,13 +1119,13 @@ end
     EnergyHydrology,
 } Y.soil.ρe_int
 
-@diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
-@diagnostic_compute "snow_depth" LandModel p.snow.z_snow
-@diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
-@diagnostic_compute "snow_sfc_temp" LandModel p.snow.T_sfc
+@diagnostic_compute "snow_water_equivalent" Union{LandModel, SnowModel} Y.snow.S
+@diagnostic_compute "snow_depth" Union{LandModel, SnowModel} p.snow.z_snow
+@diagnostic_compute "snow_cover_fraction" Union{LandModel, SnowModel} p.snow.snow_cover_fraction
+@diagnostic_compute "snow_sfc_temp" Union{LandModel, SnowModel} p.snow.T_sfc
 @diagnostic_compute "snow_bot_temp" LandModel p.snow_T_bot
 @diagnostic_compute "snowk" LandModel p.snow.κ
-@diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
+@diagnostic_compute "snow_bulk_temp" Union{LandModel, SnowModel} p.snow.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 

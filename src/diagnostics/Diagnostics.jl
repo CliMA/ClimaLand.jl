@@ -24,6 +24,7 @@ import ..Canopy:
     get_Vcmax25_canopy,
     get_An_canopy,
     get_An_leaf,
+    get_Rd_leaf,
     get_Rd_canopy,
     get_GPP,
     MedlynConductanceModel,

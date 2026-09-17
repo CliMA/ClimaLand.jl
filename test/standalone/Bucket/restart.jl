@@ -96,6 +96,24 @@ import ClimaCore
         model,
     )
     t_restart = ClimaLand.initial_time_from_checkpoint(restart_file; model)
+    # Reading with a model that differs from the one checkpointed warns
+    other_parameters = ClimaLand.Bucket.BucketModelParameters(
+        toml_dict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc = 2τc,
+    )
+    other_model = ClimaLand.Bucket.BucketModel(
+        parameters = other_parameters,
+        domain = bucket_domain,
+        atmosphere = bucket_atmos,
+        radiation = bucket_rad,
+    )
+    @test_logs (:warn, r"different land model") ClimaLand.initial_time_from_checkpoint(
+        restart_file;
+        model = other_model,
+    )
 
     set_initial_cache!(p_restart, Y_restart, t_restart)
     prob_restart = ClimaTimeSteppers.ODEProblem(

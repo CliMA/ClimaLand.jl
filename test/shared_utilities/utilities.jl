@@ -452,3 +452,65 @@ end
         "Checking NaNs in var3",
     ) ClimaLand.call_count_nans_state(Y, mask = mask_ones)
 end
+
+@testset "isdivisible" begin
+    @test ClimaLand.isdivisible(Hour(2), Minute(30))
+    @test !ClimaLand.isdivisible(Hour(1), Minute(7))
+    @test ClimaLand.isdivisible(Year(1), Month(3))
+    @test !ClimaLand.isdivisible(Year(1), Month(5))
+    @test ClimaLand.isdivisible(ITime(3600), ITime(600))
+    @test !ClimaLand.isdivisible(ITime(3600), ITime(700))
+    @test ClimaLand.isdivisible(10.0, 2.5)
+    @test !ClimaLand.isdivisible(10.0, 3.0)
+    # Mixed fixed/calendar periods cannot be compared and warn
+    @test_logs (:warn, r"not covered") @test !ClimaLand.isdivisible(
+        Month(1),
+        Hour(1),
+    )
+end
+
+@testset "IntervalBasedCallback argument checks" begin
+    start_date = ITime(0, epoch = DateTime(2010))
+    increment_p = (x) -> x.p .+= 1
+    # A callback period that is not a multiple of dt warns
+    @test_logs (:warn, r"not an integer multiple") IntervalBasedCallback(
+        Hour(1),
+        start_date,
+        ITime(7 * 60),
+        increment_p,
+    )
+    # Non-period arguments must be promotable to a common type
+    @test_throws ErrorException IntervalBasedCallback(
+        2.0,
+        ITime(0),
+        ITime(1),
+        increment_p,
+    )
+end
+
+@testset "check_land_equality, FT = $FT" begin
+    @test isnothing(ClimaLand.check_land_equality(FT(1), FT(1)))
+    @test isnothing(ClimaLand.check_land_equality(FT[1, 2], FT[1, 2]))
+    @test_throws AssertionError ClimaLand.check_land_equality(
+        FT[1, 2],
+        FT[1, 3],
+    )
+
+    domain = ClimaLand.Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = 4)
+    field1 = Fields.zeros(domain.space.subsurface) .+ FT(1)
+    field2 = Fields.zeros(domain.space.subsurface) .+ FT(1)
+    @test isnothing(ClimaLand.check_land_equality(field1, field2))
+    field2 .= FT(2)
+    @test_throws AssertionError ClimaLand.check_land_equality(field1, field2)
+end
+
+@testset "Context from a FieldVector, FT = $FT" begin
+    domain = ClimaLand.Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = 4)
+    field = Fields.zeros(domain.space.subsurface)
+    Y = Fields.FieldVector(; soil = (; a = field), empty = Float64[])
+    @test ClimaLand._context_from_Y(Y) == ClimaComms.context(field)
+    @test isnothing(ClimaLand._context_from_Y(Float64[]))
+    @test isnothing(
+        ClimaLand._context_from_Y(Fields.FieldVector(; a = Float64[])),
+    )
+end

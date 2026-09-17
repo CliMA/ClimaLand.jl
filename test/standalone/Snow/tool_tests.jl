@@ -82,8 +82,12 @@ if !isnothing(SNOTELScraperExt)
         @test sum(test_data1[!, 2]) == 1168
         =#
 
-        download_link = "https://caltech.box.com/shared/static/4tih9hiydrc7bcvrpkr2x727b5l54oiq.csv"
-        download_data = DataTools.df_from_url(download_link)
+        # Local copies of SNOTEL site 1030 (CO) data for 2015-01, so the
+        # tests do not depend on network access.
+        data_dir = joinpath(@__DIR__, "data")
+        download_data = DataTools.df_from_string(
+            read(joinpath(data_dir, "snotel_daily_1030CO_2015-01.csv"), String),
+        )
         test_data2 = deepcopy(download_data)
         #=
         test_data2 = DataTools.sitedata_daily(
@@ -100,8 +104,12 @@ if !isnothing(SNOTELScraperExt)
         @test sum(test_data2[!, :z]) == 1168
         #@test isequal(download_data, test_data2)
 
-        download_link_hr = "https://caltech.box.com/shared/static/4q7qtnc2nv8rwh4q8s0afe238ydzfl93.csv"
-        download_data = DataTools.df_from_url(download_link_hr) #CSV.read(HTTP.get(download_link_hr).body, DataFrame)
+        download_data = DataTools.df_from_string(
+            read(
+                joinpath(data_dir, "snotel_hourly_1030CO_2015-01.csv"),
+                String,
+            ),
+        )
         test_data3 = deepcopy(download_data)
         #=
         test_data3 = DataTools.sitedata_hourly(
