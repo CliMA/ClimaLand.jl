@@ -1058,10 +1058,9 @@ function make_set_initial_state_from_atmos_and_parameters(
         Y.bucket.W .= land.parameters.W_f
         Y.bucket.Ws .= 0
         Y.bucket.σS .= 0
-        n_levels = ClimaCore.Spaces.nlevels(land.domain.space.subsurface)
-        for i in 1:n_levels
-            ClimaCore.Fields.level(Y.bucket.T, i) .= p.drivers.T
-        end
+        # The surface space is a subspace of the subsurface space, so this
+        # sets every level to the surface temperature
+        Y.bucket.T .= p.drivers.T
     end
     return set_ic!
 end

@@ -348,7 +348,7 @@ function boundary_flux!(
     t,
 )
     FT = eltype(Δz)
-    K_c = Fields.level(p.soil.K, 1)
+    K_c = Domains.bottom_center_to_surface(p.soil.K)
     @. bc_field = -1 * K_c
 end
 
@@ -392,14 +392,12 @@ function ClimaLand.set_dfluxBCdY!(
     S_sN = Domains.top_center_to_surface(S_s)
 
 
-    # Get the local geometry of the face space, then extract the top level
-    levels =
-        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soil.K)))
-    local_geometry_faceN = ClimaCore.Fields.level(
+    # Local geometry of the top face, on the surface space
+    local_geometry_faceN = Domains.top_face_to_surface(
         Fields.local_geometry_field(
             ClimaCore.Spaces.face_space(axes(p.soil.K)),
         ),
-        levels - ClimaCore.Utilities.half,
+        axes(p.soil.dfluxBCdY),
     )
 
     # Update dfluxBCdY at the top boundary in place
@@ -597,8 +595,8 @@ function soil_boundary_fluxes!(
     t,
 )
     FT = eltype(Δz)
-    K_c = Fields.level(p.soil.K, 1)
-    T_c = Fields.level(p.soil.T, 1)
+    K_c = Domains.bottom_center_to_surface(p.soil.K)
+    T_c = Domains.bottom_center_to_surface(p.soil.T)
     @. p.soil.bottom_bc.water = -1 * K_c
     @. p.soil.bottom_bc.heat =
         -1 *

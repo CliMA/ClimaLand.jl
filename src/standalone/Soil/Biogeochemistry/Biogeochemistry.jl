@@ -832,13 +832,11 @@ function ClimaLand.boundary_flux!(
     θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_eff)
     C_bc = FT.(bc.bc(p, t))
     @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c / θ_sfc, Δz)
-    levels =
-        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
-    local_geometry_faceN = ClimaCore.Fields.level(
+    local_geometry_faceN = ClimaLand.Domains.top_face_to_surface(
         Fields.local_geometry_field(
             ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
         ),
-        levels - ClimaCore.Utilities.half,
+        axes(p.soilco2.dfluxBCdY),
     )
     @. p.soilco2.dfluxBCdY =
         ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
@@ -941,13 +939,11 @@ function ClimaLand.boundary_flux!(
         max(C_c / θ_sfc, 0),
         Δz,
     )
-    levels =
-        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
-    local_geometry_faceN = ClimaCore.Fields.level(
+    local_geometry_faceN = ClimaLand.Domains.top_face_to_surface(
         Fields.local_geometry_field(
             ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
         ),
-        levels - ClimaCore.Utilities.half,
+        axes(p.soilco2.dfluxBCdY),
     )
     @. p.soilco2.dfluxBCdY =
         ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
@@ -1097,13 +1093,11 @@ function ClimaLand.boundary_flux!(
         max(O2_c / θ_sfc, 0),
         Δz,
     )
-    levels =
-        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
-    local_geometry_faceN = ClimaCore.Fields.level(
+    local_geometry_faceN = ClimaLand.Domains.top_face_to_surface(
         Fields.local_geometry_field(
             ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
         ),
-        levels - ClimaCore.Utilities.half,
+        axes(p.soilco2.dfluxBCdY_o2),
     )
     @. p.soilco2.dfluxBCdY_o2 =
         ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
