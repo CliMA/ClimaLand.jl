@@ -214,9 +214,9 @@ diagnostics = ClimaLand.default_diagnostics(
 )
 simulation = LandSimulation(start_date, stop_date, Δt, model; diagnostics);
 
-# The timestepping itself takes about 70 s for the full year on a laptop; expect a few
-# minutes in total once compilation and plotting are included. Shorten `stop_date` to
-# `start_date + Month(1)` while experimenting.
+# The timestepping itself takes one to two minutes for the full year on a laptop, varying
+# with ClimaLand version; expect a few minutes in total once compilation and plotting are
+# included. Shorten `stop_date` to `start_date + Month(1)` while experimenting.
 
 solve!(simulation);
 
@@ -224,14 +224,16 @@ solve!(simulation);
 #
 # Because we wrote the forcing, we know what the answer should qualitatively be, which
 # makes this a much sharper test of understanding than comparing against reanalysis. The
-# seasonal contrasts below are from an actual run of this tutorial:
+# seasonal contrasts below are from an actual run of this tutorial. Expect small
+# differences between ClimaLand versions; the ones below are reproducible to the precision
+# quoted across v1.10 and v1.12.
 #
 # | variable | Jun-Aug | Dec-Feb |
 # |:---|---:|---:|
 # | soil temperature (K) | 294.1 | 279.2 |
 # | soil moisture (m³/m³) | 0.36 | 0.31 |
-# | latent heat flux (W/m²) | 132.0 | 6.6 |
-# | GPP (mol CO₂ m⁻² s⁻¹) | 6.0e-6 | 1.9e-6 |
+# | latent heat flux (W/m²) | ~133 | 6.6 |
+# | GPP (mol CO₂ m⁻² s⁻¹) | ~6.1e-6 | 1.9e-6 |
 # | LAI (m²/m²) | 2.11 | 0.50 |
 #
 # - **Soil temperature** tracks the imposed seasonal air temperature, damped and lagged
