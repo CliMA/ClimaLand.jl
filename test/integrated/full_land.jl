@@ -480,7 +480,12 @@ end
 
         # Check total
         area_index = p.canopy.biomass.area_index.leaf
-        h_canopy = land.canopy.biomass.height
+        h_hydr = ClimaLand.Canopy.hydraulic_height(
+            p,
+            Y,
+            land.canopy.hydraulics,
+            land.canopy,
+        )
         ρ_ice = LP.ρ_cloud_ice(earth_param_set)
         ρ_liq = LP.ρ_cloud_liq(earth_param_set)
         int_cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -490,7 +495,7 @@ end
         )
         soil_exp = int_cache
         canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
-        @. canopy_exp = area_index * h_canopy * ϑ0
+        @. canopy_exp = area_index * h_hydr * ϑ0
         snow_exp = S0
         total_water = ClimaCore.Fields.zeros(domain.space.surface)
         cache = ClimaCore.Fields.zeros(domain.space.surface)

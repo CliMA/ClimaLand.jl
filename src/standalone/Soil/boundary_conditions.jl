@@ -873,7 +873,7 @@ Returns the net volumetric water flux (m/s) and net energy
 flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
-This function calls the `turbulent_fluxes!` and `net_radiation!`
+This function calls the `update_soil_surface_temperature!` and `net_radiation!`
 functions, which use the soil surface conditions as well as
 the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.

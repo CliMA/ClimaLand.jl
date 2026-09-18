@@ -2,6 +2,10 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
+stem/root area indices in global models with a prescribed LAI, by default;
+replace true canopy height in plant hydraulics with a hydraulic height; use
+SurfaceFluxes.jl `ReferenceAboveApparentSink` feature and pass reference convention into all turbulent flux functions. PR [#1907](https://github.com/CliMA/ClimaLand.jl/pull/1907)
 - ![][badge-🔥behavioralΔ] Use 0.25° MODIS LAI of the land part of each cell
   (`modis_lai_0.25deg`, `modis_lai_climatology_0.25deg`, and
   `modis_max_lai_0.25deg` artifacts, from

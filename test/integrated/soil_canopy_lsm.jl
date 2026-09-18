@@ -13,12 +13,32 @@ for FT in (Float32, Float64)
     toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict) # h_atmos = 1 relative to the ground
         forcing = (; atmos, radiation)
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
         LAI = TimeVaryingInput((t) -> FT(1.0))
         Δt = FT(450)
-        model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain)
+        # Choose a canopy height such that h_atmos > displ
+        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(;
+            LAI,
+            SAI = FT(0),
+            RAI = FT(1),
+            rooting_depth = FT(1),
+            height = FT(0.3),
+        )
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            ClimaLand.Domains.obtain_surface_domain(domain),
+            (;
+                atmos = forcing.atmos,
+                radiation = forcing.radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            LAI,
+            toml_dict;
+            prognostic_land_components = (:canopy, :soil, :soilco2),
+            biomass,
+        )
+        model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain; canopy)
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
         Y, p, cds = initialize(model)

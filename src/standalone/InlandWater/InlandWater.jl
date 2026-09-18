@@ -26,7 +26,6 @@ import ClimaLand:
     component_specific_humidity,
     get_update_surface_humidity_function,
     get_update_surface_temperature_function,
-    surface_height,
     surface_albedo,
     surface_emissivity,
     surface_displacement_height,
@@ -322,9 +321,6 @@ function ClimaLand.surface_roughness_model(
     return SurfaceFluxes.ConstantRoughnessParams{FT}(ps.z_0m, ps.z_0b)
 end
 
-function ClimaLand.surface_height(model::SlabLakeModel{FT}, Y, p) where {FT}
-    return FT(0)
-end
 
 function ClimaLand.surface_displacement_height(
     model::SlabLakeModel{FT},
@@ -342,15 +338,23 @@ function ClimaLand.component_specific_humidity(
     earth_param_set = model.parameters.earth_param_set
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     T_sfc = p.lake.T
-    h_sfc = surface_height(model, Y, p)
     atmos = model.boundary_conditions.atmos
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
+    Δz_eff = @. lazy(
+        ClimaLand.compute_Δz_eff(
+            atmos.h,
+            model.parameters.z_0m,
+            displ,
+            atmos.reference,
+        ),
+    )
     ρ_sfc = @. lazy(
         ClimaLand.compute_ρ_sfc(
             surface_flux_params,
             p.drivers.T,
             p.drivers.P,
             p.drivers.q,
-            atmos.h - h_sfc,
+            Δz_eff,
             T_sfc,
         ),
     )

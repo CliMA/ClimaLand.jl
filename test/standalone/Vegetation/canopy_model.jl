@@ -396,6 +396,7 @@ end
             S_s = plant_S_s,
             conductivity_model = conductivity_model,
             retention_model = retention_model,
+            height = FT(1),
         )
         soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = Canopy.PlantHydraulicsModel{FT}(param_set)
@@ -549,8 +550,15 @@ end
     )
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos, radiation, ground)
-
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict)
+    biomass =
+        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        domain,
+        forcing,
+        LAI,
+        toml_dict;
+        biomass,
+    )
 
     Y, p, coords = ClimaLand.initialize(canopy)
     dY = similar(Y)

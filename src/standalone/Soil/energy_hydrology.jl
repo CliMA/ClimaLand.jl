@@ -1002,6 +1002,7 @@ end
             h_atmos = model.boundary_conditions.top.atmos.h,
             T_atmos = p.drivers.T,
             q_atmos = p.drivers.q,
+            reference = model.boundary_conditions.top.atmos.reference
         ),
     )
 
@@ -1009,7 +1010,8 @@ Return the surface specific humidity for the `EnergyHydrology` soil model,
 updating `p.soil.q_sfc` in place. The surface air density is extrapolated from
 the air temperature `T_atmos` and specific humidity `q_atmos` at the reference
 height `h_atmos` of `forcing`, which default to the atmospheric forcing; below
-a canopy, the sub-canopy forcing is passed.
+a canopy, the sub-canopy forcing is passed. Please be aware that the reference level
+may be different between the two cases.
 """
 function ClimaLand.component_specific_humidity(
     model::EnergyHydrology,
@@ -1019,9 +1021,10 @@ function ClimaLand.component_specific_humidity(
         h_atmos = model.boundary_conditions.top.atmos.h,
         T_atmos = p.drivers.T,
         q_atmos = p.drivers.q,
+        reference = model.boundary_conditions.top.atmos.reference,
     ),
 )
-    (; h_atmos, T_atmos, q_atmos) = forcing
+    (; h_atmos, T_atmos, q_atmos, reference) = forcing
     earth_param_set = get_earth_param_set(model)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
@@ -1029,15 +1032,16 @@ function ClimaLand.component_specific_humidity(
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
-    h_sfc = ClimaLand.surface_height(model, Y, p)
+    z_sfc = ClimaLand.surface_elevation(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
+    z_0m = model.parameters.z_0m
     ρ_sfc = @.lazy(
         ClimaLand.compute_ρ_sfc(
             surface_flux_params,
             T_atmos,
             p.drivers.P,
             q_atmos,
-            h_atmos - h_sfc - displ,
+            ClimaLand.compute_Δz_eff(h_atmos, z_0m, displ, reference),
             T_sfc,
         ),
     )
@@ -1089,6 +1093,7 @@ function ClimaLand.get_update_surface_humidity_function(
     h_atmos = model.boundary_conditions.top.atmos.h,
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
+    reference = model.boundary_conditions.top.atmos.reference,
 )
     function update_q_vap_sfc_at_a_point(
         ζ,
@@ -1121,8 +1126,12 @@ function ClimaLand.get_update_surface_humidity_function(
         return w * qsat_sfc + (1 - w) * q_air
     end
     # Closure
-    qsat_sfc =
-        component_specific_humidity(model, Y, p, (; h_atmos, T_atmos, q_atmos))
+    qsat_sfc = component_specific_humidity(
+        model,
+        Y,
+        p,
+        (; h_atmos, T_atmos, q_atmos, reference),
+    )
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
@@ -1168,168 +1177,6 @@ function ClimaLand.get_drivers(model::EnergyHydrology)
     else
         return ()
     end
-end
-
-function turbulent_fluxes!(
-    dest,
-    atmos::AbstractAtmosphericDrivers,
-    model::EnergyHydrology,
-    Y,
-    p,
-    t;
-    h_atmos = atmos.h,
-    u_atmos = p.drivers.u,
-    T_atmos = p.drivers.T,
-    q_atmos = p.drivers.q,
-    gustiness = ClimaLand.gustiness_spec(atmos),
-)
-
-    T_sfc = component_temperature(model, Y, p)
-    q_sfc =
-        component_specific_humidity(model, Y, p, (; h_atmos, T_atmos, q_atmos))
-    roughness_model = surface_roughness_model(model, Y, p)
-    update_T_sfc = get_update_surface_temperature_function(model, Y, p)
-    update_q_sfc = get_update_surface_humidity_function(
-        model,
-        Y,
-        p;
-        h_atmos,
-        T_atmos,
-        q_atmos,
-    )
-    h_sfc = surface_height(model, Y, p)
-    displ = surface_displacement_height(model, Y, p)
-    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
-    update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
-    earth_param_set = get_earth_param_set(model)
-    momentum_fluxes = Val(return_momentum_fluxes(atmos))
-    Tf_depressed_sfc =
-        ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    dest .= soil_turbulent_fluxes_at_a_point.(
-        soil_flux_inputs(momentum_fluxes),
-        Tf_depressed_sfc,
-        p.drivers.P,
-        T_atmos,
-        q_atmos, # q_tot
-        u_atmos,
-        h_atmos,
-        T_sfc,
-        q_sfc,
-        roughness_model,
-        update_T_sfc,
-        update_q_sfc,
-        h_sfc,
-        displ,
-        update_∂T_sfc∂T,
-        update_∂q_sfc∂T,
-        gustiness,
-        earth_param_set,
-    )
-    return nothing
-end
-
-"""
-    soil_flux_inputs(return_extra_fluxes::Val)
-
-Return, as a `Val`, the names of the quantities of
-`ClimaLand.turbulent_fluxes_at_a_point` from which `soil_turbulent_fluxes`
-forms `p.soil.turbulent_fluxes`: the energy and vapor fluxes, the momentum and
-buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs), the
-effective surface humidity `q_sfc`, and the similarity scales `ustar`, `ζ`,
-`Δz_eff` of the solve.
-"""
-soil_flux_inputs(::Val{false}) =
-    Val((:lhf, :shf, :vapor_flux, :q_sfc, :ustar, :ζ, :Δz_eff))
-soil_flux_inputs(::Val{true}) = Val((
-    :lhf,
-    :shf,
-    :vapor_flux,
-    :ρτxz,
-    :ρτyz,
-    :buoyancy_flux,
-    :q_sfc,
-    :ustar,
-    :ζ,
-    :Δz_eff,
-))
-
-"""
-    soil_turbulent_fluxes_at_a_point(stored, Tf_depressed, P, T, q, u, h, T_sfc, args...)
-
-Return the soil turbulent fluxes at a point, computed by
-`ClimaLand.turbulent_fluxes_at_a_point(stored, P, T, q, u, h, T_sfc, args...)`
-and mapped by `soil_turbulent_fluxes` given the depressed freezing temperature
-`Tf_depressed` at the surface. `stored` is the `Val` of names of
-`soil_flux_inputs`; the momentum and buoyancy fluxes are among them only when
-running with a `CoupledAtmosphere`, which allocates space for them in the
-cache.
-"""
-function soil_turbulent_fluxes_at_a_point(
-    stored::Val,
-    Tf_depressed,
-    P,
-    T,
-    q,
-    u,
-    h,
-    T_sfc,
-    args...,
-)
-    fluxes = ClimaLand.turbulent_fluxes_at_a_point(
-        stored,
-        P,
-        T,
-        q,
-        u,
-        h,
-        T_sfc,
-        args...,
-    )
-    return soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
-end
-
-"""
-    soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
-
-Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
-`fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
-`T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
-depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
-and below it, the temperature derivatives are dropped, and `T_sfc`, the
-effective surface humidity `q_sfc` of the solve (which includes the dry soil
-layer resistance, see `soil_evaporation_beta`), and the similarity scales
-`ustar`, `ζ`, `Δz_eff` of the solve are appended after the momentum and
-buoyancy fluxes, if present.
-"""
-function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
-    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
-    extra_fluxes = Base.structdiff(
-        fluxes,
-        NamedTuple{(
-            :lhf,
-            :shf,
-            :vapor_flux,
-            :∂lhf∂T,
-            :∂shf∂T,
-            :T_sfc,
-            :q_sfc,
-            :ustar,
-            :ζ,
-            :Δz_eff,
-        )},
-    )
-    return (;
-        lhf = fluxes.lhf,
-        shf = fluxes.shf,
-        vapor_flux_liq = fluxes.vapor_flux * is_liquid,
-        vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
-        extra_fluxes...,
-        T_sfc,
-        q_sfc = fluxes.q_sfc,
-        ustar = fluxes.ustar,
-        ζ = fluxes.ζ,
-        Δz_eff = fluxes.Δz_eff,
-    )
 end
 
 """

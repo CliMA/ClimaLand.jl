@@ -90,6 +90,7 @@ end
                              ΔT,
                              FT;
                              gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+                             reference = SurfaceFluxes.ReferenceAboveApparentSink(),
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -112,6 +113,7 @@ function prescribed_perturbed_temperature_era5(
     ΔT,
     FT;
     gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+    reference = SurfaceFluxes.ReferenceAboveApparentSink(),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -212,6 +214,7 @@ function prescribed_perturbed_temperature_era5(
         h_atmos,
         toml_dict;
         gustiness,
+        reference,
         c_co2 = c_co2,
     )
 
@@ -286,6 +289,7 @@ end
                              Δrh,
                              FT;
                              gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+                             reference = SurfaceFluxes.ReferenceAboveApparentSink(),
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -308,6 +312,7 @@ function prescribed_perturbed_rh_era5(
     Δrh,
     FT;
     gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+    reference = SurfaceFluxes.ReferenceAboveApparentSink(),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -406,6 +411,7 @@ function prescribed_perturbed_rh_era5(
         h_atmos,
         toml_dict;
         gustiness,
+        reference,
         c_co2 = c_co2,
     )
 

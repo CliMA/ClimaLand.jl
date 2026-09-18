@@ -522,13 +522,21 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             LP.surface_fluxes_parameters(model.parameters.earth_param_set)
 
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
-        h_sfc = ClimaLand.surface_height(model, Y, p)
         atmos = model.atmos
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
         # here, otherwise we would need two values of q_sfc!
         thermo_params =
             LP.thermodynamic_parameters(model.parameters.earth_param_set)
+        displ = ClimaLand.surface_displacement_height(model, Y, p)
+        Δz_eff = @. lazy(
+            ClimaLand.compute_Δz_eff(
+                atmos.h,
+                model.parameters.z_0m,
+                displ,
+                atmos.reference,
+            ),
+        )
         p.bucket.q_sfc .= saturation_specific_humidity.(
             p.bucket.T_sfc,
             ClimaLand.compute_ρ_sfc.(
@@ -536,7 +544,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                atmos.h .- h_sfc,
+                Δz_eff,
                 p.bucket.T_sfc,
             ),
             thermo_params,

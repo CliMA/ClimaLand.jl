@@ -88,29 +88,6 @@ fraction is restricted to the non-lake area.
 maximum_snow_cover_fraction!(p, plc_val) = nothing
 
 """
-    ClimaLand.surface_height(
-        model::SnowModel{FT},
-        Y,
-        p,
-    ) where {FT}
-
-Returns the surface height of the `Snow` model; surface (ground) elevation
-and ignores snow depth (CLM).
-
-Once topography or land ice is incorporated, this will need to change to
-z_sfc + land_ice_depth. Note that land ice can
-be ~1-3 km thick on Greenland/
-
-In order to compute surface fluxes, this cannot be larger than the
-height of the atmosphere measurement location (z_atmos > z_land always).
-
-This assumes that the surface elevation is zero.
-"""
-function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    return FT(0)
-end
-
-"""
     surface_albedo(model::SnowModel, Y, p)
 
 A helper function which computes and returns the snow albedo.
@@ -147,6 +124,7 @@ end
             h_atmos = model.boundary_conditions.atmos.h,
             T_atmos = p.drivers.T,
             q_atmos = p.drivers.q,
+            reference = model.boundary_conditions.atmos.reference
         ),
     )
 
@@ -155,7 +133,7 @@ fraction of the saturated specific humidity over liquid and frozen
 water.
 
 The surface air density is extrapolated from the air temperature `T_atmos`
-and specific humidity `q_atmos` at the reference height `h_atmos` of
+and specific humidity `q_atmos` at the `reference` height `h_atmos` of
 `forcing`, which default to the atmospheric forcing; below a canopy, the
 sub-canopy forcing is passed.
 """
@@ -167,15 +145,24 @@ function ClimaLand.component_specific_humidity(
         h_atmos = model.boundary_conditions.atmos.h,
         T_atmos = p.drivers.T,
         q_atmos = p.drivers.q,
+        reference = model.boundary_conditions.atmos.reference,
     ),
 )
-    (; h_atmos, T_atmos, q_atmos) = forcing
-    h_sfc = ClimaLand.surface_height(model, Y, p)
+    (; h_atmos, T_atmos, q_atmos, reference) = forcing
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    z_0m = model.parameters.z_0m;
+    Δz_eff = @. lazy(
+        ClimaLand.compute_Δz_eff(
+            h_atmos,
+            model.parameters.z_0m,
+            displ,
+            reference,
+        ),
+    )
 
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.turbulent_fluxes.T_sfc,
@@ -183,7 +170,7 @@ function ClimaLand.component_specific_humidity(
         T_atmos,
         p.drivers.P,
         q_atmos,
-        h_atmos - h_sfc - displ,
+        Δz_eff,
         surface_flux_params,
         thermo_params,
     )
@@ -210,13 +197,13 @@ end
 
 """
     snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, surface_flux_params, thermo_params) where {FT}
+    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, h::FT,  surface_flux_params, thermo_params) where {FT}
 
 Computes the snow surface specific humidity at a point as the average,
 weighted by mass fraction, of the saturated specific humidity over ice and over
 liquid at temperature `T_sfc` and surface air density `ρ_sfc`. The second
-method extrapolates `ρ_sfc` from the air state at the height `Δz` above the
-surface.
+method extrapolates `ρ_sfc` from the air state at the height `h` above the
+apparent sink for momentum.
 
 `update_T_sfc_scheme` repeats this computation, with its derivative, and must
 change with it.
@@ -243,7 +230,7 @@ function snow_surface_specific_humidity(
     T_air::FT,
     P_air::FT,
     q_air::FT,
-    Δz::FT,
+    h::FT,
     surface_flux_params,
     thermo_params,
 ) where {FT}
@@ -252,7 +239,7 @@ function snow_surface_specific_humidity(
         T_air,
         P_air,
         q_air,
-        Δz,
+        h,
         T_sfc,
     )
     return snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
@@ -866,7 +853,7 @@ end
         SW_net::FT,
         LW_d::FT,
         q_l::FT,
-        h_sfc::FT,
+        z_sfc::FT,
         displ::FT,
         P_atmos::FT,
         T_atmos::FT,
@@ -875,6 +862,7 @@ end
         roughness_model,
         atmos_h::FT,
         gustiness,
+        reference,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         earth_param_set,
@@ -898,8 +886,7 @@ the capped temperature, and they are returned with it: the NamedTuple stored in
 `p.snow.turbulent_fluxes` (with the momentum and buoyancy fluxes if
 `return_extra_fluxes` is `Val(true)`, for a coupled atmosphere), with `T_sfc`
 appended. The derivatives of the fluxes with respect to the surface temperature
-are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
-`turbulent_fluxes!`.
+are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`.
 """
 @inline function solve_for_surface_temp_at_a_point(
     return_extra_fluxes::Val,
@@ -912,7 +899,7 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
     SW_net::FT,
     LW_d::FT,
     q_l::FT,
-    h_sfc::FT,
+    z_sfc::FT,
     displ::FT,
     P_atmos::FT,
     T_atmos::FT,
@@ -921,6 +908,7 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
     roughness_model,
     atmos_h::FT,
     gustiness,
+    reference,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
     earth_param_set,
@@ -942,13 +930,20 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
         SW_net,
         LW_d,
     )
+    z_0m = SurfaceFluxes.momentum_roughness(
+        roughness_model,
+        nothing,
+        surface_flux_params,
+        nothing,
+    )
+    Δz_eff = ClimaLand.compute_Δz_eff(atmos_h, displ, z_0m, reference)
     q_sfc = snow_surface_specific_humidity(
         T_initial_guess,
         q_l,
         T_atmos,
         P_atmos,
         q_atmos,
-        atmos_h - h_sfc,
+        Δz_eff,
         surface_flux_params,
         thermo_params,
     )
@@ -962,10 +957,11 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
         q_atmos,
         u_atmos,
         atmos_h,
-        h_sfc,
+        z_sfc,
         displ,
         roughness_model,
         gustiness,
+        reference,
         earth_param_set,
     )
     fluxes = ClimaLand.turbulent_fluxes_from_output(
@@ -978,8 +974,10 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
         P_atmos,
         T_atmos,
         q_atmos,
-        atmos_h - h_sfc,
+        atmos_h,
         displ,
+        roughness_model,
+        reference,
         earth_param_set,
     )
     return ClimaLand.select_fluxes(snow_flux_names(return_extra_fluxes), fluxes)
@@ -993,6 +991,7 @@ end
                       T_atmos = p.drivers.T,
                       q_atmos = p.drivers.q,
                       gustiness = ClimaLand.gustiness_spec(bc.atmos))
+                      reference = bc.atmos.reference
 
 Solves for the snow surface temperature, capped at the freezing temperature,
 and stores it with the turbulent fluxes at it, from the same Monin-Obukhov
@@ -1019,12 +1018,13 @@ function update_surf_temp!(
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
     gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.atmos),
+    reference = model.boundary_conditions.atmos.reference,
 )
     bc = model.boundary_conditions
     _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
 
     #If roughness length is updated during the Monin-Obukhov iterations, we might need to move this inside of the root solve.
-    h_sfc = ClimaLand.surface_height(model, Y, p)
+    z_sfc = ClimaLand.surface_elevation(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
 
@@ -1045,7 +1045,7 @@ function update_surf_temp!(
         SW_net, #passing radiation as args allows different radiation situations, i.e. open ground vs canopy-shielded
         LW_d, #passing radiation as args enables different radiation situations, i.e. open ground vs canopy-shielded
         p.snow.q_l,
-        h_sfc,
+        z_sfc,
         displ,
         p.drivers.P,
         T_atmos,
@@ -1054,6 +1054,7 @@ function update_surf_temp!(
         roughness_model,
         h_atmos,
         gustiness,
+        reference,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         model.parameters.earth_param_set,
@@ -1064,7 +1065,7 @@ function update_surf_temp!(
         model,
         Y,
         p,
-        (; h_atmos, T_atmos, q_atmos),
+        (; h_atmos, T_atmos, q_atmos, reference),
     )
     return nothing
 end
@@ -1096,6 +1097,7 @@ function update_surf_temp!(
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
     gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.atmos),
+    reference = model.boundary_conditions.atmos.reference,
 )
     p.snow.turbulent_fluxes.T_sfc .= p.snow.T
     ClimaLand.turbulent_fluxes!(
@@ -1110,6 +1112,7 @@ function update_surf_temp!(
         T_atmos,
         q_atmos,
         gustiness,
+        reference,
     )
     return nothing
 end

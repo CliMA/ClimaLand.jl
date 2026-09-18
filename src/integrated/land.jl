@@ -1210,12 +1210,8 @@ end
     ground_forcing(land::Union{SoilCanopyModel, LandModel}, Y, p)
 
 Return the sub-canopy forcing ([`Canopy.subcanopy_forcing`](@ref)) of the
-ground surfaces of `land`. The soil and snow surfaces lie at the same height,
-the surface elevation (`ClimaLand.surface_height`), so one forcing serves both.
+ground surfaces of `land`. The same forcing works for all ground
+components (soil or snow).
 """
 ground_forcing(land::Union{SoilCanopyModel, LandModel}, Y, p) =
-    Canopy.subcanopy_forcing(
-        land.canopy,
-        p,
-        ClimaLand.surface_height(land.soil, Y, p),
-    )
+    Canopy.subcanopy_forcing(land.canopy, p, Y)

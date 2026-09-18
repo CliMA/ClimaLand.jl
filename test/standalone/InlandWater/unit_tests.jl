@@ -42,7 +42,7 @@ using ClimaCore
         default_params_from_toml.z_0m,
         default_params_from_toml.z_0b,
     )
-    @test ClimaLand.surface_height(lake, Y, p) == FT(0)
+    @test ClimaLand.surface_elevation(lake, Y, p) == FT(0)
     @test ClimaLand.surface_displacement_height(lake, Y, p) == FT(0)
     @test lake.inland_water_mask == ClimaCore.Fields.ones(surface_space)
     t0 = ITime(0, Second(1), start_date)

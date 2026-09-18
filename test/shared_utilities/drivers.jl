@@ -180,6 +180,7 @@ end
     # wind speed is at least the floor, so the fluxes exceed those of a solve
     # without gustiness; the solve is a function of its inputs alone
     roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    reference = SurfaceFluxes.ReferenceAboveSurface()
     solve(gustiness) = ClimaLand.surface_fluxes_at_a_point(
         FT(300), # T_sfc
         FT(0.015), # q_sfc
@@ -194,6 +195,7 @@ end
         FT(0), # displ
         roughness_model,
         gustiness,
+        reference,
         earth_param_set,
     )
     with_gust = solve(spec)
@@ -247,8 +249,12 @@ end
 @testset "Turbulent flux selections, FT = $FT" begin
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)
-    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    z_0m = FT(0.01)
+    z_0b = FT(0.001)
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(z_0m, z_0b)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    reference = SurfaceFluxes.ReferenceAboveSurface()
+    displ = FT(0)
     fluxes(stored) = ClimaLand.turbulent_fluxes_at_a_point(
         stored,
         FT(101325), # P_atmos
@@ -262,10 +268,11 @@ end
         nothing,
         nothing,
         FT(0), # h_sfc
-        FT(0), # displ
+        displ,
         (args...) -> FT(1),
         (args...) -> FT(1),
         gustiness,
+        reference,
         earth_param_set,
     )
     # The Boolean selections are the contract of ClimaCoupler, which
@@ -291,7 +298,7 @@ end
     @test selected.buoyancy_flux == fluxes(Val(true)).buoyancy_flux
     @test selected.T_sfc == FT(295)
     @test selected.q_sfc == FT(0.015)
-    @test selected.Δz_eff == FT(10)
+    @test selected.Δz_eff == FT(10) - displ
     @test selected.ustar > 0
     @test selected.ζ < 0 # unstable
     @test eltype(values(selected)) == FT

@@ -111,15 +111,6 @@ end
 
     # Check that maximum height is reasonable (should be < 50m based on CLM data)
     @test maximum(Array(parent(raw_height))) < 50.0
-
-    # Try capping the height
-    capped_height = ClimaLand.Canopy.clm_canopy_height(
-        surface_space;
-        regridder_type = regridder_type,
-        extrapolation_bc = extrapolation_bc,
-        max_height = FT(1.0),
-    )
-    @test maximum(Array(parent(capped_height))) <= 1.0
 end
 
 

@@ -157,12 +157,10 @@ end
     LAI_fun = (t) -> FT(5.0)
     LAI = TimeVaryingInput(LAI_fun)
 
-    # Read and cap spatially-varying canopy height (two-step pattern)
-    capped_height = Canopy.clm_canopy_height(
+    height = Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
-        max_height = FT(8),
     )
 
     # Create biomass model with spatially-varying height
@@ -170,7 +168,7 @@ end
         surface_domain,
         LAI,
         toml_dict;
-        height = capped_height,
+        height,
     )
 
     # Create canopy model with custom biomass
@@ -187,10 +185,10 @@ end
     @test axes(canopy.biomass.height) == surface_space
     z_0min = canopy.boundary_conditions.turbulent_flux_parameterization.z_0min
     @test canopy.boundary_conditions.turbulent_flux_parameterization.displ ==
-          toml_dict["canopy_d_coeff"] .* capped_height
+          toml_dict["canopy_d_coeff"] .* height
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0m ==
-          toml_dict["canopy_z_0m_coeff"] .* capped_height .+ z_0min
+          toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0b ==
-          toml_dict["canopy_z_0b_coeff"] .* capped_height .+ z_0min
+          toml_dict["canopy_z_0b_coeff"] .* height .+ z_0min
 
 end
