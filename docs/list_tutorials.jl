@@ -25,8 +25,10 @@ tutorials = [
             "Data tutorial" => "standalone/Snow/data_tutorial.jl",
         ],
     ],
-    "Running idealized simulations" =>
-        ["Idealized land model" => "integrated/idealized_land_tutorial.jl"],
+    "Running simulations without site data" => [
+        "Idealized analytic forcing" => "integrated/idealized_land_tutorial.jl",
+        "Bundled ERA5 artifact" => "integrated/site_level_lowres_era5_tutorial.jl",
+    ],
     "Running Fluxnet simulations" => [
         "Canopy and soil" => "integrated/soil_canopy_fluxnet_tutorial.jl",
         "Canopy, soil, and snow" => "integrated/snowy_land_fluxnet_tutorial.jl",
