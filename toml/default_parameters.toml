@@ -617,36 +617,6 @@ description = "Intercept of line relating leaf-level fluorescence to spectromete
 tag = "SIFParameters"
 
 # Canopy roughness
-["canopy_z_0min"]
-value = 0.01
-type = "float"
-description = "Minimum roughness"
-tag = "MoninObukhovCanopyFluxes"
-
-["canopy_z_0m_coeff"]
-value = 0.05
-type = "float"
-description = "Scalar multipling canopy height to get z_0m"
-tag = "MoninObukhovCanopyFluxes"
-
-["canopy_z_0b_coeff"]
-value = 0.05
-type = "float"
-description = "Scalar multipling canopy height to get z_0b"
-tag = "MoninObukhovCanopyFluxes"
-
-["canopy_d_coeff"]
-value = 0.67
-type = "float"
-description = "Scalar multipling canopy height to get displacement height"
-tag = "MoninObukhovCanopyFluxes"
-
-["leaf_Cd"]
-value = 0.0726
-type = "float"
-description = ""
-tag = "MoninObukhovCanopyFluxes"
-
 ["c_m_rsl"]
 value = 0.25
 type = "float"
@@ -661,6 +631,36 @@ tag = "MoninObukhovCanopyFluxes"
 
 ["z_coeff_rsl"]
 value = 1
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0min"]
+value = 0.01
+type = "float"
+description = "Minimum roughness"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0m_coeff"]
+value = 0.349
+type = "float"
+description = "Scalar multipling canopy height to get z_0m"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0b_coeff"]
+value = 0.0444
+type = "float"
+description = "Scalar multipling canopy height to get z_0b"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_d_coeff"]
+value = 0.0573
+type = "float"
+description = "Scalar multipling canopy height to get displacement height"
+tag = "MoninObukhovCanopyFluxes"
+
+["leaf_Cd"]
+value = 0.0726
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
