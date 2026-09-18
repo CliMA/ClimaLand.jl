@@ -25,6 +25,8 @@ tutorials = [
             "Data tutorial" => "standalone/Snow/data_tutorial.jl",
         ],
     ],
+    "Running idealized simulations" =>
+        ["Idealized land model" => "integrated/idealized_land_tutorial.jl"],
     "Running Fluxnet simulations" => [
         "Canopy and soil" => "integrated/soil_canopy_fluxnet_tutorial.jl",
         "Canopy, soil, and snow" => "integrated/snowy_land_fluxnet_tutorial.jl",
