@@ -1058,10 +1058,12 @@ function make_set_initial_state_from_atmos_and_parameters(
         Y.bucket.W .= land.parameters.W_f
         Y.bucket.Ws .= 0
         Y.bucket.σS .= 0
-        n_levels = ClimaCore.Spaces.nlevels(land.domain.space.subsurface)
-        for i in 1:n_levels
-            ClimaCore.Fields.level(Y.bucket.T, i) .= p.drivers.T
-        end
+        # Broadcasting over the data extrudes the surface temperature over every
+        # level in one kernel. The `zero` term contributes nothing but makes the
+        # spaces match
+        ClimaCore.Fields.field_values(Y.bucket.T) .=
+            ClimaCore.Fields.field_values(p.drivers.T) .+
+            zero.(ClimaCore.Fields.field_values(Y.bucket.T))
     end
     return set_ic!
 end

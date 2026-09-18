@@ -1,6 +1,5 @@
 using Test
 using ClimaLand
-import ClimaCore
 using Aqua
 
 @testset "Aqua tests (performance)" begin
@@ -29,9 +28,7 @@ end
     Aqua.test_stale_deps(ClimaLand; ignore = [:Insolation])
     Aqua.test_deps_compat(ClimaLand)
     Aqua.test_project_extras(ClimaLand)
-    # `Spaces.issubspace` is extended in src/shared_utilities/climacore_compat.jl
-    # to restore methods dropped in ClimaCore 1.0.0.
-    Aqua.test_piracies(ClimaLand; treat_as_own = [ClimaCore.Spaces.issubspace])
+    Aqua.test_piracies(ClimaLand)
 end
 
 nothing

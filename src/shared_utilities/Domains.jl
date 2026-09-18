@@ -1071,11 +1071,11 @@ function get_Δz(z::ClimaCore.Fields.Field)
     fs = ClimaCore.Spaces.face_space(axes(z))
     z_face = ClimaCore.Fields.coordinate_field(fs).z
     Δz_face = ClimaCore.Fields.Δz_field(z_face)
-    Δz_top = ClimaCore.Fields.level(
-        Δz_face,
-        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
-    )
-    Δz_bottom = ClimaCore.Fields.level(Δz_face, ClimaCore.Utilities.PlusHalf(0))
+    # Spacings at the boundaries are surface quantities, so they belong on the
+    # surface space rather than on the space of their own face level
+    surface_space = obtain_surface_space(axes(z))
+    Δz_top = top_face_to_surface(Δz_face, surface_space)
+    Δz_bottom = bottom_face_to_surface(Δz_face, surface_space)
 
     #Layer widths:
     Δz_center = ClimaCore.Fields.Δz_field(z)
@@ -1163,7 +1163,29 @@ function top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
     N = ClimaCore.Spaces.nlevels(face_space)
     sfc_level =
         ClimaCore.Fields.level(face_field, ClimaCore.Utilities.PlusHalf(N - 1))
-    # Project onto surface space
+    # Reassign the values to the surface space
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(sfc_level),
+        surface_space,
+    )
+end
+
+"""
+    bottom_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
+
+Creates and returns a ClimaCore.Fields.Field defined on `surface_space`,
+with values equal to those of `face_field` at the level of the bottom face.
+
+Given a `face_field` defined on a 3D extruded face finite difference space,
+this would return a 2D field with values equal to the bottommost level.
+"""
+function bottom_face_to_surface(
+    face_field::ClimaCore.Fields.Field,
+    surface_space,
+)
+    sfc_level =
+        ClimaCore.Fields.level(face_field, ClimaCore.Utilities.PlusHalf(0))
+    # Reassign the values to the surface space
     return ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(sfc_level),
         surface_space,
