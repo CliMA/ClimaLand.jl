@@ -1,5 +1,8 @@
-# Plotting and leaderboard code is exercised by the Buildkite experiment runs,
-# not by unit tests, so it is excluded from the coverage report.
+# Plotting, leaderboard and Fluxnet site-simulation code is exercised by the
+# Buildkite experiment runs, not by unit tests, so it is excluded from the
+# coverage report.
 ignore:
   - "ext/land_sim_vis"
   - "ext/LandSimulationVisualizationExt.jl"
+  - "ext/fluxnet_simulations"
+  - "ext/FluxnetSimulationsExt.jl"

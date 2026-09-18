@@ -15,6 +15,7 @@ ClimaComms.@import_required_backends
 
 using Flux, Adapt, JLD2, InteractiveUtils #leftover weak dep for ConstrainedNeuralModelExt
 using Downloads, Statistics, DataFrames #leftover weak dep for SNOTELScraperExt
+using Sockets
 
 
 SNOTELScraperExt = Base.get_extension(ClimaLand, :SNOTELScraperExt)
@@ -1180,5 +1181,41 @@ if !isnothing(SNOTELScraperExt)
         @test Array(parent(dY.snow.Z))[1] * Δt > dswe_by_precip
         new_dYP = FT(depthmodel.w) .* (abs.(p.drivers.P_snow) .- Y.snow.P_avg)
         @test dY.snow.P_avg == new_dYP
+    end
+end
+
+if !isnothing(SNOTELScraperExt)
+    @testset "df_from_url over a local socket" begin
+        DataTools = SNOTELScraperExt.DataTools
+        body = read(
+            joinpath(@__DIR__, "data", "snotel_daily_1030CO_2015-01.csv"),
+            String,
+        )
+        # Serve the CSV once from a local socket so the test needs no network.
+        port, server = Sockets.listenany(Sockets.localhost, 8000)
+        task = @async begin
+            sock = accept(server)
+            while !eof(sock) && !isempty(strip(readline(sock)))
+            end
+            write(
+                sock,
+                "HTTP/1.1 200 OK\r\nContent-Length: $(sizeof(body))\r\n" *
+                "Connection: close\r\n\r\n" *
+                body,
+            )
+            close(sock)
+            close(server)
+        end
+        df = DataTools.df_from_url("http://127.0.0.1:$port/")
+        wait(task)
+        @test isequal(df, DataTools.df_from_string(body))
+
+        @test_throws AssertionError DataTools.df_from_url(
+            "ftp://example.invalid/",
+        )
+        # The socket is closed, so the download fails
+        @test_throws ErrorException DataTools.read_webpage_body(
+            "http://127.0.0.1:$port/",
+        )
     end
 end

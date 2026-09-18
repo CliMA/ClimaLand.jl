@@ -39,6 +39,10 @@ function initialize_with(set_ic!, model, t0)
     return Y, p
 end
 
+# Parameter-based initial conditions only exist in ClimaLand for LandModel and
+# BucketModel (`Simulations.make_set_initial_state_from_atmos_and_parameters`).
+# The standalone models use the minimal helpers below; the values are
+# arbitrary and only need to keep the initial cache update finite.
 function set_soil_ic!(Y, soil, ::Type{FT}) where {FT}
     Y.soil.ϑ_l .= FT(0.24)
     Y.soil.θ_i .= FT(0.0)
@@ -62,6 +66,12 @@ function set_canopy_ic!(Y, p, canopy, ::Type{FT}) where {FT}
     p.canopy.biomass.area_index.leaf .= FT(0.3)
     p.canopy.biomass.area_index.stem .= FT(0)
     p.canopy.biomass.area_index.root .= FT(0.3)
+end
+
+function set_soilco2_ic!(Y, ::Type{FT}) where {FT}
+    Y.soilco2.CO2 .= FT(6e-5)
+    Y.soilco2.O2 .= FT(0.08)
+    Y.soilco2.SOC .= FT(5)
 end
 
 function set_snow_ic!(Y, ::Type{FT}) where {FT}
@@ -124,9 +134,7 @@ end
     drivers = Soil.Biogeochemistry.SoilDrivers(prescribed_met, atmos)
     model = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
     Y, p = initialize_with(model, t0) do Y, p, t0, model
-        Y.soilco2.CO2 .= FT(6e-5)
-        Y.soilco2.O2 .= FT(0.08)
-        Y.soilco2.SOC .= FT(5)
+        set_soilco2_ic!(Y, FT)
     end
     check_all_diagnostics(model, Y, p, t0)
 end
@@ -174,12 +182,11 @@ end
         atmosphere = bucket_atmos,
         radiation = bucket_rad,
     )
-    Y, p = initialize_with(model, t0) do Y, p, t0, model
-        Y.bucket.T .= FT(280)
-        Y.bucket.W .= FT(0.5)
-        Y.bucket.Ws .= FT(0.5)
-        Y.bucket.σS .= FT(0)
-    end
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            model,
+        )
+    Y, p = initialize_with(set_ic!, model, t0)
     check_all_diagnostics(model, Y, p, t0)
 end
 
@@ -193,9 +200,7 @@ end
     )
     Y, p = initialize_with(model, t0) do Y, p, t0, model
         set_soil_ic!(Y, model.soil, FT)
-        Y.soilco2.CO2 .= FT(6e-5)
-        Y.soilco2.O2 .= FT(0.08)
-        Y.soilco2.SOC .= FT(5)
+        set_soilco2_ic!(Y, FT)
         set_canopy_ic!(Y, p, model.canopy, FT)
     end
     check_all_diagnostics(model, Y, p, t0)
@@ -210,14 +215,11 @@ end
         dt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     )
-    Y, p = initialize_with(model, t0) do Y, p, t0, model
-        set_soil_ic!(Y, model.soil, FT)
-        Y.soilco2.CO2 .= FT(6e-5)
-        Y.soilco2.O2 .= FT(0.08)
-        Y.soilco2.SOC .= FT(5)
-        set_snow_ic!(Y, FT)
-        set_canopy_ic!(Y, p, model.canopy, FT)
-    end
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            model,
+        )
+    Y, p = initialize_with(set_ic!, model, t0)
     names = check_all_diagnostics(model, Y, p, t0)
     @test "nee" in names
 end
