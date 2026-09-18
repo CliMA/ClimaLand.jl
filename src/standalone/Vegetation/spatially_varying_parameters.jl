@@ -341,12 +341,9 @@ end
         ),
         interpolation_method = Interpolations.Constant(),
         lowres = false,
-        max_height = nothing
     )
 
 Read spatially-varying canopy height (m) data from CLM vegetation properties onto the `surface_space`.
-
-If max_height is set, the heights are clipped to be <= max_height.
 ```
 """
 function clm_canopy_height(
@@ -359,7 +356,6 @@ function clm_canopy_height(
     ),
     interpolation_method = Interpolations.Constant(),
     lowres = false,
-    max_height = nothing,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -371,9 +367,5 @@ function clm_canopy_height(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    if max_height isa Nothing
-        return canopy_height
-    else
-        return min.(canopy_height, max_height)
-    end
+    return canopy_height
 end

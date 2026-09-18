@@ -163,6 +163,7 @@ for FT in (Float32, Float64)
         # the solve, which this test does not check
         ∂T_sfc∂T = (u_star, g_h, earth_param_set) -> FT(1)
         ∂q_sfc∂T = (u_star, g_h, q_sat, T_sfc, earth_param_set) -> FT(0)
+        reference = SurfaceFluxes.ReferenceAboveSurface()
         #No snow - should T_bulk
         result = Snow.solve_for_surface_temp_at_a_point(
             Val(false),
@@ -183,7 +184,8 @@ for FT in (Float32, Float64)
             u_atmos,
             roughness_model,
             atmos_h,
-            gustiness, #gustiness
+            gustiness,
+            reference,
             ∂T_sfc∂T,
             ∂q_sfc∂T,
             param_set,
@@ -210,7 +212,8 @@ for FT in (Float32, Float64)
             u_atmos,
             roughness_model,
             atmos_h,
-            gustiness, #gustiness
+            gustiness,
+            reference,
             ∂T_sfc∂T,
             ∂q_sfc∂T,
             param_set,
@@ -225,7 +228,7 @@ for FT in (Float32, Float64)
             T_atmos,
             P_atmos,
             q_atmos,
-            atmos_h - h_sfc,
+            atmos_h,
             surface_flux_params,
             thermo_params,
         )
@@ -247,6 +250,7 @@ for FT in (Float32, Float64)
             (args...) -> FT(1),
             (args...) -> FT(1),
             gustiness,
+            reference,
             param_set,
         )
         LW_n = -ϵ_snow * (LW_d - _σ * T_sfc^4)

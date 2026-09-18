@@ -64,16 +64,11 @@ for FT in (Float32, Float64)
         h = FT(20)
         d = FT(0.67) * h
         z_0m = FT(0.0823) * h + FT(0.01)
-        z_ref = subcanopy_reference_height(FT(0), d, z_0m, z_min, h_atmos)
+        z_ref = subcanopy_reference_height(d, z_0m, z_min, h_atmos)
         @test z_ref == d + z_0m
-        # A raised surface raises the floor; the forcing height is the ceiling
-        @test subcanopy_reference_height(FT(14), d, z_0m, z_min, h_atmos) ==
-              FT(16)
-        @test subcanopy_reference_height(FT(29), d, z_0m, z_min, h_atmos) ==
-              h_atmos
+        @test subcanopy_reference_height(d, z_0m, z_min, FT(1)) == FT(1)
         # Short canopy: the floor binds
         @test subcanopy_reference_height(
-            FT(0),
             FT(0.67) * FT(0.5),
             FT(0.0823) * FT(0.5) + FT(0.01),
             z_min,

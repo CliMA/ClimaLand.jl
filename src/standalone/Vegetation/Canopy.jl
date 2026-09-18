@@ -326,6 +326,7 @@ end
         S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
         conductivity_model = PlantHydraulics.Weibull(toml_dict),
         retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
+height = toml_dict["minimum_hydraulic_height"]
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
@@ -343,9 +344,15 @@ function PlantHydraulicsModel{FT}(
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = Weibull(toml_dict),
     retention_model = LinearRetentionCurve(toml_dict),
+    height = toml_dict["minimum_hydraulic_height"],
 ) where {FT <: AbstractFloat}
-    parameters =
-        PlantHydraulicsParameters(; ν, S_s, conductivity_model, retention_model)
+    parameters = PlantHydraulicsParameters(;
+        ν,
+        S_s,
+        conductivity_model,
+        retention_model,
+        height,
+    )
     return PlantHydraulicsModel{FT}(parameters)
 end
 
@@ -357,7 +364,7 @@ end
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"]
+        height =  clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
@@ -376,7 +383,7 @@ function PrescribedBiomassModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -400,7 +407,7 @@ end
         SAI = toml_dict["SAI_coeff"] .* maxLAI,
         RAI = toml_dict["RAI_coeff"] .* maxLAI,
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"],
+        height = clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel with time-constant stem and root area indices
@@ -417,7 +424,7 @@ function PrescribedBiomassModel{FT}(
     SAI = toml_dict["SAI_coeff"] .* maxLAI,
     RAI = toml_dict["RAI_coeff"] .* maxLAI,
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -816,7 +823,7 @@ end
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
         energy = BigLeafEnergyModel{FT}(toml_dict),
-        biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+        biomass= PrescribedBiomassModel{FT}(domain, LAI,  modis_max_lai(domain.space.surface), toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
         turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
     ) where {FT, PSE}
@@ -857,7 +864,12 @@ function CanopyModel{FT}(
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
-    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    biomass = PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        modis_max_lai(domain.space.surface),
+        toml_dict,
+    ),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,

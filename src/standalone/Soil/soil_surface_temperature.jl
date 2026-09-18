@@ -72,9 +72,7 @@ Noilhan, 1991): the surface specific humidity of the soil is
 `β g_h (qsat - q_air)`. β is the ice weight `β_ice` over a frozen surface
 losing water (`frozen_soil_vapor_weight`), one over a frozen surface gaining
 water, and the conductance ratio `g_liq / (g_liq + g_h)` of the dry soil
-layer otherwise. This is the same parameterization as
-`get_update_surface_humidity_function(::EnergyHydrology)`, which
-`turbulent_fluxes!(dest, atmos, ::EnergyHydrology, Y, p, t)` uses.
+layer otherwise.
 """
 function soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen::Bool)
     β_frozen = ifelse(q_air < qsat, β_ice, one(β_ice))
@@ -271,10 +269,80 @@ function update_soil_q_vap_sfc_scheme(
 end
 
 """
+    soil_flux_inputs(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities of
+`ClimaLand.turbulent_fluxes_at_a_point` from which `soil_turbulent_fluxes`
+forms `p.soil.turbulent_fluxes`: the energy and vapor fluxes, the momentum and
+buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs), the
+effective surface humidity `q_sfc`, and the similarity scales `ustar`, `ζ`,
+`Δz_eff` of the solve.
+"""
+soil_flux_inputs(::Val{false}) =
+    Val((:lhf, :shf, :vapor_flux, :q_sfc, :ustar, :ζ, :Δz_eff))
+soil_flux_inputs(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+    :q_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+
+
+"""
+    soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+
+Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
+`fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
+`T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
+depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
+and below it, the temperature derivatives are dropped, and `T_sfc`, the
+effective surface humidity `q_sfc` of the solve (which includes the dry soil
+layer resistance, see `soil_evaporation_beta`), and the similarity scales
+`ustar`, `ζ`, `Δz_eff` of the solve are appended after the momentum and
+buoyancy fluxes, if present.
+"""
+function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
+    extra_fluxes = Base.structdiff(
+        fluxes,
+        NamedTuple{(
+            :lhf,
+            :shf,
+            :vapor_flux,
+            :∂lhf∂T,
+            :∂shf∂T,
+            :T_sfc,
+            :q_sfc,
+            :ustar,
+            :ζ,
+            :Δz_eff,
+        )},
+    )
+    return (;
+        lhf = fluxes.lhf,
+        shf = fluxes.shf,
+        vapor_flux_liq = fluxes.vapor_flux * is_liquid,
+        vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
+        extra_fluxes...,
+        T_sfc,
+        q_sfc = fluxes.q_sfc,
+        ustar = fluxes.ustar,
+        ζ = fluxes.ζ,
+        Δz_eff = fluxes.Δz_eff,
+    )
+end
+
+"""
     solve_soil_surface_temperature_at_a_point(return_extra_fluxes, T_top, r, ϵ, SW_n, LW_d,
-                                              g_liq, β_ice, ψ_sfc, Tf_depressed, h_sfc, displ,
+                                              g_liq, β_ice, ψ_sfc, Tf_depressed, z_sfc, displ,
                                               P_atmos, T_atmos, q_atmos, u_atmos,
-                                              roughness_model, atmos_h, gustiness,
+                                              roughness_model, atmos_h, gustiness, reference,
                                               update_∂T_sfc∂T, update_∂q_sfc∂T,
                                               earth_param_set)
 
@@ -294,15 +362,14 @@ temperature with the turbulent fluxes at it.
 - `β_ice`: Ice fraction weighting the surface humidity when frozen [-].
 - `ψ_sfc`: Soil water potential at the surface [m].
 - `Tf_depressed`: Depressed freezing temperature at the surface [K].
-- `h_sfc`, `displ`: Surface height and displacement height [m].
+- `z_sfc`, `displ`: Surface elevation and displacement height [m].
 - `P_atmos`, `T_atmos`, `q_atmos`, `u_atmos`: Atmospheric pressure [Pa],
   temperature [K], specific humidity [kg/kg], and wind (a speed or a
   horizontal vector) [m/s] at the reference height `atmos_h` [m].
 - `roughness_model`, `gustiness`: SurfaceFluxes roughness and gustiness
   specifications.
 - `update_∂T_sfc∂T`, `update_∂q_sfc∂T`: Functions for the derivatives of the
-  surface temperature and humidity with respect to the soil temperature, as in
-  `turbulent_fluxes!`.
+  surface temperature and humidity with respect to the soil temperature,
 - `earth_param_set`: Land parameters.
 
 # Returns
@@ -325,7 +392,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
     β_ice::FT,
     ψ_sfc::FT,
     Tf_depressed::FT,
-    h_sfc::FT,
+    z_sfc::FT,
     displ::FT,
     P_atmos::FT,
     T_atmos::FT,
@@ -334,6 +401,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
     roughness_model,
     atmos_h::FT,
     gustiness,
+    reference,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
     earth_param_set,
@@ -362,12 +430,19 @@ Called from [`update_soil_surface_temperature!`](@ref).
         Tf_depressed,
         earth_param_set,
     )
+    z_0m = SurfaceFluxes.momentum_roughness(
+        roughness_model,
+        nothing,
+        surface_flux_params,
+        nothing,
+    )
+    Δz_eff = ClimaLand.compute_Δz_eff(atmos_h, z_0m, displ, reference)
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         T_atmos,
         P_atmos,
         q_atmos,
-        atmos_h - h_sfc - displ,
+        Δz_eff,
         T_top,
     )
     q_sfc_guess = soil_specific_humidity(
@@ -387,10 +462,11 @@ Called from [`update_soil_surface_temperature!`](@ref).
         q_atmos,
         u_atmos,
         atmos_h,
-        h_sfc,
+        z_sfc,
         displ,
         roughness_model,
         gustiness,
+        reference,
         earth_param_set,
     )
     fluxes = ClimaLand.turbulent_fluxes_from_output(
@@ -403,8 +479,10 @@ Called from [`update_soil_surface_temperature!`](@ref).
         P_atmos,
         T_atmos,
         q_atmos,
-        atmos_h - h_sfc,
+        atmos_h,
         displ,
+        roughness_model,
+        reference,
         earth_param_set,
     )
     return soil_turbulent_fluxes(fluxes, output.T_sfc, Tf_depressed)
@@ -511,6 +589,7 @@ function update_soil_surface_temperature!(
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
     gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.top.atmos),
+    reference = model.boundary_conditions.top.atmos.reference,
 )
     bc = model.boundary_conditions.top
     bc isa AtmosDrivenFluxBC || throw(
@@ -531,7 +610,7 @@ function update_soil_surface_temperature!(
     ϵ = ClimaLand.surface_emissivity(model, Y, p)
     g_soil_sfc =
         soil_surface_vapor_conductance!(p.soil.sfc_scratch, model, Y, p)
-    h_sfc = ClimaLand.surface_height(model, Y, p)
+    z_sfc = ClimaLand.surface_elevation(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     r = @. lazy(Δz_top / κ_top)
@@ -550,7 +629,7 @@ function update_soil_surface_temperature!(
         β_ice,
         ψ_sfc,
         Tf_depressed_sfc,
-        h_sfc,
+        z_sfc,
         displ,
         p.drivers.P,
         T_atmos,
@@ -559,6 +638,7 @@ function update_soil_surface_temperature!(
         roughness_model,
         h_atmos,
         gustiness,
+        reference,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         earth_param_set,
@@ -568,7 +648,7 @@ function update_soil_surface_temperature!(
         model,
         Y,
         p,
-        (; h_atmos, T_atmos, q_atmos),
+        (; h_atmos, T_atmos, q_atmos, reference),
     )
     return nothing
 end

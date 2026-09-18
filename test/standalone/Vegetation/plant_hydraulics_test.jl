@@ -167,6 +167,7 @@ for FT in (Float32, Float64)
             S_s = plant_S_s,
             conductivity_model,
             retention_model,
+            height = FT(1),
         )
 
         biomass = Canopy.PrescribedBiomassModel{FT}(;

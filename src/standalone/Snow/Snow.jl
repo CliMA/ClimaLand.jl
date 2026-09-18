@@ -11,7 +11,6 @@ using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    turbulent_fluxes!,
     net_radiation!,
     AbstractModel,
     heaviside
@@ -30,7 +29,6 @@ import ClimaLand:
     auxiliary_domain_names,
     component_temperature,
     component_specific_humidity,
-    surface_height,
     surface_albedo,
     surface_emissivity,
     surface_roughness_model,
