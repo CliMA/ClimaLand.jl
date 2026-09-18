@@ -155,3 +155,60 @@ end
               (FT, ClimaCore.Geometry.WVector{FT})
     end
 end
+
+@testset "Model interface fallbacks, FT = $FT" begin
+    struct UnnamedModel{FT} <: AbstractModel{FT} end
+    um = UnnamedModel{FT}()
+    @test_throws ErrorException ClimaLand.name(um)
+    # Models without a domain cannot report a device or context, nor
+    # allocate auxiliary variables
+    @test_throws ErrorException ClimaComms.context(um)
+    @test_throws ErrorException ClimaComms.device(um)
+    ClimaLand.name(::UnnamedModel) = :unnamed
+    @test_throws ErrorException ClimaLand.initialize_auxiliary(um, nothing)
+
+    # Generic models have no implicit cache update
+    update_implicit_cache! = ClimaLand.make_update_implicit_cache(um)
+    @test isnothing(update_implicit_cache!((;), (;), 0.0))
+
+    # ImEx models treat all boundary fluxes implicitly by default
+    struct ImplicitModel{FT} <: AbstractImExModel{FT} end
+    ClimaLand.name(::ImplicitModel) = :implicit
+    im = ImplicitModel{FT}()
+    @test ClimaLand.make_update_implicit_boundary_fluxes(im) isa Function
+    update_implicit_cache! = ClimaLand.make_update_implicit_cache(im)
+    @test isnothing(update_implicit_cache!((;), (;), 0.0))
+end
+
+@testset "Driver parameter consistency check, FT = $FT" begin
+    import ClimaLand.Parameters as LP
+    import Dates
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    f = TimeVaryingInput((t) -> 10.0)
+    start_date = Dates.DateTime(2005)
+    # Atmosphere built with parameters of a different float type
+    other_toml_dict = LP.create_toml_dict(FT == Float32 ? Float64 : Float32)
+    atmos = ClimaLand.PrescribedAtmosphere(
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        start_date,
+        FT(1),
+        other_toml_dict,
+    )
+    struct DrivenModel{FT, P, A} <: AbstractModel{FT}
+        parameters::P
+        atmos::A
+    end
+    ClimaLand.name(::DrivenModel) = :driven
+    ClimaLand.get_drivers(m::DrivenModel) = (; atmos = m.atmos)
+    dm = DrivenModel{FT, typeof((; earth_param_set)), typeof(atmos)}(
+        (; earth_param_set),
+        atmos,
+    )
+    @test_throws ErrorException ClimaLand.add_drivers_to_cache((;), dm, nothing)
+end
