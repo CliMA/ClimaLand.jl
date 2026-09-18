@@ -124,7 +124,7 @@ struct PrescribedAtmosphere{
     c_co2::CA
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
-    "Reference height (m), relative to surface elevation"
+    "Atmospheric height (m), relative to surface elevation"
     h::FT
     "Minimum wind speed (gustiness; m/s)"
     gustiness::FT
@@ -434,13 +434,13 @@ function turbulent_fluxes!(
             p.drivers.T,
             p.drivers.q, # q_tot
             p.drivers.u,
-            atmos.h,
+            atmos.h, # Measurement height relative to surface height (m)
             T_sfc,
             q_sfc,
             roughness_model,
             update_T_sfc,
             update_q_sfc,
-            h_sfc,
+            h_sfc, # Equals zero currently given convention of atmos.h
             displ,
             update_∂T_sfc∂T,
             update_∂q_sfc∂T,
@@ -539,7 +539,7 @@ function turbulent_fluxes_at_a_point(
         P_atmos,
         T_atmos,
         q_tot_atmos,
-        h_atmos - h_sfc,
+        h_atmos - h_sfc, # This is the physical dz
         earth_param_set,
     )
 end
@@ -591,6 +591,15 @@ function surface_fluxes_at_a_point(
     u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
+    z_0m = SurfaceFluxes.momentum_roughness(
+        roughness_model,
+        nothing,
+        nothing,
+        nothing,
+    )
+    # The above wont work for non- ConstantRoughnessModel.
+    # In fact in that case the fix should occur internally to SF.jl because the roughness length could depend on u⋆.
+    # Note that h_sfc is always zero, and h_atmos is interpreted as height relative to the surface. 
     return SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
@@ -600,8 +609,8 @@ function surface_fluxes_at_a_point(
         ρ_atmos,
         T_sfc_guess,
         q_vap_sfc_guess,
-        _grav * h_sfc,
-        h_atmos - h_sfc,
+        _grav * (h_sfc + displ + z_0m), # This is modified so that the dz used in graviational potential energy = physical distance.
+        h_atmos + displ + z_0m - h_sfc,
         displ,
         u,
         (FT(0), FT(0)), # u_sfc
@@ -1025,13 +1034,15 @@ end
 """
     surface_height(model::AbstractModel, Y, p)
 
-A helper function which returns the surface height (canopy height+elevation)
- for a given model, needed because different models compute and store h_sfc in
-different ways and places.
+Returns the surface height for your model; currently this returns zero for
+all components. This is because the atmosphere height that is stored
+is the height relative to the surface. This is true for both
+offline and coupled land models.
 
-Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
+If at some point the height for the atmosphere is returned relative to
+another reference (e.g. mean sea level), this function would
+also need to account for the elevation of the land surface and the canopy
+height, and hence we would need different methods for different components.
 """
 function surface_height(model::AbstractModel, Y, p)
     FT = FTfromY(Y)
