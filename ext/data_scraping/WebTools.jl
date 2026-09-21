@@ -17,7 +17,7 @@ function read_webpage_body(url::AbstractString)
     @assert any(startswith.([url], ["http://", "https://"])) "Please provide a valid HTTP url.\n"
     try
         buf = IOBuffer()
-        resp = Downloads.request(url, output = buf)
+        Downloads.request(url, output = buf)
         if position(buf) == 0
             error("Downloaded page at $(url) is empty or non-existent.")
         end

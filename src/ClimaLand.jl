@@ -466,7 +466,7 @@ component order.
 function get_model_callbacks(model::AbstractLandModel{FT}; kwargs...) where {FT}
     components = land_components(model)
     callbacks = ()
-    callback_list = map(components) do (component)
+    map(components) do (component)
         submodel = getproperty(model, component)
         cb = get_model_callbacks(submodel; kwargs...)
         callbacks = (callbacks..., cb...)

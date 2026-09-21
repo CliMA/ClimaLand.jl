@@ -418,8 +418,6 @@ function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to 
 end
 
 function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-
     earth_param_set = canopy.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
     par_d = p.canopy.radiative_transfer.par_d

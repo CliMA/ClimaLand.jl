@@ -158,7 +158,7 @@ function LandSimulation(
     end
 
     # set initial conditions
-    Y, p, cds = initialize(model)
+    Y, p, _ = initialize(model)
     set_ic!(Y, p, t0, model)
 
     # Initialize the cache for offline simulations (no drivers or non-coupled atmosphere)

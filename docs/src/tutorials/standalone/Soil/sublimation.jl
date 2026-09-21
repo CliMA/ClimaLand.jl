@@ -224,7 +224,7 @@ CairoMakie.ylims!(-0.35, 0)
 CairoMakie.xlims!(260, 280)
 linestyles = [:solid, :dash, :dashdot, :dashdotdot, :dot]
 days = [0, 1, 2, 3, 4]
-for i in 1:length(days)
+for i in eachindex(days)
     CairoMakie.lines!(
         ax1,
         parent(sv.saveval[Int(days[i] * 24 + 1)].soil.T)[:],
@@ -238,7 +238,7 @@ ax2 = Axis(fig2[2, 1], title = "Ice", ylabel = "Depth(cm)")
 
 CairoMakie.ylims!(-0.35, 0)
 CairoMakie.xlims!(0.0, 0.5)
-for i in 1:length(days)
+for i in eachindex(days)
     CairoMakie.lines!(
         ax2,
         parent(sol.u[Int(days[i] * 24 + 1)].soil.θ_i)[:],
@@ -251,7 +251,7 @@ end
 ax3 = Axis(fig2[3, 1], title = "Liquid Water", xlabel = "")
 CairoMakie.ylims!(-0.35, 0)
 CairoMakie.xlims!(0.0, 0.5)
-for i in 1:length(days)
+for i in eachindex(days)
     CairoMakie.lines!(
         ax3,
         parent(sol.u[Int(days[i] * 24 + 1)].soil.ϑ_l)[:],

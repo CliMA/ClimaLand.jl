@@ -384,7 +384,7 @@ ax3 = Axis(
     ylabel = "T (K)",
     title = "T throughout simulation; length = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
 )
-for i in 1:length(times)
+for i in eachindex(times)
     lines!(
         ax3,
         FT.(times[i]) ./ 3600.0,

@@ -1172,7 +1172,6 @@ function set_lake_initial_conditions!(
     t0,
     model::ClimaLand.InlandWater.SlabLakeModel{FT},
 ) where {FT}
-    earth_param_set = model.parameters.earth_param_set
     atmos = model.boundary_conditions.atmos
     if atmos isa ClimaLand.PrescribedAtmosphere
         evaluate!(p.drivers.T, atmos.T, t0)

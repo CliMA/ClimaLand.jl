@@ -141,13 +141,10 @@ the stomatal conductance can be inferred from their difference and the net assim
 Note that the moisture stress factor `βm` is applied to `An` already, so it is not applied again here. 
 """
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
-    c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     T_air = p.drivers.T
     earth_param_set = canopy.earth_param_set
     (; Drel) = canopy.conductance.parameters
-    area_index = p.canopy.biomass.area_index
-    LAI = area_index.leaf
     R = LP.gas_constant(earth_param_set)
     FT = eltype(model.parameters)
     @. p.canopy.conductance.r_stomata_canopy =

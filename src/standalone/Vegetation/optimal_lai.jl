@@ -252,7 +252,7 @@ Corless et al. (1996) "On the Lambert W function"
         return T(NaN)
     end
     w = _lambertw0_initial_guess(x)
-    for i in 1:maxiter
+    for _ in 1:maxiter
         ew = exp(w)
         f = w * ew - x
         # Halley denominator

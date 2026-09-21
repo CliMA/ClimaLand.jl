@@ -400,7 +400,6 @@ account the temperature dependence of the viscosity of water.
 """
 function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
-    surface_space = model.domain.space.surface
 
     @. p.soil.subsfc_scratch =
         -K_sat *

@@ -566,7 +566,6 @@ function compute_turbulent_fluxes_at_a_point(
         update_q_vap_sfc,
     )
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-    _T_freeze = LP.T_freeze(earth_param_set)
     _LH_v0 = LP.LH_v0(earth_param_set)
     E = output.evaporation
 
@@ -1069,8 +1068,8 @@ horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
-    types = ([FT for k in keys]...,)
-    domain_names = ([:surface for k in keys]...,)
+    types = ([FT for _ in keys]...,)
+    domain_names = ([:surface for _ in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
@@ -1110,8 +1109,8 @@ so we can use the same function for both of them.
 """
 function initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords) where {FT}
     keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
-    types = ([FT for k in keys]...,)
-    domain_names = ([:surface for k in keys]...,)
+    types = ([FT for _ in keys]...,)
+    domain_names = ([:surface for _ in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
@@ -1134,8 +1133,8 @@ function ClimaLand.initialize_drivers(
     coords,
 ) where {FT}
     keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u)
-    types = ([FT for k in 1:(length(keys) - 1)]..., SVector{2, FT})
-    domain_names = ([:surface for k in keys]...,)
+    types = ([FT for _ in 1:(length(keys) - 1)]..., SVector{2, FT})
+    domain_names = ([:surface for _ in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
@@ -1160,7 +1159,7 @@ function initialize_drivers(driver_tuple::Tuple, coords)
         return (;)
     else
         tmp = map(driver_tuple) do (driver)
-            nt = initialize_drivers(driver, coords)
+            initialize_drivers(driver, coords)
         end
         merge(tmp...)
     end

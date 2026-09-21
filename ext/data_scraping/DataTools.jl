@@ -488,7 +488,7 @@ function rolldata(
 )
     dt = (data[N:end, :date] .- data[1:(end - N + 1), :date]) ./ Δt
     rolleddata = Any[]
-    for i in 1:length(dt)
+    for i in eachindex(dt)
         if dt[i] <= N - 1
             row = Vector{Any}()
             for var in names(data)

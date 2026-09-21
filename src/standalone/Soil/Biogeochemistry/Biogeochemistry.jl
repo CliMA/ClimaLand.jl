@@ -675,8 +675,6 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
     NVTX.@annotate function update_aux!(p, Y, t)
-        FT = eltype(Y.soilco2.CO2)
-
         params = model.parameters
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
@@ -932,7 +930,6 @@ function ClimaLand.boundary_flux!(
     P_sfc = p.drivers.P
     R = bc.R
     M_C = bc.M_C
-    FT = eltype(T_sfc)
     @. bc_field = ClimaLand.diffusive_flux(
         D_c,
         p.drivers.c_co2 * P_sfc * M_C / (R * T_sfc),
@@ -1080,7 +1077,6 @@ function ClimaLand.boundary_flux!(
     p::NamedTuple,
     t,
 )
-    FT = eltype(Δz)
     D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
     O2_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.O2)
     θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_eff_o2)

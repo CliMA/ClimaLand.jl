@@ -209,7 +209,7 @@ ax3 = Axis(
     title = "T throughout simulation; length = $(sim_time / 24) days, dts in [$(dts[1]), $(dts[end])]",
 )
 times = times ./ 3600.0 # hours
-for i in 1:length(times)
+for i in eachindex(times)
     lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) min")
 end
 axislegend(ax3, position = :rt)

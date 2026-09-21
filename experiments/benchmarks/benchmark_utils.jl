@@ -252,7 +252,7 @@ end
 Steps `sim` `N` times.
 """
 function step_N_times!(sim::ClimaLand.Simulations.LandSimulation, N::Number)
-    for i in 1:N
+    for _ in 1:N
         ClimaLand.Simulations.step!(sim)
     end
     return

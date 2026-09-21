@@ -430,7 +430,6 @@ function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
 end
 
 function initialize_vars(keys, types, domain_names, state, model_name)
-    FT = eltype(state)
     if length(keys) == 0
         return (; model_name => nothing)
     else

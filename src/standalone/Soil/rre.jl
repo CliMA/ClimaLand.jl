@@ -110,7 +110,6 @@ end
 
 function make_update_boundary_fluxes(model::RichardsModel)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        z = model.domain.fields.z
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
         boundary_flux!(

@@ -291,7 +291,7 @@ function make_ocean_masked_annual_timeseries(
                 color = RGBf(0.5, 0.5, 0.5),
                 linewidth = 1,
                 linestyle = (i == 1 ? :dash : :solid), # dashed line for the 1st year
-            ) for i in 1:length(var_global_average)
+            ) for i in eachindex(var_global_average)
         ]
         # The three next lines here are computing the average for each month of var, January to December. It accounts for cases if the last simulated year is incomplete. In that case, the last vector of var_global_average would be shorter than 12, so in order to compute the average, it needs to be padded with NaNs until it reaches the length of 12.
         # We also want the average for each month to be computed even if there is NaNs in the last vector, for example January may have 3 data points, but December only two, but we still want the average of all months.

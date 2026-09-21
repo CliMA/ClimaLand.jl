@@ -347,7 +347,6 @@ function boundary_flux!(
     p::NamedTuple,
     t,
 )
-    FT = eltype(Δz)
     K_c = Domains.bottom_center_to_surface(p.soil.K)
     @. bc_field = -1 * K_c
 end
@@ -594,7 +593,6 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
-    FT = eltype(Δz)
     K_c = Domains.bottom_center_to_surface(p.soil.K)
     T_c = Domains.bottom_center_to_surface(p.soil.T)
     @. p.soil.bottom_bc.water = -1 * K_c
@@ -713,7 +711,6 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
-    params = model.parameters
     name = ClimaLand.bc_name(boundary)
     water_bc = getproperty(p.soil, name).water
     heat_bc = getproperty(p.soil, name).heat

@@ -281,6 +281,12 @@ function PModel{FT}(
     )
 end
 
+# Element type of the optimal / acclimated capacity variables.
+_pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
+    (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
+    NTuple{6, FT},
+}
+
 """
     ClimaLand.auxiliary_vars(model::PModel)
     ClimaLand.auxiliary_types(model::PModel)
@@ -296,12 +302,6 @@ Defines the auxiliary vars of the P-model:
     capacities — the target that the prognostic acclimated capacities
     `Y.canopy.photosynthesis.acclimated` relax toward (see `prognostic_vars`).
 """
-# Element type of the optimal / acclimated capacity variables.
-_pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
-    (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
-    NTuple{6, FT},
-}
-
 ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous, :optimal)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
@@ -379,7 +379,7 @@ function compute_full_pmodel_outputs(
     fractional_c3 = FT(1),
 ) where {FT}
     # Unpack parameters
-    (; cstar, β_c3, β_c4) = parameters
+    (; β_c3, β_c4) = parameters
 
     # Unpack constants
     (;
@@ -392,23 +392,8 @@ function compute_full_pmodel_outputs(
         Drel,
         ΔHΓstar,
         Γstar25,
-        Ha_Vcmax,
-        Hd_Vcmax,
-        aS_Vcmax,
-        bS_Vcmax,
-        Ha_Jmax,
-        Hd_Jmax,
-        aS_Jmax,
-        bS_Jmax,
         Mc,
         oi,
-        aRd,
-        bRd,
-        fC3,
-        planck_h,
-        lightspeed,
-        N_a,
-        ρ_water,
         vpd_ratio_min,
         Γ_ratio_max,
     ) = constants
@@ -417,7 +402,6 @@ function compute_full_pmodel_outputs(
     ca_pp = ca * P_air
 
     # Compute intermediate values
-    ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
@@ -454,8 +438,7 @@ function compute_full_pmodel_outputs(
         βm,
         APAR,
     )
-    (; ξ_c3, ξ_c4, Jmax25_c3, Jmax25_c4, Vcmax25_c3, Vcmax25_c4) =
-        optimal_capacities
+    (; Jmax25_c3, Jmax25_c4, Vcmax25_c3, Vcmax25_c4) = optimal_capacities
 
     blended_output = compute_blended_pmodel_photosynthesis(
         optimal_capacities,
@@ -468,7 +451,7 @@ function compute_full_pmodel_outputs(
         parameters,
         constants,
     )
-    (; Rd, GPP, An, gs_co2) = blended_output
+    (; Rd, GPP, gs_co2) = blended_output
 
     return (;
         gpp = GPP*Mc,
@@ -604,7 +587,6 @@ function compute_optimal_capacities(
         aS_Jmax,
         bS_Jmax,
         oi,
-        ρ_water,
         vpd_ratio_min,
         Γ_ratio_max,
     ) = constants
@@ -786,7 +768,6 @@ productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 function update_photosynthesis!(p, Y, model::PModel, canopy)
     parameters = model.parameters
     constants = model.constants
-    FT = eltype(parameters)
 
     # drivers
     P_air = p.drivers.P
@@ -1076,7 +1057,6 @@ function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel p
 
     Jmax_canopy_c3, Jmax_canopy_c4 = compute_Jmax_canopy(Y, p, canopy, m)
     parameters = m.parameters
-    constants = m.constants
     return @. (
         lazy(
             electron_transport_pmodel(
@@ -1419,7 +1399,6 @@ function compute_A0_and_χ(
         Γstar25,
         Mc,
         oi,
-        ρ_water,
         vpd_ratio_min,
         Γ_ratio_max,
     ) = constants
