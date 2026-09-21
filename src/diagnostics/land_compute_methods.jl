@@ -262,7 +262,6 @@ function compute_leaf_water_potential!(
     land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
 )
     canopy = get_canopy(land_model)
-    hydraulics = canopy.hydraulics
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean

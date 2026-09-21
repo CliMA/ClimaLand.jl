@@ -1069,7 +1069,7 @@ function build_bound_docs(m::ConstrainedNeuralModel)
         else
             doc *= "Bound is a function, with the following bound methods:\n"
         end
-        for (method, method_data) in
+        for (_, method_data) in
             sort(collect(bound_info), by = x -> string(x.first.sig))
             if !isnothing(method_data[:docs])
                 doc *= "\"\"\"\n"

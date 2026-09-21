@@ -73,7 +73,6 @@ Currently, the following periods are supported:
 - :tendaily
 - :monthly
 """
-
 get_period(::Val{:every_dt}, dt) = Second(dt)
 get_period(::Val{:halfhourly}, dt) = Minute(30)
 get_period(::Val{:hourly}, dt) = Hour(1)

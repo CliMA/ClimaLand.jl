@@ -143,7 +143,6 @@ function LandSimVis.make_leaderboard_plots(
     # assert that data spans multiple years and is monthly output?
     # check that the short_names include the appropriate variables for the data source?
     diagdir = first(diagnostics).output_writer.output_dir
-    short_names = [d.variable.short_name for d in diagnostics]
     diagnostics_folder_path = diagdir
     leaderboard_base_path = savedir
     for data_source in leaderboard_data_sources

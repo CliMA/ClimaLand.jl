@@ -1015,7 +1015,6 @@ defined by the top face coordinate of `z` with a center to face distance
 on the surface (face) space in place.
 """
 function linear_interpolation_to_surface!(sfc_field, center_field, z, Δz_top)
-    surface_space = axes(sfc_field)
     Δz_top = ClimaCore.Fields.field_values(Δz_top)
     nz = Spaces.nlevels(axes(center_field))
     f1 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(center_field, nz))

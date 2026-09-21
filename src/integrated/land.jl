@@ -547,7 +547,6 @@ function make_update_boundary_fluxes(
         make_update_boundary_fluxes(land.lake)
 
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
         # Radiation - updates Rn for soil, lake, snow also
@@ -671,13 +670,10 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     t,
 ) where {FT}
     canopy = land.canopy
-    canopy_bc = canopy.boundary_conditions
     snow = land.snow
-    radiation = canopy_bc.radiation
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
-    SW_d = p.drivers.SW_d
 
     T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
 
@@ -777,9 +773,6 @@ NVTX.@annotate function implicit_radiant_energy_fluxes!(
     t,
 ) where {FT}
     canopy = land.canopy
-    canopy_bc = canopy.boundary_conditions
-    snow = land.snow
-    radiation = canopy_bc.radiation
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d

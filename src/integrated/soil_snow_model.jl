@@ -184,7 +184,6 @@ function make_update_boundary_fluxes(
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        earth_param_set = land.soil.parameters.earth_param_set
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
         # First compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
@@ -533,7 +532,6 @@ NVTX.@annotate function Soil.compute_infiltration_energy_flux(
     Y,
     t,
 )
-    FT = eltype(Y.soil.ϑ_l)
     earth_param_set = model.parameters.earth_param_set
     infiltration_fraction = @. lazy(
         Soil.compute_infiltration_fraction(p.soil.infiltration, liquid_influx),

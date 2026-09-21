@@ -210,12 +210,10 @@ model.
 function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     T_sfc = component_temperature(model, Y, p)
     T_air = p.drivers.T
     P_air = p.drivers.P
     q_air = p.drivers.q
-    h_sfc = ClimaLand.surface_height(model, Y, p)
     # Below we approximate the surface air density with the
     # atmospheric density to make it independent of T
     # This makes our estimate of the derivatives more exact later on
@@ -293,7 +291,6 @@ function ClimaLand.get_update_surface_humidity_function(
         r_stomata_canopy,
         q_canopy,
     )
-        FT = eltype(param_set)
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
@@ -353,7 +350,6 @@ function ClimaLand.get_update_surface_temperature_function(
         AI,
         T_canopy,
     )
-        FT = eltype(param_set)
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
@@ -366,7 +362,6 @@ function ClimaLand.get_update_surface_temperature_function(
             z_0b,
             scheme,
         )
-        ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
         g_land = leaf_Cd * u_star * AI
 
         ΔΦ = Φ_int - Φ_sfc
@@ -404,8 +399,6 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         LAI,
         r_stomata_canopy,
     )
-        FT = eltype(earth_param_set)
-        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
@@ -442,7 +435,6 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
         leaf_Cd,
         AI,
     )
-        FT = eltype(earth_param_set)
         g_land = leaf_Cd * u_star * AI
         ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T

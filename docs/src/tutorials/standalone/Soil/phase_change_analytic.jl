@@ -135,7 +135,6 @@ soil = Soil.EnergyHydrology{FT}(;
 
 function set_ic!(Y, p, t0, model)
     params = model.parameters
-    ν = params.ν
     FT = eltype(Y.soil.ϑ_l)
     Y.soil.ϑ_l .= FT(0.33)
     Y.soil.θ_i .= FT(0.0)

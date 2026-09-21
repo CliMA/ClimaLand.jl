@@ -43,7 +43,6 @@ function setup_model(
     domain,
     toml_dict,
 ) where {FT}
-    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
@@ -64,7 +63,7 @@ function setup_model(
         start_date,
         stop_date,
     )
-    land = LandModel{FT}(forcing, toml_dict, domain, Δt;)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt;)
     return land
 end
 

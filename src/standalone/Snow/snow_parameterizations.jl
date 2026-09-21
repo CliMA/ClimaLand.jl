@@ -812,7 +812,6 @@ function update_T_sfc_scheme(
         z_0b,
         scheme,
     )
-    b_flux = SurfaceFluxes.buoyancy_flux(param_set, ζ, u_star, inputs)
     E = SurfaceFluxes.evaporation(
         param_set,
         inputs,

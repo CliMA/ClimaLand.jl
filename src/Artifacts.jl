@@ -541,7 +541,7 @@ this file.
 This dataset contains surface shortwave albedo calculated from CESM2 and CERES data.
 """
 function sw_albedo_dataset_folder(; context = nothing)
-    return artifact_path = @clima_artifact("sw_albedo", context)
+    return @clima_artifact("sw_albedo", context)
 end
 
 """

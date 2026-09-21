@@ -706,7 +706,6 @@ function compute_monthly_leaderboard(
         end
 
         # Compute the average over each of the months
-        num_months = 12
         num_years = length(sim_vec_split)
         average_per_months = (
             begin
@@ -1115,7 +1114,7 @@ function compute_seasonal_leaderboard(
                     show_title = row_idx == 1,
                 )
             elseif group == "MON"
-                sim_var_full, obs_var_full = sim_obs_full_dict[short_name]
+                sim_var_full, _ = sim_obs_full_dict[short_name]
                 isempty(sim_var_full) && break
                 sim_monthly, obs_monthly, sim_spread, obs_spread =
                     _monthly_climatology(global_series_dict[short_name]...)

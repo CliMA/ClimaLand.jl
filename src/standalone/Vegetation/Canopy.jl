@@ -1182,7 +1182,7 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
         ClimaLand.TopBoundary(),
     )
     additional_aux = map(zip(types, domains)) do (T, domain)
-        f = zeros(T, axes(getproperty(coords, domain)))
+        zeros(T, axes(getproperty(coords, domain)))
     end
     return NamedTuple{vars}(additional_aux)
 end
@@ -1409,7 +1409,7 @@ by calling `get_model_callbacks` on each component model.
 function get_model_callbacks(model::CanopyModel{FT}; t0, Δt) where {FT}
     components = canopy_components(model)
     callbacks = ()
-    callback_list = map(components) do (component)
+    map(components) do (component)
         submodel = getproperty(model, component)
         cb = get_model_callbacks(submodel, model; t0, Δt)
         callbacks = (callbacks..., cb...)

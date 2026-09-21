@@ -58,9 +58,7 @@ function setup_snowyland()
     Δt = 900.0
     time_interpolation_method = LinearInterpolation(PeriodicCalendar())
     nelements = (180, 360, 15)
-    earth_param_set = LP.LandParameters(toml_dict)
     domain = ClimaLand.Domains.global_box_domain(FT; nelements)
-    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
     # Forcing data

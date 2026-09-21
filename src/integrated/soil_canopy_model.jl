@@ -349,7 +349,6 @@ function lsm_radiant_energy_fluxes!(
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
-    SW_d = p.drivers.SW_d
 
     T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
 

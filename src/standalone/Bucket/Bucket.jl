@@ -472,7 +472,7 @@ Creates the compute_exp_tendency! function for the bucket model.
 """
 function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        (; κ_soil, ρc_soil, σS_c) = model.parameters
+        (; κ_soil, ρc_soil) = model.parameters
 
         # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()

@@ -99,12 +99,8 @@ function setup_prob(start_date, stop_date, Δt, outdir)
     )
 
     # Initialize parameters
-    σS_c = FT(0.2)
-    W_f = FT(0.15)
     z_0m = FT(1e-2)
     z_0b = FT(1e-3)
-    κ_soil = FT(0.7)
-    ρc_soil = FT(2e6)
     τc = FT(3600)
 
     surface_space = bucket_domain.space.surface

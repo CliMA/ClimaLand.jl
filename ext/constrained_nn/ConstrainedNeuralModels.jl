@@ -455,8 +455,8 @@ Flux.trainable(
 
 Creates a ConstraintType from passed bounds, ensuring bounds exist to create a ConstrainedNeuralModel.
 """
-#If testing bounds is made required again -> change constructors to equivalent "build__()" functions.
 function buildConstraints(upper_bound, lower_bound)::ConstraintType
+    # If testing bounds is made required again -> change constructors to equivalent "build__()" functions.
     if isnothing(upper_bound) && isnothing(lower_bound)
         throw(
             ArgumentError(
@@ -924,7 +924,7 @@ function make_static_model(m::ConstrainedNeuralModel; skip_check = false)
         if skip_check || has_evaluation_mode(m.constraints, :static)
             return Adapt.adapt_structure(SArray, m)
         end
-    catch e
+    catch
         error(
             """
   Uncertainty in constraints for making a static model for this model type.

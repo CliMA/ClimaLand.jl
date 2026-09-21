@@ -25,7 +25,6 @@ function setup_model(
     toml_dict,
     ::Type{ClimaLand.LandModel},
 ) where {FT}
-    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - always use high resolution for calibration runs
     atmos, radiation = ClimaLand.prescribed_forcing_era5(

@@ -999,7 +999,6 @@ model.
 """
 function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
     earth_param_set = get_earth_param_set(model)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
     T_sfc = component_temperature(model, Y, p)
@@ -1251,7 +1250,7 @@ function soil_turbulent_fluxes_at_a_point(
     is_liquid,
     args...,
 )
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
+    (lhf, shf, vapor_flux, _, _, ρτxz, ρτyz, buoyancy_flux) =
         ClimaLand.compute_turbulent_fluxes_at_a_point(args...)
     return (;
         lhf,

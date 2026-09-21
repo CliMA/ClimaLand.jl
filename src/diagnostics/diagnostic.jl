@@ -204,7 +204,7 @@ function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = nothing)
     field = first(values(writer[diagnostic]))
     layer_id = layer isa Nothing ? nlayers(field) : layer
     vector_layer =
-        vcat([values_all[i][layer_id, :] for i in 1:length(values_all)]...)
+        vcat([values_all[i][layer_id, :] for i in eachindex(values_all)]...)
 
     return times, vector_layer
 end
