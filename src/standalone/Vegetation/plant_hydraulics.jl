@@ -397,7 +397,7 @@ function make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         LAI = p.canopy.biomass.area_index.leaf
         fa_roots = p.canopy.hydraulics.fa_roots
-        dz = canopy.biomass.height
+        dz = FT(1)#canopy.biomass.height
         @. dY.canopy.hydraulics.ϑ_l =
             1 / max(LAI * dz, eps(FT)) *
             (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
@@ -463,7 +463,7 @@ function root_water_flux_per_ground_area!(
     @. fa =
         water_flux(
             -rooting_depth,
-            canopy.biomass.height / 2,
+            1 / 2,
             ψ_soil,
             ψ,
             hydraulic_conductivity(conductivity_model, ψ_soil),
@@ -493,8 +493,8 @@ function ClimaLand.total_liq_water_vol_per_area!(
     t,
 )
     LAI = p.canopy.biomass.area_index.leaf
-    dz = canopy.biomass.height
-    @. surface_field = dz * LAI * Y.canopy.hydraulics.ϑ_l
+
+    @. surface_field =  LAI * Y.canopy.hydraulics.ϑ_l
     return nothing
 end
 
