@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.6"
+julia_version = "1.12.5"
 manifest_format = "2.0"
 project_hash = "c81ecfaf1a9573b44f7e6cbc79742562e179c8a1"
 
@@ -514,9 +514,9 @@ weakdeps = ["CUDA", "MPI"]
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BandedMatrices", "BlockArrays", "ClimaComms", "ClimaInterpolations", "CubedSphere", "DataStructures", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "KrylovKit", "LLVM", "LazyBroadcast", "LinearAlgebra", "MultiBroadcastFusion", "NVTX", "PkgVersion", "Random", "RootSolvers", "SparseArrays", "StaticArrays", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "9f85bf48ac7fca17e41f49cce619643a40052115"
+git-tree-sha1 = "a3b78ed510e2b45c983cb74dfe3c7068e1043438"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
-version = "1.0.0"
+version = "0.16.2"
 weakdeps = ["CUDA", "GPUCompiler", "Krylov", "Makie", "RecipesBase"]
 
     [deps.ClimaCore.extensions]
@@ -3282,7 +3282,7 @@ version = "7.8.3+2"
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
 git-tree-sha1 = "8612fce90dc01fe19aa76d3139c679b2fb90f9b1"
-repo-rev = "as/roughness-sublayers"
+repo-rev = "main"
 repo-url = "https://github.com/CliMA/SurfaceFluxes.jl.git"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 version = "1.2.1"

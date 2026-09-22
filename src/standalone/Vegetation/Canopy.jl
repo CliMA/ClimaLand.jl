@@ -353,7 +353,7 @@ function PrescribedBiomassModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = clm_canopy_height(domain.space.surface; max_height = FT(1))
+    height = clm_canopy_height(domain.space.surface; max_height = FT(2)),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{

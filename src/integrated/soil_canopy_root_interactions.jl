@@ -21,7 +21,7 @@ NVTX.@annotate function update_root_extraction!(p, Y, t, land)
         Canopy.harmonic_mean(LAI, RAI) *
         Canopy.water_flux(
             z,
-            land.canopy.biomass.height / 2,
+            1 / 2,
             p.soil.ψ,
             p.canopy.hydraulics.ψ,
             p.soil.K,
