@@ -2,6 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Add an ERA5-forced single column tutorial.
+  PR [#1885](https://github.com/CliMA/ClimaLand.jl/pull/1885)
 
 v1.12.2
 ----
