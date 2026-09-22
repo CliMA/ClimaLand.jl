@@ -99,11 +99,12 @@ forcing, LAI = era5_forcing_and_modis_lai()
 land_model = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 
 # We save daily averages of the variables we want to plot in memory:
-# precipitation (`precip`), soil water content (`swc`), the moisture stress
-# factor (`msf`), stomatal conductance (`gs`), transpiration (`trans`), and GPP
+# precipitation (`precip`), leaf area index (`lai`), the vapor pressure deficit
+# of the air (`vpd`), soil water content (`swc`), the moisture stress factor
+# (`msf`), stomatal conductance (`gs`), transpiration (`trans`), and GPP
 # (`gpp`). The initial conditions are read by default from a spun-up global
 # simulation.
-output_vars = ["precip", "swc", "msf", "gs", "trans", "gpp"]
+output_vars = ["precip", "lai", "vpd", "swc", "msf", "gs", "trans", "gpp"]
 function run_simulation(model)
     diagnostics = ClimaLand.default_diagnostics(
         model,
@@ -162,7 +163,8 @@ simulation_no_stress = run_simulation(land_model_no_stress);
 
 # We extract the daily time series from the diagnostics, and convert them to
 # more familiar units: precipitation and transpiration from kg m⁻² s⁻¹ to
-# mm day⁻¹, and GPP from mol CO₂ m⁻² s⁻¹ to g C m⁻² day⁻¹. Soil water content is
+# mm day⁻¹, the vapor pressure deficit from Pa to kPa, and GPP from
+# mol CO₂ m⁻² s⁻¹ to g C m⁻² day⁻¹. Soil water content is
 # resolved in depth; we keep the layers centered near 10 cm and 1 m below the
 # surface. Note that in ClimaLand, precipitation is negative (downward), and
 # that each daily average is timestamped at the end of its day.
@@ -170,6 +172,7 @@ z = vec(parent(domain.fields.z))
 layer_10cm = argmin(abs.(z .+ 0.1))
 layer_1m = argmin(abs.(z .+ 1.0))
 seconds_per_day = 86400
+Pa_per_kPa = 1000
 g_C_per_mol_CO2 = 12
 function get_daily_series(simulation)
     writer = simulation.diagnostics[1].output_writer
@@ -183,6 +186,8 @@ function get_daily_series(simulation)
     return (;
         dates = date.(times) .- Day(1),
         precip = -precip .* seconds_per_day,
+        lai = series("lai")[2],
+        vpd = series("vpd")[2] ./ Pa_per_kPa,
         swc_10cm = series("swc"; layer = layer_10cm)[2],
         swc_1m = series("swc"; layer = layer_1m)[2],
         β = series("msf")[2],
@@ -201,16 +206,20 @@ spinup_date = DateTime(2008, 3, 1)
 keep = stress.dates .>= spinup_date
 dates = datetime2unix.(stress.dates[keep]);
 
-# Plot the time series of both simulations, shading the dry season.
+# Plot the time series of both simulations, shading the dry season. The
+# precipitation, LAI, and vapor pressure deficit are prescribed, so they are the
+# same in both.
 dry_season_start = DateTime(2008, 5, 1)
 dry_season_end = DateTime(2008, 10, 1)
-fig = Figure(size = (800, 1100), fontsize = 16)
+fig = Figure(size = (800, 1400), fontsize = 16)
 panels = [
     ("Precipitation\n[mm day⁻¹]", :precip),
+    ("LAI\n[m² m⁻²]", :lai),
+    ("Vapor pressure\ndeficit [kPa]", :vpd),
     ("SWC at 10 cm\n[m³ m⁻³]", :swc_10cm),
     ("SWC at 1 m\n[m³ m⁻³]", :swc_1m),
     ("Moisture stress\nfactor β [-]", :β),
-    ("Stomatal conductance\n[mol H₂O m⁻² s⁻¹]", :gs),
+    ("Leaf stomatal\nconductance\n[mol H₂O m⁻² s⁻¹]", :gs),
     ("Transpiration\n[mm day⁻¹]", :trans),
     ("GPP\n[g C m⁻² day⁻¹]", :gpp),
 ]
@@ -222,7 +231,7 @@ axes = map(enumerate(panels)) do (i, (ylabel, name))
         datetime2unix(dry_season_end);
         color = (:orange, 0.15),
     )
-    if name != :precip
+    if name ∉ (:precip, :lai, :vpd)
         lines!(
             ax,
             dates,
@@ -244,19 +253,28 @@ linkxaxes!(axes...)
 month_starts = spinup_date:Month(2):stop_date
 axes[end].xticks =
     (datetime2unix.(month_starts), Dates.format.(month_starts, "u yyyy"))
-Legend(fig[length(panels) + 1, 1], axes[2]; orientation = :horizontal)
+Legend(fig[length(panels) + 1, 1], axes[4]; orientation = :horizontal)
 save("era5_cerrado_timeseries.png", fig);
 # ![](era5_cerrado_timeseries.png)
 
-# In both simulations, stomatal conductance, transpiration, and GPP change
-# through the year with the leaf area and sunlight. In the default model,
-# however, once the rain stops at the start of the dry season (shaded), the
-# soil dries out, first near the surface and then deeper in the root zone.
-# The moisture stress factor ``β`` falls, and stomatal conductance,
-# transpiration, and GPP drop well below their unstressed values. Without
-# moisture stress, the vegetation keeps transpiring, so its soil is slightly
-# drier at the end of the dry season and takes longer to rewet once the rain
-# returns.
+# The leaf area is largest in the wet season and smallest in July and August,
+# and it starts to increase again in late August, before the rain returns, as
+# the Cerrado vegetation grows new leaves. The stomatal conductance shown is
+# per unit leaf area: in a sparser canopy, each leaf receives more sunlight,
+# so without moisture stress the leaf conductance is highest in the middle of
+# the dry season, when the leaf area is smallest.
+
+# In the default model, once the rain stops at the start of the dry season
+# (shaded), the soil dries out, first near the surface and then deeper in the
+# root zone. The moisture stress factor ``β`` falls, and stomatal conductance,
+# transpiration, and GPP drop well below their unstressed values.
+# Transpiration increases again in the second half of the dry season, even
+# though ``β`` and the leaf conductance are still decreasing: the vapor
+# pressure deficit rises as the air becomes hotter and drier, which increases
+# the evaporative demand. From late August, the leaf area grows as well.
+# Without moisture stress, the vegetation keeps transpiring, so its soil is
+# slightly drier at the end of the dry season and takes longer to rewet once
+# the rain returns.
 
 # To see the relationship directly, we plot the ratio of each variable in the
 # default simulation to its unstressed value against the soil water content

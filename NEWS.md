@@ -4,6 +4,8 @@ main
 ----
 - Add an ERA5-forced single column tutorial.
   PR [#1885](https://github.com/CliMA/ClimaLand.jl/pull/1885)
+- Add a vapor pressure deficit diagnostic (`vpd`) for models with a canopy.
+  PR [#1885](https://github.com/CliMA/ClimaLand.jl/pull/1885)
 
 v1.12.2
 ----

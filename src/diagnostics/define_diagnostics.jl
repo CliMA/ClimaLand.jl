@@ -681,6 +681,17 @@ function define_diagnostics!(land_model, possible_diags)
         compute! = (out, Y, p, t) -> compute_tair!(out, Y, p, t, land_model),
     )
 
+    # Vapor pressure deficit
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "vpd",
+        long_name = "Vapor Pressure Deficit",
+        standard_name = "vapor_pressure_deficit",
+        units = "Pa",
+        comments = "The vapor pressure deficit of the air, computed from the air temperature, pressure, and specific humidity. It is taken over ice below freezing and is non-negative.",
+        compute! = (out, Y, p, t) -> compute_vpd!(out, Y, p, t, land_model),
+    )
+
 
     # Wind speed
     conditional_add_diagnostic_variable!(

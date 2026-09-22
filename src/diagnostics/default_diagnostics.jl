@@ -530,6 +530,7 @@ function get_possible_diagnostics(model::CanopyModel)
         "snow",
         "lwd",
         "swd",
+        "vpd",
     ]
 
     # Add conditional diagnostics based on atmosphere type
