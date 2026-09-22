@@ -442,6 +442,35 @@ end
 } p.drivers.q
 @diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.u
 
+function compute_vpd!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    canopy = get_canopy(land_model)
+    thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = Thermodynamics.vapor_pressure_deficit(
+            thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        )
+        return out
+    else
+        @. out = Thermodynamics.vapor_pressure_deficit(
+            thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        )
+    end
+end
+
 function compute_precip!(
     out,
     Y,

@@ -45,7 +45,7 @@ function setup_model(
 ) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
-    # Forcing data - high resolution
+    # Forcing data - low resolution
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
@@ -58,13 +58,8 @@ function setup_model(
     )
     forcing = (; atmos, radiation)
 
-    # Read in LAI from MODIS data
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        surface_space,
-        start_date,
-        stop_date,
-    )
-    land = LandModel{FT}(forcing, toml_dict, domain, Δt;)
+    # Prognostic LAI (ZhouOptimalLAIModel)
+    land = LandModel{FT}(forcing, toml_dict, domain, Δt)
     return land
 end
 

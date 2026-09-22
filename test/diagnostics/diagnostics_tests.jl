@@ -12,6 +12,7 @@ import ClimaLand.Parameters as LP
 import ClimaTimeSteppers
 import ClimaDiagnostics
 import ClimaCore
+import Thermodynamics
 using Dates
 using Statistics
 
@@ -377,6 +378,24 @@ end
             dt,
         )
         @test length(snow_diags) == length(snow_diag_vars)
+
+        @test "vpd" in possible
+        (; u, p, t) = simulation._integrator
+        thermo_params =
+            LP.thermodynamic_parameters(model.canopy.earth_param_set)
+        p.drivers.T .= FT(300)
+        p.drivers.P .= FT(1e5)
+        p.drivers.q .= FT(0)
+        vpd = ClimaLand.Diagnostics.compute_vpd!(nothing, u, p, t, model)
+        es = Thermodynamics.saturation_vapor_pressure(
+            thermo_params,
+            FT(300),
+            Thermodynamics.Liquid(),
+        )
+        @test all(ClimaCore.Fields.field2array(vpd) .≈ es)
+        p.drivers.q .= FT(0.1) # supersaturated
+        ClimaLand.Diagnostics.compute_vpd!(vpd, u, p, t, model)
+        @test all(ClimaCore.Fields.field2array(vpd) .== 0)
     end
 
     @testset "CanopyModel invalid windspeed diagnostic (coupled)" begin
