@@ -325,7 +325,8 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Daily potential GPP (from optimal LAI model)
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "a0d",
         long_name = "Daily Potential GPP",
         standard_name = "daily_potential_gpp",
@@ -336,7 +337,8 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Annual potential GPP (from optimal LAI model)
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "a0a",
         long_name = "Annual Potential GPP",
         standard_name = "annual_potential_gpp",
@@ -347,7 +349,8 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Annual precipitation (from optimal LAI model)
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "pra",
         long_name = "Annual Precipitation",
         standard_name = "annual_precipitation",
@@ -1028,7 +1031,8 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Soil CO2 in ppm (for NEON comparison)
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sco2_ppm",
         long_name = "Soil Pore Air CO2 Concentration",
         standard_name = "soil_pore_air_co2_concentration",

@@ -30,6 +30,12 @@ if TEST_GROUP in ("all", "core")
     @safetestset "General utilities tests" begin
         include("shared_utilities/utilities.jl")
     end
+    @safetestset "Show methods tests" begin
+        include("shared_utilities/show_methods.jl")
+    end
+    @safetestset "Land simulation interface tests" begin
+        include("shared_utilities/simulations.jl")
+    end
     @safetestset "Variable types tests" begin
         include("shared_utilities/variable_types.jl")
     end
@@ -64,9 +70,9 @@ if TEST_GROUP in ("all", "core")
         include("standalone/Snow/parameterizations.jl")
         include("standalone/Snow/snow.jl")
     end
-    #@safetestset "Neural Snow model tools tests" begin
-    #    include("standalone/Snow/tool_tests.jl")
-    #end
+    @safetestset "Neural Snow model tools tests" begin
+        include("standalone/Snow/tool_tests.jl")
+    end
     @safetestset "Snow integrated water and energy content" begin
         include("standalone/Snow/conservation.jl")
     end
@@ -187,9 +193,16 @@ if TEST_GROUP in ("all", "simulations")
         include("integrated/fluxnet_sim.jl")
     end
 
+    @safetestset "Perturbed driver tests" begin
+        include("shared_utilities/perturbed_drivers.jl")
+    end
+
     # Diagnostics
     @safetestset "Diagnostics" begin
         include("diagnostics/diagnostics_tests.jl")
+    end
+    @safetestset "Diagnostics compute methods" begin
+        include("diagnostics/compute_methods.jl")
     end
 
     @safetestset "ILAMB setup" begin
