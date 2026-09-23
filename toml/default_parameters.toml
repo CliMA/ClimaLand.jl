@@ -25,10 +25,16 @@ description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["R_sb"]
-value = 1.484e-7
+value = 2.484e-7
 type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
+
+[ice_impedance_omega]
+value = 3.0
+type = "float"
+description = "Impedance parameter $\\Omega$ used to adjust soil hydraulic conductivity for ice presence (unitless). Source: Lundin (1990), DOI: 10.1016/0022-1694(90)90264-X."
+
 
 # Big leaf energy parameters
 
