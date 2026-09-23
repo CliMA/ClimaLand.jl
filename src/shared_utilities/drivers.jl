@@ -789,6 +789,11 @@ end
 
 Returns the SurfaceFluxes `update_T_sfc` function for `model`.
 
+This is only required if the output of `component_temperature` does not coincide
+with the temperature that should be used to compute turbulent fluxes.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
 """
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
 

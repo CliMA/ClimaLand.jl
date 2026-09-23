@@ -471,7 +471,7 @@ function compute_full_pmodel_outputs(
     (; Rd, GPP, An, gs_co2) = blended_output
 
     return (;
-        gpp = GPP * Mc,
+        gpp = GPP*Mc,
         gammastar = Γstar,
         kmm = Kmm,
         ca = ca_pp,
@@ -639,9 +639,9 @@ function compute_optimal_capacities(
 
     mj_c3 = c3_compute_mj(Γstar, ci_c3)
     mj_c4 = c4_compute_mj(Γstar, ci_c4) # This is misleading, because we approximate mj = 1
-    L_c3 = sqrt(1 - min(cstar / max(mj_c3, eps(FT)), 1)^FT(2 / 3)) # If mj < cstar, L = 0
-    L_c4 = sqrt(1 - min(cstar / max(mj_c4, eps(FT)), 1)^FT(2 / 3)) # If mj < cstar, L = 0
-    mj_over_mc_c3 = (ci_c3 + Kmm) / (ci_c3 + 2 * Γstar)
+    L_c3 = sqrt(1-min(cstar/max(mj_c3, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    L_c4 = sqrt(1-min(cstar/max(mj_c4, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    mj_over_mc_c3 = (ci_c3 + Kmm)/(ci_c3+2*Γstar)
     mj_over_mc_c4 = 1
     # Vcmax opt is from Equation 10a of Ren et al.
     Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mj_over_mc_c3 * L_c3
@@ -661,9 +661,9 @@ function compute_optimal_capacities(
     Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
     Jmax_opt_c3 =
-        βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3 / sqrt(1 - (βm * L_c3)^FT(2))
+        βm * 4 * ϕ0_c3 * APAR_canopy_moles * L_c3/sqrt(1 - (βm*L_c3)^FT(2))
     Jmax_opt_c4 =
-        βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4 / sqrt(1 - (βm * L_c4)^FT(2))
+        βm * 4 * ϕ0_c4 * APAR_canopy_moles * L_c4/sqrt(1 - (βm*L_c4)^FT(2))
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -1217,8 +1217,8 @@ function patek_dimensionless_viscosity(T::FT) where {FT}
     b3 = FT(-19.6)
     a4 = FT(0.45903)
     b4 = FT(-40.0)
-    x = T / FT(300.0)
-    μ = a1 * x^b1 + a2 * x^b2 + a3 * x^b3 + a4 * x^b4
+    x = T/FT(300.0)
+    μ = a1*x^b1 + a2*x^b2 + a3*x^b3 + a4*x^b4
     return μ
 end
 
@@ -1233,7 +1233,7 @@ Computes η*, the ratio of the viscosity of water at temperature T to that at To
 function compute_viscosity_ratio(T::FT, To::FT) where {FT}
     μ = patek_dimensionless_viscosity(max(min(T, FT(383.15)), FT(253.15)))
     μ25 = patek_dimensionless_viscosity(To)
-    return μ / μ25
+    return μ/μ25
 end
 
 
@@ -1460,11 +1460,11 @@ function compute_A0_and_χ(
 
     mj_c3 = c3_compute_mj(Γstar, ci_c3)
     mj_c4 = c4_compute_mj(Γstar, ci_c4) # This is misleading, because we approximate mj = 1
-    L_c3 = sqrt(1 - min(cstar / max(mj_c3, eps(FT)), 1)^FT(2 / 3)) # If mj < cstar, L = 0
-    L_c4 = sqrt(1 - min(cstar / max(mj_c4, eps(FT)), 1)^FT(2 / 3)) # If mj < cstar, L = 0
+    L_c3 = sqrt(1-min(cstar/max(mj_c3, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
+    L_c4 = sqrt(1-min(cstar/max(mj_c4, eps(FT)), 1)^FT(2/3)) # If mj < cstar, L = 0
     # Compute LUE with actual βm (soil moisture stress)
-    LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mj_c3 * L_c3, Mc)
-    LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mj_c4 * L_c4, Mc)
+    LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mj_c3*L_c3, Mc)
+    LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mj_c4*L_c4, Mc)
 
     # χ = ci/ca at the growing-season VPD, as the LAI_max water limitation requires
     ci_gs_c3 = intercellular_co2_pmodel(

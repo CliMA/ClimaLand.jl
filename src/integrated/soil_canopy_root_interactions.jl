@@ -7,7 +7,7 @@ root extraction.
 """
 NVTX.@annotate function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
-    (; conductivity_model) = land.canopy.hydraulics.parameters
+    (; conductivity_model, h_eff) = land.canopy.hydraulics.parameters
     LAI = p.canopy.biomass.area_index.leaf
     RAI = p.canopy.biomass.area_index.root
     # Note that we model the flux between each soil layer and the canopy as:
@@ -21,7 +21,7 @@ NVTX.@annotate function update_root_extraction!(p, Y, t, land)
         Canopy.harmonic_mean(LAI, RAI) *
         Canopy.water_flux(
             z,
-            1 / 2,
+            h_eff / 2,
             p.soil.ψ,
             p.canopy.hydraulics.ψ,
             p.soil.K,

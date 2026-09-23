@@ -177,17 +177,17 @@ end
     FT = Float32
     default_params_filepath =
         joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-    toml_dict = LP.create_toml_dict(FT)
+    toml_dict = LP.create_toml_dict(FT);
 
     zmax = FT(0)
     zmin = FT(-1.0)
     longlat = FT.((-118.1, 34.1))
-    domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat)
-    surface_space = domain.space.surface
+    domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
+    surface_space = domain.space.surface;
 
-    start_date = DateTime(2008)
-    stop_date = start_date + Second(60 * 60 * 72)
-    dt = 1000.0
+    start_date = DateTime(2008);
+    stop_date = start_date + Second(60 * 60 * 72);
+    dt = 1000.0;
 
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -196,7 +196,7 @@ end
         toml_dict,
         FT;
         use_lowres_forcing = true,
-    )
+    );
 
     @testset "EnergyHydrology diagnostics" begin
         model =

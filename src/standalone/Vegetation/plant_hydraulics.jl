@@ -52,6 +52,8 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
+    "Effective height used in computing the Darcy flux"
+    h_eff::FT
 end
 
 """
@@ -59,7 +61,8 @@ end
         ν::FT,
         S_s::FT,
         conductivity_model,
-        retention_model,
+        retention_model;
+        h_eff = FT(1)
     )
 
 Constructor for PlantHydraulicsParameters.
@@ -68,7 +71,8 @@ function PlantHydraulicsParameters(;
     ν::FT,
     S_s::FT,
     conductivity_model,
-    retention_model,
+    retention_model;
+    h_eff = FT(1),
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
@@ -79,6 +83,7 @@ function PlantHydraulicsParameters(;
         S_s,
         conductivity_model,
         retention_model,
+        h_eff,
     )
 end
 
@@ -88,6 +93,7 @@ function PlantHydraulicsParameters(
     S_s = toml_dict["plant_S_s"],
     conductivity_model,
     retention_model,
+    h_eff = typeof(ν)[1],
 )
     FT = typeof(ν)
     return PlantHydraulicsParameters{
@@ -99,6 +105,7 @@ function PlantHydraulicsParameters(
         S_s,
         conductivity_model,
         retention_model,
+        h_eff,
     )
 end
 
@@ -108,7 +115,7 @@ end
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil and ultimately being lost from the system by
-transpiration. Note that the canopy height is part of the biomass model.
+transpiration.
 
 The model can be used in Canopy standalone mode by prescribing
 the soil matric potential at the root tips or flux in the roots.
@@ -382,13 +389,11 @@ Below, `fa_roots` denotes the root water flux per unit ground area
 (`water_flux * harmonic_mean(LAI, RAI)`), and the transpiration is
 `p.canopy.turbulent_fluxes.vapor_flux`, also per unit ground area. The tendency is
 
-    ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
+    ∂ϑ/∂t = (fa_roots - transpiration) / LAI
 
-where `dz` is the canopy height from the biomass model.
-
-Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
+Note that if `LAI` is zero because no plant is present, `LAI` is zero,
 and both fluxes in the numerator are also zero (they are scaled by area indices).
-To prevent dividing by zero, we use `max(LAI * dz, eps(FT))` in the denominator.
+To prevent dividing by zero, we use `max(LAI, eps(FT))` in the denominator.
 """
 function make_compute_exp_tendency(
     model::PlantHydraulicsModel{FT},
@@ -397,9 +402,8 @@ function make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         LAI = p.canopy.biomass.area_index.leaf
         fa_roots = p.canopy.hydraulics.fa_roots
-        dz = 1
         @. dY.canopy.hydraulics.ϑ_l =
-            1 / max(LAI * dz, eps(FT)) *
+            1 / max(LAI, eps(FT)) *
             (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
     end
     return compute_exp_tendency!
@@ -441,7 +445,7 @@ function root_water_flux_per_ground_area!(
     t,
 ) where {FT}
     rooting_depth = canopy.biomass.rooting_depth
-    (; conductivity_model,) = model.parameters
+    (; conductivity_model, h_eff) = model.parameters
     LAI = p.canopy.biomass.area_index.leaf
     RAI = p.canopy.biomass.area_index.root
     ψ = p.canopy.hydraulics.ψ
@@ -463,7 +467,7 @@ function root_water_flux_per_ground_area!(
     @. fa =
         water_flux(
             -rooting_depth,
-            1 / 2,
+            h_eff / 2,
             ψ_soil,
             ψ,
             hydraulic_conductivity(conductivity_model, ψ_soil),
@@ -493,8 +497,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     t,
 )
     LAI = p.canopy.biomass.area_index.leaf
-    dz = 1
-    @. surface_field = dz * LAI * Y.canopy.hydraulics.ϑ_l
+    @. surface_field = LAI * Y.canopy.hydraulics.ϑ_l
     return nothing
 end
 
