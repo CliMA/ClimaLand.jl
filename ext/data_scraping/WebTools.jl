@@ -1,5 +1,5 @@
 using Downloads, DataFrames, Dates
-export read_webpage_body, df_from_url
+export read_webpage_body, df_from_url, df_from_string
 
 """
     read_webpage_body(url)
@@ -67,6 +67,16 @@ with otherwise default arguments.
 """
 function df_from_url(url; comment = "#", delim = ",")
     body = read_webpage_body(url)
+    return df_from_string(body; comment, delim)
+end
+
+"""
+    df_from_string(body; comment = "#", delim = ",")
+
+Parse delimited text `body` (e.g. the content of a CSV file) into a DataFrame,
+using the same cell-type detection as `df_from_url`.
+"""
+function df_from_string(body::AbstractString; comment = "#", delim = ",")
     lines = split(body, "\n", keepempty = false)
     data_rows = filter(
         l -> !(startswith(strip(l), comment) || isempty(strip(l))),

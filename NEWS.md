@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Fix the 10 cm soil water mass diagnostic for standalone soil models, register
+  the optimal-LAI and soil CO2 ppm diagnostics only for models that support
+  them, and fix the default time interpolation of the perturbed ERA5 drivers.
+  Re-enable the neural snow tool tests (now using local data fixtures), add
+  unit tests for the diagnostics compute methods, show methods, perturbed
+  drivers and the `LandSimulation` interface, and exclude the plotting and
+  Fluxnet extensions from Codecov.
+  PR [#1883](https://github.com/CliMA/ClimaLand.jl/pull/1883)
 
 v1.12.2
 ----
