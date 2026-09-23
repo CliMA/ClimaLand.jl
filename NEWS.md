@@ -50,6 +50,9 @@ main
   the snowpack temperature profile; the flux used the snow surface temperature
   of the previous evaluation (zero at initialization).
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🔥behavioralΔ] The leaderboards and the calibration observations use
+  NaN-aware resampling, so cells next to the ocean in the observations are no
+  longer dropped. PR [#1891](https://github.com/CliMA/ClimaLand.jl/pull/1891)
 
 1.12.3
 ----

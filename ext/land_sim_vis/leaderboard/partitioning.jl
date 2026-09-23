@@ -125,19 +125,13 @@ function _ratio_var(num, den, fraction)
 end
 
 """
-    _intersect_mask(base_mask, vars...)
+    _intersect_mask(vars...)
 
-Return a masking function that blanks every cell that `base_mask` removes or
-where any of `vars` is missing, so all panels of a row integrate over one common
-domain.
-
-The footprint is resolved once and then applied by assignment: resampling the
-land-sea mask on every call, as `apply_oceanmask` does, is far too expensive to
-repeat for the hundreds of monthly slices a seasonal cycle averages over.
+Return a masking function that blanks every cell where any of `vars` is
+missing, so all panels of a row integrate over one common domain.
 """
-function _intersect_mask(base_mask, vars...)
-    blank =
-        reduce((a, b) -> a .| b, (isnan.(base_mask(var).data) for var in vars))
+function _intersect_mask(vars...)
+    blank = reduce((a, b) -> a .| b, (isnan.(var.data) for var in vars))
     return function (var)
         new_data = copy(var.data)
         new_data[blank] .= NaN
@@ -146,19 +140,18 @@ function _intersect_mask(base_mask, vars...)
 end
 
 """
-    _small_denominator_mask(den, base_mask)
+    _small_denominator_mask(den)
 
 Return a copy of `den` with cells below `_MIN_DENOMINATOR_FRACTION` of the
 global mean (and all non-positive cells) set to `NaN`, so `_intersect_mask`
 propagates the exclusion to the whole row.
 """
-function _small_denominator_mask(den, base_mask)
-    masked = base_mask(den)
-    global_mean = ClimaAnalysis.weighted_average_lonlat(masked).data[]
+function _small_denominator_mask(den)
+    global_mean = ClimaAnalysis.weighted_average_lonlat(den).data[]
     threshold = _MIN_DENOMINATOR_FRACTION * abs(global_mean)
-    new_data = copy(masked.data)
+    new_data = copy(den.data)
     new_data[.!(new_data .> threshold)] .= NaN
-    return ClimaAnalysis.remake(masked; data = new_data)
+    return ClimaAnalysis.remake(den; data = new_data)
 end
 
 """
@@ -312,50 +305,48 @@ function _prepare_partition_row(sim_dir, data_loader, fraction, spin_up_months)
             )
         end
         for c in obs_components
-            obs[c] = ClimaAnalysis.resampled_as(obs[c], sim[c])
+            obs[c] =
+                ClimaAnalysis.resampled_as(obs[c], sim[c]; nan_threshold = 0.5)
         end
         # Prescribed forcing is identical on both sides by construction.
         for c in fraction.prescribed
             obs[c] = sim[c]
         end
     end
+    intersection_mask = _land_intersection_mask(values(sim)..., values(obs)...)
+    map!(intersection_mask, values(sim))
+    map!(intersection_mask, values(obs))
 
     annual(d, names) =
         ClimaAnalysis.average_time(_sum_vars([d[c] for c in names]))
     sim_num_ann, sim_den_ann =
         annual(sim, fraction.numerator), annual(sim, fraction.denominator)
 
-    base_mask = ClimaAnalysis.apply_oceanmask
-    guard_vars =
-        Any[sim_num_ann, _small_denominator_mask(sim_den_ann, base_mask)]
+    guard_vars = Any[_small_denominator_mask(sim_den_ann)]
     obs_num_ann = obs_den_ann = nothing
     if has_obs
         obs_num_ann, obs_den_ann =
             annual(obs, fraction.numerator), annual(obs, fraction.denominator)
-        push!(
-            guard_vars,
-            obs_num_ann,
-            _small_denominator_mask(obs_den_ann, base_mask),
-        )
+        push!(guard_vars, _small_denominator_mask(obs_den_ann))
     end
-    mask_fn = _intersect_mask(base_mask, guard_vars...)
+    mask_fn = _intersect_mask(guard_vars...)
 
     sim_ratio = _ratio_var(sim_num_ann, sim_den_ann, fraction)
     obs_ratio =
         has_obs ? _ratio_var(obs_num_ann, obs_den_ann, fraction) : nothing
 
-    lats, sim_num_zonal = _zonal_means(sim_num_ann, mask_fn)
-    _, sim_den_zonal = _zonal_means(sim_den_ann, mask_fn)
+    lats, sim_num_zonal = _zonal_means(mask_fn(sim_num_ann))
+    _, sim_den_zonal = _zonal_means(mask_fn(sim_den_ann))
     # Unlike the mean, the spread has to come from the per-cell ratios: there is
     # no other sense in which a ratio varies along a latitude band.
     # `_small_denominator_mask` has already dropped the cells where one blows up.
-    sim_zonal_std = _zonal_std(sim_ratio, mask_fn)
+    sim_zonal_std = _zonal_std(mask_fn(sim_ratio))
     obs_zonal = obs_zonal_std = nothing
     if has_obs
-        _, obs_num_zonal = _zonal_means(obs_num_ann, mask_fn)
-        _, obs_den_zonal = _zonal_means(obs_den_ann, mask_fn)
+        _, obs_num_zonal = _zonal_means(mask_fn(obs_num_ann))
+        _, obs_den_zonal = _zonal_means(mask_fn(obs_den_ann))
         obs_zonal = obs_num_zonal ./ obs_den_zonal
-        obs_zonal_std = _zonal_std(obs_ratio, mask_fn)
+        obs_zonal_std = _zonal_std(mask_fn(obs_ratio))
     end
 
     dates, sim_num_global, sim_den_global =

@@ -136,26 +136,12 @@ The preprocessing is:
 function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     lats, lons = get_lat_lon_from_resolution(nelements)
 
-    # NaNs are kept so that resampling propagates them rather than
-    # interpolating good observations with zeros. Some valid points near
-    # NaN regions may be lost, but this is preferred over corrupting them.
-
     # Window to ensure that each season contains all three months.
-    # Use the data's own date range, clamped to full seasons. Compute dates
-    # from (start_date + time seconds) rather than ClimaAnalysis.dates(var)
-    # to avoid relying on a `date` dim that may be stored as Float64.
-    start_date_attr = Dates.DateTime(var.attributes["start_date"])
-    time_arr = ClimaAnalysis.times(var)
-    eltype(time_arr) <: Dates.TimeType || (
-        time_arr =
-            start_date_attr .+
-            Dates.Millisecond.(round.(Int, time_arr .* 1000))
-    )
-    first_date = first(time_arr)
-    last_date = last(time_arr)
-    @info "preprocess_single_obs_var[$short_name] date range" first_date last_date eltype(
-        time_arr,
-    )
+    # Use the data's own date range, clamped to full seasons.
+    var_dates = ClimaAnalysis.dates(var)
+    first_date = first(var_dates)
+    last_date = last(var_dates)
+    @info "preprocess_single_obs_var[$short_name] date range" first_date last_date
     date_min = Dates.DateTime(Dates.year(first_date), 3)
     date_max = Dates.DateTime(Dates.year(last_date), 8)
     # Ensure bounds are within the data range
@@ -177,7 +163,12 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     # expensive operation, so it is good to do as many reductions as we can.
     var = ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
 
-    var = ClimaAnalysis.resampled_as(var, lon = lons, lat = lats)
+    var = ClimaAnalysis.resampled_as(
+        var,
+        lon = lons,
+        lat = lats,
+        nan_threshold = 0.5,
+    )
 
     # Cannot apply ClimaLand.apply_oceanmask because of the small
     # differences between the ClimaLand mask and ClimaAnalysis.apply_ocean_mask
