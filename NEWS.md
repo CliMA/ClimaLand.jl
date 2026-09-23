@@ -10,6 +10,9 @@ main
   drivers and the `LandSimulation` interface, and exclude the plotting and
   Fluxnet extensions from Codecov.
   PR [#1883](https://github.com/CliMA/ClimaLand.jl/pull/1883)
+- ![][badge-🔥behavioralΔ] The leaderboards and the calibration observations use NaN-aware
+  resampling, so cells next to the ocean in the observations are no longer dropped.
+  PR [#XXXX](https://github.com/CliMA/ClimaLand.jl/pull/XXXX)
 
 v1.12.2
 ----

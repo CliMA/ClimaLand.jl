@@ -19,17 +19,23 @@ Each loader exposes a `Base.get` method that returns a preprocessed
 
 ### Computation
 
-As of now, the leaderboard produces bias plots with the global bias and global
-root mean squared error (RMSE). These quantities are computed for each month
-with the first year of the simulation not considered as that is the spinup time.
-The start date of the simulation is 2008 which means that only the year 2009 is
-used to compare against observational data.
+Before computing the bias and RMSE, the observations are resampled onto the
+simulation grid as a weighted average of nearby points. `NaN` points (e.g. ocean)
+are skipped, and a value is kept if the remaining points carry at least half of
+the interpolation weight. Both variables are then masked to the intersection of
+their land areas.
+
+The leaderboard produces bias plots with the global bias and global root mean
+squared error (RMSE). These quantities are computed for each month with the
+first year of the simulation not considered as that is the spinup time. The
+start date of the simulation is 2008 which means that only the year 2009 is used
+to compare against observational data.
 
 ### Add a new variable to the bias plots
 
-To add a new variable you need to touch four places in `data_sources.jl`:
+To add a new variable you need to touch three places in `data_sources.jl`:
 `_preprocess_sim_var`, the appropriate data loader constructor and `preprocess`
-method, `get_mask_dict`, and `get_compare_vars_biases_plot_extrema`.
+method, and `get_compare_vars_biases_plot_extrema`.
 
 **1. Preprocess the simulation variable**
 
@@ -86,31 +92,7 @@ which shifts the times to the first day of the month before dispatching to
     automatically in `Base.get` for both loaders, so you only need to handle
     unit conversion and `missing`/NaN cleanup in `preprocess`.
 
-**3. Add a mask**
-
-Add an entry to `get_mask_dict` for the loader that provides the new variable.
-The value is a function that takes `sim_var` and `obs_var` and returns a masking
-function. The masking function is used to correctly normalize the global bias
-and global RMSE.
-
-```julia
-mask_dict["new_var"] =
-    (sim_var, obs_var) -> begin
-        return ClimaAnalysis.make_lonlat_mask(
-            # We do this to get a `OutputVar` with only two dimensions:
-            # longitude and latitude
-            ClimaAnalysis.slice(
-                obs_var,
-                time = ClimaAnalysis.times(obs_var) |> first,
-            );
-            # Any values that are NaN should be 0.0
-            set_to_val = isnan,
-            true_val = 0.0
-        )
-    end
-```
-
-**4. Set bias plot limits**
+**3. Set bias plot limits**
 
 Add a key-value pair to `get_compare_vars_biases_plot_extrema` whose value is a
 tuple `(lower, upper)` setting the color scale range for the bias plots.
@@ -123,10 +105,6 @@ compare_vars_biases_plot_extrema = Dict(
     ...
 )
 ```
-
-Note that `get_mask_dict(::ERA5DataLoader)` gives every ERA5 variable the ocean
-mask, so step 3 is only needed for loaders whose observations have gaps over
-land.
 
 ## Annual leaderboard columns
 
