@@ -471,7 +471,7 @@ function lsm_aux_vars(m::LandModel)
         :lake_fraction,
     )
     if m.conservation
-        return (base..., :total_water, :total_energy)
+        return (base..., :total_water, :total_energy, :lai_tendency)
     else
         return base
     end
@@ -509,7 +509,7 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         FT,
     )
     if m.conservation
-        return (base..., FT, FT)
+        return (base..., FT, FT, FT)
     else
         return base
     end
@@ -546,7 +546,7 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
     )
     if m.conservation
-        return (base..., :surface, :surface)
+        return (base..., :surface, :surface, :surface)
     else
         return base
     end
@@ -913,6 +913,7 @@ function make_exp_tendency(land::LandModel)
             f!(dY, Y, p, t)
         end
         if land.conservation
+            FT = FTfromY(Y)
             subsurface_runoff =
                 :R_ss ∈ propertynames(p.soil) ? p.soil.R_ss : FT(0)
             # To do - future PR: move this computation to a method

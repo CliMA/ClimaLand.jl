@@ -147,8 +147,16 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
+    conservation = true,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date,
+    outdir;
+    conservation_period = Day(10),
+)
+simulation =
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
@@ -157,6 +165,7 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
+LandSimVis.check_conservation(simulation; savedir = root_path)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
@@ -173,3 +182,4 @@ if LONGER_RUN
         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end
+
