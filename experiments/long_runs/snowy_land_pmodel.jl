@@ -76,7 +76,7 @@ function setup_model(
     Δt,
     domain,
     toml_dict;
-    prognostic_lai = false,
+    prognostic_lai = false
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -116,6 +116,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            conservation = true
         )
     end
     return land
@@ -147,7 +148,6 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
-    conservation = true,
 )
 diagnostics = ClimaLand.default_diagnostics(
     model,
