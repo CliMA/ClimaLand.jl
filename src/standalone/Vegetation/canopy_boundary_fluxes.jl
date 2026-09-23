@@ -262,6 +262,9 @@ function ClimaLand.surface_roughness_model(
     )
 end
 
+ClimaLand.roughness_sublayer_model(model::CanopyModel) =
+    model.boundary_conditions.turbulent_flux_parameterization.rsl
+
 """
     ClimaLand.get_update_surface_humidity_function(model::CanopyModel, Y, p)
 

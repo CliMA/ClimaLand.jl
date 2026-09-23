@@ -5,6 +5,7 @@ using Thermodynamics
 using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
+using SurfaceFluxes
 using ClimaCore.MatrixFields
 using NVTX
 import ClimaCore.MatrixFields: @name
@@ -44,6 +45,7 @@ import ClimaLand:
     component_temperature,
     component_specific_humidity,
     surface_roughness_model,
+    roughness_sublayer_model,
     get_update_surface_temperature_function,
     get_update_surface_humidity_function,
     surface_displacement_height,
@@ -351,7 +353,7 @@ function PrescribedBiomassModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface; max_height = FT(4)),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{

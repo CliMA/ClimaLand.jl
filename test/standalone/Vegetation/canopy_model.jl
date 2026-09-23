@@ -7,6 +7,7 @@ using Thermodynamics
 using Dates
 using StaticArrays
 using ClimaLand
+using SurfaceFluxes
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 using ClimaLand.Canopy
@@ -407,6 +408,7 @@ end
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         sf_parameterization =
             ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
+        #        @test sf_parameterization.rsl == SurfaceFluxes.NoRoughnessSubLayer()
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
