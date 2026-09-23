@@ -62,6 +62,10 @@ buildkite step entry can then be added within the "config" key.
 
 `profile_and_benchmark` behaves differently if an external profiler is used.
 
+Whenever the benchmarks run, the mean and standard deviation are also written to
+`timings.toml` in `outdir`, so that a pipeline tracking them over time can read
+them from a file rather than parsing them out of the log.
+
 ### Usage with the internal profiler
 
 If the ClimaComms device is a `ClimaComms.AbstractCPUDevice`, steps 2-7 are benchmarked. Then the entire simulation

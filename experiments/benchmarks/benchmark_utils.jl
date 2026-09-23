@@ -2,6 +2,7 @@ import CUDA
 using Test
 using Statistics
 import Profile, ProfileCanvas
+import TOML
 using Dates
 import ClimaLand
 using ClimaComms
@@ -17,7 +18,8 @@ using CSV
 
 Profile and benchmark the simulation returned by `setup_simulation()`. Also test that
 wall time it takes to run the simulation is not significantly greater than `reference_time`.
-If profiling produces any outputs, they are saved in `outdir`
+If profiling produces any outputs, they are saved in `outdir`, along with the
+timings, in the `timings.toml` that [`write_timings`](@ref) writes.
 """
 function profile_and_benchmark(
     setup_simulation::Function,
@@ -44,6 +46,7 @@ function profile_and_benchmark(
     if !use_external_profiler
         (average_timing_s, std_timing_s) =
             run_timing_benchmarks(setup_simulation, device)
+        write_timings(outdir, average_timing_s, std_timing_s)
         GC.gc()
         # if the profiler is run before the benchmarks, the timing seems less consistent
         run_profiler(setup_simulation, device, outdir)
@@ -75,6 +78,25 @@ function profile_and_benchmark(
         run_profiler(setup_simulation, device, outdir)
     end
     return
+end
+
+"""
+    write_timings(outdir, average_timing_s, std_timing_s)
+
+Write the benchmark's mean and standard deviation, in seconds, to
+`timings.toml` in `outdir`, and return the path. A pipeline that tracks these
+timings over time can then read them from a file rather than parsing them out
+of the log.
+"""
+function write_timings(outdir, average_timing_s, std_timing_s)
+    file = joinpath(outdir, "timings.toml")
+    timings = Dict(
+        "average_timing_s" => average_timing_s,
+        "std_timing_s" => std_timing_s,
+    )
+    open(io -> TOML.print(io, timings; sorted = true), file, "w")
+    @info "Wrote timings to $file"
+    return file
 end
 
 """
