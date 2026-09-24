@@ -1,5 +1,7 @@
 using ClimaCore.MatrixFields
-import ClimaCore.MatrixFields: @name
+import ClimaCore.MatrixFields: @name, MultiplyColumnwiseBandMatrixField, DiagonalMatrixRow
+import ClimaCore.Utilities: auto_broadcasted
+using ClimaCore.Fields
 using ClimaCore: Spaces
 import LinearAlgebra
 import LinearAlgebra: I
@@ -189,4 +191,13 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     solver = MatrixFields.FieldMatrixSolver(alg, matrix, Y)
 
     return MatrixFields.FieldMatrixWithSolver(matrix, solver)
+end
+
+function Base.broadcasted(
+    ::MultiplyColumnwiseBandMatrixField,
+    x::Fields.SpectralElementField,
+    y,
+)
+    @assert eltype(x) <: DiagonalMatrixRow
+    auto_broadcasted(*, (x.entries.:1, y))
 end
