@@ -408,7 +408,11 @@ end
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         sf_parameterization =
             ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
-        #        @test sf_parameterization.rsl == SurfaceFluxes.NoRoughnessSubLayer()
+        @test typeof(sf_parameterization.rsl) <: SurfaceFluxes.PhysickGarrattRSL{FT}
+        @test sf_parameterization.rsl.c_m == toml_dict["c_m_rsl"]
+        @test sf_parameterization.rsl.c_h == toml_dict["c_h_rsl"]
+        @test sf_parameterization.rsl.z_RSL == toml_dict["z_coeff_rsl"] * biomass.height
+        
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
