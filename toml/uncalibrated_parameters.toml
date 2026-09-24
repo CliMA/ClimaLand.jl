@@ -536,6 +536,30 @@ description = "Intercept of line relating leaf-level fluorescence to spectromete
 tag = "SIFParameters"
 
 # Canopy roughness
+["c_m_rsl"]
+value = 0.25
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+["c_h_rsl"]
+value = 0.25
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+["z_coeff_rsl"]
+value = 1
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+["z_rsl_min"]
+value = 0.01
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
 ["canopy_z_0min"]
 value = 0.01
 type = "float"

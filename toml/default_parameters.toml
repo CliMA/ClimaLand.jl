@@ -635,8 +635,14 @@ type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
 
+["z_rsl_min"]
+value = 0.01
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
 ["canopy_z_0min"]
-value = 0.1
+value = 0.01
 type = "float"
 description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"

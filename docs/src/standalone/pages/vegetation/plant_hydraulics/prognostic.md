@@ -46,6 +46,21 @@ Substituting in the volumetric water content, we have
 \end{equation}
 ```
 
+In practice, we actually solve
+Substituting in the volumetric water content, we have
+```math
+\begin{equation}
+    \frac{d \theta'}{dt} = \frac{q_{roots}RAI - \tau LAI}{LAI},
+\end{equation}
+```
+
+where
+```math
+\begin{equation}
+    \theta'= \int_0^{H_{\rm canopy}} \theta dz.
+\end{equation}
+```
+
 In the code, the root cross-sectional factor is implemented with a harmonic-mean
 coupling between `RAI` and `LAI`. This ensures that the flux goes to zero when either area index goes
 to zero.

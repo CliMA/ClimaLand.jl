@@ -262,6 +262,11 @@ function ClimaLand.surface_roughness_model(
     )
 end
 
+"""
+    ClimaLand.roughness_sublayer_model(model::CanopyModel)
+
+a helper function which returns the surface roughness sublayer model for the canopy.
+"""
 ClimaLand.roughness_sublayer_model(model::CanopyModel) =
     model.boundary_conditions.turbulent_flux_parameterization.rsl
 

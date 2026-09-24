@@ -58,10 +58,7 @@ function MoninObukhovCanopyFluxes(
     rsl = SurfaceFluxes.PhysickGarrattRSL{typeof(toml_dict["c_m_rsl"])}.(
         toml_dict["c_m_rsl"],
         toml_dict["c_h_rsl"],
-        max.(
-            toml_dict["z_coeff_rsl"] .* height,
-            typeof(toml_dict["c_m_rsl"])(0.01),
-        ),
+        max.(toml_dict["z_coeff_rsl"] .* height, toml_dict["z_rsl_min"]),
     ),
 )
     z_0min = toml_dict["canopy_z_0min"]
