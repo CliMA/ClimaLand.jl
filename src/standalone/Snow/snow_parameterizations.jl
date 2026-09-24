@@ -1087,14 +1087,6 @@ function get_residual_melt_flux(
     κ = p.snow.κ
     ρ = p.snow.ρ_snow
     z = p.snow.z_snow
-    @. p.snow.surf_residual_flux =
-        (
-            p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n +
-            κ * (p.snow.T_sfc - p.snow.T)/max(
-                surface_temp_scaling_length(κ, ρ, z, earth_param_set),
-                eps(FT),
-            )
-        )/(_LH_f0*_ρ_l)
+    @. p.snow.surf_residual_flux = 0
     return p.snow.surf_residual_flux
 end
