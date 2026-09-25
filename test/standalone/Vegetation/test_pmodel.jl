@@ -261,6 +261,26 @@ end
     # The P-model acclimation is a continuous prognostic RunningMean, so the model
     # registers no local-noon callback.
     @test isempty(get_model_callbacks(canopy; t0, Δt = dt))
+
+    # With prescribed LAI, the C3 fraction is the P-model's static map.
+    @test ClimaLand.Canopy.get_fractional_c3(nothing, canopy) ===
+          canopy.photosynthesis.fractional_c3
+
+    # The optimal-LAI model (the default biomass when no LAI is given) sets the
+    # C3 fraction through the P-model, so it cannot be paired with Farquhar.
+    @test_throws AssertionError CanopyModel{FT}(
+        canopy_domain,
+        forcing,
+        toml_dict;
+        photosynthesis = ClimaLand.Canopy.FarquharModel{FT}(
+            canopy_domain,
+            toml_dict,
+        ),
+        conductance = ClimaLand.Canopy.MedlynConductanceModel{FT}(
+            canopy_domain,
+            toml_dict,
+        ),
+    )
 end
 
 

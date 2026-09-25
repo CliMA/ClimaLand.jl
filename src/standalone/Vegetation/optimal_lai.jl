@@ -33,10 +33,6 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
     filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
     tau_long_term::FT
-    """Whether the C3 fraction is computed from the C3/C4 competition on the
-    running-mean per-pathway potential GPP (1.0, the default) or held fixed at the
-    photosynthesis model's static value (0.0). See `c3_fraction_from_competition`."""
-    online_c3c4::FT
     """Steepness of the logistic mapping the proportional C4 GPP advantage to the
     expected C4 fraction (dimensionless), fitted by Lavergne et al. (2022)."""
     c3c4_k::FT
@@ -74,7 +70,6 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         alpha = FT(toml_dict["optimal_lai_alpha"]),
         f0_max = FT(toml_dict["optimal_lai_f0_max"]),
         tau_long_term = FT(toml_dict["optimal_lai_tau_long_term"]),
-        online_c3c4 = FT(toml_dict["optimal_lai_online_c3c4"]),
         c3c4_k = FT(toml_dict["optimal_lai_c3c4_k"]),
         c3c4_q = FT(toml_dict["optimal_lai_c3c4_q"]),
         tc_a = FT(toml_dict["optimal_lai_tc_a"]),
@@ -415,7 +410,7 @@ function f0_from_aridity(
     f0_max::FT,
 ) where {FT}
     AI = max(PET_annual, eps(FT)) / max(precip_annual, eps(FT))
-    return f0_max * exp(-FT(AI_WIDTH) * log(max(AI, eps(FT)) / FT(AI_PEAK))^2)
+    return f0_max * exp(-FT(AI_WIDTH) * log(AI / FT(AI_PEAK))^2)
 end
 
 """
@@ -427,8 +422,8 @@ this returns the arid branch (`AI ≥ 1.9`), where the map was fitted. An `f0` a
 above `f0_max` has no preimage and returns the peak `1.9`.
 """
 function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
-    return FT(AI_PEAK) *
-           exp(sqrt(max(log(f0_max / max(f0, eps(FT))), FT(0)) / FT(AI_WIDTH)))
+    f0 = clamp(f0, eps(FT), f0_max)
+    return FT(AI_PEAK) * exp(sqrt(log(f0_max / f0) / FT(AI_WIDTH)))
 end
 
 """
@@ -455,16 +450,13 @@ function canopy_composition_from_competition(
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
-    (; c3c4_k, c3c4_q, tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
+    (; c3c4_k, c3c4_q) = parameters
     a0c3 = max(A0c3_annual, eps(FT))
     adv = (A0c4_annual - a0c3) / a0c3
     # pyrealm scales the advantage by exp(1/(1+TC)) with TC the observed tree
     # cover; with no such input, TC = 0 leaves the divisor ℯ.
     open_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
-    # The tree-cover relation is fitted to annual realized GPP in kg C m^-2 yr^-1.
-    gppc3 = max(GPPc3_annual, FT(0)) * Mc
-    tc(g) = tc_a * g^tc_b + tc_c
-    tree = clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
+    tree = tree_share_from_gpp(GPPc3_annual, Mc, parameters)
     c4_grass = open_c4 * (1 - tree)
     c3_grass = (1 - open_c4) * (1 - tree)
     return (; tree, c3_grass, c4_grass)
@@ -492,6 +484,61 @@ function c3_fraction_from_competition(
     )
     return 1 - composition.c4_grass
 end
+
+"""
+    tree_share_from_gpp(GPPc3_annual, Mc, parameters)
+
+C3 tree share of the canopy in `canopy_composition_from_competition`: the Lavergne
+et al. (2022) tree cover `tc(g) = a·g^b + c` at the annual realized C3 GPP
+`GPPc3_annual` (mol CO2 m^-2 yr^-1, converted with the molar mass of carbon `Mc`),
+relative to the cover at canopy closure `tc_gpp_ref`, clamped to [0, 1].
+"""
+function tree_share_from_gpp(
+    GPPc3_annual::FT,
+    Mc::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    (; tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
+    # The tree-cover relation is fitted to annual realized GPP in kg C m^-2 yr^-1.
+    gppc3 = max(GPPc3_annual, FT(0)) * Mc
+    tc(g) = tc_a * g^tc_b + tc_c
+    return clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
+end
+
+"""
+    c4_advantage_for_c3_fraction(fractional_c3, tree, parameters)
+
+Inverse of the C3/C4 competition: the proportional C4 GPP advantage
+`(A0c4 − A0c3)/A0c3` for which `canopy_composition_from_competition` returns the C3
+fraction `fractional_c3`, given the tree share `tree`. Used to seed `A0c4_annual` so
+the competition starts at a prescribed C3 map.
+
+The advantage is bounded below by −1 (`A0c4 ≥ 0`), so a pure-C3 cell keeps a small
+C4 grass share, and a C4 grass share above the open canopy `1 − tree` has no preimage
+and saturates.
+"""
+function c4_advantage_for_c3_fraction(
+    fractional_c3::FT,
+    tree::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    (; c3c4_k, c3c4_q) = parameters
+    δ = sqrt(eps(FT))
+    open_c4 = clamp((1 - fractional_c3) / max(1 - tree, δ), δ, 1 - δ)
+    adv = FT(ℯ) * (c3c4_q + log(open_c4 / (1 - open_c4)) / c3c4_k)
+    return max(adv, -one(FT))
+end
+
+# FAO-56 (Allen et al., 1998) reference crop, which defines the PET that f0(AI) was
+# fitted with: albedo, bulk surface resistance (s m^-1), the aerodynamic resistance
+# numerator (r_a = FAO56_RA_WIND / u_2 in s m^-1), and the log-profile coefficients of
+# their Eq. 47 mapping wind at height h to 2 m, u_2 = u·a / ln(b·h − c).
+const FAO56_ALBEDO = 0.23
+const FAO56_SURFACE_RESISTANCE = 70
+const FAO56_RA_WIND = 208
+const FAO56_WIND_A = 4.87
+const FAO56_WIND_B = 67.8
+const FAO56_WIND_C = 5.42
 
 """
     potential_evaporation(
@@ -528,8 +575,8 @@ function potential_evaporation(
     M_w::FT,
     thermo_params,
 ) where {FT}
-    α_ref = FT(0.23)
-    r_s = FT(70)
+    α_ref = FT(FAO56_ALBEDO)
+    r_s = FT(FAO56_SURFACE_RESISTANCE)
     Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
 
     λv = TP.LH_v0(thermo_params)
@@ -557,8 +604,10 @@ function potential_evaporation(
 
     # Wind at the reference 2 m (FAO-56 Eq. 47); the relation is anchored on the
     # reference crop, so heights below it are held at 2 m rather than extrapolated.
-    u_2 = u_air * FT(4.87) / log(FT(67.8) * max(h_atmos, FT(2)) - FT(5.42))
-    r_a = FT(208) / max(u_2, sqrt(eps(FT)))
+    u_2 =
+        u_air * FT(FAO56_WIND_A) /
+        log(FT(FAO56_WIND_B) * max(h_atmos, FT(2)) - FT(FAO56_WIND_C))
+    r_a = FT(FAO56_RA_WIND) / max(u_2, sqrt(eps(FT)))
 
     λE = (Δ * Rn + ρ_a * c_p * D / r_a) / (Δ + γ * (1 + r_s / r_a))
     return max(λE, zero(FT)) / (λv * M_w)

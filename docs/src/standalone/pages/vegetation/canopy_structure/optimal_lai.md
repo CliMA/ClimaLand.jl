@@ -117,7 +117,9 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 The C3/C4 competition that sets the C3 fraction adds the coefficients below, fitted by
 Lavergne et al. (2022) and used by pyrealm. The proportional C4 GPP advantage is passed
 through a logistic, then penalised by the C3 tree cover $tc(g) = a g^b + c$ estimated from
-the annual C3 GPP $g$, so C4 is suppressed where C3 trees would shade it.
+the annual C3 GPP $g$, so C4 is suppressed where C3 trees would shade it. With this
+biomass model, the C3 fraction used by photosynthesis comes from the competition rather
+than from the photosynthesis model's static map, so it requires the P-model.
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |

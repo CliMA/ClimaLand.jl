@@ -563,8 +563,8 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
   from the C3/C4 competition (dimensionless, summing to one); see
   `canopy_composition_from_competition`
 
-`GSL`, `vpd_gs` and `f0` are derived in `update_biomass!` from the trailing totals in `Y`;
-`composition` in `update_fractional_c3!`.
+`GSL`, `vpd_gs`, `f0` and `composition` are derived in `update_biomass!` from the
+trailing totals in `Y`.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
     (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition)
@@ -596,10 +596,14 @@ ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
         canopy,
     ) where {FT}
 
-Updates the optimal-LAI cache: sets SAI and RAI to their prescribed values, derives
-`f0`, `vpd_gs` and `GSL` from the trailing climate totals in `Y`, and mirrors the
-prognostic `LAI` into the cache area index read by the rest of the canopy. This runs
-first in `update_aux`, before radiative transfer reads the area index.
+Updates the optimal-LAI cache from the prognostic state in `Y`: sets SAI and RAI to
+their prescribed values; derives `f0`, `vpd_gs` and `GSL` from the trailing climate
+totals; sets the canopy `composition` (tree, C3 grass, C4 grass shares) from the
+C3/C4 competition on the trailing per-pathway potential GPP (`A0c3_annual`,
+`A0c4_annual`) and realized C3 GPP (`GPPc3_annual`); and sets the leaf area index
+used by the rest of the canopy from the prognostic `LAI`, clipped below 0.05 and
+zeroed where a lake is present (`mask_biomass!`). This runs first in `update_aux`,
+before radiative transfer and photosynthesis read the area index and C3 fraction.
 """
 function update_biomass!(
     p,
@@ -608,17 +612,24 @@ function update_biomass!(
     component::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}
-    (; SAI, RAI) = component
+    (; SAI, RAI, parameters) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
     @. p.canopy.biomass.f0 = f0_from_aridity(
         Y.canopy.biomass.PET_annual,
         Y.canopy.biomass.precip_annual,
-        component.parameters.f0_max,
+        parameters.f0_max,
     )
     @. p.canopy.biomass.vpd_gs =
         Y.canopy.biomass.VPDA0_annual / max(Y.canopy.biomass.A0_annual, eps(FT))
     @. p.canopy.biomass.GSL = Y.canopy.biomass.growing_days
+    @. p.canopy.biomass.composition = canopy_composition_from_competition(
+        Y.canopy.biomass.A0c3_annual,
+        Y.canopy.biomass.A0c4_annual,
+        Y.canopy.biomass.GPPc3_annual,
+        canopy.photosynthesis.constants.Mc,
+        parameters,
+    )
     @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
@@ -627,42 +638,25 @@ function update_biomass!(
 end
 
 """
-    update_fractional_c3!(p, Y, biomass::ZhouOptimalLAIModel, canopy)
+    get_fractional_c3(p, canopy)
+    get_fractional_c3(p, biomass::AbstractBiomassModel, photosynthesis)
 
-Sets the canopy `composition` (tree, C3 grass, C4 grass shares) from the C3/C4
-competition on the trailing per-pathway potential GPP (`A0c3_annual`, `A0c4_annual`)
-and the trailing realized C3 GPP (`GPPc3_annual`), and the C3 fraction as its tree
-plus C3 grass share. With `optimal_lai_online_c3c4 = 0`
-the C3 fraction is the P-model's static value instead; `composition` still reports
-the competition, as the static map carries no tree/grass split.
+C3 fraction of the canopy (1 = all C3), the weight photosynthesis blends its C3 and
+C4 pathways with. A biomass model that predicts the canopy composition
+(`ZhouOptimalLAIModel`) sets it; otherwise it is the photosynthesis model's static
+value.
 """
-function update_fractional_c3!(
-    p,
-    Y,
-    biomass::ZhouOptimalLAIModel{FT},
-    canopy,
-) where {FT}
-    parameters = biomass.parameters
-    online_c3c4 = parameters.online_c3c4
-    Mc = canopy.photosynthesis.constants.Mc
-    static_c3 = canopy.photosynthesis.fractional_c3
-    @. p.canopy.biomass.composition = canopy_composition_from_competition(
-        Y.canopy.biomass.A0c3_annual,
-        Y.canopy.biomass.A0c4_annual,
-        Y.canopy.biomass.GPPc3_annual,
-        Mc,
-        parameters,
-    )
-    @. p.canopy.photosynthesis.fractional_c3 =
-        online_c3c4 * (1 - p.canopy.biomass.composition.c4_grass) +
-        (1 - online_c3c4) * static_c3
-    return nothing
-end
+get_fractional_c3(p, canopy) =
+    get_fractional_c3(p, canopy.biomass, canopy.photosynthesis)
+get_fractional_c3(p, ::AbstractBiomassModel, photosynthesis) =
+    static_fractional_c3(photosynthesis)
+get_fractional_c3(p, ::ZhouOptimalLAIModel, photosynthesis) =
+    @. lazy(1 - p.canopy.biomass.composition.c4_grass)
 
 """
     ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
 
-Advances the optimal-LAI model's nine time-integrated variables.
+Advances the optimal-LAI model's ten time-integrated variables.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
@@ -676,13 +670,14 @@ function ClimaLand.make_compute_exp_tendency(
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
     T_freeze = LP.T_freeze(earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    h_atmos = ClimaLand.get_drivers(canopy)[1].h
+    h_atmos = canopy.boundary_conditions.atmos.h
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
-        fractional_c3 = p.canopy.photosynthesis.fractional_c3
+        fractional_c3 = get_fractional_c3(p, canopy)
+        # Supersaturated forcing gives a negative VPD.
         VPD = @. lazy(
             max(
                 Thermodynamics.vapor_pressure_deficit(
@@ -691,7 +686,7 @@ function ClimaLand.make_compute_exp_tendency(
                     p.drivers.P,
                     p.drivers.q,
                 ),
-                sqrt(eps(FT)),
+                zero(FT),
             ),
         )
 

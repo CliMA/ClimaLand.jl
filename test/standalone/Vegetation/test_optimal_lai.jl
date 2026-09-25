@@ -31,9 +31,7 @@ using ClimaCore
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
-            # C3/C4 competition is on by default, with the Lavergne et al. (2022)
-            # logistic and tree-cover coefficients read from the TOML.
-            @test params.online_c3c4 ≈ FT(1)
+            # Lavergne et al. (2022) C3/C4 logistic and tree-cover coefficients
             @test params.c3c4_k ≈ FT(6.63)
             @test params.c3c4_q ≈ FT(0.16)
             @test params.tc_a ≈ FT(15.60)
@@ -302,6 +300,53 @@ using ClimaCore
                   g(FT(150), FT(150), FT(0.9)).tree
         end
 
+        @testset "c4_advantage_for_c3_fraction for FT = $FT" begin
+            # The inverse reproduces a C3 fraction the competition can reach.
+            Mc = FT(0.012)
+            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
+            for (a3, fapar, fc3) in (
+                (FT(100), FT(0.5), FT(0.3)),
+                (FT(150), FT(0.9), FT(0.8)),
+                (FT(40), FT(0.3), FT(0.5)),
+            )
+                gppc3 = a3 * fapar
+                tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+                adv = Canopy.c4_advantage_for_c3_fraction(fc3, tree, params)
+                @test Canopy.c3_fraction_from_competition(
+                    a3,
+                    a3 * (1 + adv),
+                    gppc3,
+                    Mc,
+                    params,
+                ) ≈ fc3 rtol = 1e-3
+            end
+            # A pure-C3 map needs A0c4 = 0; a small C4 grass share remains.
+            adv = Canopy.c4_advantage_for_c3_fraction(FT(1), FT(0), params)
+            @test adv == -1
+            @test FT(0.9) <
+                  Canopy.c3_fraction_from_competition(
+                      FT(100),
+                      FT(0),
+                      FT(0),
+                      Mc,
+                      params,
+                  ) <
+                  FT(1)
+            # More C4 than the open canopy allows saturates at the open canopy.
+            gppc3 = FT(150) * FT(0.9)
+            tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+            @test FT(0) < tree < FT(1)
+            adv = Canopy.c4_advantage_for_c3_fraction(FT(0), tree, params)
+            @test isfinite(adv)
+            @test Canopy.c3_fraction_from_competition(
+                FT(150),
+                FT(150) * (1 + adv),
+                gppc3,
+                Mc,
+                params,
+            ) ≈ tree atol = 1e-3
+        end
+
         @testset "f0_from_aridity / aridity_from_f0 for FT = $FT" begin
             f0_max = FT(0.65)
             # f0 peaks at f0_max at the energy-water transition and falls off on
@@ -400,7 +445,9 @@ using ClimaCore
 
                 # Load initial conditions from global data file
                 optimal_lai_inputs =
-                    Canopy.optimal_lai_initial_conditions(surface_space)
+                    ClimaLand.Simulations.optimal_lai_initial_conditions(
+                        surface_space,
+                    )
 
                 # Extract scalar values from Fields
                 GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
@@ -468,14 +515,32 @@ using ClimaCore
             Y = ClimaCore.Fields.FieldVector(;
                 canopy = (; biomass = biomass_state),
             )
+            # the same climatology the IC reads, for the expected values
+            ic = ClimaLand.Simulations.optimal_lai_initial_conditions(
+                surface_space,
+            )
+            scalar(field) = Array(parent(field))[1]
+            max_lai_field = Canopy.modis_max_lai(surface_space)
+            # A static map (standing in for the photosynthesis model's) with half
+            # of the open canopy C4, which the competition can reach
+            Mc = FT(0.0120107)
+            k = model.parameters.k
+            tree = Canopy.tree_share_from_gpp(
+                scalar(ic.A0_annual) * (1 - exp(-k * scalar(max_lai_field))),
+                Mc,
+                model.parameters,
+            )
+            fractional_c3 = tree + (1 - tree) / 2
             ClimaLand.Simulations.set_canopy_component_initial_conditions!(
                 Y,
                 nothing,
                 model,
                 nothing,
+                ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
+                max_lai_field,
+                fractional_c3,
+                Mc,
             )
-            # the same climatology the IC reads, for the expected values
-            ic = Canopy.optimal_lai_initial_conditions(surface_space)
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
             A0_daily = Array(parent(Y.canopy.biomass.A0_daily))[1]
@@ -491,7 +556,6 @@ using ClimaCore
 
             # The climate-responsive accumulators are seeded so each online input
             # reproduces the map value it replaces at t = 0.
-            scalar(field) = Array(parent(field))[1]
             PET_annual = scalar(Y.canopy.biomass.PET_annual)
             f0_max = model.parameters.f0_max
             @test Canopy.f0_from_aridity(PET_annual, precip_annual, f0_max) ≈
@@ -499,16 +563,21 @@ using ClimaCore
             @test scalar(Y.canopy.biomass.VPDA0_annual) / A0_annual ≈
                   scalar(ic.vpd_gs) rtol = 1e-5
             @test scalar(Y.canopy.biomass.growing_days) ≈ scalar(ic.GSL)
-            # no per-pathway climatology exists, so both start at the blended total
             @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual
-            @test scalar(Y.canopy.biomass.A0c4_annual) ≈ A0_annual
             # the realized C3 GPP is seeded with the fAPAR of the MODIS max LAI,
             # not of the (winter) lai_init snapshot
-            max_lai = scalar(Canopy.modis_max_lai(surface_space))
-            k = model.parameters.k
+            max_lai = scalar(max_lai_field)
             GPPc3_annual = scalar(Y.canopy.biomass.GPPc3_annual)
             @test GPPc3_annual ≈ A0_annual * (1 - exp(-k * max_lai))
             @test GPPc3_annual > A0_annual * (1 - exp(-k * LAI))
+            # A0c4 is seeded so the competition starts at the static C3 map
+            @test Canopy.c3_fraction_from_competition(
+                scalar(Y.canopy.biomass.A0c3_annual),
+                scalar(Y.canopy.biomass.A0c4_annual),
+                GPPc3_annual,
+                Mc,
+                model.parameters,
+            ) ≈ fractional_c3 rtol = 1e-3
         end
     end
 end

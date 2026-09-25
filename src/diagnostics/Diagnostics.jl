@@ -22,6 +22,7 @@ import ..Canopy:
     medlyn_term,
     gs_h2o_pmodel,
     get_Vcmax25_canopy,
+    get_fractional_c3,
     get_An_canopy,
     get_An_leaf,
     get_Rd_leaf,

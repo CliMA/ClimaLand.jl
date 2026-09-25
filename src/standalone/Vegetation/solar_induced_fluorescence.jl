@@ -88,7 +88,7 @@ function update_SIF!(
     Jmax25_c3 = Y.canopy.photosynthesis.acclimated.Jmax25_c3
     Jmax25_c4 = Y.canopy.photosynthesis.acclimated.Jmax25_c4
     LAI = p.canopy.biomass.area_index.leaf;
-    fraction_c3 = p.canopy.photosynthesis.fractional_c3
+    fraction_c3 = get_fractional_c3(p, canopy)
     @. SIF = compute_SIF_at_a_point_pmodel(
         APAR_canopy_moles,
         T_canopy,

@@ -2,21 +2,17 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length,
-  C3 fraction) now track the simulated climate rather than a frozen map, through five new
-  time-integrated variables in `Y`. Potential GPP drops its soil-moisture stress, so water
-  limitation enters once through `f0·P/A0`; the aridity index behind `f0` uses FAO-56
-  Penman-Monteith reference ET; `z`/`sigma`/`alpha` recalibrated to 29.2/1.01/0.202, and
-  the P-model, moisture-stress and canopy-flux defaults updated from a separate calibration.
-  The C3/C4 competition also stores the canopy composition it resolves (tree, C3 grass, C4
-  grass shares) in `p.canopy.biomass.composition`, with diagnostics `ftr`, `fc3g`, `fc4g`;
-  its tree cover is now estimated from a sixth accumulator, the trailing-year realized C3
-  GPP `GPPc3_annual`, instead of the annual potential times the instantaneous fAPAR, so
-  the tree share no longer follows the seasonal cycle of LAI.
+- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
+  are now computed throughout the simulation from time-integrated prognostic variables;
+  trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in
+  `p.canopy.biomass.composition`, diagnostics `ftr`, `fc3g`, `fc4g`, `fc3`) and used by
+  photosynthesis; potential GPP now assumes moisture stress is 1. `z`/`sigma`/`alpha`
+  recalibrated to 29.2/1.01/0.202, and the P-model, moisture-stress and canopy-flux defaults
+  updated from a separate calibration.
   PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
-- ![][badge-💥breaking] `ZhouOptimalLAIModel` drops the `optimal_lai_inputs` keyword — it is now
-  `ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)` — and `optimal_lai_f0`
-  is renamed `optimal_lai_f0_max`. The artifact is still read by `set_ic!` to seed trailing totals.
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` no longer uses the `optimal_lai_inputs` keyword
+  argument, and requires the P-model; `optimal_lai_f0` is renamed `optimal_lai_f0_max`;
+  `get_Vcmax25_leaf` and `get_Vcmax25_canopy` take the canopy model as a fourth argument.
   PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 - Fix the 10 cm soil water mass diagnostic for standalone soil models, register
   the optimal-LAI and soil CO2 ppm diagnostics only for models that support

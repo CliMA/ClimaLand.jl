@@ -693,6 +693,26 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
 end
 
 """
+    check_component_compatibility(photosynthesis, conductance, biomass)
+
+Asserts that the canopy components can be used together: the P-model requires the
+P-model stomatal conductance and vice versa, and `ZhouOptimalLAIModel` requires the
+P-model.
+"""
+function check_component_compatibility(photosynthesis, conductance, biomass)
+    if photosynthesis isa PModel
+        @assert conductance isa PModelConductance "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
+    end
+    if conductance isa PModelConductance
+        @assert photosynthesis isa PModel "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
+    end
+    if biomass isa ZhouOptimalLAIModel
+        @assert photosynthesis isa PModel "When using ZhouOptimalLAIModel for biomass, you must also use PModel for photosynthesis"
+    end
+    return nothing
+end
+
+"""
     CanopyModel{FT}(;
         autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
         radiative_transfer::AbstractRadiationModel{FT},
@@ -735,13 +755,7 @@ function CanopyModel{FT}(;
     },
 ) where {FT, B, PSE}
 
-    if typeof(photosynthesis) <: PModel{FT}
-        @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
-    end
-
-    if typeof(conductance) <: PModelConductance{FT}
-        @assert typeof(photosynthesis) <: PModel{FT} "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
-    end
+    check_component_compatibility(photosynthesis, conductance, biomass)
 
     args = (
         autotrophic_respiration,
@@ -872,6 +886,7 @@ function CanopyModel{FT}(
         earth_param_set,
         domain,
     )
+    check_component_compatibility(photosynthesis, conductance, biomass)
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
@@ -969,6 +984,7 @@ function CanopyModel{FT}(
         earth_param_set,
         domain,
     )
+    check_component_compatibility(photosynthesis, conductance, biomass)
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 

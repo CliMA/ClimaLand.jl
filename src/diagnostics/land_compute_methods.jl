@@ -294,16 +294,26 @@ end
 
 @diagnostic_compute "a0c4_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0c4_annual
 
-# Fraction of C3 photosynthesis (1 = all C3, 0 = all C4). From the optimal-LAI C3/C4
-# competition unless that is off (optimal_lai_online_c3c4 = 0), then the static CLM map.
-@diagnostic_compute "fractional_c3" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.fractional_c3
+# The C3 fraction may be a scalar, so the output takes the leaf area index's space.
+function compute_fractional_c3!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    fractional_c3 = get_fractional_c3(p, get_canopy(land_model))
+    if isnothing(out)
+        out = zeros(axes(p.canopy.biomass.area_index.leaf))
+        fill!(field_values(out), NaN)
+        out .= fractional_c3
+        return out
+    else
+        out .= fractional_c3
+    end
+end
 
-# Canopy composition from the C3/C4 competition: shares of productivity (summing to 1)
-# from C3 trees, C3 grasses and C4 grasses.
+# Canopy composition: shares of productivity from C3 trees, C3 grasses and C4 grasses.
 @diagnostic_compute "fraction_tree" Union{
     SoilCanopyModel,
     LandModel,
@@ -374,6 +384,7 @@ end
     Y,
     p,
     get_canopy(land_model).photosynthesis,
+    get_canopy(land_model),
 )
 
 # Canopy - Radiative Transfer
