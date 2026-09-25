@@ -102,7 +102,8 @@ function make_set_ic(z, Trange)
     end
 end
 
-
+_ρ_liq = LP.ρ_cloud_liq(soil.parameters.earth_param_set)
+_ρ_ice = LP.ρ_cloud_ice(soil.parameters.earth_param_set)
 stepper = CTS.ARS111()
 err = (FT == Float64) ? 1e-8 : 1e-4
 convergence_cond = CTS.MaximumError(err)
@@ -169,15 +170,12 @@ for experiment in [no_phase_change, phase_change]
             solver_kwargs = (; saveat = [t0, tf]),
             user_callbacks = (),
         )
-        p = simulation._integrator.p
-        p_init = deepcopy(p)
-        energy_start = Array(parent(p_init.soil.total_energy))[1]
-        mass_start = Array(parent(p_init.soil.total_water))[1]
-
+        energy_start = sum(Y.soil.ρe_int)
+        mass_start = sum(Y.soil.ϑ_l) + sum(Y.soil.θ_i)*_ρ_ice/_ρ_liq
 
         sol = solve!(simulation)
         # Calculate water mass balance over entire simulation
-        mass_end = Array(parent(p.soil.total_water))[1]
+        mass_end = sum(Y.soil.ϑ_l) + sum(Y.soil.θ_i)*_ρ_ice/_ρ_liq
         t_sim = sol.t[end] - sol.t[1]
         # We used zero flux BC, so we expect no mass change.
         mass_change_exp = FT(0)
@@ -186,7 +184,7 @@ for experiment in [no_phase_change, phase_change]
         mass_errors[i] = relerr
 
         # Calculate energy balance over entire simulation
-        energy_end = Array(parent(p.soil.total_energy))[1]
+        energy_end = sum(Y.soil.ρe_int)
         # We used zero flux BC, so we expect no energy change.
         energy_change_exp = FT(0)
         energy_change_actual = abs(energy_end - energy_start) + eps(FT)
