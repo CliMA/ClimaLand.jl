@@ -397,16 +397,17 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
-get_Vcmax25_leaf(Y, p, m::FarquharModel) = m.parameters.Vcmax25
+get_Vcmax25_leaf(Y, p, m::FarquharModel, canopy) = m.parameters.Vcmax25
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_Vcmax25_canopy(Y, p, m::FarquharModel) =
+get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy) =
     @. lazy(m.parameters.Vcmax25 * p.canopy.biomass.area_index.leaf)
 get_Rd_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.Rd * p.canopy.biomass.area_index.leaf)
 get_An_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.An * p.canopy.biomass.area_index.leaf)
 get_GPP(p, m::FarquharModel) = p.canopy.photosynthesis.GPP
+static_fractional_c3(m::FarquharModel) = m.parameters.is_c3
 
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)

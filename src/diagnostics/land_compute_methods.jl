@@ -289,6 +289,48 @@ end
 
 @diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_annual
 
+@diagnostic_compute "a0c3_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0c3_annual
+
+@diagnostic_compute "a0c4_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0c4_annual
+
+# The C3 fraction may be a scalar, so the output takes the leaf area index's space.
+function compute_fractional_c3!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    fractional_c3 = get_fractional_c3(p, get_canopy(land_model))
+    if isnothing(out)
+        out = zeros(axes(p.canopy.biomass.area_index.leaf))
+        fill!(field_values(out), NaN)
+        out .= fractional_c3
+        return out
+    else
+        out .= fractional_c3
+    end
+end
+
+# Canopy composition: shares of productivity from C3 trees, C3 grasses and C4 grasses.
+@diagnostic_compute "fraction_tree" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.composition.tree
+
+@diagnostic_compute "fraction_c3_grass" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.composition.c3_grass
+
+@diagnostic_compute "fraction_c4_grass" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.composition.c4_grass
+
 # precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
 # limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
 function compute_precip_annual!(
@@ -341,6 +383,7 @@ end
     Y,
     p,
     get_canopy(land_model).photosynthesis,
+    get_canopy(land_model),
 )
 
 # Canopy - Radiative Transfer

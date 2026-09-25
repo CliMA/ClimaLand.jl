@@ -803,10 +803,11 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         APAR_canopy_moles,
     )
 
+    fractional_c3 = get_fractional_c3(p, canopy)
     @. p.canopy.photosynthesis.instantaneous =
         compute_blended_pmodel_photosynthesis(
             Y.canopy.photosynthesis.acclimated,
-            model.fractional_c3,
+            fractional_c3,
             P_air,
             T_air,
             q_air,
@@ -818,6 +819,8 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             thermo_params,
         )
 end
+
+static_fractional_c3(m::PModel) = m.fractional_c3
 
 function compute_blended_pmodel_photosynthesis(
     acclimated,
@@ -986,22 +989,28 @@ function compute_blended_pmodel_photosynthesis(
     return (; Rd, GPP, An, gs_co2)
 end
 
-get_Vcmax25_canopy(Y, p, m::PModel) = @. lazy(
-    blend(
-        Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
-        Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
-        m.fractional_c3,
-    ),
-)
+function get_Vcmax25_canopy(Y, p, m::PModel, canopy)
+    fractional_c3 = get_fractional_c3(p, canopy)
+    return @. lazy(
+        blend(
+            Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
+            Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
+            fractional_c3,
+        ),
+    )
+end
 
-get_Vcmax25_leaf(Y, p, m::PModel) = @. lazy(
-    blend(
-        Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
-        Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
-        m.fractional_c3,
-    ) /
-    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
-)
+function get_Vcmax25_leaf(Y, p, m::PModel, canopy)
+    fractional_c3 = get_fractional_c3(p, canopy)
+    return @. lazy(
+        blend(
+            Y.canopy.photosynthesis.acclimated.Vcmax25_c3,
+            Y.canopy.photosynthesis.acclimated.Vcmax25_c4,
+            fractional_c3,
+        ) /
+        max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
+    )
+end
 get_Rd_canopy(p, m::PModel) = p.canopy.photosynthesis.instantaneous.Rd
 get_Rd_leaf(p, m::PModel) = @. lazy(
     p.canopy.photosynthesis.instantaneous.Rd /
@@ -1370,8 +1379,9 @@ which depends on temperature and pressure only.
 - `vpd_gs::FT`: Growing-season mean vapor pressure deficit (Pa)
 
 # Returns
-- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), and
-  `χ = ci/ca` at the growing-season VPD (unitless)
+- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), the
+  pure-C3 and pure-C4 potential GPP `A0_c3`/`A0_c4` that the C3/C4 competition
+  compares, and `χ = ci/ca` at the growing-season VPD (unitless)
 """
 function compute_A0_and_χ(
     fractional_c3::FT,
@@ -1467,6 +1477,8 @@ function compute_A0_and_χ(
     # in kg C per mol photon, so dividing by Mc returns it in mol C m^-2 s^-1.
     return (;
         A0 = PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3) / Mc,
+        A0_c3 = PPFD * LUE_daily_c3 / Mc,
+        A0_c4 = PPFD * LUE_daily_c4 / Mc,
         χ = blend(ci_gs_c3, ci_gs_c4, fractional_c3) / ca_pp,
     )
 end

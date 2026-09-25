@@ -350,6 +350,120 @@ end
 
 
 """
+    optimal_lai_initial_conditions(
+        surface_space,
+        data_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant(),
+    )
+
+Reads the optimal-LAI climatology from a NetCDF file and regrids it to
+`surface_space`, returning a NamedTuple of ClimaCore Fields. It is read once, by
+`set_canopy_component_initial_conditions!`, to set the optimal-LAI prognostic state;
+the tendencies do not use it.
+
+This function returns fields for:
+- `GSL`: Growing season length (days)
+- `A0_annual`: Annual potential GPP (mol CO2 m^-2 yr^-1)
+- `precip_annual`: Mean annual precipitation (mol H2O m^-2 yr^-1)
+- `vpd_gs`: Average VPD during growing season (Pa)
+- `lai_init`: Initial LAI from MODIS (m^2 m^-2)
+- `f0`: Spatially varying fraction of precipitation for transpiration (dimensionless)
+
+The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
+`lai_init`, and `f0` on a (lon, lat) grid.
+
+# Arguments
+- `surface_space`: The ClimaCore surface space to regrid to
+- `data_path`: Path to the NetCDF file containing the data (default: from ClimaArtifacts)
+
+# Keyword Arguments
+- `regridder_type`: Type of regridder to use (default: `:InterpolationsRegridder`)
+- `extrapolation_bc`: Boundary conditions for extrapolation (default: Periodic in lon, Flat in lat)
+- `interpolation_method`: Interpolation method (default: `Interpolations.Constant()`)
+
+# Example
+```julia
+ic_data = optimal_lai_initial_conditions(surface_space)
+lai_init = ic_data.lai_init
+```
+
+# Notes
+- The file is expected to have lon and lat coordinates
+- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init, f0) are required
+"""
+function optimal_lai_initial_conditions(
+    surface_space,
+    data_path::AbstractString = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(surface_space),
+    );
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat()),
+    interpolation_method = Interpolations.Constant(),
+)
+    GSL = SpaceVaryingInput(
+        data_path,
+        "gsl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    A0_annual = SpaceVaryingInput(
+        data_path,
+        "a0_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    precip_annual = SpaceVaryingInput(
+        data_path,
+        "precip_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    vpd_gs = SpaceVaryingInput(
+        data_path,
+        "vpd_gs",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    lai_init = SpaceVaryingInput(
+        data_path,
+        "lai_init",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    f0 = SpaceVaryingInput(
+        data_path,
+        "f0",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (;
+        GSL = GSL,
+        A0_annual = A0_annual,
+        precip_annual = precip_annual,
+        vpd_gs = vpd_gs,
+        lai_init = lai_init,
+        f0 = f0,
+    )
+end
+
+"""
     set_canopy_component_initial_conditions!(
         Y,
         p,
@@ -358,19 +472,39 @@ end
         ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
             context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
         ),
+        max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
+        fractional_c3 = ClimaLand.Canopy.static_fractional_c3(canopy.photosynthesis),
+        Mc = canopy.photosynthesis.constants.Mc,
     ) where {FT}
 
-Sets the optimal-LAI prognostic state — the leaf area index `LAI` and the trailing
-potential-GPP and precipitation totals `A0_daily`, `A0_annual`, `precip_annual`,
-stored in `Y.canopy.biomass` — using the values in the netCDF file at `ic_path`,
-which must contain the variables `lai_init`, `a0_annual` and `precip_annual` on a
-(lon, lat) grid.
+Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
+`A0_annual`, `precip_annual`, `PET_annual`, `VPDA0_annual`, `growing_days`,
+`A0c3_annual`, `A0c4_annual`, `GPPc3_annual`) from the netCDF file at `ic_path`,
+which must contain `lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0`
+on a (lon, lat) grid.
 
-With the default IC path, `LAI` starts from the MODIS observation, which reduces spin-up relative to the model
-equilibrium and matches observed vegetation patterns. The annual totals start at
-their climatological values, which are their steady state and are independent of the
-smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
-corresponding daily share of the annual total.
+With the default path, `LAI` starts from the MODIS observation, which shortens the
+spin-up. The annual totals start at their climatological values, which are their
+steady state whatever `tau_long_term`; `A0_daily` starts at the daily share of
+`A0_annual`.
+
+`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
+and `GSL` start at the artifact values they replace, then relax to the simulated
+climate over `tau_long_term`. Since `f0(AI)` peaks at `f0_max`, the `f0` seed uses
+the arid branch of the inverse, and a cell whose artifact `f0` exceeds the peak
+seeds to the peak.
+
+`A0c3_annual` starts at `a0_annual`. `GPPc3_annual`, the realized C3 GPP the tree
+cover is estimated from, is seeded as `A0c3_annual` scaled by the fAPAR of the MODIS
+annual maximum LAI (`max_lai`) rather than of `lai_init`, a single-date snapshot: over
+a year the potential GPP is concentrated in the leafy season, so the peak fAPAR is the
+closer estimate of the GPP-weighted annual value.
+
+No per-pathway climatology exists, so `A0c4_annual` is seeded by inverting the C3/C4
+competition (`c4_advantage_for_c3_fraction`): given that tree share, it is the C4
+potential GPP at which the competition returns the static C3 map `fractional_c3` (the
+photosynthesis model's; `Mc` is the molar mass of carbon). Where the map is pure C3 the
+seed is `A0c4_annual = 0`, which leaves a small C4 grass share in the open canopy.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -380,23 +514,42 @@ function set_canopy_component_initial_conditions!(
     ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
         context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
     ),
+    max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
+    fractional_c3 = ClimaLand.Canopy.static_fractional_c3(
+        canopy.photosynthesis,
+    ),
+    Mc = canopy.photosynthesis.constants.Mc,
 ) where {FT}
-    surface_space = axes(Y.canopy.biomass.LAI)
-    surface_bc = (Interpolations.Periodic(), Interpolations.Flat())
-    ic_field(varname) = SpaceVaryingInput(
-        ic_path,
-        varname,
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (;
-            extrapolation_bc = surface_bc,
-            interpolation_method,
-        ),
-    )
-    Y.canopy.biomass.LAI .= ic_field("lai_init")
-    Y.canopy.biomass.A0_annual .= ic_field("a0_annual")
-    Y.canopy.biomass.precip_annual .= ic_field("precip_annual")
+    ic = optimal_lai_initial_conditions(axes(Y.canopy.biomass.LAI), ic_path)
+    Y.canopy.biomass.LAI .= ic.lai_init
+    Y.canopy.biomass.A0_annual .= ic.A0_annual
+    Y.canopy.biomass.precip_annual .= ic.precip_annual
     Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
+
+    # Seed PET so the online f0 starts at the artifact value it replaces.
+    f0_max = model.parameters.f0_max
+    AI_seed = @. ClimaLand.Canopy.aridity_from_f0(ic.f0, f0_max)
+    Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
+    # vpd_gs is recovered as VPDA0_annual / A0_annual.
+    Y.canopy.biomass.VPDA0_annual .= ic.vpd_gs .* Y.canopy.biomass.A0_annual
+    Y.canopy.biomass.growing_days .= ic.GSL
+    Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
+    k = model.parameters.k
+    @. Y.canopy.biomass.GPPc3_annual =
+        Y.canopy.biomass.A0c3_annual * (1 - exp(-k * max_lai))
+    parameters = model.parameters
+    @. Y.canopy.biomass.A0c4_annual =
+        Y.canopy.biomass.A0c3_annual * (
+            1 + ClimaLand.Canopy.c4_advantage_for_c3_fraction(
+                fractional_c3,
+                ClimaLand.Canopy.tree_share_from_gpp(
+                    Y.canopy.biomass.GPPc3_annual,
+                    Mc,
+                    parameters,
+                ),
+                parameters,
+            )
+        )
     return nothing
 end
 

@@ -348,6 +348,28 @@ function define_diagnostics!(land_model, possible_diags)
             compute_a0_annual!(out, Y, p, t, land_model),
     )
 
+    # Pure-C3 and pure-C4 annual potential GPP
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "a0c3",
+        long_name = "Annual Potential GPP, C3 pathway",
+        standard_name = "annual_potential_gpp_c3",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Smoothed 1-year total of pure-C3 potential GPP.",
+        compute! = (out, Y, p, t) ->
+            compute_a0c3_annual!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "a0c4",
+        long_name = "Annual Potential GPP, C4 pathway",
+        standard_name = "annual_potential_gpp_c4",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Smoothed 1-year total of pure-C4 potential GPP.",
+        compute! = (out, Y, p, t) ->
+            compute_a0c4_annual!(out, Y, p, t, land_model),
+    )
+
     # Annual precipitation (from optimal LAI model)
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -358,6 +380,50 @@ function define_diagnostics!(land_model, possible_diags)
         comments = "Smoothed 1-year precipitation total, used by the optimal LAI model water limitation.",
         compute! = (out, Y, p, t) ->
             compute_precip_annual!(out, Y, p, t, land_model),
+    )
+
+    # Fraction of C3 photosynthesis
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fc3",
+        long_name = "Fraction C3 Photosynthesis",
+        standard_name = "fraction_c3_photosynthesis",
+        units = "",
+        comments = "Fraction of C3 (vs C4) photosynthesis, 1 = all C3.",
+        compute! = (out, Y, p, t) ->
+            compute_fractional_c3!(out, Y, p, t, land_model),
+    )
+
+    # Canopy composition: shares of canopy productivity
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ftr",
+        long_name = "Tree Share of Canopy Productivity",
+        standard_name = "tree_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C3 trees. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_tree!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fc3g",
+        long_name = "C3 Grass Share of Canopy Productivity",
+        standard_name = "c3_grass_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C3 grasses. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c3_grass!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fc4g",
+        long_name = "C4 Grass Share of Canopy Productivity",
+        standard_name = "c4_grass_productivity_share",
+        units = "",
+        comments = "Share of canopy productivity from C4 grasses. ftr + fc3g + fc4g = 1.",
+        compute! = (out, Y, p, t) ->
+            compute_fraction_c4_grass!(out, Y, p, t, land_model),
     )
 
     # Moisture stress factor
