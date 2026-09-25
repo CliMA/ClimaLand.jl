@@ -28,30 +28,18 @@ function _percentile_contour_kwargs(
 end
 
 """
-    _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
+    _global_mean_series(sim, obs)
 
 Return `(dates, sim_global, obs_global)`: the date of every output time and the
 lonlat-weighted global mean of `sim` and `obs` there.
 
-Both fields are restricted to the cells where *both* are finite, so the SIM/OBS
-gap here matches the global bias in the ANN column even where obs has gaps that
-sim does not.
+`sim` and `obs` are expected to cover the same cells (see
+`_land_intersection_mask`), so the SIM/OBS gap here matches the global bias in
+the ANN column.
 """
-function _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
-    times = ClimaAnalysis.times(sim)
-    dates = ClimaAnalysis.dates(sim)
-    sim_global = Float64[]
-    obs_global = Float64[]
-    for t in times
-        sim_t = mask_fn(ClimaAnalysis.slice(sim, time = t))
-        obs_t = mask_fn(ClimaAnalysis.slice(obs, time = t))
-        nan_either = isnan.(sim_t.data) .| isnan.(obs_t.data)
-        sim_t.data[nan_either] .= NaN
-        obs_t.data[nan_either] .= NaN
-        push!(sim_global, ClimaAnalysis.weighted_average_lonlat(sim_t).data[])
-        push!(obs_global, ClimaAnalysis.weighted_average_lonlat(obs_t).data[])
-    end
-    return (dates, sim_global, obs_global)
+function _global_mean_series(sim, obs)
+    global_mean(var) = vec(ClimaAnalysis.weighted_average_lonlat(var).data)
+    return (ClimaAnalysis.dates(sim), global_mean(sim), global_mean(obs))
 end
 
 """
@@ -164,31 +152,30 @@ function _band_zonal_spread!(ax, values, spread, lats, color)
 end
 
 """
-    _zonal_means(var, mask_fn)
+    _zonal_means(var)
 
 Return `(latitudes, values)` for the zonal (longitudinal) mean of the
-time-averaged `var` after applying `mask_fn`. Latitudes whose band is entirely
-masked or missing come back as `NaN`, which `Makie` skips when drawing the line.
+time-averaged `var`. Latitudes whose band is entirely masked or missing come
+back as `NaN`, which `Makie` skips when drawing the line.
 
 All cells in a latitude band subtend the same area, so no area weighting is
 needed.
 """
-function _zonal_means(var, mask_fn)
-    masked = mask_fn(var)
-    zonal = ClimaAnalysis.average_lon(masked)
+function _zonal_means(var)
+    zonal = ClimaAnalysis.average_lon(var)
     return (ClimaAnalysis.latitudes(zonal), vec(zonal.data))
 end
 
 """
-    _zonal_std(var, mask_fn)
+    _zonal_std(var)
 
 Return the standard deviation over longitude of the time-averaged `var` within
 each latitude band, skipping masked cells the way `_zonal_means` does.
 """
-function _zonal_std(var, mask_fn)
+function _zonal_std(var)
     # A band holds the whole population of cells at that latitude rather than a
     # sample of it, so the variance is not Bessel-corrected.
-    variance = ClimaAnalysis.variance_lon(mask_fn(var); corrected = false)
+    variance = ClimaAnalysis.variance_lon(var; corrected = false)
     return sqrt.(vec(variance.data))
 end
 
@@ -364,65 +351,20 @@ function _nee_diverging_contour_kwargs(var, q; nlevels = 21)
 end
 
 """
-    _mask_template(var)
+    _land_intersection_mask(vars...)
 
-Return a lon-lat field on `var`'s grid whose values are all zero.
-
-`_resolved_mask` needs some field on the grid to find out which cells a mask
-removes. Zeros are used rather than `var`'s own values so that what comes back
-is the mask's footprint alone, with none of `var`'s missing cells in it.
+Return a masking function that sets every cell outside the intersection of the
+land areas of `vars` to `NaN`.
 """
-function _mask_template(var)
-    lonlat = ClimaAnalysis.slice(var, time = first(ClimaAnalysis.times(var)))
-    return ClimaAnalysis.remake(lonlat; data = zeros(size(lonlat.data)))
-end
-
-"""
-    _resolved_mask(mask_fn, template)
-
-Return a function that masks any field sharing `template`'s grid exactly as
-`mask_fn` does, but that resolves *which* cells are masked only once.
-
-`ClimaAnalysis.apply_oceanmask` and the masks from `make_lonlat_mask` resample
-onto the target grid on every call, which dominates the runtime of a leaderboard
-that masks every monthly slice several times over. The footprint is the same for
-any field on the grid. Fields on another grid fall back to `mask_fn` itself.
-"""
-function _resolved_mask(mask_fn, template)
-    blank = isnan.(mask_fn(template).data)
+function _land_intersection_mask(vars...)
+    # The sum is NaN wherever any of `vars` is
+    footprint = ClimaAnalysis.propagate_nans(sum(vars); dims = "time")
+    outside = isnan.(footprint.data)
     return function (var)
-        size(var.data) == size(blank) || return mask_fn(var)
-        new_data = copy(var.data)
-        new_data[blank] .= NaN
-        return ClimaAnalysis.remake(var; data = new_data)
+        data = copy(var.data)
+        data[outside] .= NaN
+        return ClimaAnalysis.remake(var; data)
     end
-end
-
-"""
-    _prepare_for_bias(base_mask, sim, obs)
-
-Return `(sim, obs, mask_fn)` so that `ClimaAnalysis.bias` / `global_bias` /
-`global_rmse` / `plot_bias_on_globe!` integrate over the intersection of finite
-cells, matching `_global_mean_series`. `mask_fn` drops every cell that is `NaN`
-in either field, so obs with spatial gaps (GOSIF-GPP and residual-ER over
-deserts and ice) are averaged over the same area they are normalized by.
-
-Gaps stay `NaN` rather than zero-filled: `resampled_as` erodes the cells next to
-one into `NaN` until it is NaN-aware (ClimaAnalysis.jl#198), which loses less
-than biasing those edges towards zero.
-"""
-function _prepare_for_bias(base_mask, sim, obs)
-    sim_masked = base_mask(sim)
-    obs_masked = base_mask(obs)
-    extra_nan = isnan.(sim_masked.data) .| isnan.(obs_masked.data)
-    mask_fn = function (var)
-        v = base_mask(var)
-        any(extra_nan) || return v
-        new_data = copy(v.data)
-        new_data[extra_nan] .= NaN
-        return ClimaAnalysis.remake(v; data = new_data)
-    end
-    return sim, obs, mask_fn
 end
 
 """
@@ -456,10 +398,12 @@ and `diagnostics_folder_path` is the path to the simulation data.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
-observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The masks for
-normalizing the global RMSE and bias are determined by `get_mask_dict`. The ranges
-of the bias plots are determined by `get_compare_vars_biases_plot_extrema`. See
-the functions defined in data_sources.jl.
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The
+observations are resampled onto the simulation grid, and both are compared over
+the land cells where neither is missing at any time (see `_land_intersection_mask`).
+The ranges of the bias plots are determined by
+`get_compare_vars_biases_plot_extrema`. See the functions defined in
+data_sources.jl.
 """
 function compute_monthly_leaderboard(
     leaderboard_base_path,
@@ -468,15 +412,12 @@ function compute_monthly_leaderboard(
 )
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     data_loader = _get_data_loader(data_source)
-    mask_dict = get_mask_dict(data_loader)
 
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
     short_names = intersect(
         ClimaAnalysis.available_vars(sim_dir),
         available_vars(data_loader),
     )
-    issubset(short_names, keys(mask_dict)) ||
-        error("Not all variables ($short_names) have a mask $(keys(mask_dict))")
 
     @info "Error against observations"
 
@@ -539,9 +480,12 @@ function compute_monthly_leaderboard(
         )
 
         obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
-        obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
+        obs_var =
+            ClimaAnalysis.resampled_as(obs_var, sim_var; nan_threshold = 0.5)
+        mask_fn = _land_intersection_mask(sim_var, obs_var)
 
-        sim_obs_comparison_dict[short_name] = (sim_var, obs_var)
+        sim_obs_comparison_dict[short_name] =
+            (mask_fn(sim_var), mask_fn(obs_var))
     end
 
     # Plot monthly comparisons
@@ -574,10 +518,6 @@ function compute_monthly_leaderboard(
         )
 
         fig = CairoMakie.Figure(size = (650 * ceil(num_times / 2), 450 * 2))
-        mask = _resolved_mask(
-            mask_dict[short_name](sim_var, obs_var),
-            _mask_template(sim_var),
-        )
         times = vcat(
             times,
             Array{Union{Missing, eltype(times)}}(missing, 12 - num_times),
@@ -585,17 +525,11 @@ function compute_monthly_leaderboard(
         times = reshape(times, (2, 6))
         for ((indices, t), (month, year)) in zip(pairs(times), months_and_years)
             layout = fig[Tuple(indices)...] = CairoMakie.GridLayout()
-            sim_c, obs_c, mask_c = _prepare_for_bias(
-                mask,
-                ClimaAnalysis.slice(sim_var, time = t),
-                ClimaAnalysis.slice(obs_var, time = t),
-            )
             ClimaAnalysis.Visualize.plot_bias_on_globe!(
                 layout,
-                sim_c,
-                obs_c,
+                ClimaAnalysis.slice(sim_var, time = t),
+                ClimaAnalysis.slice(obs_var, time = t),
                 cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                mask = mask_c,
             )
             CairoMakie.Label(
                 layout[0, 1],
@@ -619,40 +553,19 @@ function compute_monthly_leaderboard(
     for (col, short_name) in enumerate(short_names)
         sim_var, obs_var = sim_obs_comparison_dict[short_name]
         times = ClimaAnalysis.times(sim_var)
-        mask = _resolved_mask(
-            mask_dict[short_name](sim_var, obs_var),
-            _mask_template(sim_var),
-        )
 
-        sim_vec = [
-            begin
-                sim_c, _, mask_c = _prepare_for_bias(
-                    mask,
-                    ClimaAnalysis.slice(sim_var, time = t),
-                    ClimaAnalysis.slice(obs_var, time = t),
-                )
-                ClimaAnalysis.weighted_average_lonlat(mask_c(sim_c)).data[]
-            end for t in times
-        ]
+        sim_vec = vec(ClimaAnalysis.weighted_average_lonlat(sim_var).data)
         rmse_vec = [
-            begin
-                sim_c, obs_c, mask_c = _prepare_for_bias(
-                    mask,
-                    ClimaAnalysis.slice(sim_var, time = t),
-                    ClimaAnalysis.slice(obs_var, time = t),
-                )
-                ClimaAnalysis.global_rmse(sim_c, obs_c, mask = mask_c)
-            end for t in times
+            ClimaAnalysis.global_rmse(
+                ClimaAnalysis.slice(sim_var, time = t),
+                ClimaAnalysis.slice(obs_var, time = t),
+            ) for t in times
         ]
         bias_vec = [
-            begin
-                sim_c, obs_c, mask_c = _prepare_for_bias(
-                    mask,
-                    ClimaAnalysis.slice(sim_var, time = t),
-                    ClimaAnalysis.slice(obs_var, time = t),
-                )
-                ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
-            end for t in times
+            ClimaAnalysis.global_bias(
+                ClimaAnalysis.slice(sim_var, time = t),
+                ClimaAnalysis.slice(obs_var, time = t),
+            ) for t in times
         ]
 
         ax_sim = CairoMakie.Axis(
@@ -753,10 +666,12 @@ and `diagnostics_folder_path` is the path to the simulation data.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
-observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The masks for
-normalizing the global RMSE and bias are determined by `get_mask_dict`. The ranges
-of the bias plots are determined by `get_compare_vars_biases_plot_extrema`. See
-the functions defined in data_sources.jl.
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The
+observations are resampled onto the simulation grid, and both are compared over
+the land cells where neither is missing at any time (see `_land_intersection_mask`).
+The ranges of the bias plots are determined by
+`get_compare_vars_biases_plot_extrema`. See the functions defined in
+data_sources.jl.
 """
 function compute_seasonal_leaderboard(
     leaderboard_base_path,
@@ -771,11 +686,6 @@ function compute_seasonal_leaderboard(
         available_vars(data_loader),
     )
 
-    # Need to initialize mask function
-    mask_dict = get_mask_dict(data_loader)
-    # Store the mask functions after initialization
-    mask_fn_dict = Dict()
-
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
 
     # Set up dict for storing simulation and observational data after processing
@@ -786,8 +696,8 @@ function compute_seasonal_leaderboard(
     # Map short name to the (sim_var, obs_var) full windowed time series, kept
     # for the metadata that survives collapsing along time below.
     sim_obs_full_dict = Dict()
-    # Map short name to the global mean at each output time. The MON and IAV
-    # columns both reduce it, and the masked slicing behind it is expensive.
+    # Map short name to the global mean at each output time, which the MON and
+    # IAV columns both reduce.
     global_series_dict = Dict()
     seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
 
@@ -799,12 +709,6 @@ function compute_seasonal_leaderboard(
 
         # Observational data
         obs_var = get(data_loader, short_name)
-
-        # Make masking function
-        mask_fn_dict[short_name] = _resolved_mask(
-            mask_dict[short_name](sim_var, obs_var),
-            _mask_template(sim_var),
-        )
 
         # Remove first spin_up_months from simulation if possible
         spinup_cutoff = spin_up_months * 31 * 86400.0
@@ -843,11 +747,14 @@ function compute_seasonal_leaderboard(
         )
 
         # Resample
-        obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
+        obs_var =
+            ClimaAnalysis.resampled_as(obs_var, sim_var; nan_threshold = 0.5)
+        mask_fn = _land_intersection_mask(sim_var, obs_var)
+        sim_var, obs_var = mask_fn(sim_var), mask_fn(obs_var)
+
         # Reduce along time before collapsing the vars along it below.
         sim_obs_full_dict[short_name] = (sim_var, obs_var)
-        global_series_dict[short_name] =
-            _global_mean_series(sim_var, obs_var, mask_fn_dict[short_name])
+        global_series_dict[short_name] = _global_mean_series(sim_var, obs_var)
         sim_var_seasons = (sim_var, ClimaAnalysis.split_by_season(sim_var)...)
         obs_var_seasons = (obs_var, ClimaAnalysis.split_by_season(obs_var)...)
 
@@ -902,14 +809,11 @@ function compute_seasonal_leaderboard(
             isempty(sim_var) && break
             layout = fig_bias[row_idx, col_idx] = CairoMakie.GridLayout()
             sim_var.attributes["short_name"] = "mean $(ClimaAnalysis.short_name(sim_var))"
-            sim_c, obs_c, mask_c =
-                _prepare_for_bias(mask_fn_dict[short_name], sim_var, obs_var)
             ClimaAnalysis.Visualize.plot_bias_on_globe!(
                 layout,
-                sim_c,
-                obs_c,
+                sim_var,
+                obs_var,
                 cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                mask = mask_c,
             )
         end
     end
@@ -1019,12 +923,11 @@ function compute_seasonal_leaderboard(
                     get(sim_var_full.attributes, "long_name", short_name)
                 long_name = String(split(long_name, ", average")[1])
                 units_str = ClimaAnalysis.units(sim_var)
-                masked_data = mask_fn_dict[short_name](sim_var).data
-                finite = filter(isfinite, vec(masked_data))
-                panel_title = if isempty(finite)
+                finite_data = filter(isfinite, vec(sim_var.data))
+                panel_title = if isempty(finite_data)
                     "$long_name, mean over $year_str [$units_str]"
                 else
-                    lo, hi = extrema(finite)
+                    lo, hi = extrema(finite_data)
                     Printf.@sprintf(
                         "%s, mean over %s, range %.3g to %.3g [%s]",
                         long_name,
@@ -1037,25 +940,17 @@ function compute_seasonal_leaderboard(
                 more_kwargs[:axis] = Dict(:title => panel_title)
                 ClimaAnalysis.Visualize.contour2D_on_globe!(
                     layout,
-                    sim_var,
-                    mask = mask_fn_dict[short_name];
+                    sim_var;
                     more_kwargs,
                 )
             elseif group == "LAT"
                 sim_var, obs_var =
                     sim_obs_season_comparison_dict[short_name]["ANN"]
                 isempty(sim_var) && break
-                # Average both fields over the same cells, as the bias plots do,
-                # so the two profiles stay comparable where obs has gaps.
-                sim_c, obs_c, mask_c = _prepare_for_bias(
-                    mask_fn_dict[short_name],
-                    sim_var,
-                    obs_var,
-                )
-                sim_lats, sim_zonal = _zonal_means(sim_c, mask_c)
-                _, obs_zonal = _zonal_means(obs_c, mask_c)
-                sim_zonal_std = _zonal_std(sim_c, mask_c)
-                obs_zonal_std = _zonal_std(obs_c, mask_c)
+                sim_lats, sim_zonal = _zonal_means(sim_var)
+                _, obs_zonal = _zonal_means(obs_var)
+                sim_zonal_std = _zonal_std(sim_var)
+                obs_zonal_std = _zonal_std(obs_var)
                 ax = CairoMakie.Axis(
                     fig_sim_ann[row_idx, col_idx],
                     xlabel = "$short_name ($(ClimaAnalysis.units(sim_var)))",
@@ -1179,17 +1074,11 @@ function compute_seasonal_leaderboard(
                     sim_obs_season_comparison_dict[short_name][group]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                sim_c, obs_c, mask_c = _prepare_for_bias(
-                    mask_fn_dict[short_name],
-                    sim_var,
-                    obs_var,
-                )
                 ClimaAnalysis.Visualize.plot_bias_on_globe!(
                     layout,
-                    sim_c,
-                    obs_c,
+                    sim_var,
+                    obs_var,
                     cmap_extrema = annual_compare_vars_biases_plot_extrema[short_name],
-                    mask = mask_c,
                 )
             end
         end
@@ -1221,29 +1110,20 @@ function compute_seasonal_leaderboard(
     for (col, short_name) in enumerate(short_names)
         sim_vars, obs_vars =
             sim_obs_time_avg_over_seasons_comparison_dict[short_name]
-        mask = mask_fn_dict[short_name]
 
         # Get season and compute global bias and global rmse
         seasons = [sim_var.attributes["season"] for sim_var in sim_vars]
         sim_vec = [
-            begin
-                sim_c, _, mask_c = _prepare_for_bias(mask, sim_var, obs_var)
-                ClimaAnalysis.weighted_average_lonlat(mask_c(sim_c)).data[]
-            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
+            ClimaAnalysis.weighted_average_lonlat(sim_var).data[] for
+            sim_var in sim_vars
         ]
         rmse_vec = [
-            begin
-                sim_c, obs_c, mask_c =
-                    _prepare_for_bias(mask, sim_var, obs_var)
-                ClimaAnalysis.global_rmse(sim_c, obs_c, mask = mask_c)
-            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
+            ClimaAnalysis.global_rmse(sim_var, obs_var) for
+            (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
         bias_vec = [
-            begin
-                sim_c, obs_c, mask_c =
-                    _prepare_for_bias(mask, sim_var, obs_var)
-                ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
-            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
+            ClimaAnalysis.global_bias(sim_var, obs_var) for
+            (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
 
         # Partition by seasons
