@@ -436,6 +436,7 @@ import .Canopy:
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 include("integrated/pond_soil_model.jl")
+include("integrated/undercanopy_conductance.jl")
 include("integrated/soil_canopy_model.jl")
 include("integrated/soil_snow_model.jl")
 include("integrated/land.jl")

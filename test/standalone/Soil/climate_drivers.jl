@@ -159,6 +159,8 @@ for FT in (Float32, Float64)
                 :PAR_albedo,
                 :NIR_albedo,
                 :T_sfc,
+                :W_gap,
+                :r_undercanopy,
                 :sub_sfc_scratch,
                 :infiltration,
                 :bottom_bc,
@@ -275,8 +277,10 @@ for FT in (Float32, Float64)
                 evap_p,
             )
             @test extrema(dsl ./ d_ds)[1] == 0
-            @test extrema(dsl ./ d_ds)[2] ==
-                  ((S_c - S_sfc[1]) / S_sfc[1])^evap_p
+            @test extrema(dsl ./ d_ds)[2] ≈
+                  ((S_c - S_sfc[1]) / S_c)^evap_p
+            # The dry surface layer is bounded by its maximum thickness
+            @test all(dsl .<= d_ds)
             _D_vapor = FT(LP.D_vapor(earth_param_set))
             S_sfc = @. ClimaLand.Soil.effective_saturation(ν, θ_sfc, θ_r)
             gsoil = @. ClimaLand.Soil.soil_conductance(
@@ -290,8 +294,8 @@ for FT in (Float32, Float64)
                 θ_r,
             )
             @test gsoil[1] < gsoil[2]
-            τ_a = @. ClimaLand.Soil.soil_tortuosity(S_sfc, ν, θ_r)
-            @test τ_a[1] > τ_a[2]
+            τ_a = ClimaLand.Soil.soil_tortuosity(ν, θ_r)
+            @test τ_a ≈ (ν - θ_r)^FT(2.5) / ν
         end
     end
 end

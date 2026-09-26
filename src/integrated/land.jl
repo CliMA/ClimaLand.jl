@@ -740,6 +740,8 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     )
 
     # now solve for the soil skin temperature; this updates T_soil = p.soil.T_sfc in place.
+    # The turbulent exchange of the ground is reduced under the canopy:
+    update_undercanopy_conductance!(p, land.soil, canopy, Y)
     # The litter thermal resistance scales with the plant area index.
     area_index = p.canopy.biomass.area_index
     r_litter = land.soil.parameters.r_litter

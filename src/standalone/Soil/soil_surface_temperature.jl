@@ -19,6 +19,30 @@ iterations of SurfaceFluxes.jl, in the same way as the snow surface temperature
 (see `Snow.update_surf_temp!`). The turbulent fluxes, surface humidity, and
 upwelling longwave radiation of the soil are then evaluated at T_sfc via
 `component_temperature`, and the soil receives the heat flux (T_top - T_sfc)/r.
+
+Under a canopy, the turbulent exchange between the ground and the atmosphere
+is reduced. The conductance used for the soil turbulent fluxes is
+
+    g_eff = W g_h + (1 - W) / (1/g_h + r_under),
+
+where `g_h` is the conductance of bare soil computed by SurfaceFluxes.jl, `W`
+is the canopy gap fraction (`p.soil.W_gap`), and `r_under` is the resistance
+between the ground and the canopy air in a dense canopy
+(`p.soil.r_undercanopy`), in series with the aerodynamic resistance to the
+atmosphere (see `soil_conductance_ratio`). `W` and `r_under` are set by the
+integrated land models with a canopy (see
+`src/integrated/undercanopy_conductance.jl`). Without a canopy, `W = 1`,
+`r_under = 0`, and `g_eff = g_h`. Because SurfaceFluxes.jl computes the fluxes with
+`g_h`, the soil temperature and humidity passed to SurfaceFluxes.jl are those
+at an "interface" such that the fluxes with conductance `g_h` from the interface
+equal the fluxes with conductance `g_eff` from the skin:
+
+    T_i = T_a + (g_eff / g_h) (T_sfc - T_a),
+
+where `T_a = T_int + (Φ_int - Φ_sfc) / cp_d` is the atmospheric temperature
+brought dry-adiabatically to the surface, and analogously for the humidity (see
+`soil_surface_vapor_weight`). This is the same approach as used for the canopy
+(see `get_update_surface_temperature_function(::CanopyModel, Y, p)`).
 =#
 
 """
@@ -36,10 +60,17 @@ soil_surface_temperature(_, p) =
 
 Sets the skin temperature (if present) to the top layer temperature; it is
 subsequently updated from the surface energy balance when the boundary fluxes
-are computed.
+are computed. Also sets the canopy gap fraction `p.soil.W_gap` and the
+under-canopy resistance `p.soil.r_undercanopy` to their bare soil values (1
+and 0); integrated models with a canopy update these before the soil fluxes are
+computed.
 """
-initialize_soil_surface_temperature!(::AtmosDrivenFluxBC, p) =
+function initialize_soil_surface_temperature!(::AtmosDrivenFluxBC, p)
     p.soil.T_sfc .= ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    p.soil.W_gap .= 1
+    p.soil.r_undercanopy .= 0
+    return nothing
+end
 initialize_soil_surface_temperature!(_, p) = nothing
 
 """
@@ -53,25 +84,88 @@ soil_surface_thermal_resistance(Δz_top::FT, κ_top::FT, r_litter::FT) where {FT
     Δz_top / max(κ_top, eps(FT)) + max(r_litter, FT(0))
 
 """
-    soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
+    soil_conductance_ratio(W::FT, r_under::FT, g_h::FT) where {FT}
 
-Returns the weight `w` such that the surface specific humidity of the soil
-is `q_sfc = w * qsat + (1 - w) * q_air`. This must be consistent with the
-surface humidity parameterization in
+Returns the ratio `f_eff = g_eff / g_h` of the conductance used for the
+turbulent fluxes of the soil to the conductance of bare soil `g_h`, with
+
+    g_eff = W g_h + (1 - W) / (1/g_h + r_under).
+
+Here `W` is the canopy gap fraction and `r_under` the resistance (s/m) between
+the ground and the canopy air in a dense canopy, which is in series with the
+aerodynamic resistance between the canopy air and the atmosphere. The latter is
+approximated by the bare-soil resistance `1/g_h` computed by SurfaceFluxes.jl,
+so that it includes the effects of atmospheric stability. Then
+`W ≤ f_eff ≤ 1`, and `f_eff = 1` for bare soil (`W = 1` or `r_under = 0`).
+"""
+soil_conductance_ratio(W::FT, r_under::FT, g_h::FT) where {FT} =
+    W + (1 - W) / (1 + g_h * r_under)
+
+"""
+    adiabatic_surface_air_temperature(inputs, param_set, thermo_params)
+
+Returns the temperature of the air at the atmospheric reference height brought
+dry-adiabatically to the surface, `T_int + (Φ_int - Φ_sfc) / cp_d`. The sensible
+heat flux computed by SurfaceFluxes.jl is proportional to the difference of the
+surface temperature from this value.
+"""
+function adiabatic_surface_air_temperature(inputs, param_set, thermo_params)
+    Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
+    Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    return inputs.T_int + (Φ_int - Φ_sfc) / cp_d
+end
+
+"""
+    soil_interface_temperature(T_skin, T_a, f_eff)
+
+Returns the temperature passed to SurfaceFluxes.jl, `T_a + f_eff (T_skin - T_a)`,
+such that the sensible heat flux with the bare soil conductance `g_h` equals
+that from the skin with conductance `g_eff = f_eff g_h`.
+"""
+soil_interface_temperature(T_skin, T_a, f_eff) = T_a + f_eff * (T_skin - T_a)
+
+"""
+    soil_skin_temperature(T_i, T_a, f_eff)
+
+Inverse of `soil_interface_temperature`.
+"""
+soil_skin_temperature(T_i::FT, T_a::FT, f_eff::FT) where {FT} =
+    T_a + (T_i - T_a) / max(f_eff, eps(FT))
+
+"""
+    soil_surface_vapor_weight(q_air, q_src, g_liq, g_h, f_eff, β_ice, frozen)
+
+Returns the weight `w` such that the soil surface specific humidity passed to
+SurfaceFluxes.jl is `q_sfc = w * q_src + (1 - w) * q_air`, where `q_src` is the
+specific humidity of the vapor source (see `soil_vapor_source`). The vapor flux
+is then `ρ g_h (q_sfc - q_air) = ρ w g_h (q_src - q_air)`:
+- For evaporation from unfrozen soil, `w g_h` is the conductance of the dry
+  soil layer `g_liq` in series with the turbulent conductance `g_eff = f_eff g_h`,
+  so `w = f_eff g_liq / (f_eff g_h + g_liq)`.
+- For sublimation from frozen soil, `w = β_ice f_eff`.
+- For dew or frost formation (`q_air > q_src`), which occurs at the surface
+  and is not limited by the dry soil layer, `w = f_eff` (as in CLM5).
+The flux vanishes at `q_air = q_src`, so it is continuous in `q_air`.
+
+This is used both in the skin temperature solve and in
 `ClimaLand.get_update_surface_humidity_function(::EnergyHydrology, Y, p)`.
 """
 function soil_surface_vapor_weight(
     q_air::FT,
-    qsat::FT,
+    q_src::FT,
     g_liq::FT,
     g_h::FT,
+    f_eff::FT,
     β_ice::FT,
     frozen::Bool,
 ) where {FT}
-    if frozen
-        return q_air < qsat ? β_ice : FT(1)
+    if q_air > q_src
+        return f_eff
+    elseif frozen
+        return β_ice * f_eff
     else
-        return (g_liq / g_h) / (1 + g_liq / g_h)
+        return f_eff * g_liq / (f_eff * g_h + g_liq)
     end
 end
 
@@ -80,7 +174,7 @@ end
 
 Helper returning the surface air density, the (soil water potential adjusted)
 saturation specific humidity at `T_sfc`, its derivative with respect to
-temperature, and whether the surface is frozen.
+temperature, whether the surface is frozen, and the Kelvin factor.
 """
 function soil_skin_state(
     T_sfc::FT,
@@ -112,47 +206,66 @@ function soil_skin_state(
         earth_param_set,
     )
     frozen = T_sfc < Tf_depressed
+    # Kelvin factor (qsat above already includes it for unfrozen soil)
+    hr = frozen ? FT(1) : soil_kelvin_factor(T_sfc, ψ_sfc, earth_param_set)
     LH =
         frozen ? Thermodynamics.latent_heat_sublim(thermo_params, T_sfc) :
         Thermodynamics.latent_heat_vapor(thermo_params, T_sfc)
     # The (weak) temperature dependence of the soil water potential factor is neglected
     ∂qsat∂T = Thermodynamics.∂q_vap_sat_∂T_from_L(thermo_params, qsat, LH, T_sfc)
-    return (; ρ_sfc, qsat, ∂qsat∂T, frozen)
+    return (; ρ_sfc, qsat, ∂qsat∂T, frozen, hr)
 end
 
 """
-    update_soil_T_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, u_star, z_0m, z_0b,
-                             T_top, r, ϵ, σ, SW_n, LW_d, g_liq, β_ice, ψ_sfc, Tf_depressed,
-                             earth_param_set)
+    soil_vapor_source(q_air, qsat, ∂qsat∂T, hr, frozen)
 
-Newton update of the soil skin temperature used as the `update_T` callback of
-`SurfaceFluxes.surface_fluxes`: returns `T + ΔT` with `ΔT = -f(T)/f'(T)`, where
-`r f(T) = r (SW_n + LW_n(T) + L(T) + H(T)) + (T - T_top)`.
+Returns the specific humidity of the vapor source at the soil surface and its
+derivative with respect to the skin temperature, consistent with
+`effective_soil_vapor_humidity`. For frozen soil, the source is saturated with
+respect to ice.
 """
-function update_soil_T_sfc_scheme(
-    ζ,
+function soil_vapor_source(
+    q_air::FT,
+    qsat::FT,
+    ∂qsat∂T::FT,
+    hr::FT,
+    frozen::Bool,
+) where {FT}
+    frozen && return (qsat, ∂qsat∂T)
+    q_src = effective_soil_vapor_humidity(q_air, qsat, hr)
+    ∂q_src∂T =
+        q_air < qsat ? ∂qsat∂T :
+        (q_air > qsat / max(hr, eps(FT)) ? ∂qsat∂T / max(hr, eps(FT)) : FT(0))
+    return (q_src, ∂q_src∂T)
+end
+
+"""
+    soil_skin_fluxes(T_sfc, T_a, f_eff, g_h, inputs, param_set, thermo_params,
+                     ψ_sfc, Tf_depressed, g_liq, β_ice, earth_param_set)
+
+Returns the latent and sensible heat fluxes from the soil skin at temperature
+`T_sfc` as computed by SurfaceFluxes.jl with the interface temperature and
+humidity (see the discussion at the top of this file), their derivatives with
+respect to `T_sfc`, and the surface specific humidity passed to SurfaceFluxes.jl.
+The air density at the surface is evaluated as in SurfaceFluxes.jl, at the
+interface temperature and humidity.
+"""
+function soil_skin_fluxes(
+    T_sfc::FT,
+    T_a::FT,
+    f_eff::FT,
+    g_h::FT,
+    inputs,
     param_set,
     thermo_params,
-    inputs,
-    scheme,
-    u_star,
-    z_0m,
-    z_0b,
-    T_top,
-    r,
-    ϵ,
-    σ,
-    SW_n,
-    LW_d,
-    g_liq,
-    β_ice,
-    ψ_sfc,
-    Tf_depressed,
+    ψ_sfc::FT,
+    Tf_depressed::FT,
+    g_liq::FT,
+    β_ice::FT,
     earth_param_set,
-)
-    T_sfc = inputs.T_sfc_guess
+) where {FT}
     q_air = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-    (; ρ_sfc, qsat, ∂qsat∂T, frozen) = soil_skin_state(
+    (; qsat, ∂qsat∂T, frozen, hr) = soil_skin_state(
         T_sfc,
         inputs,
         thermo_params,
@@ -161,17 +274,21 @@ function update_soil_T_sfc_scheme(
         Tf_depressed,
         earth_param_set,
     )
-    g_h = SurfaceFluxes.heat_conductance(
+    (q_src, ∂q_src∂T) = soil_vapor_source(q_air, qsat, ∂qsat∂T, hr, frozen)
+    w = soil_surface_vapor_weight(q_air, q_src, g_liq, g_h, f_eff, β_ice, frozen)
+    q_sfc = w * q_src + (1 - w) * q_air
+    T_i = soil_interface_temperature(T_sfc, T_a, f_eff)
+    ρ_sfc = SurfaceFluxes.surface_density(
         param_set,
-        ζ,
-        u_star,
-        inputs,
-        z_0m,
-        z_0b,
-        scheme,
+        inputs.T_int,
+        inputs.ρ_int,
+        T_i,
+        inputs.Δz,
+        inputs.q_tot_int,
+        inputs.q_liq_int,
+        inputs.q_ice_int,
+        q_sfc,
     )
-    w = soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
-    q_sfc = w * qsat + (1 - w) * q_air
     E = SurfaceFluxes.evaporation(
         param_set,
         inputs,
@@ -192,56 +309,55 @@ function update_soil_T_sfc_scheme(
         inputs,
         g_h,
         inputs.T_int,
-        T_sfc,
+        T_i,
         ρ_sfc,
         E,
     )
     _LH_v0 = Thermodynamics.Parameters.LH_v0(thermo_params)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂L∂T = ρ_sfc * g_h * _LH_v0 * w * ∂qsat∂T
-    ∂H∂T = ρ_sfc * g_h * cp_d
-    LW_n = -ϵ * (LW_d - σ * T_sfc^4)
-    ∂LW_n∂T = 4 * ϵ * σ * T_sfc^3
-    ΔT =
-        -(r * (SW_n + LW_n + L + H) + (T_sfc - T_top)) /
-        (r * (∂LW_n∂T + ∂L∂T + ∂H∂T) + 1)
-    return T_sfc + ΔT
+    ∂L∂T = ρ_sfc * g_h * _LH_v0 * w * ∂q_src∂T
+    ∂H∂T = ρ_sfc * g_h * f_eff * cp_d
+    return (; L, H, ∂L∂T, ∂H∂T, q_sfc)
 end
 
 """
-    update_soil_q_vap_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, T_sfc, u_star,
-                                 z_0m, z_0b, g_liq, β_ice, ψ_sfc, Tf_depressed, earth_param_set)
+    update_soil_T_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, u_star, z_0m, z_0b,
+                             T_top, r, ϵ, σ, SW_n, LW_d, g_liq, β_ice, ψ_sfc, Tf_depressed,
+                             W, r_under, earth_param_set)
 
-Surface specific humidity of the soil at the skin temperature `T_sfc`, used as
-the `update_q` callback of `SurfaceFluxes.surface_fluxes` in the skin
-temperature solve.
+The `update_T` callback of `SurfaceFluxes.surface_fluxes` in the soil skin
+temperature solve. For the conductance `g_h` given by the current Monin-Obukhov
+state, the skin energy balance
+`r (SW_n + LW_n(T) + L(T) + H(T)) + (T - T_top) = 0` is solved with a fixed
+number of Newton iterations starting from `T_top`, and the corresponding
+interface temperature (see the discussion at the top of this file) is returned.
+The result depends only on the current Monin-Obukhov state, not on the
+previous iterate, so that the mapping between skin and interface temperature is
+consistent even when the conductance changes between iterations.
 """
-function update_soil_q_vap_sfc_scheme(
+function update_soil_T_sfc_scheme(
     ζ,
     param_set,
     thermo_params,
     inputs,
     scheme,
-    T_sfc,
     u_star,
     z_0m,
     z_0b,
+    T_top,
+    r,
+    ϵ,
+    σ,
+    SW_n,
+    LW_d,
     g_liq,
     β_ice,
     ψ_sfc,
     Tf_depressed,
+    W,
+    r_under,
     earth_param_set,
 )
-    q_air = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-    (; qsat, frozen) = soil_skin_state(
-        T_sfc,
-        inputs,
-        thermo_params,
-        param_set,
-        ψ_sfc,
-        Tf_depressed,
-        earth_param_set,
-    )
     g_h = SurfaceFluxes.heat_conductance(
         param_set,
         ζ,
@@ -251,15 +367,94 @@ function update_soil_q_vap_sfc_scheme(
         z_0b,
         scheme,
     )
-    w = soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
-    return w * qsat + (1 - w) * q_air
+    f_eff = soil_conductance_ratio(W, r_under, g_h)
+    T_a = adiabatic_surface_air_temperature(inputs, param_set, thermo_params)
+    T_sfc = T_top
+    for _ in 1:3
+        (; L, H, ∂L∂T, ∂H∂T) = soil_skin_fluxes(
+            T_sfc,
+            T_a,
+            f_eff,
+            g_h,
+            inputs,
+            param_set,
+            thermo_params,
+            ψ_sfc,
+            Tf_depressed,
+            g_liq,
+            β_ice,
+            earth_param_set,
+        )
+        LW_n = -ϵ * (LW_d - σ * T_sfc^4)
+        ∂LW_n∂T = 4 * ϵ * σ * T_sfc^3
+        T_sfc -=
+            (r * (SW_n + LW_n + L + H) + (T_sfc - T_top)) /
+            (r * (∂LW_n∂T + ∂L∂T + ∂H∂T) + 1)
+    end
+    return soil_interface_temperature(T_sfc, T_a, f_eff)
+end
+
+"""
+    update_soil_q_vap_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, T_i, u_star,
+                                 z_0m, z_0b, g_liq, β_ice, ψ_sfc, Tf_depressed, W, r_under,
+                                 earth_param_set)
+
+Surface specific humidity of the soil passed to SurfaceFluxes.jl, given the
+interface temperature `T_i` returned by `update_soil_T_sfc_scheme` for the same
+Monin-Obukhov state; used as the `update_q` callback of
+`SurfaceFluxes.surface_fluxes` in the skin temperature solve.
+"""
+function update_soil_q_vap_sfc_scheme(
+    ζ,
+    param_set,
+    thermo_params,
+    inputs,
+    scheme,
+    T_i,
+    u_star,
+    z_0m,
+    z_0b,
+    g_liq,
+    β_ice,
+    ψ_sfc,
+    Tf_depressed,
+    W,
+    r_under,
+    earth_param_set,
+)
+    g_h = SurfaceFluxes.heat_conductance(
+        param_set,
+        ζ,
+        u_star,
+        inputs,
+        z_0m,
+        z_0b,
+        scheme,
+    )
+    f_eff = soil_conductance_ratio(W, r_under, g_h)
+    T_a = adiabatic_surface_air_temperature(inputs, param_set, thermo_params)
+    T_sfc = soil_skin_temperature(T_i, T_a, f_eff)
+    q_air = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+    (; qsat, ∂qsat∂T, frozen, hr) = soil_skin_state(
+        T_sfc,
+        inputs,
+        thermo_params,
+        param_set,
+        ψ_sfc,
+        Tf_depressed,
+        earth_param_set,
+    )
+    (q_src, _) = soil_vapor_source(q_air, qsat, ∂qsat∂T, hr, frozen)
+    w = soil_surface_vapor_weight(q_air, q_src, g_liq, g_h, f_eff, β_ice, frozen)
+    return w * q_src + (1 - w) * q_air
 end
 
 """
     solve_soil_surface_temperature_at_a_point(T_top, r, ϵ, SW_n, LW_d, g_liq, β_ice, ψ_sfc,
-                                              Tf_depressed, h_sfc, displ, P_atmos, T_atmos,
-                                              q_atmos, u_atmos, roughness_model, atmos_h,
-                                              gustiness, earth_param_set)
+                                              Tf_depressed, W, r_under, h_sfc, displ,
+                                              P_atmos, T_atmos, q_atmos, u_atmos,
+                                              roughness_model, atmos_h, gustiness,
+                                              earth_param_set)
 
 Solves the soil skin surface energy balance at a point and returns the skin
 temperature. The initial guess is the top layer temperature `T_top`.
@@ -274,6 +469,8 @@ function solve_soil_surface_temperature_at_a_point(
     β_ice::FT,
     ψ_sfc::FT,
     Tf_depressed::FT,
+    W::FT,
+    r_under::FT,
     h_sfc::FT,
     displ::FT,
     P_atmos::FT,
@@ -311,6 +508,8 @@ function solve_soil_surface_temperature_at_a_point(
         β_ice,
         ψ_sfc,
         Tf_depressed,
+        W,
+        r_under,
         earth_param_set,
     )
     update_q(args...) = update_soil_q_vap_sfc_scheme(
@@ -319,6 +518,8 @@ function solve_soil_surface_temperature_at_a_point(
         β_ice,
         ψ_sfc,
         Tf_depressed,
+        W,
+        r_under,
         earth_param_set,
     )
     ρ_sfc = ClimaLand.compute_ρ_sfc(
@@ -331,6 +532,11 @@ function solve_soil_surface_temperature_at_a_point(
     )
     q_sfc_guess =
         soil_specific_humidity(T_top, ρ_sfc, ψ_sfc, Tf_depressed, earth_param_set)
+    # The skin temperature callback does not depend on the guess (see
+    # `update_soil_T_sfc_scheme`); T_a is as in `adiabatic_surface_air_temperature`.
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    T_a = T_atmos + _grav * (atmos_h - h_sfc) / cp_d
+    T_guess = T_top
     output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
@@ -338,7 +544,7 @@ function solve_soil_surface_temperature_at_a_point(
         FT(0),#phase_partition_atmos.liq,
         FT(0),#,phase_partition_atmos.ice,
         ρ_atmos,
-        T_top,
+        T_guess,
         q_sfc_guess,
         _grav * h_sfc,
         atmos_h - h_sfc,
@@ -351,7 +557,9 @@ function solve_soil_surface_temperature_at_a_point(
         update_T,
         update_q,
     )
-    T_sfc = output.T_sfc
+    # Recover the skin temperature from the interface temperature
+    f_eff = soil_conductance_ratio(W, r_under, output.g_h)
+    T_sfc = soil_skin_temperature(output.T_sfc, T_a, f_eff)
     return isfinite(T_sfc) ? T_sfc : T_top
 end
 
@@ -373,8 +581,11 @@ function soil_surface_vapor_conductance!(
         model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
     S_c_sfc = hydrology_cm_sfc.S_c
-    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    # Ice-free pore space (cf. the effective porosity used in CLM5)
+    ν_top = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_i_top = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ν_sfc = @. lazy(max(ν_top - θ_i_top, θ_r_sfc + sqrt(eps(FT))))
     θ_l_sfc = g_soil_sfc
     ClimaLand.Domains.linear_interpolation_to_surface!(
         θ_l_sfc,
@@ -382,7 +593,7 @@ function soil_surface_vapor_conductance!(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + eps(FT))
+    @. θ_l_sfc = clamp(θ_l_sfc, θ_r_sfc + eps(FT), ν_sfc)
     S_l_sfc = g_soil_sfc # currently set to θ_l_sfc
     @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
     _D_vapor = FT(LP.D_vapor(earth_param_set))
@@ -410,7 +621,8 @@ balance, given the net shortwave radiation at the soil surface `SW_n`
 (positive upward, i.e., minus the absorbed shortwave radiation), the downwelling
 longwave radiation at the soil surface `LW_d`, and the litter thermal
 resistance `r_litter` (m² K/W). The arguments may be fields or lazy broadcasted
-objects.
+objects. The turbulent fluxes use the canopy gap fraction `p.soil.W_gap` and
+the under-canopy resistance `p.soil.r_undercanopy`, which must be up to date.
 
 The skin temperature is only solved for when the soil is driven by a
 `PrescribedAtmosphere`; otherwise it is left equal to the top layer temperature.
@@ -480,6 +692,8 @@ function update_soil_surface_temperature!(
             (θ_i_sfc ./ ν_sfc) .^ 4, # β_ice
             ψ_sfc,
             Tf_depressed_sfc,
+            p.soil.W_gap,
+            p.soil.r_undercanopy,
             h_sfc,
             displ,
             p.drivers.P,

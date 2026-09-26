@@ -242,6 +242,7 @@ for FT in (Float32, Float64)
             FT(1), # evap_p,
             FT(1), #evap_α
             FT(0.08), # r_litter
+            FT(0.004), # C_s_undercanopy
             earth_param_set,
         )
         soil_water_on = Soil.EnergyHydrology{FT}(;
@@ -442,6 +443,7 @@ for FT in (Float32, Float64)
             FT(1), # evap_p,
             FT(1), #evap_α
             FT(0.08), # r_litter
+            FT(0.004), # C_s_undercanopy
             earth_param_set,
         )
 

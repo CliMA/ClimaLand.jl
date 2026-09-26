@@ -765,9 +765,9 @@ tag = "SoilCO2Parameters"
 
 # Soil Parameters
 ["evaporation_exponent"]
-value = 2.0
+value = 1.0
 type = "float"
-description = "Exponent of dry soil layer factor in evaporation; for use with ROSETTA parameters, this needs to be 2.0 for stability at a timestep of 900s"
+description = "Exponent p of the dry surface layer thickness DSL = d_ds ((αS_c - S_l)/αS_c)^p; p = 1 is the linear form of Swenson and Lawrence (2014)"
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
@@ -780,6 +780,12 @@ tag = "EnergyHydrologyParameters"
 value = 0.08
 type = "float"
 description = "Thermal resistance per unit plant area index (m^2 K/W per m^2/m^2) of a litter/thatch layer between the soil skin and the top soil layer; scaled by plant area index (LAI+SAI) in integrated land models"
+tag = "EnergyHydrologyParameters"
+
+["undercanopy_ground_transfer_coefficient"]
+value = 0.004
+type = "float"
+description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
 tag = "EnergyHydrologyParameters"
 
 # Slab Lake Model

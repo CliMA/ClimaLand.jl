@@ -389,6 +389,8 @@ function lsm_radiant_energy_fluxes!(
 
     # Solve for the soil skin temperature; litter resistance scales with plant area index.
     # R_net_soil is positive towards soil here; the skin solve expects SW_n positive upward.
+    # The turbulent exchange of the ground is reduced under the canopy:
+    update_undercanopy_conductance!(p, land.soil, canopy, Y)
     area_index = p.canopy.biomass.area_index
     r_litter = land.soil.parameters.r_litter
     r_litter_eff = @. lazy(r_litter * (area_index.leaf + area_index.stem))
