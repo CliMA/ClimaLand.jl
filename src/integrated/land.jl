@@ -177,7 +177,6 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -250,11 +249,6 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components,
-        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
-            domain,
-            toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
-        ),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -314,7 +308,6 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -377,11 +370,6 @@ function LandModel{FT}(
         ),
         toml_dict;
         prognostic_land_components,
-        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
-            domain,
-            toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
-        ),
     ),
     snow = Snow.SnowModel(
         FT,
