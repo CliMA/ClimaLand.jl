@@ -355,7 +355,6 @@ function lsm_radiant_energy_fluxes!(
     α_soil_PAR = p.soil.PAR_albedo
     α_soil_NIR = p.soil.NIR_albedo
     ϵ_soil = land.soil.parameters.emissivity
-    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -380,14 +379,35 @@ function lsm_radiant_energy_fluxes!(
     # net canopy
     @. SW_net_canopy = f_abs_par * par_d + f_abs_nir * nir_d
 
-    # net soil = (1-α)*trans for par and nir
+    # net soil SW = (1-α)*trans for par and nir (used as SW_n input for the skin solve)
     @. R_net_soil .=
         f_trans_nir * nir_d * (1 - α_soil_NIR) +
         f_trans_par * par_d * (1 - α_soil_PAR)
 
-    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+
+    # Solve for the soil skin temperature; litter resistance scales with vegetation cover.
+    # R_net_soil is positive towards soil here; the skin solve expects SW_n positive upward.
+    area_index = p.canopy.biomass.area_index
+    r_litter = land.soil.parameters.r_litter
+    r_litter_eff = @. lazy(
+        r_litter * (1 - exp(-(area_index.leaf + area_index.stem))),
+    )
+    SW_n_soil = @. lazy(-R_net_soil) # convert to positive-upward convention
+    Soil.update_soil_surface_temperature!(
+        land.soil,
+        SW_n_soil,
+        LW_d_canopy,
+        r_litter_eff,
+        Y,
+        p,
+        t,
+    )
+
+    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
+
+    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
@@ -423,7 +443,7 @@ function implicit_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
     ϵ_soil = land.soil.parameters.emissivity
-    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     # in W/m^2
     LW_d_canopy = p.scratch1

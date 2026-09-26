@@ -433,6 +433,19 @@ NVTX.@annotate function soil_boundary_fluxes!(
     p,
     t,
 )
+    # Solve for the soil skin temperature (no litter layer for bare snow-soil)
+    FT = eltype(Y)
+    α_sfc = ClimaLand.surface_albedo(soil, Y, p)
+    SW_n = @. lazy(-(1 - α_sfc) * p.drivers.SW_d)
+    Soil.update_soil_surface_temperature!(
+        soil,
+        SW_n,
+        p.drivers.LW_d,
+        FT(0),
+        Y,
+        p,
+        t,
+    )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
