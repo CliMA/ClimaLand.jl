@@ -767,6 +767,12 @@ type = "float"
 description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
 tag = "EnergyHydrologyParameters"
 
+["zeta_max_stable"]
+value = 0.5
+type = "float"
+description = "Maximum Monin-Obukhov stability parameter zeta = (z-d)/L used in the flux-profile relations under stable stratification; represents turbulent mixing in very stable conditions not captured by similarity theory (unitless). Source: CLM5 (zetamaxstable); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "LandParameters"
+
 # Slab Lake Model
 ["slab_lake_depth"]
 value = 10.0

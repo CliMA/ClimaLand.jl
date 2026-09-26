@@ -46,6 +46,9 @@ if TEST_GROUP in ("all", "core")
         include("shared_utilities/drivers.jl")
         include("shared_utilities/coupled_fluxes.jl")
     end
+    @safetestset "Stable-limited universal functions tests" begin
+        include("shared_utilities/stable_limited_universal_functions.jl")
+    end
 
     # Standalone Bucket model tests
     @safetestset "Bucket albedo types tests" begin
