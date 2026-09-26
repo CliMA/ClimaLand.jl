@@ -710,7 +710,7 @@ tag = "SoilCO2Parameters"
 ["evaporation_exponent"]
 value = 1.0
 type = "float"
-description = "Exponent of dry soil layer factor in evaporation"
+description = "Exponent p of the dry surface layer thickness DSL = d_ds ((αS_c - S_l)/αS_c)^p; p = 1 is the linear form of Swenson and Lawrence (2014)"
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
@@ -760,6 +760,12 @@ value = 0.25
 type = "float"
 description = "Factor (-) scaling the molecular vapor diffusion resistance (d_l - d_min) / D_vapor of the SlabLitter soil surface layer; values below one represent ventilation of the loose litter"
 tag = "SlabLitter"
+
+["undercanopy_ground_transfer_coefficient"]
+value = 0.004
+type = "float"
+description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
+tag = "EnergyHydrologyParameters"
 
 # Slab Lake Model
 ["slab_lake_depth"]

@@ -387,6 +387,8 @@ function lsm_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
+    # The turbulent exchange of the ground is reduced under the canopy
+    update_undercanopy_conductance!(p, land.soil, canopy, Y)
     # R_net_soil is positive towards the soil; the skin solve takes SW_n
     # positive upward
     SW_n_soil = @. lazy(-R_net_soil)

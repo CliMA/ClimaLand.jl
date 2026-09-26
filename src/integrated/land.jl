@@ -739,6 +739,8 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         t,
     )
 
+    # The turbulent exchange of the ground is reduced under the canopy
+    update_undercanopy_conductance!(p, land.soil, canopy, Y)
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
     # at it; the snow-soil ground heat flux uses the top cell temperature
     Soil.update_soil_surface_temperature!(

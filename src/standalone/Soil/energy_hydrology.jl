@@ -73,6 +73,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     evap_p::FT
     "Multiplicative scalar used as fitting parameter in critical soil water content for evaporation (unitless)"
     evap_α::FT
+    "Ground transfer coefficient under a dense canopy (unitless); used for the under-canopy aerodynamic resistance in integrated models"
+    C_s_undercanopy::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
@@ -125,6 +127,7 @@ function EnergyHydrologyParameters(
     d_ds = toml_dict["maximum_dry_soil_layer_depth"],
     evap_p = toml_dict["evaporation_exponent"],
     evap_α = toml_dict["evaporation_scalar"],
+    C_s_undercanopy = toml_dict["undercanopy_ground_transfer_coefficient"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -202,6 +205,7 @@ function EnergyHydrologyParameters(
         d_ds,
         evap_p,
         evap_α,
+        C_s_undercanopy,
         parameters...,
     )
 end
@@ -1066,6 +1070,39 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
     return p.soil.q_sfc
 end
 
+"""
+    soil_kelvin_factor(T_sfc::FT, ψ_sfc::FT, earth_param_set) where {FT}
+
+Returns the relative humidity of the soil air in equilibrium with soil water
+at matric potential `ψ_sfc` (m) and temperature `T_sfc` (K), given by the Kelvin
+equation `exp(g ψ M_w / (R T))` (e.g., Philip (1957)).
+"""
+function soil_kelvin_factor(T_sfc::FT, ψ_sfc::FT, earth_param_set) where {FT}
+    g = LP.grav(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    M_w = LP.molar_mass_water(earth_param_set)
+    return exp(g * min(ψ_sfc, FT(0)) * M_w / (R * T_sfc))
+end
+
+"""
+    effective_soil_vapor_humidity(q_air::FT, q_soil::FT, hr::FT) where {FT}
+
+Returns the specific humidity of the vapor source at the soil surface used in
+the bulk evaporation formula, given the specific humidity of the air `q_air`,
+the specific humidity in equilibrium with the soil water `q_soil = hr q_sat`,
+and the Kelvin factor `hr ≤ 1`:
+- If `q_air < q_soil`, water evaporates from the soil (`q_soil` is returned).
+- If `q_soil ≤ q_air ≤ q_sat`, the air is subsaturated with respect to liquid
+  water at the surface temperature, so no dew forms; the Kelvin effect alone
+  does not drive vapor into the soil, and the vapor flux vanishes (`q_air` is
+  returned), as in CLM5 (`SurfaceHumidityMod`).
+- If `q_air > q_sat`, dew forms (`q_sat` is returned).
+This is continuous in all arguments.
+"""
+function effective_soil_vapor_humidity(q_air::FT, q_soil::FT, hr::FT) where {FT}
+    return clamp(q_air, q_soil, q_soil / max(hr, eps(FT)))
+end
+
 function soil_specific_humidity(
     T_sfc::FT,
     ρ_sfc::FT,
@@ -1074,9 +1111,6 @@ function soil_specific_humidity(
     earth_param_set,
 ) where {FT}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    g = LP.grav(earth_param_set)
-    R = LP.gas_constant(earth_param_set)
-    M_w = LP.molar_mass_water(earth_param_set)
     # Compute q_soil using ice or liquid as appropriate
     if T_sfc > Tf_depressed_sfc # liquid water evaporation
         q_sfc =
@@ -1085,7 +1119,7 @@ function soil_specific_humidity(
                 T_sfc,
                 ρ_sfc,
                 Thermodynamics.Liquid(),
-            ) * exp(g * min(ψ_sfc, FT(0)) * M_w / (R * T_sfc))
+            ) * soil_kelvin_factor(T_sfc, ψ_sfc, earth_param_set)
     else
         q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
@@ -1097,6 +1131,15 @@ function soil_specific_humidity(
     return q_sfc
 end
 
+"""
+    ClimaLand.get_update_surface_humidity_function(model::EnergyHydrology, Y, p)
+
+Returns the function which computes the surface specific humidity of the soil
+passed to SurfaceFluxes.jl, such that the vapor flux is that from the vapor
+source at the soil skin temperature through the dry soil layer (conductance
+`g_liq`) and the turbulent conductance `g_eff` (see
+`soil_surface_vapor_weight` and the discussion in `soil_surface_temperature.jl`).
+"""
 function ClimaLand.get_update_surface_humidity_function(
     model::EnergyHydrology,
     Y,
@@ -1108,14 +1151,17 @@ function ClimaLand.get_update_surface_humidity_function(
         thermo_params,
         inputs,
         scheme,
-        T_sfc::FT,
+        T_i::FT,
         u_star::FT,
         z_0m::FT,
         z_0b::FT,
         g_liq::FT,
         β_ice::FT,
-        Tf_depressed::FT,
+        frozen::Bool,
         qsat_sfc::FT,
+        hr_sfc::FT,
+        W::FT,
+        r_under::FT,
     )::FT where {FT}
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
@@ -1126,47 +1172,107 @@ function ClimaLand.get_update_surface_humidity_function(
             z_0b,
             scheme,
         )
+        f_eff = soil_conductance_ratio(W, r_under, g_h)
         q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        # Sublimation; at T_sfc = Tf_depressed, qsat_sfc is over ice
-        if inputs.T_sfc_guess <= Tf_depressed
-            if q_air < qsat_sfc # water loss to atmosphere, adjust β
-                return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
-            else
-                return qsat_sfc
-            end
-        else
-            return (g_liq / g_h * qsat_sfc + q_air) / (1 + g_liq / g_h)
-        end
-
+        # For frozen soil, qsat_sfc is the saturation value over ice
+        q_src =
+            frozen ? qsat_sfc :
+            effective_soil_vapor_humidity(q_air, qsat_sfc, hr_sfc)
+        w = soil_surface_vapor_weight(
+            q_air,
+            q_src,
+            g_liq,
+            g_h,
+            f_eff,
+            β_ice,
+            frozen,
+        )
+        return w * q_src + (1 - w) * q_air
     end
     # Closure
     FT = eltype(Y)
     earth_param_set = get_earth_param_set(model)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     T_sfc = component_temperature(model, Y, p)
     qsat_sfc = component_specific_humidity(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     g_soil_sfc =
         soil_surface_vapor_conductance!(p.soil.sfc_scratch, model, Y, p)
-    update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
+    update_q_vap_sfc_field(g_liq, β_ice, frozen, qsat_sfc, hr_sfc, W, r_under) =
         (args...) -> update_q_vap_sfc_at_a_point(
             args...,
             g_liq,
             β_ice,
-            Tf_depressed,
+            frozen,
             qsat_sfc,
+            hr_sfc,
+            W,
+            r_under,
         )
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,
-            (θ_i_sfc / ν_sfc)^4,
-            Tf_depressed_sfc,
+            (θ_i_sfc / ν_sfc)^4, # β_ice
+            T_sfc <= Tf_depressed_sfc, # frozen, as qsat_sfc is over ice at Tf
             qsat_sfc,
+            soil_kelvin_factor(T_sfc, ψ_sfc, earth_param_set),
+            p.soil.W_gap,
+            p.soil.r_undercanopy,
         ),
-    ) # β_ice = (θ_i_sfc / ν_sfc)^4
+    )
+end
+
+"""
+    ClimaLand.get_update_surface_temperature_function(model::EnergyHydrology, Y, p)
+
+Returns the function which computes the soil surface temperature passed to
+SurfaceFluxes.jl: the interface temperature `T_a + (g_eff/g_h) (T_sfc - T_a)`,
+such that the sensible heat flux is that from the soil skin temperature `T_sfc`
+with the turbulent conductance `g_eff` (see the discussion in
+`soil_surface_temperature.jl`). For bare soil, this is `T_sfc`.
+"""
+function ClimaLand.get_update_surface_temperature_function(
+    model::EnergyHydrology,
+    Y,
+    p,
+)
+    function update_T_sfc_at_a_point(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        u_star::FT,
+        z_0m::FT,
+        z_0b::FT,
+        T_skin::FT,
+        W::FT,
+        r_under::FT,
+    )::FT where {FT}
+        g_h = SurfaceFluxes.heat_conductance(
+            param_set,
+            ζ,
+            u_star,
+            inputs,
+            z_0m,
+            z_0b,
+            scheme,
+        )
+        f_eff = soil_conductance_ratio(W, r_under, g_h)
+        T_a =
+            adiabatic_surface_air_temperature(inputs, param_set, thermo_params)
+        return soil_interface_temperature(T_skin, T_a, f_eff)
+    end
+    # Closure
+    T_sfc = component_temperature(model, Y, p)
+    update_T_sfc_field(T_skin, W, r_under) =
+        (args...) -> update_T_sfc_at_a_point(args..., T_skin, W, r_under)
+    return @. lazy(
+        update_T_sfc_field(T_sfc, p.soil.W_gap, p.soil.r_undercanopy),
+    )
 end
 
 function ClimaLand.surface_roughness_model(
@@ -1409,16 +1515,19 @@ end
 
 Compute the conductance [m/s] of the top of the soil column to water vapor
 diffusion, the inverse of the diffusive resistance `dsl / (D_vapor τ_a)` of
-the dry soil layer of thickness `dsl` (see [`dry_soil_layer_thickness`](@ref)
-and [`soil_tortuosity`](@ref)). When no dry layer has formed (`dsl = 0`), the
-resistance vanishes and the conductance is unbounded, whatever the tortuosity
-of the wet surface soil.
+the dry soil layer of thickness `dsl` (see [`dry_soil_layer_thickness`](@ref)),
+with the tortuosity factor `τ_a` of the air-dry layer (see
+[`soil_tortuosity`](@ref)). When no dry layer has formed (`dsl = 0`), the
+resistance vanishes and the conductance is unbounded. This conductance acts in
+series with the aerodynamic conductance.
 
-The conductance is the inverse of the diffusive resistance
-`dsl / (D_vapor τ_a)` of the dry soil layer of thickness `dsl`, with the
-tortuosity factor `τ_a` of the dry layer (see [`soil_tortuosity`](@ref)).
-When no dry layer has formed (`dsl = 0`), the resistance vanishes and the
-conductance is unbounded.
+# Arguments
+- `S_l`: Effective liquid saturation at the surface [-].
+- `S_c`: Critical saturation of the retention curve [-].
+- `d_ds`: Maximum dry soil layer thickness [m].
+- `p`, `α`: Exponent and scalar of the dry soil layer parameterization [-].
+- `_D_vapor`: Diffusivity of water vapor in air [m²/s].
+- `ν`, `θ_r`, `θ_i`: Porosity, residual water fraction, and ice fraction [-].
 """
 function soil_conductance(
     S_l::FT,
@@ -1440,9 +1549,17 @@ end
 """
     dry_soil_layer_thickness(S_l::FT, αS_c::FT, d_ds::FT, p::FT)::FT where {FT}
 
-Returns the maximum dry soil layer thickness that can develop under vapor flux; 
-this is used when computing the soil resistance to vapor flux similar to
-Swenson et al (2012)/Sakaguchi and Zeng (2009).
+Returns the thickness of the dry surface layer (DSL) that develops under
+evaporation, following Swenson and Lawrence (2014), J. Geophys. Res., 119,
+10299 (also used in CLM5):
+
+    DSL = d_ds ((αS_c - S_l) / αS_c)^p  for S_l < αS_c, and 0 otherwise.
+
+The DSL starts to form when the surface effective saturation `S_l` drops below
+the (scaled) critical saturation `αS_c` at which liquid continuity to the
+surface is lost (Lehmann et al. (2008)), and grows to the maximum thickness
+`d_ds` as the soil approaches air-dryness (`S_l → 0`). With `p = 1`, this is
+the linear form of Swenson and Lawrence (2014).
 
 Note that S_l ∈ (0,1].
 """
@@ -1452,8 +1569,9 @@ function dry_soil_layer_thickness(
     d_ds::FT,
     p::FT,
 )::FT where {FT}
-    αS_c = clamp(αS_c, FT(0), FT(1)) # this must be between zero and one
-    return S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p : FT(0)
+    αS_c = clamp(αS_c, eps(FT), FT(1)) # this must be between zero and one
+    return S_l < αS_c ? d_ds * (clamp((αS_c - S_l) / αS_c, FT(0), FT(1)))^p :
+           FT(0)
 end
 
 ClimaLand.check_time_step(model::EnergyHydrology, Δt) =

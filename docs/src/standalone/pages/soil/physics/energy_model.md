@@ -191,11 +191,11 @@ ice.
 ### Surface humidity and evaporation
 
 The surface specific humidity used for evaporation is a conductance-weighted
-mean of the (soil water potential adjusted) saturation specific humidity at the
-skin and the specific humidity of the air,
+mean of the specific humidity $q_{\rm{src}}$ of the vapor source at the skin
+and the specific humidity of the air,
 
 ```math
-q_{\rm{sfc}} = \frac{g_{\rm{soil}} \, q_{\rm{sat}}(T_{\rm{sfc}}) \, e^{g ψ_{\rm{sfc}} M_w / (R T_{\rm{sfc}})} + g_h \, q_{\rm{air}}}{g_{\rm{soil}} + g_h},
+q_{\rm{sfc}} = \frac{g_{\rm{soil}} \, q_{\rm{src}} + g_h \, q_{\rm{air}}}{g_{\rm{soil}} + g_h},
 ```
 
 where $g_h$ is the aerodynamic conductance for heat and $g_{\rm{soil}}$ is the
@@ -204,25 +204,54 @@ conductance of the dry soil layer that forms at the surface as it dries
 
 ```math
 g_{\rm{soil}} = \frac{D_v τ_a}{d_{\rm{sl}}}, \quad
-d_{\rm{sl}} = d_{\rm{ds}} \left(\frac{α S_c - S_l}{S_l}\right)^p \; \text{for } S_l < α S_c, \quad
+d_{\rm{sl}} = d_{\rm{ds}} \left(\frac{α S_c - S_l}{α S_c}\right)^p \; \text{for } S_l < α S_c, \quad
 τ_a = \frac{θ_a^{5/2}}{ν}, \quad θ_a = ν - θ_r - θ_i.
 ```
 
-Here $D_v$ is the diffusivity of water vapor in air, $τ_a$ the tortuosity
-factor for diffusion through the air-filled pore space
-([Shokri2008](@citet)) of the dry layer, whose liquid water content is
-residual (so that $θ_a$ does not depend on the moisture of the soil below, as
-in [SwensonLawrence2014](@citet)), $S_l$ the effective saturation of the
-liquid water at the surface (extrapolated from the top two layers), $S_c$ the
-critical saturation of the retention curve, and $d_{\rm{ds}}$, $α$, and $p$
-parameters. When the surface is wetter than $α S_c$, no dry layer exists,
-$g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}}$ is the saturation value.
-With a `SlabLitter` surface layer, the diffusive resistance of the litter
-slab, $r_{\rm{vap},l} = c_{\rm{vap}} (d_l - d_{\min}) / D_v$ with
-$c_{\rm{vap}}$ (`litter_vapor_resistance_factor`), is added in series with
+Here $D_v$ is the diffusivity of water vapor in air, $τ_a$ the tortuosity factor
+for diffusion through the air-filled pore space of the dry layer
+([Shokri2008](@citet)), whose liquid water content is residual (so that $θ_a$
+does not depend on the moisture of the soil below), $S_l$ the effective saturation of the liquid water at
+the surface (extrapolated from the top two layers, within the ice-free pore
+space $ν - θ_i$), $S_c$ the critical saturation of the retention curve, and
+$d_{\rm{ds}}$, $α$, and $p$ parameters ($p = 1$ is the linear form of
+[SwensonLawrence2014](@citet)). When the surface is wetter than $α S_c$, no dry
+layer exists, $g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}} = q_{\rm{src}}$.
+
+The vapor source is the saturation specific humidity at the skin lowered by the
+Kelvin factor of the soil water, $q_{\rm{src}} = h_r \, q_{\rm{sat}}(T_{\rm{sfc}})$
+with $h_r = e^{g ψ_{\rm{sfc}} M_w / (R T_{\rm{sfc}})}$, when the air is drier
+than that. When $q_{\rm{air}}$ lies between $h_r q_{\rm{sat}}$ and
+$q_{\rm{sat}}$, the air is subsaturated over free water, so no dew forms, and
+the Kelvin effect alone does not draw vapor into the soil: $q_{\rm{src}} =
+q_{\rm{air}}$ and the vapor flux vanishes (as in CLM5). Dew forms when
+$q_{\rm{air}} > q_{\rm{sat}}$; it condenses at the surface, so the dry-layer
+resistance does not apply. With a `SlabLitter` surface layer, the diffusive
+resistance of the litter slab, $r_{\rm{vap},l} = c_{\rm{vap}} (d_l - d_{\min}) / D_v$
+with $c_{\rm{vap}}$ (`litter_vapor_resistance_factor`), is added in series with
 $1 / g_{\rm{soil}}$. When the skin is below the (depressed) freezing
 temperature, sublimation is computed instead, with $q_{\rm{sfc}}$ weighted by
 the ice fraction $β_{\rm{ice}} = (θ_i / ν)^4$.
+
+Under a canopy, the turbulent exchange of the ground is reduced to
+
+```math
+g_{\rm{eff}} = W g_h + \frac{1 - W}{1/g_h + r'}, \quad
+W = e^{-(\rm{LAI} + \rm{SAI})}, \quad
+r' = \frac{1 + 0.5 \min(\max(Ri, 0), 10)}{C_s u_*},
+```
+
+following CLM5: a fraction $W$ of the ground (the canopy gap fraction)
+exchanges directly with the atmosphere, and the rest through the under-canopy
+resistance $r'$ between the ground and the canopy air, with the transfer
+coefficient $C_s$ (`undercanopy_ground_transfer_coefficient`), the friction
+velocity $u_*$ above the canopy, and a stability correction in the bulk
+Richardson number $Ri$ of the canopy air space. Since SurfaceFluxes.jl
+evaluates the fluxes with $g_h$, the soil passes it an interface temperature
+$T_i = T_a + (g_{\rm{eff}} / g_h)(T_{\rm{sfc}} - T_a)$, with $T_a$ the air
+temperature brought dry-adiabatically to the surface, and the analogous
+humidity, such that the fluxes from the interface with $g_h$ equal those from
+the skin with $g_{\rm{eff}}$. Bare soil has $W = 1$ and $g_{\rm{eff}} = g_h$.
 
 ### Time treatment
 

@@ -729,7 +729,11 @@ These variables are updated in place in `soil_boundary_fluxes!` or, in
 integrated models with a canopy, `lsm_radiant_energy_fluxes!`. The turbulent
 fluxes are stored with the soil skin temperature `T_sfc` at which they are
 evaluated, both from the same solve of the surface energy balance (see
-`update_soil_surface_temperature!`).
+`update_soil_surface_temperature!`). The canopy gap fraction `W_gap` and the
+resistance `r_undercanopy` between the ground and the canopy air in a dense
+canopy take their bare-soil values (1 and 0) in the bare-soil skin solve and
+are set by integrated models with a canopy before their skin solve (see
+`update_undercanopy_conductance!`).
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
@@ -740,6 +744,8 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :q_sfc,
     :PAR_albedo,
     :NIR_albedo,
+    :W_gap,
+    :r_undercanopy,
     :sub_sfc_scratch,
     Runoff.runoff_vars(bc.runoff)...,
 )
@@ -753,6 +759,8 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -786,6 +794,8 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
+    FT,
+    FT,
     FT,
     FT,
     FT,
@@ -836,6 +846,8 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
+    FT,
+    FT,
     FT,
     FT,
     FT,
