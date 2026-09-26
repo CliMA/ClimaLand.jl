@@ -388,7 +388,16 @@ function soil_surface_vapor_conductance!(
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     # currently set to S_l_sfc; overwrite with the conductance
     g_soil_sfc .=
-        soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
+        soil_conductance.(
+            S_l_sfc,
+            S_c_sfc,
+            d_ds,
+            evap_p,
+            evap_α,
+            _D_vapor,
+            ν_sfc,
+            θ_r_sfc,
+        )
     # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
     return g_soil_sfc
 end

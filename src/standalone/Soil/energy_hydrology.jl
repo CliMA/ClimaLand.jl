@@ -1308,20 +1308,34 @@ function ClimaLand.total_energy_per_area!(
 end
 
 """
-    soil_conductance(θ_l::FT,
-                    S_c::FT,
-                    ν::FT,
-                    θ_r::FT,
-                    d_ds::FT,
-                    p::FT,
-                    α::FT,
-                    _D_vapor::FT
-                   ) where {FT}
+    soil_tortuosity(S_l::FT, ν::FT, θ_r::FT) where {FT}
+
+Computes the tortuosity factor for water vapor diffusion in a porous medium
+as a function of effective liquid saturation `S_l`, porosity `ν`, and
+residual water fraction `θ_r`, following Equation (1) of Shokri, Lehmann,
+and Or (2008), Geophys. Res. Lett., 35, L19407, doi:10.1029/2008GL035230.
+"""
+function soil_tortuosity(S_l::FT, ν::FT, θ_r::FT) where {FT}
+    safe_θ_a = max((ν - θ_r) * (FT(1) - S_l), eps(FT))
+    return safe_θ_a^FT(2.5) / max(ν, eps(FT))
+end
+
+"""
+    soil_conductance(
+        S_l::FT,
+        S_c::FT,
+        d_ds::FT,
+        p::FT,
+        α::FT,
+        _D_vapor::FT,
+        ν::FT = FT(0.5),
+        θ_r::FT = FT(0),
+    ) where {FT}
 
 Computes the conductance of the top of the soil column to
-water vapor diffusion, as a function of the surface 
-volumetric liquid water fraction `θ_l`, other soil parameters,
-and diffusivity of vapor in air.
+water vapor diffusion, as a function of the surface
+effective liquid water saturation `S_l`, critical saturation `S_c`,
+other soil parameters, and diffusivity of vapor in air.
 """
 function soil_conductance(
     S_l::FT,
@@ -1330,9 +1344,12 @@ function soil_conductance(
     p::FT,
     α::FT,
     _D_vapor::FT,
+    ν::FT = FT(0.5),
+    θ_r::FT = FT(0),
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
-    g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
+    τ_a::FT = soil_tortuosity(S_l, ν, θ_r)
+    g_soil = _D_vapor * τ_a / max(dsl, eps(FT)) # [m/s]
     return g_soil
 end
 
