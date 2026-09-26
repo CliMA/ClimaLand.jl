@@ -380,7 +380,8 @@ The compute_exp_tendency! function must comply with a rhs function of ClimaTimeS
 
 Below, `fa_roots` denotes the root water flux per unit ground area
 (`water_flux * harmonic_mean(LAI, RAI)`), and the transpiration is
-`p.canopy.turbulent_fluxes.vapor_flux`, also per unit ground area. The tendency is
+`canopy_transpiration(canopy.interception, p)` (the canopy vapor flux, minus
+the evaporation of intercepted water if modeled), also per unit ground area. The tendency is
 
     ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
 
@@ -398,9 +399,9 @@ function make_compute_exp_tendency(
         LAI = p.canopy.biomass.area_index.leaf
         fa_roots = p.canopy.hydraulics.fa_roots
         dz = canopy.biomass.height
+        transpiration = canopy_transpiration(canopy.interception, p)
         @. dY.canopy.hydraulics.ϑ_l =
-            1 / max(LAI * dz, eps(FT)) *
-            (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
+            1 / max(LAI * dz, eps(FT)) * (fa_roots - transpiration)
     end
     return compute_exp_tendency!
 end

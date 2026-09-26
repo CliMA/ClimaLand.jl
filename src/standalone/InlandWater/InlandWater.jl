@@ -455,12 +455,15 @@ function ClimaLand.make_compute_exp_tendency(
         _cp_i = LP.cp_i(earth_param_set)
         _T_ref = LP.T_0(earth_param_set)
         _LH_f0 = LP.LH_f0(earth_param_set)
+        # Liquid water reaching the lake (the throughfall below the canopy in
+        # integrated models with canopy interception)
+        P_liq = ClimaLand.liquid_throughfall(p)
 
         @. dY.lake.U = -(
             p.lake.R_n +
             p.lake.turbulent_fluxes.lhf +
             p.lake.turbulent_fluxes.shf +
-            p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
+            P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
             p.drivers.P_snow *
             _ρ_l *
             (_cp_i * (p.drivers.T - _T_ref) - _LH_f0) +

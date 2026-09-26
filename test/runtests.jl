@@ -164,6 +164,9 @@ if TEST_GROUP in ("all", "core")
     @safetestset "PFT tests" begin
         include("standalone/Vegetation/test_pfts.jl")
     end
+    @safetestset "Canopy interception tests" begin
+        include("standalone/Vegetation/test_interception.jl")
+    end
 
     # Integrated LSM tests
     @safetestset "Integrated LSM unit tests" begin

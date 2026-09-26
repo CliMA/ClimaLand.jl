@@ -568,7 +568,9 @@ function Soil.compute_liquid_influx(
     model,
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
 )
-    return p.drivers.P_liq
+    # Liquid throughfall below the canopy (the liquid precipitation if canopy
+    # interception is not modeled)
+    return Canopy.liquid_throughfall(p)
 end
 
 function ClimaLand.Soil.sublimation_source(

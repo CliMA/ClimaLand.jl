@@ -767,3 +767,18 @@ value = 0.0001
 type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
+
+[canopy_interception_efficiency]
+value = 1.0
+type = "float"
+description = "Interception efficiency coefficient alpha in the fraction of liquid precipitation intercepted by the canopy, alpha * tanh(LAI + SAI) (unitless). Source: CLM5 (interception_fraction); Lawrence et al. (2019)"
+
+[canopy_liquid_storage_per_area]
+value = 1.0e-4
+type = "float"
+description = "Maximum liquid water storage of the canopy per unit plant area (LAI + SAI), in m of liquid water (0.1 kg/m^2). Source: CLM5 technical note (Lawrence et al., 2019)"
+
+[canopy_maximum_wetted_fraction]
+value = 0.05
+type = "float"
+description = "Maximum fraction of the plant area that is wetted by intercepted water and evaporates without stomatal resistance (unitless). Source: CLM5 (maximum_leaf_wetted_fraction)"

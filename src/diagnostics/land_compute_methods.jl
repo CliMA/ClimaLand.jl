@@ -227,15 +227,19 @@ function compute_canopy_transpiration!(
     land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
 )
     canopy = get_canopy(land_model)
+    # Transpiration is the canopy vapor flux minus the evaporation of
+    # intercepted water, if modeled
+    transpiration =
+        ClimaLand.Canopy.canopy_transpiration(canopy.interception, p)
     # Convert to a mass flux by multiplying by the density of liquid
     # water
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
+        @. out = transpiration * 1000
         return out
     else
-        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
+        @. out = transpiration * 1000
     end
 end
 

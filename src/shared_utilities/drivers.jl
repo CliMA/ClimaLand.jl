@@ -508,7 +508,22 @@ a tuple with self explanatory keys, as well as the derivative of the fluxes
 with respect to the component temperature. It also returns momentum flux
 components in the horizontal directions, and the buoyancy flux.
 """
-function compute_turbulent_fluxes_at_a_point(
+function compute_turbulent_fluxes_at_a_point(args...)
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux, _) =
+        compute_turbulent_fluxes_and_ustar_at_a_point(args...)
+    return (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux)
+end
+
+"""
+    compute_turbulent_fluxes_and_ustar_at_a_point(args...)
+
+Same as `compute_turbulent_fluxes_at_a_point`, but additionally returns the
+friction velocity `u_star` (m/s) as the last element of the tuple. This is
+used by models that partition the vapor flux among parallel pathways whose
+conductances depend on `u_star` (e.g., canopy transpiration and evaporation
+of intercepted water).
+"""
+function compute_turbulent_fluxes_and_ustar_at_a_point(
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
@@ -620,6 +635,7 @@ function compute_turbulent_fluxes_at_a_point(
         output.ρτxz,
         output.ρτyz,
         buoyancy_flux,
+        u_star,
     )
 end
 
@@ -1894,3 +1910,15 @@ function prescribed_forcing_crujra(
     )
     return (; atmos, radiation)
 end
+
+"""
+    liquid_throughfall(p)
+
+Returns the liquid water flux reaching the surfaces below the canopy
+(negative downward, m/s): the throughfall computed by a canopy interception
+model with a water store, if present in the cache `p`, and the liquid
+precipitation `p.drivers.P_liq` otherwise.
+"""
+liquid_throughfall(p) =
+    hasproperty(p, :canopy) && hasproperty(p.canopy, :interception) ?
+    p.canopy.interception.throughfall_liq : p.drivers.P_liq
