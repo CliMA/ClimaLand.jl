@@ -73,6 +73,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     evap_p::FT
     "Multiplicative scalar used as fitting parameter in critical soil water content for evaporation (unitless)"
     evap_α::FT
+    "Thermal resistance of a litter/thatch layer on top of the soil under full vegetation cover (m^2 K/W); scaled by vegetation cover in integrated models"
+    r_litter::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
@@ -125,6 +127,7 @@ function EnergyHydrologyParameters(
     d_ds = toml_dict["maximum_dry_soil_layer_depth"],
     evap_p = toml_dict["evaporation_exponent"],
     evap_α = toml_dict["evaporation_scalar"],
+    r_litter = toml_dict["litter_thermal_resistance"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -202,6 +205,7 @@ function EnergyHydrologyParameters(
         d_ds,
         evap_p,
         evap_α,
+        r_litter,
         parameters...,
     )
 end
@@ -809,6 +813,9 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
 
         total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
         total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
+        # Initialize the skin temperature (if present) with the top layer temperature;
+        # it is updated from the surface energy balance when the boundary fluxes are computed.
+        initialize_soil_surface_temperature!(model.boundary_conditions.top, p)
     end
     return update_aux!
 end
@@ -961,16 +968,17 @@ end
 Returns the surface temperature field of the
 `EnergyHydrology` soil model.
 
-The assumption is that the soil surface temperature
-is the same as the temperature at the center of the
-first soil layer.
+For atmospherically driven soil (`AtmosDrivenFluxBC`), this is the soil skin
+temperature `p.soil.T_sfc`, which is solved for from the surface energy balance
+(see `update_soil_surface_temperature!`). Otherwise, the soil surface temperature
+is taken to be the temperature at the center of the first soil layer.
 """
 function ClimaLand.component_temperature(
     model::EnergyHydrology{FT},
     Y,
     p,
 ) where {FT}
-    return ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    return soil_surface_temperature(model.boundary_conditions.top, p)
 end
 
 """
@@ -1107,28 +1115,9 @@ function ClimaLand.get_update_surface_humidity_function(
     qsat_sfc = component_specific_humidity(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
-        model.parameters
-    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
-    S_c_sfc = hydrology_cm_sfc.S_c
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
-    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
-    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
-    θ_l_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(
-        θ_l_sfc,
-        p.soil.θ_l,
-        model.domain.fields.z,
-        model.domain.fields.Δz_top,
-    )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + eps(FT))
-    S_l_sfc = p.soil.sfc_scratch # currently set to θ_l_sfc
-    @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
-    _D_vapor = FT(LP.D_vapor(earth_param_set))
-    g_soil_sfc = p.soil.sfc_scratch # currently set to S_l_sfc
-    g_soil_sfc .=
-        soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
-    # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
+    g_soil_sfc = soil_surface_vapor_conductance!(p.soil.sfc_scratch, model, Y, p)
     update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
         (args...) -> update_q_vap_sfc_at_a_point(
             args...,

@@ -158,6 +158,7 @@ for FT in (Float32, Float64)
                 :q_sfc,
                 :PAR_albedo,
                 :NIR_albedo,
+                :T_sfc,
                 :sub_sfc_scratch,
                 :infiltration,
                 :bottom_bc,
@@ -209,14 +210,14 @@ for FT in (Float32, Float64)
                 ),
                 surface_space,
             )
-            T_sfc = ClimaCore.Fields.zeros(surface_space) .+ FT(280.0)
             @test ClimaLand.surface_emissivity(model, Y, p) == emissivity
             PAR_albedo = p.soil.PAR_albedo
             NIR_albedo = p.soil.NIR_albedo
             @test Base.Broadcast.materialize(
                 ClimaLand.surface_albedo(model, Y, p),
             ) == PAR_albedo ./ 2 .+ NIR_albedo ./ 2
-            @test ClimaLand.component_temperature(model, Y, p) == T_sfc
+            @test ClimaLand.component_temperature(model, Y, p) === p.soil.T_sfc
+            @test all(parent(p.soil.T_sfc) .> FT(280.0))
 
             conditions = copy(p.soil.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(

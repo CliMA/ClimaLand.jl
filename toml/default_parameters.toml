@@ -776,6 +776,12 @@ type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"
 
+["litter_thermal_resistance"]
+value = 0.1
+type = "float"
+description = "Thermal resistance (m^2 K/W) of a litter/thatch layer between the soil skin and the top soil layer under full vegetation cover; scaled by 1 - exp(-(LAI+SAI)) in integrated land models"
+tag = "EnergyHydrologyParameters"
+
 # Slab Lake Model
 ["slab_lake_depth"]
 value = 10

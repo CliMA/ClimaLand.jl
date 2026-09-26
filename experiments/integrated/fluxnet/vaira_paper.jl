@@ -46,6 +46,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     z_0m_soil,
     z_0b_soil,
     soil_ϵ,
+    r_litter,
     soil_α_PAR,
     soil_α_NIR,
     Ω,
@@ -135,6 +136,7 @@ soil = Soil.EnergyHydrology{FT}(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
+    r_litter,
 )
 
 # Soil microbes model

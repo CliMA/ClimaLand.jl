@@ -739,6 +739,23 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         t,
     )
 
+    # now solve for the soil skin temperature; this updates T_soil = p.soil.T_sfc in place.
+    # The litter thermal resistance scales with the vegetation cover.
+    area_index = p.canopy.biomass.area_index
+    r_litter = land.soil.parameters.r_litter
+    r_litter_eff = @. lazy(
+        r_litter * (1 - exp(-(area_index.leaf + area_index.stem))),
+    )
+    Soil.update_soil_surface_temperature!(
+        land.soil,
+        R_net_soil, # at this point, R_net_soil equals the SW_net of the soil
+        LW_d_canopy,
+        r_litter_eff,
+        Y,
+        p,
+        t,
+    )
+
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked

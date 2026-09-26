@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Solve for the soil skin temperature (`p.soil.T_sfc`) from the surface energy
+  balance within the Monin-Obukhov iterations, separating the radiating/turbulent
+  soil surface from the top-layer cell center by the half-cell conduction
+  resistance plus a vegetation-scaled litter thermal resistance
+  (`litter_thermal_resistance`).
 - Fix the 10 cm soil water mass diagnostic for standalone soil models, register
   the optimal-LAI and soil CO2 ppm diagnostics only for models that support
   them, and fix the default time interpolation of the perturbed ERA5 drivers.

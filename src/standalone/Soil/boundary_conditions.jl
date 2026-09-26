@@ -725,7 +725,10 @@ An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
 net radiation to the auxiliary variables.
 
-These variables are updated in place in `soil_boundary_fluxes!`.
+These variables are updated in place in `soil_boundary_fluxes!`, except for
+`T_sfc`, the soil skin temperature, which is initialized to the temperature of
+the top soil layer in `update_aux!` and then solved for from the surface energy
+balance (see `update_soil_surface_temperature!`).
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
@@ -736,6 +739,7 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :q_sfc,
     :PAR_albedo,
     :NIR_albedo,
+    :T_sfc,
     :sub_sfc_scratch,
     Runoff.runoff_vars(bc.runoff)...,
 )
@@ -749,6 +753,7 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -782,6 +787,7 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
+    FT,
     FT,
     FT,
     FT,
@@ -831,6 +837,7 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
+    FT,
     FT,
     FT,
     FT,
@@ -901,6 +908,19 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
+    # Solve for the soil skin temperature (no litter layer for bare soil)
+    FT = eltype(Y)
+    α_sfc = ClimaLand.surface_albedo(model, Y, p)
+    SW_n = @. lazy(-(1 - α_sfc) * p.drivers.SW_d)
+    update_soil_surface_temperature!(
+        model,
+        SW_n,
+        p.drivers.LW_d,
+        FT(0),
+        Y,
+        p,
+        t,
+    )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
