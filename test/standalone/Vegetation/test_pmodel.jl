@@ -335,6 +335,72 @@ end
                 atol = atol,
             )
         end
+
+        @testset "Instantaneous moisture stress for $FT" begin
+            βs = FT(0.4)
+            unstressed = compute_optimal_capacities(
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                FT(1),
+                APAR,
+            )
+            out1 = ClimaLand.Canopy.compute_blended_pmodel_photosynthesis(
+                unstressed,
+                FT(1),
+                P_air,
+                VPD,
+                ca,
+                T_canopy,
+                APAR,
+                FT(1),
+                parameters,
+                constants,
+            )
+            outβ = ClimaLand.Canopy.compute_blended_pmodel_photosynthesis(
+                unstressed,
+                FT(1),
+                P_air,
+                VPD,
+                ca,
+                T_canopy,
+                APAR,
+                βs,
+                parameters,
+                constants,
+            )
+            # βm scales GPP, Rd, An and gs linearly
+            @test outβ.GPP ≈ βs * out1.GPP
+            @test outβ.Rd ≈ βs * out1.Rd
+            @test outβ.An ≈ βs * out1.An
+            @test outβ.gs_co2 ≈ βs * out1.gs_co2
+            # At the acclimation light level, this equals the stressed optimum
+            # (rpmodel convention, βm inside Vcmax25 and Jmax25)
+            stressed_full = compute_full_pmodel_outputs(
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                βs,
+                APAR,
+            )
+            @test isapprox(
+                outβ.GPP * constants.Mc,
+                stressed_full.gpp,
+                rtol = FT(1e-4),
+            )
+            @test isapprox(outβ.Rd, stressed_full.rd, rtol = FT(1e-4))
+            @test isapprox(
+                outβ.gs_co2,
+                stressed_full.gs,
+                rtol = FT(1e-4),
+            )
+        end
     end
 end
 
