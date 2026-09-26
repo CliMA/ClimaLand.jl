@@ -918,7 +918,9 @@ end
     )
 
 Returns the liquid water volume flux at the surface of the soil; uses
-the same method as the soil+snow integrated model.
+the same method as the soil+snow integrated model, but with the liquid
+throughfall below the canopy (the liquid precipitation if canopy
+interception is not modeled) in place of the liquid precipitation.
 """
 function Soil.compute_liquid_influx(
     p,
@@ -930,7 +932,11 @@ function Soil.compute_liquid_influx(
         Val{(:canopy, :lake, :snow, :soil)},
     },
 )
-    Soil.compute_liquid_influx(p, model, Val((:snow, :soil)))
+    throughfall = Canopy.liquid_throughfall(p)
+    return @. lazy(
+        p.snow.water_runoff * p.snow.snow_cover_fraction +
+        p.bare_soil_fraction * throughfall,
+    )
 end
 
 """
@@ -952,7 +958,8 @@ end
 
 Computes the energy associated with infiltration of
 liquid water into the soil; uses the same method as
-the soil+snow integrated model.
+the soil+snow integrated model, with the liquid throughfall below the
+canopy in place of the liquid precipitation.
 """
 function Soil.compute_infiltration_energy_flux(
     p,
@@ -969,15 +976,18 @@ function Soil.compute_infiltration_energy_flux(
     Y,
     t,
 )
-    Soil.compute_infiltration_energy_flux(
-        p,
-        runoff,
-        atmos,
-        Val((:snow, :soil)),
-        liquid_influx,
-        model,
-        Y,
-        t,
+    earth_param_set = model.parameters.earth_param_set
+    throughfall = Canopy.liquid_throughfall(p)
+    infiltration_fraction = @. lazy(
+        Soil.compute_infiltration_fraction(p.soil.infiltration, liquid_influx),
+    )
+    return @. lazy(
+        infiltration_fraction * (
+            throughfall *
+            p.bare_soil_fraction *
+            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
+            p.snow.energy_runoff * p.snow.snow_cover_fraction
+        ),
     )
 end
 
@@ -1001,7 +1011,9 @@ NVTX.@annotate function snow_boundary_fluxes!(
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
-    P_liq = p.drivers.P_liq
+    # Liquid water reaching the snowpack: the throughfall below the canopy
+    # (the liquid precipitation if canopy interception is not modeled)
+    P_liq = Canopy.liquid_throughfall(p)
 
     @. p.snow.total_water_flux =
         P_snow * (1 - p.lake_fraction) +
@@ -1018,11 +1030,19 @@ NVTX.@annotate function snow_boundary_fluxes!(
         p,
         model.parameters.earth_param_set,
     )
-    e_flux_falling_rain = Snow.energy_flux_falling_rain(
-        bc.atmos,
-        p,
-        model.parameters.earth_param_set,
-    )
+    e_flux_falling_rain =
+        hasproperty(p.canopy, :interception) ?
+        (@. lazy(
+            Snow.volumetric_internal_energy_liq(
+                p.drivers.T,
+                model.parameters.earth_param_set,
+            ) * P_liq,
+        )) :
+        Snow.energy_flux_falling_rain(
+            bc.atmos,
+            p,
+            model.parameters.earth_param_set,
+        )
 
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
     @. p.snow.total_energy_flux =

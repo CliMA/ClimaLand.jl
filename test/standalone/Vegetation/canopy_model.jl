@@ -160,8 +160,11 @@ import ClimaParams
                 @test propertynames(getproperty(Y.canopy, component)) ==
                       ClimaLand.prognostic_vars(getproperty(canopy, component))
             end
-            @test propertynames(getproperty(p.canopy, component)) ==
-                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
+            # Components without auxiliary variables (e.g. NoInterception)
+            # have no entry in the cache
+            isempty(ClimaLand.auxiliary_vars(getproperty(canopy, component))) ||
+                @test propertynames(getproperty(p.canopy, component)) ==
+                      ClimaLand.auxiliary_vars(getproperty(canopy, component))
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
             @test getproperty(auxiliary_vars(canopy), component) ==
@@ -634,6 +637,7 @@ end
                 energy,
                 sif,
                 biomass,
+                Canopy.NoInterception{FT}(),
                 boundary_conditions,
                 earth_param_set,
                 domain,
@@ -700,8 +704,9 @@ end
                         getproperty(canopy, component),
                     )
                 end
-                @test propertynames(getproperty(p.canopy, component)) ==
-                      ClimaLand.auxiliary_vars(getproperty(canopy, component))
+                isempty(ClimaLand.auxiliary_vars(getproperty(canopy, component))) ||
+                    @test propertynames(getproperty(p.canopy, component)) ==
+                          ClimaLand.auxiliary_vars(getproperty(canopy, component))
                 @test getproperty(auxiliary_types(canopy), component) ==
                       auxiliary_types(getproperty(canopy, component))
                 @test getproperty(auxiliary_vars(canopy), component) ==
@@ -773,8 +778,9 @@ end
             @test propertynames(getproperty(Y.canopy, component)) ==
                   ClimaLand.prognostic_vars(getproperty(canopy, component))
         end
-        @test propertynames(getproperty(p.canopy, component)) ==
-              ClimaLand.auxiliary_vars(getproperty(canopy, component))
+        isempty(ClimaLand.auxiliary_vars(getproperty(canopy, component))) ||
+            @test propertynames(getproperty(p.canopy, component)) ==
+                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
         @test getproperty(auxiliary_types(canopy), component) ==
               auxiliary_types(getproperty(canopy, component))
         @test getproperty(auxiliary_vars(canopy), component) ==

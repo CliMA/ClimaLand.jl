@@ -71,6 +71,7 @@ using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
 include("./canopy_turbulent_fluxes.jl")
+include("./interception.jl")
 
 
 
@@ -679,7 +680,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, IM, B, PSE, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -699,6 +700,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
     sif::SIFM
     "Biomass parameterization, a canopy component model"
     biomass::BM
+    "Canopy interception parameterization, a canopy component model"
+    interception::IM
     "Boundary Conditions"
     boundary_conditions::B
     "Shared parameters between component models"
@@ -738,6 +741,7 @@ end
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
         biomass::AbstractBiomassModel{FT},
+        interception::AbstractCanopyInterceptionModel{FT} = NoInterception{FT}(),
         boundary_conditions::B,
         earth_param_set::PSE,
         domain::Union{
@@ -761,6 +765,7 @@ function CanopyModel{FT}(;
     sif::AbstractSIFModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::AbstractBiomassModel{FT},
+    interception::AbstractCanopyInterceptionModel{FT} = NoInterception{FT}(),
     boundary_conditions::B,
     earth_param_set::PSE,
     domain::Union{
@@ -771,6 +776,9 @@ function CanopyModel{FT}(;
 ) where {FT, B, PSE}
 
     check_component_compatibility(photosynthesis, conductance, biomass)
+    if hasproperty(boundary_conditions, :atmos)
+        check_interception_forcing(interception, boundary_conditions.atmos)
+    end
 
     args = (
         autotrophic_respiration,
@@ -782,6 +790,7 @@ function CanopyModel{FT}(;
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -810,6 +819,7 @@ end
         biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
         turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
+        interception = NoInterception{FT}(),
     ) where {FT, PSE}
 
 Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`.
@@ -854,8 +864,10 @@ function CanopyModel{FT}(
         biomass.height,
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
+    interception = NoInterception{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
+    check_interception_forcing(interception, atmos)
 
     # Confirm that each spatially-varying parameter is on the correct domain
     for component in [
@@ -897,6 +909,7 @@ function CanopyModel{FT}(
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -954,8 +967,10 @@ function CanopyModel{FT}(
         biomass.height,
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
+    interception = NoInterception{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
+    check_interception_forcing(interception, atmos)
 
     # Confirm that each spatially-varying parameter is on the correct domain
     for component in [
@@ -995,6 +1010,7 @@ function CanopyModel{FT}(
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -1016,6 +1032,7 @@ in a hierarchical manner within the state vectors.
 These names must match the field names of the CanopyModel struct.
 """
 canopy_components(::CanopyModel) = (
+    :interception,
     :hydraulics,
     :conductance,
     :photosynthesis,
@@ -1228,6 +1245,10 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # This updates LAI; it must come first.
         update_biomass!(p, Y, t, canopy.biomass, canopy)
 
+        # Update the interception, drip, throughfall and wetted fraction;
+        # this uses the area indices and must precede the ground fluxes.
+        update_interception!(p, Y, t, canopy.interception, canopy)
+
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
 
@@ -1401,8 +1422,8 @@ end
 A function which updates `surface_field` in place with the value for
 the total liquid water volume per unit ground area for the `CanopyModel`.
 
-This acts by calling the method for the PlantHydraulics component of
-the canopy model.
+This acts by calling the methods for the PlantHydraulics and interception
+components of the canopy model.
 """
 function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
@@ -1414,6 +1435,15 @@ function ClimaLand.total_liq_water_vol_per_area!(
     ClimaLand.total_liq_water_vol_per_area!(
         surface_field,
         model.hydraulics,
+        model,
+        Y,
+        p,
+        t,
+    )
+    # Add the water intercepted by the canopy, if modeled
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model.interception,
         model,
         Y,
         p,

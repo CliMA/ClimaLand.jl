@@ -86,6 +86,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(soilco2.SOC),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),
+        @name(canopy.interception.W),
         @name(canopy.photosynthesis.acclimated),
         @name(canopy.biomass.A0_daily),
         @name(canopy.biomass.A0_annual),

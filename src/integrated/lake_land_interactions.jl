@@ -106,9 +106,12 @@ function InlandWater.lake_boundary_fluxes!(
     # R_n already computed by lsm_radiant_energy_fluxes! — do NOT call net_radiation!
 
     earth_param_set = model.parameters.earth_param_set
-    @. p.lake.runoff = -(
-        p.drivers.P_liq + p.drivers.P_snow + p.lake.turbulent_fluxes.vapor_flux
-    )
+    # Liquid water reaching the lake: the throughfall below the canopy (the
+    # liquid precipitation if canopy interception is not modeled), consistent
+    # with the other surfaces below the canopy
+    P_liq = ClimaLand.liquid_throughfall(p)
+    @. p.lake.runoff =
+        -(P_liq + p.drivers.P_snow + p.lake.turbulent_fluxes.vapor_flux)
     # p.lake.runoff is already area-weighted by lake fraction, so the runoff
     # energy flux should use it directly.
     @. p.lake.runoff_energy_flux = InlandWater.lake_runoff_energy_flux(

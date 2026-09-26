@@ -159,6 +159,9 @@ function make_compute_imp_tendency(
     function compute_imp_tendency!(dY, Y, p, t)
         area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
+        # Energy carried by liquid water added to the canopy water store
+        # (zero without an interception model)
+        F_int = interception_energy_flux(canopy.interception, p, canopy)
         # Energy Equation:
         # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
         # or( ac_canopy AI)∂T∂t = -∑F
@@ -179,7 +182,8 @@ function make_compute_imp_tendency(
                 -p.canopy.radiative_transfer.LW_n -
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
-                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
+                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots -
+                F_int
             ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!

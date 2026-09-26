@@ -209,7 +209,7 @@ a helper function which returns the surface specific humidity for the canopy
 model.
 """
 function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
-    earth_param_set = get_earth_param_set(model)
+    earth_param_set = ClimaLand.get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     T_sfc = component_temperature(model, Y, p)
     T_air = p.drivers.T
@@ -274,9 +274,13 @@ function ClimaLand.get_update_surface_humidity_function(
 )
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    LAI = p.canopy.biomass.area_index.leaf
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+    PAI = @. lazy(area_index.leaf + area_index.stem)
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
     q_canopy = component_specific_humidity(model, Y, p)
+    (f_wet, E_max, dew_to_storage) =
+        interception_flux_args(model.interception, p)
     function update_q_vap_sfc_at_a_point(
         ζ,
         param_set,
@@ -289,12 +293,29 @@ function ClimaLand.get_update_surface_humidity_function(
         z_0b,
         leaf_Cd,
         LAI,
+        PAI,
         r_stomata_canopy,
         q_canopy,
+        f_wet,
+        E_max,
+        dew_to_storage,
     )
-        g_leaf = leaf_Cd * u_star * LAI
-        g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        # Transpiration and evaporation of intercepted water act in parallel
+        (g_wet, g_tr) = canopy_vapor_conductances(
+            u_star,
+            leaf_Cd,
+            LAI,
+            PAI,
+            r_stomata_canopy,
+            f_wet,
+            E_max,
+            q_canopy,
+            q_vap_int,
+            inputs.ρ_int,
+            dew_to_storage,
+        )
+        g_land = g_wet + g_tr
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
@@ -304,8 +325,6 @@ function ClimaLand.get_update_surface_humidity_function(
             z_0b,
             scheme,
         )
-
-        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
 
         # Solve for q_sfc analytically to satisfy balance of fluxes:
         # Flux_aero = ρ * g_h * (q_sfc - q_atm)
@@ -318,9 +337,30 @@ function ClimaLand.get_update_surface_humidity_function(
         return q_new
     end
     # Closure
-    update_q_vap_sfc_field(Cd, LAI, r, qc) =
-        (args...) -> update_q_vap_sfc_at_a_point(args..., Cd, LAI, r, qc)
-    return @. lazy(update_q_vap_sfc_field(Cd, LAI, r_stomata_canopy, q_canopy))
+    update_q_vap_sfc_field(Cd, LAI, PAI, r, qc, fw, Em, dew) =
+        (args...) -> update_q_vap_sfc_at_a_point(
+            args...,
+            Cd,
+            LAI,
+            PAI,
+            r,
+            qc,
+            fw,
+            Em,
+            dew,
+        )
+    return @. lazy(
+        update_q_vap_sfc_field(
+            Cd,
+            LAI,
+            PAI,
+            r_stomata_canopy,
+            q_canopy,
+            f_wet,
+            E_max,
+            dew_to_storage,
+        ),
+    )
 end
 
 """
@@ -391,8 +431,18 @@ the canopy temperature.
 function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    LAI = p.canopy.biomass.area_index.leaf
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+    PAI = @. lazy(area_index.leaf + area_index.stem)
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    (f_wet, E_max, dew_to_storage) =
+        interception_flux_args(model.interception, p)
+    earth_param_set = ClimaLand.get_earth_param_set(model)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    q_air = p.drivers.q
+    ρ_air = @. lazy(
+        Thermodynamics.air_density(thermo_params, p.drivers.T, p.drivers.P, q_air),
+    )
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
@@ -401,11 +451,29 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         earth_param_set,
         leaf_Cd,
         LAI,
+        PAI,
         r_stomata_canopy,
+        f_wet,
+        E_max,
+        dew_to_storage,
+        q_air,
+        ρ_air,
     )
-        g_leaf = leaf_Cd * u_star * LAI
-        g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        # The conductances are treated as independent of temperature here
+        (g_wet, g_tr) = canopy_vapor_conductances(
+            u_star,
+            leaf_Cd,
+            LAI,
+            PAI,
+            r_stomata_canopy,
+            f_wet,
+            E_max,
+            q_sat,
+            q_air,
+            ρ_air,
+            dew_to_storage,
+        )
+        g_land = g_wet + g_tr
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
         return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(
             q_sat,
@@ -415,10 +483,32 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         )
     end
     # Closure
-    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
-        (args...) ->
-            update_∂q_sfc∂T_at_a_point(args..., leaf_Cd, LAI_val, r_val)
-    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
+    update_∂q_sfc∂T_field(LAI_val, PAI_val, r_val, leaf_Cd, fw, Em, dew, qa, ρa) =
+        (args...) -> update_∂q_sfc∂T_at_a_point(
+            args...,
+            leaf_Cd,
+            LAI_val,
+            PAI_val,
+            r_val,
+            fw,
+            Em,
+            dew,
+            qa,
+            ρa,
+        )
+    return @. lazy(
+        update_∂q_sfc∂T_field(
+            LAI,
+            PAI,
+            r_stomata_canopy,
+            Cd,
+            f_wet,
+            E_max,
+            dew_to_storage,
+            q_air,
+            ρ_air,
+        ),
+    )
 end
 
 """
@@ -507,3 +597,193 @@ boundary_var_types(
         Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )
+
+"""
+    ClimaLand.turbulent_fluxes!(
+        dest,
+        atmos::ClimaLand.PrescribedAtmosphere,
+        model::CanopyModel,
+        Y,
+        p,
+        t,
+    )
+
+Computes the canopy turbulent fluxes. Without canopy interception, this
+uses the generic method. With interception, the canopy vapor flux is also
+partitioned into transpiration and evaporation of intercepted water.
+"""
+function ClimaLand.turbulent_fluxes!(
+    dest,
+    atmos::ClimaLand.PrescribedAtmosphere,
+    model::CanopyModel,
+    Y,
+    p,
+    t,
+)
+    canopy_turbulent_fluxes!(dest, model.interception, atmos, model, Y, p, t)
+    return nothing
+end
+
+canopy_turbulent_fluxes!(
+    dest,
+    interception::NoInterception,
+    atmos,
+    model,
+    Y,
+    p,
+    t,
+) = invoke(
+    ClimaLand.turbulent_fluxes!,
+    Tuple{Any, AbstractAtmosphericDrivers, ClimaLand.AbstractModel, Any, Any, Any},
+    dest,
+    atmos,
+    model,
+    Y,
+    p,
+    t,
+)
+
+function canopy_turbulent_fluxes!(
+    dest,
+    interception::CLM5Interception,
+    atmos,
+    model,
+    Y,
+    p,
+    t,
+)
+    T_sfc = component_temperature(model, Y, p) # guess
+    q_sfc = component_specific_humidity(model, Y, p) # guess, q_sat(T_canopy)
+    roughness_model = surface_roughness_model(model, Y, p)
+    update_T_sfc = get_update_surface_temperature_function(model, Y, p)
+    update_q_sfc = get_update_surface_humidity_function(model, Y, p)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    displ = surface_displacement_height(model, Y, p)
+    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
+    update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
+    earth_param_set = ClimaLand.get_earth_param_set(model)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
+    Cd = model.boundary_conditions.turbulent_flux_parameterization.Cd
+    area_index = p.canopy.biomass.area_index
+    PAI = @. lazy(area_index.leaf + area_index.stem)
+    ρ_air = @. lazy(
+        Thermodynamics.air_density(
+            thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        ),
+    )
+    fluxes = p.canopy.interception.fluxes
+    fluxes .=
+        canopy_fluxes_with_interception_at_a_point.(
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
+            p.drivers.u,
+            atmos.h,
+            T_sfc,
+            q_sfc,
+            roughness_model,
+            update_T_sfc,
+            update_q_sfc,
+            h_sfc,
+            displ,
+            update_∂T_sfc∂T,
+            update_∂q_sfc∂T,
+            gustiness,
+            earth_param_set,
+            Cd,
+            area_index.leaf,
+            PAI,
+            p.canopy.conductance.r_stomata_canopy,
+            p.canopy.interception.f_wet,
+            p.canopy.interception.E_max,
+            ρ_air,
+        )
+    dest.lhf .= fluxes.lhf
+    dest.shf .= fluxes.shf
+    dest.vapor_flux .= fluxes.vapor_flux
+    dest.∂lhf∂T .= fluxes.∂lhf∂T
+    dest.∂shf∂T .= fluxes.∂shf∂T
+    p.canopy.interception.transpiration .= fluxes.transpiration
+    return nothing
+end
+
+"""
+    canopy_fluxes_with_interception_at_a_point(
+        P_atmos, T_atmos, q_atmos, u_atmos, h_atmos, T_sfc_guess, q_sfc_guess,
+        roughness_model, update_T_sfc, update_q_vap_sfc, h_sfc, displ,
+        update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, earth_param_set,
+        leaf_Cd, LAI, PAI, r_stomata_canopy, f_wet, E_max, ρ_air,
+    )
+
+Computes the canopy turbulent fluxes at a point and partitions the vapor
+flux into transpiration and evaporation of intercepted water in proportion
+to their parallel conductances (both pathways share the canopy saturation
+humidity and the canopy surface air humidity).
+"""
+function canopy_fluxes_with_interception_at_a_point(
+    P_atmos::FT,
+    T_atmos::FT,
+    q_atmos::FT,
+    u_atmos,
+    h_atmos::FT,
+    T_sfc_guess::FT,
+    q_sfc_guess::FT,
+    roughness_model,
+    update_T_sfc,
+    update_q_vap_sfc,
+    h_sfc::FT,
+    displ::FT,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
+    gustiness,
+    earth_param_set,
+    leaf_Cd::FT,
+    LAI::FT,
+    PAI::FT,
+    r_stomata_canopy::FT,
+    f_wet::FT,
+    E_max::FT,
+    ρ_air::FT,
+) where {FT}
+    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, _, _, _, u_star) =
+        ClimaLand.compute_turbulent_fluxes_and_ustar_at_a_point(
+            P_atmos,
+            T_atmos,
+            q_atmos,
+            u_atmos,
+            h_atmos,
+            T_sfc_guess,
+            q_sfc_guess,
+            roughness_model,
+            update_T_sfc,
+            update_q_vap_sfc,
+            h_sfc,
+            displ,
+            update_∂T_sfc∂T,
+            update_∂q_sfc∂T,
+            gustiness,
+            earth_param_set,
+        )
+    (g_wet, g_tr) = canopy_vapor_conductances(
+        u_star,
+        leaf_Cd,
+        LAI,
+        PAI,
+        r_stomata_canopy,
+        f_wet,
+        E_max,
+        q_sfc_guess,
+        q_atmos,
+        ρ_air,
+        true,
+    )
+    # The wet-canopy evaporation is exactly zero, and the transpiration
+    # exactly the vapor flux, when there is no wet-canopy conductance
+    E_wet = vapor_flux * g_wet / max(g_wet + g_tr, eps(FT))
+    transpiration = vapor_flux - E_wet
+    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, transpiration)
+end
