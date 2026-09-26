@@ -419,6 +419,30 @@ type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
+[stem_PAR_reflectance]
+value = 0.16
+type = "float"
+description = "PAR reflectance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_PAR_transmittance]
+value = 0.001
+type = "float"
+description = "PAR transmittance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_reflectance]
+value = 0.39
+type = "float"
+description = "NIR reflectance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_transmittance]
+value = 0.001
+type = "float"
+description = "NIR transmittance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]

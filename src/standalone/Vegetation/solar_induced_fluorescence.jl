@@ -70,7 +70,7 @@ function update_SIF!(
     earth_param_set = canopy.earth_param_set
 
     # Compute APAR
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
@@ -122,7 +122,7 @@ function update_SIF!(
     SIF = p.canopy.sif.SIF
     earth_param_set = canopy.earth_param_set
 
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)

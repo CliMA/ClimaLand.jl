@@ -159,15 +159,16 @@ NVTX.@annotate function canopy_boundary_fluxes!(
         t,
     )
     # Due to roundoff problem when multiplying and dividing by cp_d, set
-    # SHF to zero if LAI < 0.01
-    zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
+    # SHF to zero if the plant area index (leaves and stems) is < 0.05
+    zero_on_lai(X::FT, pai::FT) where {FT} = pai < FT(0.05) ? FT(0) : X
+    area_index = p.canopy.biomass.area_index
     @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
         p.canopy.turbulent_fluxes.shf,
-        p.canopy.biomass.area_index.leaf,
+        area_index.leaf + area_index.stem,
     )
     @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
         p.canopy.turbulent_fluxes.∂shf∂T,
-        p.canopy.biomass.area_index.leaf,
+        area_index.leaf + area_index.stem,
     )
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
@@ -335,7 +336,10 @@ function ClimaLand.get_update_surface_temperature_function(
 )
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    # Sensible heat is exchanged by leaves and stems (plant area index), as
+    # in CLM5; transpiration (humidity callback) uses the leaf area only.
+    area_index = p.canopy.biomass.area_index
+    AI = @. lazy(area_index.leaf + area_index.stem)
     T_canopy = canopy_temperature(model.energy, model, Y, p)
     function update_T_sfc_at_a_point(
         ζ,
@@ -427,7 +431,8 @@ the canopy temperature.
 function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    area_index = p.canopy.biomass.area_index
+    AI = @. lazy(area_index.leaf + area_index.stem) # plant area index
     function update_∂T_sfc∂T_at_a_point(
         u_star,
         g_h,

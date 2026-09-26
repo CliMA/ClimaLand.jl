@@ -61,11 +61,16 @@ Base.@kwdef struct BeerLambertParameters{
     G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
     FF <: Union{FT, ClimaCore.Fields.Field},
+    S <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::F
     "NIR leaf reflectance"
     α_NIR_leaf::F
+    "PAR stem reflectance (unitless)"
+    α_PAR_stem::S
+    "NIR stem reflectance (unitless)"
+    α_NIR_stem::S
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Extinction coefficient for longwave"
@@ -101,6 +106,7 @@ Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
     G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
+    S <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::F
@@ -110,6 +116,14 @@ Base.@kwdef struct TwoStreamParameters{
     α_NIR_leaf::F
     "NIR leaf element transmittance"
     τ_NIR_leaf::F
+    "PAR stem reflectance (unitless)"
+    α_PAR_stem::S
+    "PAR stem element transmittance (unitless)"
+    τ_PAR_stem::S
+    "NIR stem reflectance (unitless)"
+    α_NIR_stem::S
+    "NIR stem element transmittance (unitless)"
+    τ_NIR_stem::S
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Extinction coefficient for longwave"
@@ -299,11 +313,17 @@ end
         Ω,
         n_layers = UInt64(20),
         ϵ_canopy = toml_dict["canopy_emissivity"],
-        K_lw = toml_dict["canopy_K_lw"]
+        K_lw = toml_dict["canopy_K_lw"],
+        α_PAR_stem = toml_dict["stem_PAR_reflectance"],
+        τ_PAR_stem = toml_dict["stem_PAR_transmittance"],
+        α_NIR_stem = toml_dict["stem_NIR_reflectance"],
+        τ_NIR_stem = toml_dict["stem_NIR_transmittance"],
     )
 
 TOML dict based constructor supplying default values for the
-`TwoStreamParameters` struct.
+`TwoStreamParameters` struct. The stem optical properties are used, together
+with the leaf properties, to form plant-area-weighted optical properties of the
+canopy elements when the stem area index is nonzero.
 """
 function TwoStreamParameters(
     toml_dict::CP.ParamDict;
@@ -316,6 +336,10 @@ function TwoStreamParameters(
     n_layers = UInt64(20),
     ϵ_canopy = toml_dict["canopy_emissivity"],
     K_lw = toml_dict["canopy_K_lw"],
+    α_PAR_stem = toml_dict["stem_PAR_reflectance"],
+    τ_PAR_stem = toml_dict["stem_PAR_transmittance"],
+    α_NIR_stem = toml_dict["stem_NIR_reflectance"],
+    τ_NIR_stem = toml_dict["stem_NIR_transmittance"],
 )
     FT = CP.float_type(toml_dict)
     λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
@@ -325,12 +349,25 @@ function TwoStreamParameters(
     τ_PAR_leaf = FT.(τ_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
     τ_NIR_leaf = FT.(τ_NIR_leaf)
-    return TwoStreamParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    α_PAR_stem = FT.(α_PAR_stem)
+    τ_PAR_stem = FT.(τ_PAR_stem)
+    α_NIR_stem = FT.(α_NIR_stem)
+    τ_NIR_stem = FT.(τ_NIR_stem)
+    return TwoStreamParameters{
+        FT,
+        typeof(G_Function),
+        typeof(α_PAR_leaf),
+        typeof(α_PAR_stem),
+    }(;
         G_Function,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,
         τ_NIR_leaf,
+        α_PAR_stem,
+        τ_PAR_stem,
+        α_NIR_stem,
+        τ_NIR_stem,
         Ω,
         n_layers,
         ϵ_canopy,
@@ -347,7 +384,9 @@ end
         α_NIR_leaf,
         Ω,
         ϵ_canopy = toml_dict["canopy_emissivity"],
-        K_lw = toml_dict["canopy_K_lw"]
+        K_lw = toml_dict["canopy_K_lw"],
+        α_PAR_stem = toml_dict["stem_PAR_reflectance"],
+        α_NIR_stem = toml_dict["stem_NIR_reflectance"],
     )
 
 TOML dict based constructor supplying default values for the
@@ -362,12 +401,16 @@ function BeerLambertParameters(
     Ω,
     ϵ_canopy = toml_dict["canopy_emissivity"],
     K_lw = toml_dict["canopy_K_lw"],
+    α_PAR_stem = toml_dict["stem_PAR_reflectance"],
+    α_NIR_stem = toml_dict["stem_NIR_reflectance"],
 )
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
     α_PAR_leaf = FT.(α_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
+    α_PAR_stem = FT.(α_PAR_stem)
+    α_NIR_stem = FT.(α_NIR_stem)
     Ω = FT.(Ω)
     λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
     return BeerLambertParameters{
@@ -375,10 +418,13 @@ function BeerLambertParameters(
         typeof(G_Function),
         typeof(α_PAR_leaf),
         typeof(Ω),
+        typeof(α_PAR_stem),
     }(;
         G_Function,
         α_PAR_leaf,
         α_NIR_leaf,
+        α_PAR_stem,
+        α_NIR_stem,
         Ω,
         ϵ_canopy,
         K_lw,
@@ -422,10 +468,58 @@ function compute_G(G::CLMGFunction, cosθs::FT) where {FT}
 end
 
 """
+    stem_area_fraction(LAI, SAI)
+
+The fraction of the plant area index `LAI + SAI` that is stem area, used to
+weight the optical properties of the canopy elements (CLM5 technical note,
+Section 3.1). Returns exactly zero when `SAI = 0`.
+"""
+@inline stem_area_fraction(LAI::FT, SAI::FT) where {FT} =
+    SAI / max(LAI + SAI, eps(FT))
+
+"""
+    plant_area_weighted(x_leaf, x_stem, LAI, SAI)
+
+The plant-area-weighted average `(LAI x_leaf + SAI x_stem)/(LAI + SAI)` of a
+leaf and a stem optical property. Returns exactly `x_leaf` when `SAI = 0`.
+"""
+@inline plant_area_weighted(x_leaf, x_stem, LAI, SAI) =
+    x_leaf + (x_stem - x_leaf) * stem_area_fraction(LAI, SAI)
+
+"""
+    leaf_absorption_fraction(LAI::FT, SAI::FT) where {FT}
+
+The fraction of the radiation absorbed by the canopy (leaves and stems) that is
+absorbed by leaves, `LAI/(LAI + SAI)`, as in CLM5. Leaves and stems are assumed
+to be randomly mixed in the canopy and to have similar absorptivities in the
+PAR band. Returns exactly one when `SAI = 0`.
+"""
+@inline leaf_absorption_fraction(LAI::FT, SAI::FT) where {FT} =
+    ifelse(LAI + SAI > 0, LAI / max(LAI + SAI, eps(FT)), FT(1))
+
+"""
+    leaf_fAPAR(p)
+
+A lazy field with the fraction of incident PAR absorbed by leaves: the canopy
+(leaf + stem) absorbed fraction `p.canopy.radiative_transfer.par.abs` times the
+leaf share of the plant area index. This is the absorbed PAR that drives
+photosynthesis and fluorescence; the total canopy absorption enters the canopy
+energy balance.
+"""
+function leaf_fAPAR(p)
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        p.canopy.radiative_transfer.par.abs *
+        leaf_absorption_fraction(area_index.leaf, area_index.stem),
+    )
+end
+
+"""
     compute_fractional_absorbances!(
         p,
         RT::BeerLambertModel{FT},
         LAI,
+        SAI,
         α_soil_PAR,
         α_soil_NIR,
     )
@@ -444,25 +538,28 @@ function compute_fractional_absorbances!(
     p,
     RT::BeerLambertModel{FT},
     LAI,
+    SAI,
     α_soil_PAR,
     α_soil_NIR,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
+    # Leaves and stems are treated as randomly mixed canopy elements with
+    # plant-area-weighted optical properties (CLM5)
     @. p.canopy.radiative_transfer.par = canopy_sw_rt_beer_lambert(
         RTP.G_Function,
         cosθs,
         RTP.Ω,
-        RTP.α_PAR_leaf,
-        LAI,
+        plant_area_weighted(RTP.α_PAR_leaf, RTP.α_PAR_stem, LAI, SAI),
+        LAI + SAI,
         α_soil_PAR,
     )
     @. p.canopy.radiative_transfer.nir = canopy_sw_rt_beer_lambert(
         RTP.G_Function,
         cosθs,
         RTP.Ω,
-        RTP.α_NIR_leaf,
-        LAI,
+        plant_area_weighted(RTP.α_NIR_leaf, RTP.α_NIR_stem, LAI, SAI),
+        LAI + SAI,
         α_soil_NIR,
     )
 end
@@ -471,6 +568,7 @@ end
     compute_fractional_absorbances!(p,
         RT::TwoStreamModel{FT},
         LAI,
+        SAI,
         α_soil_PAR,
         α_soil_NIR,
     )
@@ -492,19 +590,22 @@ function compute_fractional_absorbances!(
     p,
     RT::TwoStreamModel{FT},
     LAI,
+    SAI,
     α_soil_PAR,
     α_soil_NIR,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
     frac_diff = p.drivers.frac_diff
+    # Leaves and stems are treated as randomly mixed canopy elements with
+    # plant-area-weighted optical properties (CLM5)
     @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
         RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
-        RTP.α_PAR_leaf,
-        RTP.τ_PAR_leaf,
-        LAI,
+        plant_area_weighted(RTP.α_PAR_leaf, RTP.α_PAR_stem, LAI, SAI),
+        plant_area_weighted(RTP.τ_PAR_leaf, RTP.τ_PAR_stem, LAI, SAI),
+        LAI + SAI,
         cosθs,
         α_soil_PAR,
         frac_diff,
@@ -513,9 +614,9 @@ function compute_fractional_absorbances!(
         RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
-        RTP.α_NIR_leaf,
-        RTP.τ_NIR_leaf,
-        LAI,
+        plant_area_weighted(RTP.α_NIR_leaf, RTP.α_NIR_stem, LAI, SAI),
+        plant_area_weighted(RTP.τ_NIR_leaf, RTP.τ_NIR_stem, LAI, SAI),
+        LAI + SAI,
         cosθs,
         α_soil_NIR,
         frac_diff,
@@ -797,8 +898,12 @@ end
 
 Updates the following cache variables in place:
 - downwelling PAR and NIR in W/m^2: p.canopy.radiative_transfer.par_d, .nir_d
-- absorbed, reflected, and transmitted fractions of PAR and NIR: p.canopy.radiative_transfer.par, .nir
+- absorbed (by leaves and stems), reflected, and transmitted fractions of PAR and NIR: p.canopy.radiative_transfer.par, .nir
 - canopy emissivity: p.canopy.radiative_transfer.ϵ
+
+Leaves and stems are treated as randomly mixed canopy elements, with the plant
+area index `LAI + SAI` and plant-area-weighted optical properties, as in CLM5.
+The leaf share of the absorbed PAR is given by [`leaf_fAPAR`](@ref).
 
 This implies that all concrete types of AbstractRadiationModel must
 set these variables.
@@ -814,12 +919,14 @@ function update_radiative_transfer!(
     nir_d = p.canopy.radiative_transfer.nir_d
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
+    SAI = area_index.stem
     bc = canopy.boundary_conditions
 
-    # update radiative transfer
+    # update radiative transfer; leaves and stems both absorb and emit
+    # (plant area index LAI + SAI, CLM 5.0 Tech note Eq. 4.20)
     (; K_lw) = radiative_transfer.parameters
     @. p.canopy.radiative_transfer.ϵ =
-        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-K_lw * LAI)) #from CLM 5.0, Tech note 4.20
+        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-K_lw * (LAI + SAI)))
     compute_PAR!(par_d, radiative_transfer, bc.radiation, p, t)
     compute_NIR!(nir_d, radiative_transfer, bc.radiation, p, t)
 
@@ -827,6 +934,7 @@ function update_radiative_transfer!(
         p,
         radiative_transfer,
         LAI,
+        SAI,
         ground_albedo_PAR(
             Val(bc.prognostic_land_components),
             bc.ground,

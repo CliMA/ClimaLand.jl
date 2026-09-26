@@ -315,7 +315,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     An = p.canopy.photosynthesis.An
     GPP = p.canopy.photosynthesis.GPP
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    f_abs = p.canopy.radiative_transfer.par.abs
+    f_abs = leaf_fAPAR(p) # PAR absorbed by leaves
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     T_air = p.drivers.T
@@ -419,7 +419,7 @@ end
 
 function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     earth_param_set = canopy.earth_param_set
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)

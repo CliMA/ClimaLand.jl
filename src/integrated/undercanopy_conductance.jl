@@ -32,8 +32,8 @@ rough canopy, which is typically smaller than `r'`.
 
 The friction velocity above the canopy is estimated from neutral similarity
 with the canopy roughness length and displacement height, and the canopy air
-temperature from the conductance-weighted mean of the air and leaf
-temperatures. The ground temperature in the Richardson number is the soil
+temperature from the conductance-weighted mean of the air and canopy (leaf and
+stem) temperatures. The ground temperature in the Richardson number is the soil
 surface temperature at the time of evaluation (the top layer temperature, as
 the skin temperature is solved for afterwards).
 
@@ -46,7 +46,7 @@ vegetation), `g_eff → g_h`, recovering bare soil.
 
 """
     undercanopy_resistance_at_a_point(
-        LAI, h_c, z_0m_c, z_0b_c, displ_c, leaf_Cd,
+        PAI, h_c, z_0m_c, z_0b_c, displ_c, leaf_Cd,
         T_canopy, T_ground, T_air, u_air, Δz_ref, gustiness, C_s,
         earth_param_set,
     )
@@ -56,7 +56,7 @@ canopy, given the atmospheric state at the reference height `Δz_ref` above the
 ground. See the discussion at the top of this file.
 """
 function undercanopy_resistance_at_a_point(
-    LAI::FT,
+    PAI::FT,
     h_c::FT,
     z_0m_c::FT,
     z_0b_c::FT,
@@ -85,9 +85,10 @@ function undercanopy_resistance_at_a_point(
     u_star_c = κ * U / log(z_eff / z_0m_c)
     g_ac = κ * u_star_c / log(z_eff / z_0b_c)
     # Canopy air temperature: conductance-weighted mean of the air (brought
-    # dry-adiabatically to the surface) and leaf temperatures
+    # dry-adiabatically to the surface) and canopy temperatures; PAI is the
+    # plant (leaf + stem) area index
     T_a = T_air + grav * Δz_ref / cp_d
-    g_leaf = leaf_Cd * u_star_c * max(LAI, FT(0))
+    g_leaf = leaf_Cd * u_star_c * max(PAI, FT(0))
     T_af = (g_ac * T_a + g_leaf * T_canopy) / (g_ac + g_leaf)
     # Stability correction (Sakaguchi and Zeng, 2009)
     Ri = grav * h_c * (T_af - T_ground) / (T_af * u_star_c^2)
@@ -124,7 +125,7 @@ function update_undercanopy_conductance!(
     C_s = soil.parameters.C_s_undercanopy
     @. p.soil.W_gap = exp(-(max(area_index.leaf, 0) + max(area_index.stem, 0)))
     @. p.soil.r_undercanopy = undercanopy_resistance_at_a_point(
-        area_index.leaf,
+        area_index.leaf + area_index.stem, # canopy elements exchanging heat
         canopy.biomass.height,
         sfp.z_0m,
         sfp.z_0b,
