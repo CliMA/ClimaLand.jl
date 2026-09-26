@@ -551,9 +551,9 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                     ) * p.soil.K,
                 ),
             ) * p.soil.bidiag_matrix_scratch
+        # The `- I` of the residual derivative enters diagonal blocks only
         @. ∂ρeres∂ϑ =
-            negative_dtγ *
-            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
+            negative_dtγ * (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch)
 
         # Now overwrite bidiag_matrix_scratch and full_bidiag scratch for the ρe ρe bidiagonal
         @. p.soil.bidiag_matrix_scratch =
