@@ -193,6 +193,7 @@ include("./soil_heat_parameterizations.jl")
 include("Runoff/Runoff.jl")
 using .Runoff
 include("./boundary_conditions.jl")
+include("./soil_surface_temperature.jl")
 include("./soil_albedo.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("./spatially_varying_parameters.jl")
@@ -282,6 +283,7 @@ function EnergyHydrology{FT}(
     z_0m = toml_dict["soil_momentum_roughness_length"],
     z_0b = toml_dict["soil_scalar_roughness_length"],
     emissivity = toml_dict["emissivity_bare_soil"],
+    r_litter = toml_dict["litter_thermal_resistance"],
     additional_sources = (),
     bottom_bc = WaterHeatBC(;
         water = WaterFluxBC((p, t) -> 0.0),
@@ -308,6 +310,7 @@ function EnergyHydrology{FT}(
         z_0m,
         z_0b,
         emissivity,
+        r_litter,
     )
     return EnergyHydrology{FT}(;
         parameters,
