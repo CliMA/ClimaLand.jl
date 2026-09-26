@@ -286,8 +286,12 @@ for FT in (Float32, Float64)
                 evap_p,
                 evap_α,
                 _D_vapor,
+                ν,
+                θ_r,
             )
             @test gsoil[1] < gsoil[2]
+            τ_a = @. ClimaLand.Soil.soil_tortuosity(S_sfc, ν, θ_r)
+            @test τ_a[1] > τ_a[2]
         end
     end
 end
