@@ -161,14 +161,14 @@ for FT in (Float32, Float64)
         )
         # Check the main diagonal, entry corresponding to bottom of column
         @test Array(parent(jac_ρeϑ.entries.:2))[1] .≈
-              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I
+              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic)
         # Check the main diagonal, entries corresponding to interior of domain
         @test all(
             Array(parent(jac_ρeϑ.entries.:2))[2:(end - 1)] .≈
-            dtγ * (-2 * ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I,
+            dtγ * (-2 * ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic),
         )
         # Check the main diagonal, entry corresponding to top of column
         @test Array(parent(jac_ρeϑ.entries.:2))[end] .≈
-              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I
+              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic)
     end
 end
