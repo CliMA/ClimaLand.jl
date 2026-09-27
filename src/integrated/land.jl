@@ -739,6 +739,17 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         t,
     )
 
+    # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
+    # at it; the snow-soil ground heat flux uses the top cell temperature
+    Soil.update_soil_surface_temperature!(
+        land.soil,
+        R_net_soil, # at this point, R_net_soil equals the SW_net of the soil
+        LW_d_canopy,
+        Y,
+        p,
+        t,
+    )
+
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
@@ -845,7 +856,8 @@ NVTX.@annotate function soil_boundary_fluxes!(
     p,
     t,
 )
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
+    # The soil turbulent fluxes were computed with the skin temperature in
+    # `lsm_radiant_energy_fluxes!`
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)

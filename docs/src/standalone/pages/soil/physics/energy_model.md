@@ -37,5 +37,90 @@ retenton curve/permeability curve pairs, which we refer to in places
 as the hydrology closure model. For the thermal conductivity, we use the model
 of Balland and Arp (2003).
 
-Since the liquid water and energy  partial differential equations ire stiff,
+Since the liquid water and energy  partial differential equations are stiff,
 an implicit timestepping scheme must be used to advance them in time.
+
+## Surface boundary conditions
+
+When the soil is driven by the atmosphere (`AtmosDrivenFluxBC`), the boundary
+fluxes at the soil surface are computed from the atmospheric and radiative
+forcing and the soil surface state. The water flux is the sum of infiltration
+(precipitation minus surface runoff) and evaporation, and the energy flux
+(positive upward) is
+
+```math
+F = R_n + H + L + F_{\rm{infil}},
+```
+
+with the net radiation
+
+```math
+R_n = -(1 - α) SW_d - ϵ (LW_d - σ T_{\rm{sfc}}^4),
+```
+
+the sensible and latent heat fluxes $H$ and $L$ from Monin–Obukhov similarity
+theory (SurfaceFluxes.jl), and $F_{\rm{infil}}$ the internal energy carried by
+infiltrating water. All of these depend on the soil surface temperature
+$T_{\rm{sfc}}$ and the surface specific humidity $q_{\rm{sfc}}$.
+
+### Skin temperature
+
+The radiating and turbulent-exchange surface of the soil is treated as a skin
+with zero heat capacity, connected to the center of the top soil layer (at
+temperature $T_{\rm{top}}$ and thermal conductivity $κ_{\rm{top}}$) by the
+half-cell conduction resistance
+
+```math
+r = \frac{Δz_{\rm{top}}}{κ_{\rm{top}}},
+```
+
+where $Δz_{\rm{top}}$ is the distance between the surface and the top cell
+center. The skin temperature satisfies the surface energy balance
+
+```math
+SW_n + LW_n(T_{\rm{sfc}}) + H(T_{\rm{sfc}}) + L(T_{\rm{sfc}}) = \frac{T_{\rm{top}} - T_{\rm{sfc}}}{r},
+```
+
+with all fluxes positive upward, and is found by Newton's method within the
+Monin–Obukhov iterations, in the same way as the snow surface temperature.
+The same solve yields the turbulent fluxes at $T_{\rm{sfc}}$, which are
+stored with it (`p.soil.turbulent_fluxes`), so one Monin–Obukhov solve per
+step gives both. The soil column receives the atmospheric fluxes $F$
+evaluated at $T_{\rm{sfc}}$, so energy is conserved even when the balance
+closes only to the tolerance of the Monin–Obukhov solve. The skin temperature
+is solved for with the atmospheric state at the reference height in
+`p.drivers`, whether prescribed or supplied by a coupler; with a coupled
+atmosphere, the same solve also provides the momentum and buoyancy fluxes.
+
+The resistance $r$ is what separates the surface from the top cell center in
+the discretization: for the 5 cm top layer of the global grid and a dry soil
+($κ_{\rm{top}} ≈ 0.2$ W/m/K), $r ≈ 0.1$ m² K/W, and the skin is several
+kelvin warmer than the top cell at midday. For the 2 cm layers of site
+simulations $r$ is a few hundredths of m² K/W, which is still not negligible:
+at US-Var in the dry season, the skin is on average about 3 K warmer than the
+top cell at the daily maximum, and the diurnal range of the soil temperature
+at 2–8 cm depth is about 10% smaller than when the fluxes are evaluated at the
+top cell temperature. For standalone
+`EnergyHydrology` and `SoilSnowModel`, the skin absorbs the downwelling
+radiation with the soil albedo and emissivity; in `SoilCanopyModel` and
+`LandModel`, the shortwave and longwave radiation reaching the soil are those
+transmitted and emitted by the canopy. Conduction between the soil and a
+snowpack or lake sediment uses the top cell temperature.
+
+When the top cell is frozen (it contains ice and is below the depressed
+freezing temperature), the skin temperature is capped at the depressed
+freezing temperature: energy that would warm the skin further melts ice
+instead. The cap is released once the top cell reaches the freezing
+temperature, so that trace ice in a warm cell does not pin the skin.
+The soil still receives the atmospheric fluxes at the capped skin temperature;
+their excess over the skin–top conduction heats the top cell, where it melts
+ice.
+
+### Time treatment
+
+The surface fluxes and the skin temperature are evaluated once per time step
+from the state at the beginning of the step, held fixed during the implicit
+solve for $ϑ_l$ and $ρe_{\rm{int}}$, and do not contribute to the Jacobian.
+The column test used to check this shows the diurnal cycle of the top
+soil layer to be insensitive to the time step at the step sizes used in
+ClimaLand simulations.
