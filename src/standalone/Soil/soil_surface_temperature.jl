@@ -512,6 +512,7 @@ function soil_surface_vapor_conductance!(
     S_c_sfc = hydrology_cm_sfc.S_c
     ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     θ_l_sfc = g_soil_sfc
     ClimaLand.Domains.linear_interpolation_to_surface!(
         θ_l_sfc,
@@ -519,14 +520,24 @@ function soil_surface_vapor_conductance!(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
+    # The extrapolation can leave the physical range [θ_r, ν]
     ε = eps(FT)
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + ε)
+    @. θ_l_sfc = clamp(θ_l_sfc, θ_r_sfc + ε, ν_sfc)
     S_l_sfc = g_soil_sfc # currently set to θ_l_sfc
     @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     # currently set to S_l_sfc; overwrite with the conductance
-    g_soil_sfc .=
-        soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
+    g_soil_sfc .= soil_conductance.(
+        S_l_sfc,
+        S_c_sfc,
+        d_ds,
+        evap_p,
+        evap_α,
+        _D_vapor,
+        ν_sfc,
+        θ_r_sfc,
+        θ_i_sfc,
+    )
     # Reusing g_soil_sfc for the intermediates keeps the kernel argument
     # count within the parameter memory limit of P100 GPUs
     return g_soil_sfc

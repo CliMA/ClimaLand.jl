@@ -12,6 +12,12 @@ main
   depressed freezing temperature. Conduction to a snowpack still uses the
   top cell temperature.
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🔥behavioralΔ] Include the porous-media tortuosity factor (`soil_tortuosity`) in the
+  dry-soil-layer resistance of `soil_conductance`, evaluated with the
+  air-filled porosity of the air-dry layer, `ν - θ_r - θ_i`, as in CLM5;
+  `soil_conductance` is written in resistance form so that a saturated surface
+  evaporates at the potential rate.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----
