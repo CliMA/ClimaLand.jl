@@ -66,6 +66,19 @@ function set_fluxnet_ic!(
     for component in ClimaLand.land_components(model)
         set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
     end
+    # A litter layer tracks the canopy's plant area index; seed it with the
+    # value at the start of the simulation
+    if hasproperty(model, :canopy) &&
+       hasproperty(model, :soil) &&
+       model.soil.surface_layer isa ClimaLand.Soil.SlabLitter
+        FT = eltype(Y.soil.PAI_mean)
+        ClimaLand.Canopy.plant_area_index_at_time!(
+            Y.soil.PAI_mean,
+            model.canopy.biomass,
+            Y,
+            FT(0),
+        )
+    end
 end
 
 """
@@ -155,6 +168,7 @@ function set_fluxnet_ic!(
         FT(T_soil_0),
         model.parameters.earth_param_set,
     )
+    ClimaLand.Soil.initialize_litter_temperature!(Y, model)
 end
 
 """

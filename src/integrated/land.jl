@@ -561,9 +561,8 @@ function make_update_boundary_fluxes(
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
-            land.soil.parameters,
+            land.soil,
             land.snow.parameters,
-            land.soil.domain,
             FT,
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
@@ -587,9 +586,10 @@ function make_update_boundary_fluxes(
         update_soil_bf!(p, Y, t)
         # Add in lake sediment flux if appropriate
         update_soil_heat_flux_with_lake_sediment_flux!(
-            p.soil.top_bc.heat,
             p,
+            Y,
             land.lake,
+            land.soil,
         )
 
         # Update canopy
@@ -745,6 +745,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         land.soil,
         R_net_soil, # at this point, R_net_soil equals the SW_net of the soil
         LW_d_canopy,
+        canopy.biomass.r_litter,
         Y,
         p,
         t,
@@ -890,16 +891,30 @@ NVTX.@annotate function soil_boundary_fluxes!(
     # because the influx it is computed from has accounted for that.
     # The last term, `excess water flux`, arises when snow melts in a timestep but
     # has a nonzero sublimation which was applied for the entire step.
-
-    @. p.soil.top_bc.heat =
+    FT = eltype(Y)
+    F_atm = @. lazy(
         p.bare_soil_fraction * (
             p.soil.R_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
-        ) +
+        ),
+    )
+    Λ = Soil.skin_flux_sensitivity(soil.surface_layer, p, FT)
+    ∂F_atm∂T = @. lazy(p.bare_soil_fraction * Λ)
+    F_soil = @. lazy(
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
-        infiltration_energy_flux
+        infiltration_energy_flux,
+    )
+    Soil.set_soil_top_heat_flux!(
+        soil.surface_layer,
+        soil,
+        Y,
+        p;
+        F_atm,
+        ∂F_atm∂T,
+        F_soil,
+    )
     return nothing
 end
 
@@ -1102,11 +1117,11 @@ Compute the sediment heat flux between the lake and the top soil layer.
 update_lake_sediment_heat_flux!(p, ::Nothing, soil) = nothing
 
 """
-    update_soil_heat_flux_with_lake_sediment_flux!(energy_bc, p, lake::Nothing)
+    update_soil_heat_flux_with_lake_sediment_flux!(p, Y, lake::Nothing, soil)
 
 Does not alter the energy flux boundary condition of the soil model if no lake is present.
 """
-update_soil_heat_flux_with_lake_sediment_flux!(energy_bc, p, lake::Nothing) =
+update_soil_heat_flux_with_lake_sediment_flux!(p, Y, lake::Nothing, soil) =
     nothing
 
 """

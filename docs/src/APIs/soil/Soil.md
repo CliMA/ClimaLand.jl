@@ -102,15 +102,46 @@ ClimaLand.Soil.phase_change_source
 ClimaLand.Soil.thermal_time
 ```
 
+## Soil Surface Layer
+
+```@docs
+ClimaLand.Soil.AbstractSoilSurfaceLayer
+ClimaLand.Soil.NoLitter
+ClimaLand.Soil.SlabLitter
+ClimaLand.Soil.litter_thickness
+ClimaLand.Soil.litter_vapor_resistance
+ClimaLand.Soil.add_litter_vapor_resistance!
+ClimaLand.Soil.skin_lower_node
+ClimaLand.Soil.plant_area_index_above_soil
+ClimaLand.Soil.set_soil_top_heat_flux!
+ClimaLand.Soil.add_soil_top_heat_flux!
+ClimaLand.Soil.update_litter_soil_heat_flux!
+ClimaLand.Soil.litter_temperature
+ClimaLand.Soil.litter_flux_derivative
+ClimaLand.Soil.soil_column_top_energy_flux
+ClimaLand.Soil.surface_layer_exp_tendency!
+ClimaLand.Soil.surface_layer_imp_tendency!
+ClimaLand.Soil.add_surface_layer_heat_flux_jacobian!
+ClimaLand.Soil.initialize_litter_temperature!
+ClimaLand.Soil.initialize_litter_area_index!
+ClimaLand.Soil.check_time_step
+ClimaLand.check_time_step
+ClimaLand.Soil.check_timestepper
+ClimaLand.check_timestepper
+ClimaLand.Canopy.plant_area_index_at_time!
+```
+
 ## Soil Surface Fluxes
 
 ```@docs
 ClimaLand.Soil.soil_surface_temperature
 ClimaLand.Soil.update_soil_surface_temperature!
+ClimaLand.Soil.soil_surface_thermal_resistance
 ClimaLand.Soil.soil_surface_vapor_weight
 ClimaLand.Soil.soil_skin_state
 ClimaLand.Soil.update_soil_T_sfc_scheme
 ClimaLand.Soil.update_soil_q_vap_sfc_scheme
+ClimaLand.Soil.skin_flux_derivative
 ClimaLand.Soil.solve_soil_surface_temperature_at_a_point
 ClimaLand.Soil.soil_surface_vapor_conductance!
 ClimaLand.Soil.soil_conductance

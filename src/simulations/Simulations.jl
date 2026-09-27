@@ -146,6 +146,8 @@ function LandSimulation(
     updateat = ITime(3600 * 3),
     solver_kwargs = (;),
 )
+    ClimaLand.check_time_step(model, Δt)
+    ClimaLand.check_timestepper(model, timestepper)
 
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&

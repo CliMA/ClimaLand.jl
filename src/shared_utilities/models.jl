@@ -569,3 +569,23 @@ prior to the diagnostic callbacks (optional).
 function get_model_callbacks(model::ClimaLand.AbstractModel; kwargs...)
     return ()
 end
+
+"""
+    check_time_step(model::AbstractModel, Δt)
+
+Throw an `ArgumentError` if a component of `model` stores a time step that
+differs from the simulation time step `Δt` [s], such as the litter layer of the
+soil; return `nothing` otherwise. Called when a `LandSimulation` is created.
+"""
+check_time_step(model::AbstractModel, Δt) = nothing
+check_time_step(::Nothing, Δt) = nothing
+
+"""
+    check_timestepper(model::AbstractModel, timestepper)
+
+Throw an `ArgumentError` if a component of `model` requires properties of the
+time-stepping algorithm that `timestepper` lacks, such as the litter layer of
+the soil; return `nothing` otherwise. Called when a `LandSimulation` is created.
+"""
+check_timestepper(model::AbstractModel, timestepper) = nothing
+check_timestepper(::Nothing, timestepper) = nothing

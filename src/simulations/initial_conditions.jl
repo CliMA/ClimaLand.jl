@@ -91,6 +91,7 @@ function set_soil_initial_conditions!(
             )
         end
     end
+    ClimaLand.Soil.initialize_litter_temperature!(Y, soil)
     return nothing
 end
 
@@ -775,6 +776,7 @@ function make_set_initial_state_from_file(
         if !isnothing(land.lake)
             set_lake_initial_conditions!(Y, p, t0, land.lake)
         end
+        initialize_litter_area_index_from_canopy!(Y, land, t0)
     end
     return set_land_ic!
 end
@@ -903,6 +905,7 @@ function make_set_initial_state_from_file(
             land.canopy.photosynthesis,
             land.canopy,
         )
+        initialize_litter_area_index_from_canopy!(Y, land, t0)
     end
     return set_ic!
 end
@@ -1130,6 +1133,7 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
         temperature,
         earth_param_set,
     )
+    ClimaLand.Soil.initialize_litter_temperature!(Y, soil)
     return nothing
 end
 
@@ -1268,6 +1272,7 @@ function make_set_initial_state_from_atmos_and_parameters(
             p.drivers.T,
             earth_param_set,
         )
+        ClimaLand.Soil.initialize_litter_temperature!(Y, land.soil)
 
         # SoilCO2 IC (requires soil state). Y.soilco2.CO2 and Y.soilco2.O2 store
         # total mass per unit bulk soil volume (kg C m⁻³ soil and kg O₂ m⁻³ soil),
@@ -1315,6 +1320,7 @@ function make_set_initial_state_from_atmos_and_parameters(
         if !isnothing(land.lake)
             set_lake_initial_conditions!(Y, p, t0, land.lake)
         end
+        initialize_litter_area_index_from_canopy!(Y, land, t0)
     end
     return set_ic!
 end
@@ -1341,6 +1347,25 @@ function set_lake_initial_conditions!(
     @. Y.lake.U = ClimaLand.InlandWater.lake_energy_from_temperature(
         p.drivers.T,
         model.parameters,
+    )
+    return nothing
+end
+
+"""
+    initialize_litter_area_index_from_canopy!(Y, land, t)
+
+Seed the trailing mean plant area index of a `SlabLitter` soil surface layer
+with the plant area index of the canopy at time `t`, so that the litter has
+its equilibrium thickness from the start; return `nothing`. A no-op for other
+surface layers.
+"""
+function initialize_litter_area_index_from_canopy!(Y, land, t)
+    land.soil.surface_layer isa ClimaLand.Soil.SlabLitter || return nothing
+    ClimaLand.Canopy.plant_area_index_at_time!(
+        Y.soil.PAI_mean,
+        land.canopy.biomass,
+        Y,
+        t,
     )
     return nothing
 end

@@ -97,6 +97,9 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Soil climate drivers tests" begin
         include("standalone/Soil/climate_drivers.jl")
     end
+    @safetestset "Soil litter layer tests" begin
+        include("standalone/Soil/litter_layer.jl")
+    end
     @safetestset "Soil runoff tests" begin
         include("standalone/Soil/runoff.jl")
     end

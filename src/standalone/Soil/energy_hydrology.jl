@@ -223,7 +223,7 @@ details.
 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
+struct EnergyHydrology{FT, PS, D, BCRH, S, SL} <: AbstractSoilModel{FT}
     "The parameter sets"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
@@ -232,6 +232,8 @@ struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     boundary_conditions::BCRH
     "A tuple of sources, each of type AbstractSoilSource"
     sources::S
+    "The layer between the soil and the atmosphere, of type AbstractSoilSurfaceLayer"
+    surface_layer::SL
     "A boolean flag which, when false, turns off the horizontal flow of water and heat"
     lateral_flow::Bool
 end
@@ -242,17 +244,21 @@ end
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
+        surface_layer::AbstractSoilSurfaceLayer = NoLitter{FT}(),
         lateral_flow::Bool = false,
     ) where {FT, D, PS}
 
 A constructor for a `EnergyHydrology` model, which sets the default value
-of the `lateral_flow` flag to false.
+of the `lateral_flow` flag to false and of the surface layer to `NoLitter`.
+A `SlabLitter` surface layer requires an `AtmosDrivenFluxBC` top boundary
+condition.
 """
 function EnergyHydrology{FT}(;
     parameters::EnergyHydrologyParameters{FT, PSE},
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,
+    surface_layer::AbstractSoilSurfaceLayer{FT} = NoLitter{FT}(),
     lateral_flow::Bool = false,
 ) where {FT, D, PSE}
     @assert !lateral_flow
@@ -266,7 +272,11 @@ function EnergyHydrology{FT}(;
         sources = append_source(subsurface_source, sources)
         sources = append_source(subl_source, sources)
     end
-    args = (parameters, domain, boundary_conditions, sources)
+    if surface_layer isa SlabLitter
+        top_bc isa AtmosDrivenFluxBC ||
+            throw(ArgumentError("SlabLitter requires an AtmosDrivenFluxBC"))
+    end
+    args = (parameters, domain, boundary_conditions, sources, surface_layer)
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
@@ -324,6 +334,7 @@ function ClimaLand.make_compute_exp_tendency(
         # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
         dY.soil.ρe_int .= 0
+        surface_layer_exp_tendency!(model.surface_layer, dY, Y, p, model)
 
         # Note that soil ice content is only updated via source terms,
         # which are plus-added to dY.soil.θ_i, so we must zero it out here first.
@@ -370,7 +381,10 @@ function ClimaLand.make_compute_imp_tendency(
         @. dY.soil.∫F_vol_liq_water_dt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
-        @. dY.soil.∫F_e_dt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
+        # The energy budget tracks the flux at the top of soil plus surface layer
+        column_top_flux = soil_column_top_energy_flux(model.surface_layer, Y, p)
+        @. dY.soil.∫F_e_dt = -(column_top_flux - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
+        surface_layer_imp_tendency!(model.surface_layer, dY, Y, p, model)
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
 
@@ -450,6 +464,7 @@ function ClimaLand.make_update_implicit_boundary_fluxes(model::EnergyHydrology)
         if haskey(p.soil, :dfluxBCdY)
             ubf!(p, Y, t)
         end
+        update_litter_soil_heat_flux!(model.surface_layer, model, Y, p)
     end
     return update_imp_bf!
 end
@@ -568,6 +583,14 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         @. p.soil.full_bidiag_matrix_scratch =
             MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) *
             p.soil.bidiag_matrix_scratch
+        # With a litter layer the top heat flux depends on the top cell energy
+        add_surface_layer_heat_flux_jacobian!(
+            model.surface_layer,
+            model,
+            p,
+            interpc2f_op,
+            FT,
+        )
         @. ∂ρeres∂ρe =
             negative_dtγ *
             (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
@@ -621,8 +644,14 @@ end
 A function which returns the names of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_vars(soil::EnergyHydrology) =
-    (:ϑ_l, :θ_i, :ρe_int, :∫F_vol_liq_water_dt, :∫F_e_dt)
+ClimaLand.prognostic_vars(soil::EnergyHydrology) = (
+    :ϑ_l,
+    :θ_i,
+    :ρe_int,
+    :∫F_vol_liq_water_dt,
+    :∫F_e_dt,
+    surface_layer_prognostic_vars(soil.surface_layer)...,
+)
 
 """
     prognostic_types(soil::EnergyHydrology{FT}) where {FT}
@@ -631,10 +660,16 @@ A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
 ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, surface_layer_prognostic_types(soil.surface_layer)...)
 
-ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
-    (:subsurface, :subsurface, :subsurface, :surface, :surface)
+ClimaLand.prognostic_domain_names(soil::EnergyHydrology) = (
+    :subsurface,
+    :subsurface,
+    :subsurface,
+    :surface,
+    :surface,
+    surface_layer_prognostic_domain_names(soil.surface_layer)...,
+)
 """
     auxiliary_vars(soil::EnergyHydrology)
 
@@ -652,6 +687,7 @@ ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :Tf_depressed,
     :bidiag_matrix_scratch,
     :full_bidiag_matrix_scratch,
+    surface_layer_aux_vars(soil.surface_layer)...,
     boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
     boundary_vars(
         soil.boundary_conditions.bottom,
@@ -676,6 +712,7 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
+    surface_layer_aux_types(soil.surface_layer, soil)...,
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
@@ -699,6 +736,7 @@ ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     :subsurface_face,
     :subsurface_face,
+    surface_layer_aux_domain_names(soil.surface_layer)...,
     boundary_var_domain_names(
         soil.boundary_conditions.top,
         ClimaLand.TopBoundary(),
@@ -1331,6 +1369,7 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
+    add_surface_layer_energy!(surface_field, model.surface_layer, Y, model)
     return nothing
 end
 
@@ -1368,10 +1407,12 @@ end
         θ_i::FT,
     ) where {FT}
 
-Computes the conductance of the top of the soil column to
-water vapor diffusion, as a function of the surface
-effective liquid water saturation `S_l`, critical saturation `S_c`,
-other soil parameters, and diffusivity of vapor in air.
+Compute the conductance [m/s] of the top of the soil column to water vapor
+diffusion, the inverse of the diffusive resistance `dsl / (D_vapor τ_a)` of
+the dry soil layer of thickness `dsl` (see [`dry_soil_layer_thickness`](@ref)
+and [`soil_tortuosity`](@ref)). When no dry layer has formed (`dsl = 0`), the
+resistance vanishes and the conductance is unbounded, whatever the tortuosity
+of the wet surface soil.
 
 The conductance is the inverse of the diffusive resistance
 `dsl / (D_vapor τ_a)` of the dry soil layer of thickness `dsl`, with the
@@ -1414,3 +1455,8 @@ function dry_soil_layer_thickness(
     αS_c = clamp(αS_c, FT(0), FT(1)) # this must be between zero and one
     return S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p : FT(0)
 end
+
+ClimaLand.check_time_step(model::EnergyHydrology, Δt) =
+    check_time_step(model.surface_layer, Δt)
+ClimaLand.check_timestepper(model::EnergyHydrology, timestepper) =
+    check_timestepper(model.surface_layer, timestepper)

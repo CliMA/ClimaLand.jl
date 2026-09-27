@@ -189,9 +189,8 @@ function make_update_boundary_fluxes(
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
-            land.soil.parameters,
+            land.soil,
             land.snow.parameters,
-            land.soil.domain,
             FT,
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
@@ -210,18 +209,20 @@ function make_update_boundary_fluxes(
 end
 
 """
-    update_soil_snow_ground_heat_flux!(p, Y, soil_params, snow_params, soil_domain, FT)
+    update_soil_snow_ground_heat_flux!(p, Y, soil, snow_params, FT)
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
-    F_g = - g_eff (T_snow_bottom - T_soil_sfc)
+    F_g = - g_eff (T_snow_bottom - T_soil)
 
 where:
-    g_eff = κ_soil * κ_snow / (κ_snow * Δz_top + κ_soil * min(z_snow / 2, Δz_top)).
+    g_eff = 1 / (Δz_top / κ_soil + min(z_snow / 2, Δz_top) / κ_snow).
 
-Here `T_snow_bottom` is the temperature at the base of the snowpack
- and `T_soil_sfc` is the temperature of the top soil layer. The flux
-is positive when energy flows from the soil up into the snowpack.
+Here `T_snow_bottom` is the temperature at the base of the snowpack and
+`T_soil` the temperature of the top soil layer, with `r_soil = Δz_top / κ_soil`
+the thermal resistance from that cell center to the soil surface. The flux is
+positive when energy flows from the soil up into the snowpack. A litter layer,
+if present, follows the soil under snow and is bypassed by this flux.
 
 `Δz_top` is the distance between the soil surface and the center of the top
 soil layer (half the layer thickness). For simplicity, we assume that the
@@ -232,21 +233,21 @@ when the snowpack is thinner than that layer.
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
     Y,
-    soil_params,
+    soil,
     snow_params,
-    soil_domain,
     FT,
 )
     κ_snow = p.snow.κ
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
-    Δz_top = soil_domain.fields.Δz_top
+    Δz_top = soil.domain.fields.Δz_top
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    g_eff =
+        @. lazy(1 / (Δz_top / κ_soil + min(p.snow.z_snow / 2, Δz_top) / κ_snow))
     @. p.snow_T_bot = snow_T_bottom(
         κ_snow,
-        κ_soil * κ_snow /
-        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)), # g_eff
+        g_eff,
         T_soil,
         T̄,
         T_sfc,
@@ -254,10 +255,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
         p.snow.ρ_snow,
         snow_params.earth_param_set,
     )
-    @. p.ground_heat_flux =
-        -κ_soil * κ_snow /
-        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)) *
-        (p.snow_T_bot - T_soil)
+    @. p.ground_heat_flux = -g_eff * (p.snow_T_bot - T_soil)
     return nothing
 end
 
@@ -467,16 +465,30 @@ NVTX.@annotate function soil_boundary_fluxes!(
         p.soil.infiltration +
         p.excess_water_flux +
         p.bare_soil_fraction * p.soil.turbulent_fluxes.vapor_flux_liq
-    @. p.soil.top_bc.heat =
+    FT = eltype(Y)
+    F_atm = @. lazy(
         p.bare_soil_fraction * (
             p.soil.R_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
-        ) +
+        ),
+    )
+    Λ = Soil.skin_flux_sensitivity(soil.surface_layer, p, FT)
+    ∂F_atm∂T = @. lazy(p.bare_soil_fraction * Λ)
+    F_soil = @. lazy(
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
-        infiltration_energy_flux
-
+        infiltration_energy_flux,
+    )
+    Soil.set_soil_top_heat_flux!(
+        soil.surface_layer,
+        soil,
+        Y,
+        p;
+        F_atm,
+        ∂F_atm∂T,
+        F_soil,
+    )
     return nothing
 end
 

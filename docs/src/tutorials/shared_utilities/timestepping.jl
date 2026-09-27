@@ -65,6 +65,9 @@
 # - Canopy temperature (except root extraction of energy)
 # - Canopy SHF, LHF, and net radiation (recomputed in each Newton iteration
 #   and included in the Jacobian)
+# - Litter temperature and litter–soil conduction of a `SlabLitter` soil
+#   surface layer (closed-form substep in each Newton iteration, top-face
+#   Jacobian term)
 # - Subsurface runoff (this is computed in the same function the same time as surface runoff, but does not contribute to Jacobian.)
 
 # Explicit

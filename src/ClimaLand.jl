@@ -245,6 +245,15 @@ Returns the component names of the `land` model, by calling
 """
 land_components(land::AbstractLandModel) = propertynames(land)
 
+check_time_step(land::AbstractLandModel, Δt) = foreach(
+    c -> check_time_step(getproperty(land, c), Δt),
+    land_components(land),
+)
+check_timestepper(land::AbstractLandModel, timestepper) = foreach(
+    c -> check_timestepper(getproperty(land, c), timestepper),
+    land_components(land),
+)
+
 """
     total_energy_per_area!(
         surface_field,

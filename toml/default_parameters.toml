@@ -812,6 +812,48 @@ type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"
 
+["litter_thermal_resistance"]
+value = 0.1
+type = "float"
+description = "Thermal resistance (m^2 K/W) of the litter, thatch, and standing dead material between the soil skin and the top soil layer in land models with a canopy (canopy.biomass.r_litter); treated as a tunable parameter"
+tag = "BiomassModel"
+
+["litter_thickness_per_pai"]
+value = 0.01
+type = "float"
+description = "Thickness (m) of the litter/thatch slab of the SlabLitter soil surface layer per unit trailing-mean plant area index"
+tag = "SlabLitter"
+
+["litter_minimum_thickness"]
+value = 0.001
+type = "float"
+description = "Minimum thickness (m) of the litter/thatch slab of the SlabLitter soil surface layer"
+tag = "SlabLitter"
+
+["litter_memory_timescale"]
+value = 3.1536e7
+type = "float"
+description = "Memory timescale (s) of the trailing mean plant area index that sets the SlabLitter thickness"
+tag = "SlabLitter"
+
+["litter_thermal_conductivity"]
+value = 0.14
+type = "float"
+description = "Thermal conductivity (W/m/K) of the litter/thatch slab of the SlabLitter soil surface layer"
+tag = "SlabLitter"
+
+["litter_volumetric_heat_capacity"]
+value = 4.0e5
+type = "float"
+description = "Volumetric heat capacity (J/m^3/K) of the litter/thatch slab of the SlabLitter soil surface layer"
+tag = "SlabLitter"
+
+["litter_vapor_resistance_factor"]
+value = 0.25
+type = "float"
+description = "Factor (-) scaling the molecular vapor diffusion resistance (d_l - d_min) / D_vapor of the SlabLitter soil surface layer; values below one represent ventilation of the loose litter"
+tag = "SlabLitter"
+
 # Slab Lake Model
 ["slab_lake_depth"]
 value = 10

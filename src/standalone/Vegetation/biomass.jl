@@ -251,12 +251,20 @@ struct PrescribedBiomassModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
+    "Thermal resistance (m² K/W) of the litter, thatch, and standing dead material between the soil skin and the top soil layer"
+    r_litter::FT
     function PrescribedBiomassModel{FT, PSAI, RDTH, HTH}(
         plant_area_index,
         rooting_depth,
         height,
+        r_litter,
     ) where {FT, PSAI, RDTH, HTH}
-        new{FT, PSAI, RDTH, HTH}(plant_area_index, rooting_depth, height)
+        new{FT, PSAI, RDTH, HTH}(
+            plant_area_index,
+            rooting_depth,
+            height,
+            r_litter,
+        )
     end
 end
 
@@ -265,11 +273,15 @@ end
                                 SAI::FT,
                                 RAI::FT,
                                 rooting_depth,
-                                height) where {FT}
+                                height,
+                                r_litter = FT(0)) where {FT}
 
 An outer constructor to help set up the PrescribedBiomassModel from 
 LAI, SAI, and RAI directly, instead of requiring the user to make the
 area index object first; rooting_depth and height are also required.
+The litter thermal resistance `r_litter` (m² K/W) between the soil skin and
+the top soil layer defaults to zero; the TOML constructors use
+`litter_thermal_resistance`.
 
 Height can be either:
 - A scalar FT value (uniform height across domain)
@@ -281,10 +293,11 @@ function PrescribedBiomassModel{FT}(;
     RAI,
     rooting_depth,
     height,
+    r_litter = FT(0),
 ) where {FT}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     args = (plant_area_index, rooting_depth, height)
-    PrescribedBiomassModel{FT, typeof.(args)...}(args...)
+    PrescribedBiomassModel{FT, typeof.(args)...}(args..., r_litter)
 end
 
 ClimaLand.auxiliary_vars(model::PrescribedBiomassModel) = (:area_index,)
@@ -403,6 +416,8 @@ struct ZhouOptimalLAIModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
+    "Thermal resistance (m² K/W) of the litter, thatch, and standing dead material between the soil skin and the top soil layer"
+    r_litter::FT
     "Time integrated prognostic vars"
     time_integrated_vars::T
 end
@@ -416,6 +431,7 @@ Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
         RAI,
         rooting_depth,
         height,
+        r_litter = FT(0),
     ) where {FT <: AbstractFloat}
 
 Outer constructor for the ZhouOptimalLAIModel struct.
@@ -426,6 +442,9 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
+- `r_litter`: Litter thermal resistance (m² K/W) between the soil skin and the
+  top soil layer; zero by default, `litter_thermal_resistance` in the TOML
+  constructor
 
 Declares the prognostic time integrated variables: the 1-day potential-GPP total
 `A0_daily`, the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
@@ -454,6 +473,7 @@ function ZhouOptimalLAIModel{FT}(
     RAI,
     rooting_depth,
     height,
+    r_litter = FT(0),
 ) where {FT <: AbstractFloat}
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
     tau_long_term = parameters.tau_long_term
@@ -541,6 +561,7 @@ function ZhouOptimalLAIModel{FT}(
         RAI,
         rooting_depth,
         height,
+        r_litter,
         tiv,
     )
 end
@@ -796,4 +817,35 @@ function ClimaLand.make_compute_exp_tendency(
         )
     end
     return compute_exp_tendency!
+end
+
+"""
+    plant_area_index_at_time!(dest, biomass::AbstractBiomassModel, Y, t)
+
+Write the plant area index `LAI + SAI` [-] of the canopy at time `t` into the
+surface field `dest`, from the prescribed inputs or the prognostic LAI of the
+biomass model; return `nothing`. Used to initialize quantities that track the
+plant area index, such as the litter thickness of `Soil.SlabLitter`.
+"""
+function plant_area_index_at_time!(
+    dest,
+    biomass::PrescribedBiomassModel{FT},
+    Y,
+    t,
+) where {FT}
+    (; LAI, SAI) = biomass.plant_area_index
+    evaluate!(dest, LAI, t)
+    threshold = FT(0.05)
+    @. dest = clip(dest, threshold) + SAI
+    return nothing
+end
+function plant_area_index_at_time!(
+    dest,
+    biomass::ZhouOptimalLAIModel{FT},
+    Y,
+    t,
+) where {FT}
+    threshold = FT(0.05)
+    @. dest = clip(Y.canopy.biomass.LAI, threshold) + biomass.SAI
+    return nothing
 end

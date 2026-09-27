@@ -159,17 +159,20 @@ function update_ground_albedo_NIR!(p, Y, soil, snow, lake::SlabLakeModel)
 end
 
 """
-    update_soil_heat_flux_with_lake_sediment_flux!(energy_bc, p, lake::SlabLakeModel)
+    update_soil_heat_flux_with_lake_sediment_flux!(p, Y, lake::SlabLakeModel, soil)
 
 Alters the energy flux boundary condition of the soil model when a sediment heat flux
 from a lake is modelled.
 """
 function update_soil_heat_flux_with_lake_sediment_flux!(
-    energy_bc,
     p,
+    Y,
     lake::SlabLakeModel,
+    soil,
 )
-    @. energy_bc += p.lake_fraction * p.lake.sediment_heat_flux
+    F = @. lazy(p.lake_fraction * p.lake.sediment_heat_flux)
+    Soil.add_soil_top_heat_flux!(soil.surface_layer, soil, Y, p, F)
+    return nothing
 end
 
 """

@@ -48,6 +48,18 @@ main
   of 60°S, ocean pixels picked up by coastal cells), `ZhouOptimalLAIModel` starts from a
   bare canopy instead of NaN, so LAI is predicted over Antarctica.
   PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-✨feature] Add a litter thermal resistance `r_litter` to the canopy biomass models
+  (`litter_thermal_resistance`, 0.1 m² K/W by default), placed between the soil
+  skin and the top soil layer in `SoilCanopyModel` and `LandModel`.
+- ![][badge-✨feature] Add an optional `SlabLitter` soil surface layer (`EnergyHydrology(...;
+  surface_layer = SlabLitter{FT}(toml_dict, Δt))`): a litter slab with heat
+  capacity and thermal resistance between the soil skin and the top soil
+  layer, with temperature `Y.soil.T_litter` advanced implicitly within the
+  soil solve. Its thickness is `litter_thickness_per_pai` times a trailing
+  mean of the canopy plant area index (`Y.soil.PAI_mean`, memory
+  `litter_memory_timescale`), with no land-cover dependence, and the slab adds
+  a vapor diffusion resistance in series with the dry soil layer. The default
+  `NoLitter` keeps the previous behavior.
 - Fix the 10 cm soil water mass diagnostic for standalone soil models, register
   the optimal-LAI and soil CO2 ppm diagnostics only for models that support
   them, and fix the default time interpolation of the perturbed ERA5 drivers.

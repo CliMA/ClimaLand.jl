@@ -928,11 +928,19 @@ function soil_boundary_fluxes!(
     # evaporation.
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
-    @. p.soil.top_bc.heat =
-        p.soil.R_n +
-        p.soil.turbulent_fluxes.lhf +
-        p.soil.turbulent_fluxes.shf +
-        infiltration_energy_flux
+    FT = eltype(Y)
+    F_atm = @. lazy(
+        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
+    )
+    set_soil_top_heat_flux!(
+        model.surface_layer,
+        model,
+        Y,
+        p;
+        F_atm,
+        ∂F_atm∂T = skin_flux_sensitivity(model.surface_layer, p, FT),
+        F_soil = infiltration_energy_flux,
+    )
     return nothing
 end
 

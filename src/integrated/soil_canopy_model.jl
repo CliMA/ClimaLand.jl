@@ -394,6 +394,7 @@ function lsm_radiant_energy_fluxes!(
         land.soil,
         SW_n_soil,
         LW_d_canopy,
+        canopy.biomass.r_litter,
         Y,
         p,
         t,
@@ -508,11 +509,20 @@ function soil_boundary_fluxes!(
     # evaporation.
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
-    @. p.soil.top_bc.heat =
-        -p.soil.R_n +
-        p.soil.turbulent_fluxes.lhf +
-        p.soil.turbulent_fluxes.shf +
-        infiltration_energy_flux
+    FT = eltype(Y)
+    # R_n is positive towards the soil here
+    F_atm = @. lazy(
+        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
+    )
+    Soil.set_soil_top_heat_flux!(
+        model.surface_layer,
+        model,
+        Y,
+        p;
+        F_atm,
+        ∂F_atm∂T = Soil.skin_flux_sensitivity(model.surface_layer, p, FT),
+        F_soil = infiltration_energy_flux,
+    )
     return nothing
 end
 

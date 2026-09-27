@@ -333,7 +333,8 @@ end
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"]
+        height = toml_dict["canopy_height"],
+        r_litter = toml_dict["litter_thermal_resistance"],
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
@@ -353,6 +354,7 @@ function PrescribedBiomassModel{FT}(
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"],
+    r_litter = toml_dict["litter_thermal_resistance"],
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -364,6 +366,7 @@ function PrescribedBiomassModel{FT}(
         plant_area_index,
         rooting_depth,
         height,
+        r_litter,
     )
 end
 
@@ -377,6 +380,7 @@ end
         RAI = toml_dict["RAI_coeff"] .* maxLAI,
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = toml_dict["canopy_height"],
+        r_litter = toml_dict["litter_thermal_resistance"],
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel with time-constant stem and root area indices
@@ -394,6 +398,7 @@ function PrescribedBiomassModel{FT}(
     RAI = toml_dict["RAI_coeff"] .* maxLAI,
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"],
+    r_litter = toml_dict["litter_thermal_resistance"],
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -405,6 +410,7 @@ function PrescribedBiomassModel{FT}(
         plant_area_index,
         rooting_depth,
         height,
+        r_litter,
     )
 end
 
@@ -416,6 +422,7 @@ end
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = toml_dict["canopy_height"],
+        r_litter = toml_dict["litter_thermal_resistance"],
     ) where {FT <: AbstractFloat}
 
 Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the provided domain,
@@ -457,9 +464,17 @@ function ZhouOptimalLAIModel{FT}(
     # vanish, so once the prognostic LAI greens up the transpiration/root fluxes
     # drive ϑ_l (and the coupled canopy/soil state) to NaN.
     height = toml_dict["canopy_height"],
+    r_litter = toml_dict["litter_thermal_resistance"],
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
-    return ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)
+    return ZhouOptimalLAIModel{FT}(
+        parameters;
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+        r_litter,
+    )
 end
 
 ## Radiative transfer models

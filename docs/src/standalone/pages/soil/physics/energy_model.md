@@ -16,7 +16,9 @@ We have
 \frac{\partial \rho e_{\rm{int}}}{\partial t} = - \nabla \cdot [-\kappa \nabla T - \rho e_{\rm{int,l}} K \nabla h]+S_e
 
 ```
+
 where:
+
 - $ϑ_l$ is the augmented volumetric liquid fraction, $t$ is the time, $K$ is the hydraulic conductivity, computed from $ϑ_l$ given a retention curve and a permeability curve, $ψ$ is the pressure head, which is computed from $ϑ_l$ given a retention curve function, and $h = ψ + z$ is the hydraulic head,
 - $θ_i$ is the volumetric ice fraction,
 - $ρe_{\rm{int}}$ is the volumetric internal energy, $κ$ is the thermal conductivity, $T$ is the temperature, $ρe_{int,l}$ is the volumetric internal energy of the soil liquid water,
@@ -37,7 +39,7 @@ retenton curve/permeability curve pairs, which we refer to in places
 as the hydrology closure model. For the thermal conductivity, we use the model
 of Balland and Arp (2003).
 
-Since the liquid water and energy  partial differential equations are stiff,
+Since the liquid water and energy partial differential equations are stiff,
 an implicit timestepping scheme must be used to advance them in time.
 
 ## Surface boundary conditions
@@ -67,15 +69,19 @@ $T_{\rm{sfc}}$ and the surface specific humidity $q_{\rm{sfc}}$.
 
 The radiating and turbulent-exchange surface of the soil is treated as a skin
 with zero heat capacity, connected to the center of the top soil layer (at
-temperature $T_{\rm{top}}$ and thermal conductivity $κ_{\rm{top}}$) by the
-half-cell conduction resistance
+temperature $T_{\rm{top}}$ and thermal conductivity $κ_{\rm{top}}$) by a
+thermal resistance
 
 ```math
 r = \frac{Δz_{\rm{top}}}{κ_{\rm{top}}},
 ```
 
 where $Δz_{\rm{top}}$ is the distance between the surface and the top cell
-center. The skin temperature satisfies the surface energy balance
+center, and $r_{\rm{litter}}$ (`litter_thermal_resistance`) is a resistance
+supplied by the canopy biomass model (`canopy.biomass.r_litter`) for the
+litter, thatch, and standing dead material between the skin and the mineral
+soil, zero for bare soil. The skin temperature satisfies the surface energy
+balance
 
 ```math
 SW_n + LW_n(T_{\rm{sfc}}) + H(T_{\rm{sfc}}) + L(T_{\rm{sfc}}) = \frac{T_{\rm{top}} - T_{\rm{sfc}}}{r},
@@ -102,10 +108,76 @@ top cell at the daily maximum, and the diurnal range of the soil temperature
 at 2–8 cm depth is about 10% smaller than when the fluxes are evaluated at the
 top cell temperature. For standalone
 `EnergyHydrology` and `SoilSnowModel`, the skin absorbs the downwelling
-radiation with the soil albedo and emissivity; in `SoilCanopyModel` and
-`LandModel`, the shortwave and longwave radiation reaching the soil are those
-transmitted and emitted by the canopy. Conduction between the soil and a
+radiation with the soil albedo and emissivity and $r_{\rm{litter}} = 0$; in
+`SoilCanopyModel` and `LandModel`, the shortwave and longwave radiation
+reaching the soil are those transmitted and emitted by the canopy, and
+$r_{\rm{litter}}$ takes its parameter value (0.1 m² K/W by default). Such a
+resistance damps the diurnal cycle of the top soil layer at the expense of a
+larger diurnal cycle of the skin, because the litter that supplies it also has
+heat capacity, which the skin formulation neglects; the litter layer below
+removes this limitation. Conduction between the soil and a
 snowpack or lake sediment uses the top cell temperature.
+### Litter layer
+
+With a `SlabLitter` surface layer (`EnergyHydrology(...; surface_layer =
+SlabLitter{FT}(toml_dict, Δt))`), a slab of litter with thickness $d_l$, thermal
+conductivity $κ_l$, and volumetric heat capacity $ρc_l$ lies between the skin
+and the soil, with a prognostic temperature $T_l$ (`Y.soil.T_litter`). The
+thickness follows the canopy above,
+
+```math
+d_l = \max(d_{\rm{PAI}} \, ⟨PAI⟩, d_{\min}), \qquad
+\frac{d⟨PAI⟩}{dt} = \frac{LAI + SAI - ⟨PAI⟩}{τ_{\rm{PAI}}},
+```
+
+where $⟨PAI⟩$ (`Y.soil.PAI_mean`) is an exponentially weighted trailing mean of
+the plant area index with memory $τ_{\rm{PAI}}$ (`litter_memory_timescale`, one
+year by default): litter stock is litterfall times residence time, both of which
+average over phenology, so the litter is thickest under productive canopies and
+persists when leaves are shed, with the single scaling $d_{\rm{PAI}}$
+(`litter_thickness_per_pai`) for all land cover. Without a canopy, $⟨PAI⟩$
+decays to zero and the slab reduces to the skin scheme at the floor $d_{\min}$.
+The trailing mean is seeded with the canopy's plant area index at the start of a
+simulation. The energy balance of the slab is
+
+```math
+\begin{aligned}
+SW_n + LW_n(T_{\rm{sfc}}) + H(T_{\rm{sfc}}) + L(T_{\rm{sfc}}) &= \frac{T_l - T_{\rm{sfc}}}{r_{\rm{top}}}, &
+r_{\rm{top}} &= \frac{d_l}{2 κ_l},\\
+ρc_l d_l \frac{dT_l}{dt} &= -F_{\rm{atm}} + \frac{T_{\rm{top}} - T_l}{r_{\rm{bot}}}, &
+r_{\rm{bot}} &= \frac{d_l}{2 κ_l} + \frac{Δz_{\rm{top}}}{κ_{\rm{top}}},
+\end{aligned}
+```
+
+where $F_{\rm{atm}}$ is the net upward atmospheric flux at the skin (the left
+side of the first equation). The soil then receives the conduction
+$(T_{\rm{top}} - T_l)/r_{\rm{bot}}$ plus the fluxes that enter it directly: the
+energy of infiltrating water and, under snow, the conduction from the snowpack,
+which exchanges with the top soil cell so that the litter under snow follows the
+soil. The total energy of the column includes $ρc_l d_l (T_l - T_0)$. As
+$d_l \to 0$, this reduces to the skin scheme for bare soil. The slab damps the
+diurnal cycle of both the top soil layer and the radiating skin.
+
+The litter relaxes on a time scale $ρc_l d_l / (∂F_{\rm{atm}}/∂T_l)$ of a few
+hundred seconds, shorter than the time step, so $T_l$ is treated implicitly. The
+skin balance is solved once per step at $T_l^n$ and the atmospheric flux is
+linearized about it, $F_{\rm{atm}} ≈ F_{\rm{atm}}^n + Λ (T_l - T_l^n)$ with
+$Λ = ∂F_{\rm{atm}}/∂T_l$ from the skin solve. The backward Euler litter equation
+is then linear in $T_l$ given $T_{\rm{top}}$ and is solved in closed form in
+every Newton iteration of the soil solve, so that the soil top flux
+$(T_{\rm{top}} - T_l(T_{\rm{top}}))/r_{\rm{bot}}$ depends on $T_{\rm{top}}$
+alone; its derivative enters the soil energy Jacobian at the top face, which
+keeps the litter–soil coupling fully implicit and the energy budget of soil plus
+litter closed to the convergence of the Newton solve. This is why the
+`SlabLitter` needs to be passed the time step, and why `LandSimulation` requires
+the `ARS111` tableau with at least two Newton iterations for it. The linearized
+flux is the exchange of the column with the atmosphere over the step and enters
+the energy bookkeeping, together with the energy $(T_l - T_0)\,dC_l/dt$ of the
+litter mass gained or lost as $⟨PAI⟩$ changes. The turbulent flux diagnostics,
+and the fluxes a coupled atmosphere receives, are those at $T_l^n$, so the
+land–atmosphere exchange is conservative to within $Λ (T_l^{n+1} - T_l^n)$ per
+step. Litter water storage and the moisture dependence of $κ_l$ and $ρc_l$ are
+not represented.
 
 When the top cell is frozen (it contains ice and is below the depressed
 freezing temperature), the skin temperature is capped at the depressed
@@ -119,15 +191,15 @@ ice.
 ### Surface humidity and evaporation
 
 The surface specific humidity used for evaporation is a conductance-weighted
-mean of the (soil water potential adjusted) saturation specific humidity at
-the skin and the specific humidity of the air,
+mean of the (soil water potential adjusted) saturation specific humidity at the
+skin and the specific humidity of the air,
 
 ```math
 q_{\rm{sfc}} = \frac{g_{\rm{soil}} \, q_{\rm{sat}}(T_{\rm{sfc}}) \, e^{g ψ_{\rm{sfc}} M_w / (R T_{\rm{sfc}})} + g_h \, q_{\rm{air}}}{g_{\rm{soil}} + g_h},
 ```
 
-where $g_h$ is the aerodynamic conductance for heat and $g_{\rm{soil}}$ is
-the conductance of the dry soil layer that forms at the surface as it dries
+where $g_h$ is the aerodynamic conductance for heat and $g_{\rm{soil}}$ is the
+conductance of the dry soil layer that forms at the surface as it dries
 ([SwensonLawrence2014](@citet)),
 
 ```math
@@ -144,16 +216,20 @@ in [SwensonLawrence2014](@citet)), $S_l$ the effective saturation of the
 liquid water at the surface (extrapolated from the top two layers), $S_c$ the
 critical saturation of the retention curve, and $d_{\rm{ds}}$, $α$, and $p$
 parameters. When the surface is wetter than $α S_c$, no dry layer exists,
-$g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}}$ is the saturation value. When
-the skin is below the (depressed) freezing temperature, sublimation is
-computed instead, with $q_{\rm{sfc}}$ weighted by the ice fraction
-$β_{\rm{ice}} = (θ_i / ν)^4$.
+$g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}}$ is the saturation value.
+With a `SlabLitter` surface layer, the diffusive resistance of the litter
+slab, $r_{\rm{vap},l} = c_{\rm{vap}} (d_l - d_{\min}) / D_v$ with
+$c_{\rm{vap}}$ (`litter_vapor_resistance_factor`), is added in series with
+$1 / g_{\rm{soil}}$. When the skin is below the (depressed) freezing
+temperature, sublimation is computed instead, with $q_{\rm{sfc}}$ weighted by
+the ice fraction $β_{\rm{ice}} = (θ_i / ν)^4$.
 
 ### Time treatment
 
 The surface fluxes and the skin temperature are evaluated once per time step
-from the state at the beginning of the step, held fixed during the implicit
-solve for $ϑ_l$ and $ρe_{\rm{int}}$, and do not contribute to the Jacobian.
-The column test used to check this shows the diurnal cycle of the top
-soil layer to be insensitive to the time step at the step sizes used in
-ClimaLand simulations.
+from the state at the beginning of the step and held fixed during the implicit
+solve for $ϑ_l$ and $ρe_{\rm{int}}$; without a litter layer they do not
+contribute to the Jacobian, and with one only the litter–soil conduction does.
+The column test used to check this shows the diurnal cycle of the top soil layer
+to be insensitive to the time step at the step sizes used in ClimaLand
+simulations.

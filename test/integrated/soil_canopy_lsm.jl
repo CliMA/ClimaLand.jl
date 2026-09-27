@@ -45,5 +45,15 @@ for FT in (Float32, Float64)
             0.0,
         )
         @test p.soil.NIR_albedo == α_soil_NIR
+        # The litter thermal resistance of the skin solve is a canopy parameter
+        @test model.canopy.biomass.r_litter ==
+              FT(toml_dict["litter_thermal_resistance"])
+        @test Canopy.PrescribedBiomassModel{FT}(;
+            LAI,
+            SAI = FT(0),
+            RAI = FT(1),
+            rooting_depth = FT(0.5),
+            height = FT(1),
+        ).r_litter == FT(0)
     end
 end
