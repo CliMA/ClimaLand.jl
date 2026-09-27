@@ -249,6 +249,12 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components,
+        interception = Canopy.default_interception_model(
+            FT,
+            forcing.atmos,
+            toml_dict,
+            Δt,
+        ),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -370,6 +376,12 @@ function LandModel{FT}(
         ),
         toml_dict;
         prognostic_land_components,
+        interception = Canopy.default_interception_model(
+            FT,
+            forcing.atmos,
+            toml_dict,
+            Δt,
+        ),
     ),
     snow = Snow.SnowModel(
         FT,
