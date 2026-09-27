@@ -193,6 +193,7 @@ include("./soil_heat_parameterizations.jl")
 include("Runoff/Runoff.jl")
 using .Runoff
 include("./boundary_conditions.jl")
+include("./soil_surface_temperature.jl")
 include("./soil_albedo.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("./spatially_varying_parameters.jl")

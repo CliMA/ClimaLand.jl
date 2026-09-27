@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
+  balance within the Monin-Obukhov iterations, separating the radiating and
+  turbulent-exchange surface of the soil from the top cell center by the
+  half-cell conduction resistance `Δz_top/κ_top`, for standalone
+  `EnergyHydrology` and all integrated models, with a prescribed or coupled
+  atmosphere. The same solve yields the soil turbulent fluxes, which are
+  stored with the skin temperature. Over a frozen top cell, the skin temperature is capped at the
+  depressed freezing temperature. Conduction to a snowpack still uses the
+  top cell temperature.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 - ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
   are now computed throughout the simulation from time-integrated prognostic variables;
   trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in

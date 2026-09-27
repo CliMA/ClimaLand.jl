@@ -63,11 +63,15 @@
 # - Vertical contribution of the divergence of diffusive heat flux
 # - Vertical contribution of the divergence of heat flux due to Darcy flow
 # - Canopy temperature (except root extraction of energy)
-# - SHF, LHF, evaporation, and sublimation of soil (note that these are explicit in θ_i!)
-# - Soil radiation (does not contribute to Jacobian)
+# - Canopy SHF, LHF, and net radiation (recomputed in each Newton iteration
+#   and included in the Jacobian)
 # - Subsurface runoff (this is computed in the same function the same time as surface runoff, but does not contribute to Jacobian.)
 
 # Explicit
+# - Soil surface fluxes (SHF, LHF, evaporation, sublimation, net radiation,
+#   and the soil skin temperature): evaluated once per step from the state at
+#   the start of the step, held fixed during the implicit solve, and absent
+#   from the Jacobian
 # - Phase changes in soil
 # - Root extraction
 # - all snow tendencies

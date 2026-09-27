@@ -433,7 +433,9 @@ NVTX.@annotate function soil_boundary_fluxes!(
     p,
     t,
 )
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
+    # The skin temperature and the turbulent fluxes at it, from one solve; the
+    # snow-soil ground heat flux uses the top cell temperature
+    Soil.update_soil_surface_temperature!(soil, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =
