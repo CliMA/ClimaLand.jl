@@ -1335,20 +1335,49 @@ function ClimaLand.total_energy_per_area!(
 end
 
 """
-    soil_conductance(θ_l::FT,
-                    S_c::FT,
-                    ν::FT,
-                    θ_r::FT,
-                    d_ds::FT,
-                    p::FT,
-                    α::FT,
-                    _D_vapor::FT
-                   ) where {FT}
+    soil_tortuosity(ν::FT, θ_r::FT, θ_i::FT = FT(0)) where {FT}
+
+Compute the tortuosity factor `θ_a^2.5 / ν` [-] for water vapor diffusion
+through the dry surface layer of the soil, following Equation (1) of Shokri,
+Lehmann, and Or (2008), Geophys. Res. Lett., 35, L19407,
+doi:10.1029/2008GL035230, with porosity `ν`, residual water fraction `θ_r`,
+and ice fraction `θ_i`.
+
+The vapor diffuses through the air-filled pore space of the dry layer, where
+the liquid water content is residual, so `θ_a = ν - θ_r - θ_i`, independent of
+the moisture of the soil below the dry layer (as in Swenson and Lawrence 2014,
+J. Geophys. Res. Atmos., 119, 10299–10312, doi:10.1002/2014JD022314, and the
+Community Land Model).
+"""
+function soil_tortuosity(ν::FT, θ_r::FT, θ_i::FT = FT(0)) where {FT}
+    θ_a = ν - θ_r - θ_i
+    safe_θ_a = max(θ_a, eps(FT))
+    return safe_θ_a^FT(2.5) / ν
+end
+
+"""
+    soil_conductance(
+        S_l::FT,
+        S_c::FT,
+        d_ds::FT,
+        p::FT,
+        α::FT,
+        _D_vapor::FT,
+        ν::FT,
+        θ_r::FT,
+        θ_i::FT,
+    ) where {FT}
 
 Computes the conductance of the top of the soil column to
-water vapor diffusion, as a function of the surface 
-volumetric liquid water fraction `θ_l`, other soil parameters,
-and diffusivity of vapor in air.
+water vapor diffusion, as a function of the surface
+effective liquid water saturation `S_l`, critical saturation `S_c`,
+other soil parameters, and diffusivity of vapor in air.
+
+The conductance is the inverse of the diffusive resistance
+`dsl / (D_vapor τ_a)` of the dry soil layer of thickness `dsl`, with the
+tortuosity factor `τ_a` of the dry layer (see [`soil_tortuosity`](@ref)).
+When no dry layer has formed (`dsl = 0`), the resistance vanishes and the
+conductance is unbounded.
 """
 function soil_conductance(
     S_l::FT,
@@ -1357,10 +1386,14 @@ function soil_conductance(
     p::FT,
     α::FT,
     _D_vapor::FT,
+    ν::FT,
+    θ_r::FT,
+    θ_i::FT,
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
-    g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
-    return g_soil
+    τ_a::FT = soil_tortuosity(ν, θ_r, θ_i)
+    r_soil = dsl / (_D_vapor * τ_a) # [s/m]
+    return 1 / max(r_soil, eps(FT)) # [m/s]
 end
 
 """

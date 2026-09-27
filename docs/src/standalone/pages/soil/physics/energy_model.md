@@ -116,6 +116,39 @@ The soil still receives the atmospheric fluxes at the capped skin temperature;
 their excess over the skin–top conduction heats the top cell, where it melts
 ice.
 
+### Surface humidity and evaporation
+
+The surface specific humidity used for evaporation is a conductance-weighted
+mean of the (soil water potential adjusted) saturation specific humidity at
+the skin and the specific humidity of the air,
+
+```math
+q_{\rm{sfc}} = \frac{g_{\rm{soil}} \, q_{\rm{sat}}(T_{\rm{sfc}}) \, e^{g ψ_{\rm{sfc}} M_w / (R T_{\rm{sfc}})} + g_h \, q_{\rm{air}}}{g_{\rm{soil}} + g_h},
+```
+
+where $g_h$ is the aerodynamic conductance for heat and $g_{\rm{soil}}$ is
+the conductance of the dry soil layer that forms at the surface as it dries
+([SwensonLawrence2014](@citet)),
+
+```math
+g_{\rm{soil}} = \frac{D_v τ_a}{d_{\rm{sl}}}, \quad
+d_{\rm{sl}} = d_{\rm{ds}} \left(\frac{α S_c - S_l}{S_l}\right)^p \; \text{for } S_l < α S_c, \quad
+τ_a = \frac{θ_a^{5/2}}{ν}, \quad θ_a = ν - θ_r - θ_i.
+```
+
+Here $D_v$ is the diffusivity of water vapor in air, $τ_a$ the tortuosity
+factor for diffusion through the air-filled pore space
+([Shokri2008](@citet)) of the dry layer, whose liquid water content is
+residual (so that $θ_a$ does not depend on the moisture of the soil below, as
+in [SwensonLawrence2014](@citet)), $S_l$ the effective saturation of the
+liquid water at the surface (extrapolated from the top two layers), $S_c$ the
+critical saturation of the retention curve, and $d_{\rm{ds}}$, $α$, and $p$
+parameters. When the surface is wetter than $α S_c$, no dry layer exists,
+$g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}}$ is the saturation value. When
+the skin is below the (depressed) freezing temperature, sublimation is
+computed instead, with $q_{\rm{sfc}}$ weighted by the ice fraction
+$β_{\rm{ice}} = (θ_i / ν)^4$.
+
 ### Time treatment
 
 The surface fluxes and the skin temperature are evaluated once per time step
