@@ -445,11 +445,13 @@ end
 function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
     NVTX.@annotate function update_imp_aux!(p, Y, t)
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
+        @. p.soil.θ_l =
+            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
         @. p.soil.T = temperature_from_ρe_int(
             Y.soil.ρe_int,
             Y.soil.θ_i,
             volumetric_heat_capacity(
-                min(ν - Y.soil.θ_i, Y.soil.ϑ_l), # compute θ_l
+                p.soil.θ_l,
                 Y.soil.θ_i,
                 ρc_ds,
                 earth_param_set,
@@ -1514,12 +1516,16 @@ end
     ) where {FT}
 
 Compute the conductance [m/s] of the top of the soil column to water vapor
-diffusion, the inverse of the diffusive resistance `dsl / (D_vapor τ_a)` of
-the dry soil layer of thickness `dsl` (see [`dry_soil_layer_thickness`](@ref)),
+diffusion: the inverse of the diffusive resistance `dsl / (D_vapor τ_a)` of the
+dry soil layer of thickness `dsl` (see [`dry_soil_layer_thickness`](@ref)),
 with the tortuosity factor `τ_a` of the air-dry layer (see
-[`soil_tortuosity`](@ref)). When no dry layer has formed (`dsl = 0`), the
-resistance vanishes and the conductance is unbounded. This conductance acts in
-series with the aerodynamic conductance.
+[`soil_tortuosity`](@ref)), times the availability factor
+`f_avail = S_l^2 / (S_l^2 + S_0^2)` with `S_0 = 0.01`. When no dry layer has
+formed (`dsl = 0`), the resistance vanishes and the conductance is unbounded.
+As the mobile liquid saturation vanishes (`S_l → 0`, i.e. `θ_l → θ_r`), only
+immobile residual water remains in the top soil layer and the conductance goes
+smoothly to zero. This conductance acts in series with the aerodynamic
+conductance.
 
 # Arguments
 - `S_l`: Effective liquid saturation at the surface [-].
@@ -1542,8 +1548,10 @@ function soil_conductance(
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
     τ_a::FT = soil_tortuosity(ν, θ_r, θ_i)
+    S_0 = FT(0.01)
+    f_avail = S_l^2 / (S_l^2 + S_0^2)
     r_soil = dsl / (_D_vapor * τ_a) # [s/m]
-    return 1 / max(r_soil, eps(FT)) # [m/s]
+    return f_avail / max(r_soil, eps(FT)) # [m/s]
 end
 
 """

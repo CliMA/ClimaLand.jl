@@ -217,6 +217,9 @@ space $ν - θ_i$), $S_c$ the critical saturation of the retention curve, and
 $d_{\rm{ds}}$, $α$, and $p$ parameters ($p = 1$ is the linear form of
 [SwensonLawrence2014](@citet)). When the surface is wetter than $α S_c$, no dry
 layer exists, $g_{\rm{soil}}$ is unbounded, and $q_{\rm{sfc}} = q_{\rm{src}}$.
+Conversely, $g_{\rm{soil}}$ is multiplied by $S_l^2 / (S_l^2 + S_0^2)$ with
+$S_0 = 0.01$, so that it vanishes smoothly as the mobile liquid water of the top
+layer is exhausted ($S_l → 0$) and only the immobile residual water remains.
 
 The vapor source is the saturation specific humidity at the skin lowered by the
 Kelvin factor of the soil water, $q_{\rm{src}} = h_r \, q_{\rm{sat}}(T_{\rm{sfc}})$

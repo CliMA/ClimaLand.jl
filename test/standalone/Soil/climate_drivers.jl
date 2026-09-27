@@ -400,20 +400,33 @@ for FT in (Float32, Float64)
                 FT(0),
             )
             @test gsoil[1] < gsoil[2]
+            @test ClimaLand.Soil.soil_conductance(
+                FT(0),
+                hydrology_cm.S_c,
+                d_ds,
+                evap_p,
+                evap_α,
+                _D_vapor,
+                ν,
+                θ_r,
+                FT(0),
+            ) == 0
             # The dry layer is air-dry: its tortuosity does not depend on the
             # moisture of the soil below it
             τ_a = ClimaLand.Soil.soil_tortuosity(ν, θ_r)
             @test τ_a ≈ (ν - θ_r)^FT(2.5) / ν
             # Ice fills pore space that vapor would otherwise diffuse through
             @test ClimaLand.Soil.soil_tortuosity(ν, θ_r, FT(0.1)) < τ_a
-            # The conductance is the inverse dry-layer resistance
+            # The conductance is the inverse dry-layer resistance, times the
+            # availability of mobile liquid water
             dsl1 = ClimaLand.Soil.dry_soil_layer_thickness(
                 S_sfc[1],
                 S_c,
                 d_ds,
                 evap_p,
             )
-            @test gsoil[1] ≈ _D_vapor * τ_a / dsl1
+            f_avail1 = S_sfc[1]^2 / (S_sfc[1]^2 + FT(0.01)^2)
+            @test gsoil[1] ≈ f_avail1 * _D_vapor * τ_a / dsl1
             # At saturation there is no dry layer: the conductance is unbounded
             @test gsoil[end] > FT(1e3)
             @test issorted(gsoil)
