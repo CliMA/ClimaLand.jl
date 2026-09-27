@@ -185,7 +185,19 @@ function make_update_boundary_fluxes(
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
-        # First compute the ground heat flux in place:
+        # Solve for the snow surface temperature first, as the ground heat flux
+        # depends on p.snow.T_sfc via snow_T_bottom:
+        SW_net_snow = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d)
+        Snow.update_surf_temp!(
+            land.snow,
+            land.snow.parameters.surf_temp,
+            SW_net_snow,
+            p.drivers.LW_d,
+            Y,
+            p,
+            t,
+        )
+        # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
@@ -193,7 +205,7 @@ function make_update_boundary_fluxes(
             land.snow.parameters,
             FT,
         )
-        #Now update snow boundary conditions, which rely on the ground heat flux
+        # Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
         # Now we have access to the actual applied and initially computed fluxes for snow
         @. p.excess_water_flux =
