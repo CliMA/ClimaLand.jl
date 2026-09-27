@@ -294,6 +294,16 @@ for FT in (Float32, Float64)
                 θ_r,
             )
             @test gsoil[1] < gsoil[2]
+            @test ClimaLand.Soil.soil_conductance(
+                FT(0),
+                hydrology_cm.S_c,
+                d_ds,
+                evap_p,
+                evap_α,
+                _D_vapor,
+                ν,
+                θ_r,
+            ) == 0
             τ_a = ClimaLand.Soil.soil_tortuosity(ν, θ_r)
             @test τ_a ≈ (ν - θ_r)^FT(2.5) / ν
         end

@@ -435,11 +435,13 @@ end
 function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
     NVTX.@annotate function update_imp_aux!(p, Y, t)
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
+        @. p.soil.θ_l =
+            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
         @. p.soil.T = temperature_from_ρe_int(
             Y.soil.ρe_int,
             Y.soil.θ_i,
             volumetric_heat_capacity(
-                min(ν - Y.soil.θ_i, Y.soil.ϑ_l), # compute θ_l
+                p.soil.θ_l,
                 Y.soil.θ_i,
                 ρc_ds,
                 earth_param_set,
@@ -1444,11 +1446,14 @@ end
     ) where {FT}
 
 Computes the conductance (m/s) of the dry surface layer of the soil to
-water vapor diffusion, `g = D_vapor τ / DSL`, as a function of the surface
-effective liquid water saturation `S_l`, critical saturation `S_c`,
+water vapor diffusion, `g = D_vapor τ f_avail / DSL`, as a function of the
+surface effective liquid water saturation `S_l`, critical saturation `S_c`,
 other soil parameters, and diffusivity of vapor in air. The dry surface layer
 thickness `DSL` is computed with `dry_soil_layer_thickness`, and the
-porosity-tortuosity factor `τ` of the dry layer with `soil_tortuosity`. This
+porosity-tortuosity factor `τ` of the dry layer with `soil_tortuosity`. As the
+mobile liquid saturation approaches zero (`S_l → 0`, i.e., `θ_l → θ_r`), only
+immobile residual water remains in the top soil layer and the vapor conductance
+smoothly vanishes via `f_avail = S_l^2 / (S_l^2 + S_0^2)` (`S_0 = 0.01`). This
 conductance acts in series with the aerodynamic conductance.
 """
 function soil_conductance(
@@ -1463,7 +1468,9 @@ function soil_conductance(
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
     τ_a::FT = soil_tortuosity(ν, θ_r)
-    g_soil = _D_vapor * τ_a / max(dsl, eps(FT)) # [m/s]
+    S_0 = FT(0.01)
+    f_avail = S_l^2 / (S_l^2 + S_0^2)
+    g_soil = _D_vapor * τ_a * f_avail / max(dsl, eps(FT)) # [m/s]
     return g_soil
 end
 

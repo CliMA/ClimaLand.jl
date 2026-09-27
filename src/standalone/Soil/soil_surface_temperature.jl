@@ -586,16 +586,20 @@ function soil_surface_vapor_conductance!(
     ν_top = ClimaLand.Domains.top_center_to_surface(ν)
     θ_i_top = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     ν_sfc = @. lazy(max(ν_top - θ_i_top, θ_r_sfc + sqrt(eps(FT))))
+    ϑ_l_top = ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l)
     θ_l_sfc = g_soil_sfc
     ClimaLand.Domains.linear_interpolation_to_surface!(
         θ_l_sfc,
-        p.soil.θ_l,
+        Y.soil.ϑ_l,
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    @. θ_l_sfc = clamp(θ_l_sfc, θ_r_sfc + eps(FT), ν_sfc)
     S_l_sfc = g_soil_sfc # currently set to θ_l_sfc
-    @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
+    @. S_l_sfc = clamp(
+        (min(θ_l_sfc, ϑ_l_top) - θ_r_sfc) / (ν_sfc - θ_r_sfc),
+        FT(0),
+        FT(1),
+    ) # overwrite with unclipped S_l_sfc ∈ [0, 1]
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     # currently set to S_l_sfc; overwrite with the conductance
     g_soil_sfc .=
