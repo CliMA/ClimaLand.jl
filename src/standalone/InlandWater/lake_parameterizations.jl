@@ -150,8 +150,10 @@ lake_surface_albedo(q_l::FT, params::SlabLakeParameters{FT}) where {FT} =
 
 Compute sediment heat flux (W m⁻²) using a series-conductance model:
     Q_sed = -G_eff * (T_lake - T_soil)
-where G_eff = 1 / (1/G + Δz_soil/(2*κ_soil)) combines the lake-side
-conductance `G` (from `params`) and the half-cell soil conductance.
+where G_eff = 1 / (1/G + Δz_soil/κ_soil) combines the lake-side
+conductance `G` (from `params`) and the half-cell soil conductance;
+`Δz_soil` is the distance between the soil surface and the center of the
+top soil layer.
 
 In standalone runs, this is not computed and set to zero in simulations
 """
@@ -163,7 +165,7 @@ function lake_sediment_heat_flux(
     params::SlabLakeParameters{FT},
 ) where {FT}
     G = params.conductance
-    G_eff = FT(1) / (FT(1) / G + Δz_soil / (FT(2) * κ_soil))
+    G_eff = FT(1) / (FT(1) / G + Δz_soil / κ_soil)
     return -G_eff * (T_lake - T_soil)
 end
 

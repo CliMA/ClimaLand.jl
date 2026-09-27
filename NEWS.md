@@ -18,6 +18,11 @@ main
   `soil_conductance` is written in resistance form so that a saturated surface
   evaporates at the potential rate.
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🐛bugfix] Fix the conduction lengths in the snow-soil ground heat flux and the lake
+  sediment heat flux: `Δz_top` is the half-thickness of the top soil layer and
+  was halved once more, doubling the soil-side conductance; the snow-side path
+  is now half the snow depth, capped at `Δz_top`.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 - ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
   are now computed throughout the simulation from time-integrated prognostic variables;
   trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in
