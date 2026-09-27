@@ -18,6 +18,11 @@ main
   `soil_conductance` is written in resistance form so that a saturated surface
   evaporates at the potential rate.
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🐛bugfix] Fix the conduction lengths in the snow-soil ground heat flux and the lake
+  sediment heat flux: `Δz_top` is the half-thickness of the top soil layer and
+  was halved once more, doubling the soil-side conductance; the snow-side path
+  is now half the snow depth, capped at `Δz_top`.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----

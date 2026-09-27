@@ -217,16 +217,17 @@ as
     F_g = - g_eff (T_snow_bottom - T_soil_sfc)
 
 where:
-    g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2).
+    g_eff = κ_soil * κ_snow / (κ_snow * Δz_top + κ_soil * min(z_snow / 2, Δz_top)).
 
-Here `T_snow_bottom` is the temperature at the base of the snowpack 
+Here `T_snow_bottom` is the temperature at the base of the snowpack
  and `T_soil_sfc` is the temperature of the top soil layer. The flux
 is positive when energy flows from the soil up into the snowpack.
 
-For simplicit, we assume that the thickness of the bottom layer of the
-snowpack is the same as the thickness of the soil top layer.
-When the snowpack is less than this 
-thickness in height, we use the thickness the snowpack directly.
+`Δz_top` is the distance between the soil surface and the center of the top
+soil layer (half the layer thickness). For simplicity, we assume that the
+bottom layer of the snowpack is as thick as the top soil layer, so the
+conduction path within the snow is also `Δz_top`, or half the snow depth
+when the snowpack is thinner than that layer.
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -238,15 +239,14 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
 )
     κ_snow = p.snow.κ
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
-    Δz_soil = soil_domain.fields.Δz_top
-    Δz_snow = Δz_soil
+    Δz_top = soil_domain.fields.Δz_top
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     @. p.snow_T_bot = snow_T_bottom(
         κ_snow,
         κ_soil * κ_snow /
-        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2), # g_eff
+        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)), # g_eff
         T_soil,
         T̄,
         T_sfc,
@@ -254,11 +254,9 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
         p.snow.ρ_snow,
         snow_params.earth_param_set,
     )
-    # compute the flux
-    # g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)
     @. p.ground_heat_flux =
         -κ_soil * κ_snow /
-        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2) *
+        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)) *
         (p.snow_T_bot - T_soil)
     return nothing
 end
