@@ -128,12 +128,18 @@ function update_interception!(p, Y, t, model::CLM5Interception{FT}, canopy) wher
     ρ_liq = LP.ρ_cloud_liq(canopy.earth_param_set)
     # P_liq is negative (downward); the interception, drip and E_max are
     # positive magnitudes, the throughfall has the same sign as P_liq.
-    @. p.canopy.interception.intercepted_liq =
-        α_liq * tanh(max(PAI, FT(0))) * max(-p.drivers.P_liq, FT(0))
+    # Below the plant area index at which the canopy turbulent fluxes are
+    # neglected, there is no interception or storage, and any remaining store
+    # drips to the ground
+    @. p.canopy.interception.intercepted_liq = ifelse(
+        canopy_is_active(PAI),
+        α_liq * tanh(PAI) * max(-p.drivers.P_liq, FT(0)),
+        FT(0),
+    )
     @. p.canopy.interception.drip =
         max(
             W + p.canopy.interception.intercepted_liq * Δt -
-            p_liq * max(PAI, FT(0)),
+            ifelse(canopy_is_active(PAI), p_liq * PAI, FT(0)),
             FT(0),
         ) / Δt
     @. p.canopy.interception.throughfall_liq =
@@ -156,6 +162,16 @@ function update_interception!(p, Y, t, model::CLM5Interception{FT}, canopy) wher
 end
 
 """
+    canopy_is_active(PAI::FT) where {FT}
+
+Returns true if the plant area index is at least 0.05, the threshold below
+which the canopy sensible heat flux is neglected. Below it, the canopy heat
+capacity is too small to absorb the energy exchanged with intercepted water,
+and interception, storage and dew collection are switched off.
+"""
+canopy_is_active(PAI::FT) where {FT} = PAI >= FT(0.05)
+
+"""
     wetted_fraction(W::FT, PAI::FT, p_liq::FT, f_wet_max::FT) where {FT}
 
 Returns the wetted fraction of the plant area, (W / W_max)^(2/3) with
@@ -169,7 +185,7 @@ function wetted_fraction(W::FT, PAI::FT, p_liq::FT, f_wet_max::FT) where {FT}
         (max(W, FT(0)) / max(W_max, eps(FT)))^(FT(2) / FT(3)),
         f_wet_max,
     )
-    return ifelse(PAI < FT(0.05), FT(0), f)
+    return ifelse(canopy_is_active(PAI), f, FT(0))
 end
 
 """
@@ -228,7 +244,7 @@ function canopy_vapor_conductances(
     Δq = q_canopy - q_air
     g_cap = E_max / (ρ_air * max(Δq, eps(FT)))
     g_wet_limited = g_wet * g_cap / (g_wet + g_cap + eps(FT))
-    condensing = dew_to_storage & (Δq < 0)
+    condensing = dew_to_storage & (Δq < 0) & canopy_is_active(PAI)
     g_wet_eff = ifelse(condensing, g_b_plant, g_wet_limited)
     g_tr_eff = ifelse(condensing, zero(FT), g_tr)
     return (g_wet_eff, g_tr_eff)
@@ -273,15 +289,27 @@ the liquid water added to the canopy store, ρ_l e_l(T_air) (I - D). The ground
 receives the throughfall at the same energy per unit volume, so the total
 energy of the precipitation is conserved. Like the energy of the root water
 uptake, this energy enters the canopy energy balance, while the heat capacity
-of the intercepted water is neglected.
+of the intercepted water is neglected. Below a plant area index of 0.05, the
+canopy heat capacity is negligible and this flux is set to zero; the energy of
+the small amount of water remaining in the store when the plant area index
+falls below this threshold (at most 0.05 `p_liq`) is then not removed from the
+canopy.
 """
 interception_energy_flux(model::NoInterception{FT}, p, canopy) where {FT} =
     FT(0)
 function interception_energy_flux(model::CLM5Interception, p, canopy)
     earth_param_set = canopy.earth_param_set
+    area_index = p.canopy.biomass.area_index
     return @. lazy(
-        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) *
-        (p.canopy.interception.intercepted_liq - p.canopy.interception.drip),
+        ifelse(
+            canopy_is_active(area_index.leaf + area_index.stem),
+            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) *
+            (
+                p.canopy.interception.intercepted_liq -
+                p.canopy.interception.drip
+            ),
+            zero(eltype(p.drivers.T)),
+        ),
     )
 end
 
@@ -349,3 +377,16 @@ function check_interception_forcing(model::CLM5Interception, atmos)
     )
     return nothing
 end
+
+"""
+    default_interception_model(::Type{FT}, atmos, toml_dict, Δt) where {FT}
+
+Returns the canopy interception model used by default in integrated land
+models: `CLM5Interception` with the parameters in `toml_dict` and the
+timestep `Δt` if the atmospheric forcing is prescribed, and `NoInterception`
+otherwise (the partitioning of the canopy vapor flux is currently only
+implemented for prescribed atmospheric forcing).
+"""
+default_interception_model(::Type{FT}, atmos, toml_dict, Δt) where {FT} =
+    atmos isa ClimaLand.PrescribedAtmosphere ?
+    CLM5Interception{FT}(toml_dict, Δt) : NoInterception{FT}()

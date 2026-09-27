@@ -103,6 +103,21 @@ import ClimaLand.Parameters as LP
         )
         @test g_tr == 0
         @test g_wet ≈ Cd * u_star * PAI
+        # Below PAI = 0.05, condensation to the canopy store is switched off
+        (g_wet_low, g_tr_low) = Canopy.canopy_vapor_conductances(
+            u_star,
+            Cd,
+            FT(0.01),
+            FT(0.02),
+            r_st,
+            FT(0),
+            FT(0),
+            q_a,
+            q_c,
+            ρ,
+            true,
+        )
+        @test g_wet_low == 0
     end
 end
 
