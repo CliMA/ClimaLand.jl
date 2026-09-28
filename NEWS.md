@@ -2,6 +2,25 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
+  are now computed throughout the simulation from time-integrated prognostic variables;
+  trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in
+  `p.canopy.biomass.composition`, diagnostics `ftr`, `fc3g`, `fc4g`, `fc3`) and used by
+  photosynthesis; potential GPP now assumes moisture stress is 1. `z`/`sigma`/`alpha`
+  recalibrated to 29.2/1.01/0.202, and the P-model, moisture-stress and canopy-flux defaults
+  updated from a separate calibration.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-💥breaking] `ZhouOptimalLAIModel` no longer uses the `optimal_lai_inputs` keyword
+  argument, and requires the P-model; `optimal_lai_f0` is renamed `optimal_lai_f0_max`;
+  `get_Vcmax25_leaf` and `get_Vcmax25_canopy` take the canopy model as a fourth argument.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-✨feature] The global land model restart test (`test/integrated/restart.jl`)
+  also runs with `ZhouOptimalLAIModel`, whose time-integrated variables are checkpointed
+  with the rest of the state. PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
+- ![][badge-🐛bugfix] Where the optimal-LAI initial-condition file has no data (`f0` south
+  of 60°S, ocean pixels picked up by coastal cells), `ZhouOptimalLAIModel` starts from a
+  bare canopy instead of NaN, so LAI is predicted over Antarctica.
+  PR [#1831](https://github.com/CliMA/ClimaLand.jl/pull/1831)
 - Fix the 10 cm soil water mass diagnostic for standalone soil models, register
   the optimal-LAI and soil CO2 ppm diagnostics only for models that support
   them, and fix the default time interpolation of the perturbed ERA5 drivers.

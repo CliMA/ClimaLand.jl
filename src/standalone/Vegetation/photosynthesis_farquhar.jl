@@ -62,7 +62,7 @@ Base.@kwdef struct FarquharParameters{
     s6::FT
     "Quantum yield for C4 photosynthesis; mol/mol"
     E::FT
-    "Photosynthesis mechanism: 1.0 indicates C3, 0.0 indicates C4"
+    "Photosynthesis mechanism: 1.0 indicates C3, 0.0 indicates C4; constant in time"
     is_c3::MECH
 end
 
@@ -397,16 +397,17 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
-get_Vcmax25_leaf(Y, p, m::FarquharModel) = m.parameters.Vcmax25
+get_Vcmax25_leaf(Y, p, m::FarquharModel, canopy) = m.parameters.Vcmax25
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_Vcmax25_canopy(Y, p, m::FarquharModel) =
+get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy) =
     @. lazy(m.parameters.Vcmax25 * p.canopy.biomass.area_index.leaf)
 get_Rd_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.Rd * p.canopy.biomass.area_index.leaf)
 get_An_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.An * p.canopy.biomass.area_index.leaf)
 get_GPP(p, m::FarquharModel) = p.canopy.photosynthesis.GPP
+static_fractional_c3(m::FarquharModel) = m.parameters.is_c3
 
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
@@ -466,7 +467,9 @@ ClimaLand.Canopy.FarquharParameters(toml_dict, 1.0f0; Vcmax25 = 99999999)
     not support this, because we only solve for photosynthesis for the dominant
     PFT per grid cell. In this case, the dominant PFT corresponds to either C3
     or C4 photosynthesis, and not a mix. Internally, the values are constrained
-    to the values 0 (C3) and 1 (C4).
+    to the values 1 (C3) and 0 (C4). The mechanism is constant in time: the
+    `ZhouOptimalLAIModel`, which predicts the canopy composition, requires the
+    `PModel`.
 ```
 """
 function FarquharParameters(

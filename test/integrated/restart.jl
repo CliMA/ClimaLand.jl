@@ -9,12 +9,15 @@ import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, step!
 using Dates
 
-@testset "Integrated land model restart test" begin
+@testset "Land restart, prognostic LAI: $prognostic_lai" for prognostic_lai in
+                                                             (false, true)
     # Integrate the global land model (soil, snow, soil CO2, inland water, and a
     # canopy which uses the P-model for photosynthesis; this is the configuration of
     # experiments/long_runs/snowy_land_pmodel.jl) for `n_steps`, saving a checkpoint
     # after `n_steps_to_checkpoint`. Then restart from that checkpoint and integrate
     # to the same final time, and compare against the uninterrupted simulation.
+    # With `prognostic_lai`, LAI comes from the `ZhouOptimalLAIModel`, whose
+    # time-integrated variables are part of the state.
     FT = Float64
     context = ClimaComms.context()
     start_date = DateTime(2008, 3, 1)
@@ -29,7 +32,8 @@ using Dates
     checkpoint_date = start_date + Second(n_steps_to_checkpoint * Δt)
     t0 = ITime(0, Second(1), start_date)
 
-    root_path = "land_pmodel_restart"
+    root_path =
+        prognostic_lai ? "land_pmodel_opt_lai_restart" : "land_pmodel_restart"
     output_dir =
         ClimaUtilities.OutputPathGenerator.generate_output_path(root_path)
 
@@ -51,20 +55,33 @@ using Dates
         use_lowres_forcing = true,
         context,
     )
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        domain.space.surface,
-        start_date,
-        stop_date,
-    )
-    model = ClimaLand.LandModel{FT}(
-        (; atmos, radiation),
-        LAI,
-        toml_dict,
-        domain,
-        Δt;
-        prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2),
-    )
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    model = if prognostic_lai
+        ClimaLand.LandModel{FT}(
+            (; atmos, radiation),
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+        )
+    else
+        LAI = ClimaLand.Canopy.prescribed_lai_modis(
+            domain.space.surface,
+            start_date,
+            stop_date,
+        )
+        ClimaLand.LandModel{FT}(
+            (; atmos, radiation),
+            LAI,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+        )
+    end
     @test model.canopy.photosynthesis isa ClimaLand.Canopy.PModel
+    @test (model.canopy.biomass isa ClimaLand.Canopy.ZhouOptimalLAIModel) ==
+          prognostic_lai
 
     set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
         ClimaLand.Artifacts.soil_ic_2008_50m_path(; context),
@@ -180,6 +197,12 @@ using Dates
     # satisfied trivially.
     @test Array(parent(restart._integrator.u.soil.ρe_int)) !=
           Array(parent(Y_checkpoint.soil.ρe_int))
+    if prognostic_lai
+        @test Array(parent(restart._integrator.u.canopy.biomass.LAI)) !=
+              Array(parent(Y_checkpoint.canopy.biomass.LAI))
+        @test Array(parent(restart._integrator.u.canopy.biomass.A0c4_annual)) !=
+              Array(parent(Y_checkpoint.canopy.biomass.A0c4_annual))
+    end
 
     # Only the state is checkpointed, so the restarted simulation rebuilds its cache
     # from it
