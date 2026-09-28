@@ -6,6 +6,7 @@ import ClimaComms
 using ClimaCore: Spaces, Fields
 using LazyBroadcast: lazy
 import ..Parameters as LP
+import Thermodynamics
 
 import ..AbstractModel, ..AbstractLandModel
 using ..Bucket: BucketModel
