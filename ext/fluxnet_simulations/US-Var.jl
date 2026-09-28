@@ -47,6 +47,16 @@ function FluxnetSimulations.get_location(
 end
 
 """
+    get_sensor_depths(FT, ::Val{:US_Var})
+
+Returns the depths (m) of the soil temperature sensors at US-Var (2, 4, 8, 16,
+and 32 cm; Ma et al. 2023); the soil water content sensor depths are not
+documented here.
+"""
+FluxnetSimulations.get_sensor_depths(FT, ::Val{:US_Var}) =
+    (; tsoil = FT.((0.02, 0.04, 0.08, 0.16, 0.32)), swc = nothing)
+
+"""
     get_fluxtower_height(FT, ::Val{:US_Var}; kwargs...)
 
 Returns atmosphere height for US-Var (California Vaira Ranch Ione) Fluxnet site.

@@ -347,3 +347,12 @@ end
     @test Vcmax25 == FT(2.5e-5)
     @test SAI == FT(0)
 end
+
+@testset "Sensor depths" begin
+    depths = FluxnetSimulations.get_sensor_depths(FT, Val(:US_Var))
+    @test depths.tsoil == FT.((0.02, 0.04, 0.08, 0.16, 0.32))
+    @test isnothing(depths.swc)
+    # Sites without documented depths fall back to unknown
+    @test FluxnetSimulations.get_sensor_depths(FT, Val(:US_MOz)) ==
+          (; tsoil = nothing, swc = nothing)
+end

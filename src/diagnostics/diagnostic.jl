@@ -182,18 +182,55 @@ nlayers(::Spaces.PointSpace) = 1
 nlayers(::Spaces.MultiPointSpace) = 1
 
 """
-    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic; layer = nothing)
+    depth_interpolation_weights(z, depth)
+
+Return `(i_lo, i_hi, w_hi)` such that the value at `depth` [m] below the
+surface of a quantity known at the layer center heights `z` [m] (increasing
+upward, negative below the surface) is `(1 - w_hi) v[i_lo] + w_hi v[i_hi]`, by
+linear interpolation between the bracketing centers. Depths above the top
+center or below the bottom center take the value of that center.
+"""
+function depth_interpolation_weights(z::AbstractVector, depth)
+    z_target = -depth
+    z_target >= z[end] && return (lastindex(z), lastindex(z), zero(z_target))
+    z_target <= z[1] && return (firstindex(z), firstindex(z), zero(z_target))
+    i_hi = findfirst(>(z_target), z)
+    i_lo = i_hi - 1
+    w_hi = (z_target - z[i_lo]) / (z[i_hi] - z[i_lo])
+    return (i_lo, i_hi, w_hi)
+end
+
+"""
+    layer_center_heights(field::Fields.Field)
+
+Return the heights [m] of the layer centers of a column `field`, from the
+bottom up, as a host `Array` (the field may live on a GPU).
+"""
+layer_center_heights(field::Fields.Field) =
+    Array(vec(parent(Fields.coordinate_field(axes(field)).z)[:, 1]))
+
+"""
+    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic;
+                          layer = nothing, depth = nothing)
 
 Extract `diagnostic` from given `writer` as tuple of vectors (time and value).
-By default, if `layer` is nothing, it gets the surface value; otherwise
-it returns the layer requested.
+By default, if `layer` and `depth` are nothing, it gets the surface value;
+otherwise it returns the layer requested, or the value interpolated linearly
+between layer centers to `depth` [m] below the surface (see
+[`depth_interpolation_weights`](@ref)). Variables without vertical resolution
+ignore `depth`.
 
-Note that for variables resolved in depth, the bottom layer is indicated by `1`,  
-while the top layer is indicated by the number of layers.
+For variables resolved in depth, the bottom layer is indicated by `1` and the
+top layer by the number of layers.
 
 `diagnostic` is typically a string with the short name of the diagnostic.
 """
-function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = nothing)
+function diagnostic_as_vectors(
+    writer::DictWriter,
+    diagnostic;
+    layer = nothing,
+    depth = nothing,
+)
 
     # writer[diagnostic] is a dictionary with keys the times and with values Fields. We need
     # to be a little careful because dictionaries are not ordered, so we have to sort them
@@ -202,9 +239,22 @@ function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = nothing)
     sort_indices = sortperm(times)
     values_all = parent.(values(writer[diagnostic]))[sort_indices]
     field = first(values(writer[diagnostic]))
-    layer_id = layer isa Nothing ? nlayers(field) : layer
-    vector_layer =
-        vcat([values_all[i][layer_id, :] for i in eachindex(values_all)]...)
+    # Variables without vertical resolution ignore `depth`
+    if isnothing(depth) || nlayers(field) == 1
+        layer_id = layer isa Nothing ? nlayers(field) : layer
+        vector_layer =
+            vcat([values_all[i][layer_id, :] for i in eachindex(values_all)]...)
+    else
+        (i_lo, i_hi, w_hi) =
+            depth_interpolation_weights(layer_center_heights(field), depth)
+        vector_layer = vcat(
+            [
+                (1 - w_hi) .* values_all[i][i_lo, :] .+
+                w_hi .* values_all[i][i_hi, :] for
+                i in eachindex(values_all)
+            ]...,
+        )
+    end
 
     return times, vector_layer
 end

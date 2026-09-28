@@ -273,17 +273,31 @@ model_dates = model_dates[model_id_post_spinup]
 model_idx1 = findfirst(model_id_post_spinup)
 model_idxend = findlast(model_id_post_spinup)
 # Extract model output from the saved output
+# Model values at the sensor depths, interpolated between layer centers
+z_centers = ClimaLand.Diagnostics.layer_center_heights(sv.saveval[1].soil.T)
+function at_depth(field, depth)
+    (i_lo, i_hi, w_hi) =
+        ClimaLand.Diagnostics.depth_interpolation_weights(z_centers, depth)
+    values = parent(field)
+    return (1 - w_hi) * values[i_lo] + w_hi * values[i_hi]
+end
+tsoil_depths = FluxnetSimulations.get_sensor_depths(FT, Val(site_ID_val)).tsoil
 θ1 = [
     parent(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i)[end] for
     k in model_idx1:1:model_idxend
 ]
 θ3 = [
-    parent(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i)[end - 10] for
+    at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, 0.20) for
     k in model_idx1:1:model_idxend
 ]
-T_soil1 = [parent(sv.saveval[k].soil.T)[end] for k in model_idx1:1:model_idxend]; # 2cm
-T_soil5 =
-    [parent(sv.saveval[k].soil.T)[end - 16] for k in model_idx1:1:model_idxend]
+T_soil1 = [
+    at_depth(sv.saveval[k].soil.T, tsoil_depths[1]) for
+    k in model_idx1:1:model_idxend
+]
+T_soil5 = [
+    at_depth(sv.saveval[k].soil.T, tsoil_depths[5]) for
+    k in model_idx1:1:model_idxend
+]
 SW_u = [parent(sv.saveval[k].SW_u)[1] for k in model_idx1:1:model_idxend]
 LHF = [
     parent(
