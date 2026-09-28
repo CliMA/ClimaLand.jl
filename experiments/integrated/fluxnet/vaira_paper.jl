@@ -14,6 +14,7 @@ using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaLand.Diagnostics: at_depth
 import ClimaLand.Simulations: LandSimulation, solve!
 
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
@@ -273,17 +274,26 @@ model_dates = model_dates[model_id_post_spinup]
 model_idx1 = findfirst(model_id_post_spinup)
 model_idxend = findlast(model_id_post_spinup)
 # Extract model output from the saved output
+# Model values at the sensor depths, interpolated between layer centers
+sensor_depths = FluxnetSimulations.get_sensor_depths(FT, Val(site_ID_val))
+tsoil_depths = sensor_depths.tsoil
+swc_depths = sensor_depths.swc
 θ1 = [
-    parent(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i)[end] for
+    at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, swc_depths[1]) for
     k in model_idx1:1:model_idxend
 ]
 θ3 = [
-    parent(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i)[end - 10] for
+    at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, swc_depths[3]) for
     k in model_idx1:1:model_idxend
 ]
-T_soil1 = [parent(sv.saveval[k].soil.T)[end] for k in model_idx1:1:model_idxend]; # 2cm
-T_soil5 =
-    [parent(sv.saveval[k].soil.T)[end - 16] for k in model_idx1:1:model_idxend]
+T_soil1 = [
+    at_depth(sv.saveval[k].soil.T, tsoil_depths[1]) for
+    k in model_idx1:1:model_idxend
+]
+T_soil5 = [
+    at_depth(sv.saveval[k].soil.T, tsoil_depths[5]) for
+    k in model_idx1:1:model_idxend
+]
 SW_u = [parent(sv.saveval[k].SW_u)[1] for k in model_idx1:1:model_idxend]
 LHF = [
     parent(
@@ -492,7 +502,7 @@ lines!(
     color = "orange",
     linewidth = 3,
 )
-text!(ax2, model_dates[1], 0, text = "0-2 cm")
+text!(ax2, model_dates[1], 0, text = "Surface")
 
 ax3 = Axis(
     fig[1, 1],

@@ -290,9 +290,22 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe"],
+    short_names = ["swc", "swe"],
     spinup_date = start_date + Day(20),
     comparison_data,
+)
+# The observed soil temperature is compared at the depth of its sensor when
+# that is documented for the site; otherwise the top model layer is shown.
+tsoil_depths = FluxnetSimulations.get_sensor_depths(FT, Val(site_ID_val)).tsoil
+LandSimVis.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["tsoil"],
+    spinup_date = start_date + Day(20),
+    comparison_data,
+    depth = isnothing(tsoil_depths) ? nothing : tsoil_depths[1],
 )
 LandSimVis.make_timeseries(
     land_domain,

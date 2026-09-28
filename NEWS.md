@@ -23,6 +23,13 @@ main
   was halved once more, doubling the soil-side conductance; the snow-side path
   is now half the snow depth, capped at `Δz_top`.
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-✨feature] Compare modeled soil temperature with FLUXNET observations at the depth of
+  the sensor: `diagnostic_as_vectors` and `LandSimVis.make_timeseries` take a
+  `depth` keyword that interpolates between layer centers, and
+  `FluxnetSimulations.get_sensor_depths` records the documented sensor depths
+  (US-Var: soil temperature at 2, 4, 8, 16, 32 cm; water content at the
+  surface, 10, 20 cm), used by `run_fluxnet.jl` and `vaira_paper.jl`.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----

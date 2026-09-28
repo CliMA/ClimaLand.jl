@@ -222,7 +222,7 @@ end
         end
 
         output_writer = ClimaDiagnostics.Writers.DictWriter()
-        output_vars = ["swc", "sie", "swp"]
+        output_vars = ["swc", "sie", "swp", "salb"]
         reduction_period = :every_dt
         reduction_type = :instantaneous
 
@@ -247,8 +247,12 @@ end
         )
 
         # Test that the diagnostics were correctly created and computed once at initialization
-        @test keys(simulation.diagnostics[1].output_writer.dict) ==
-              Set(["swp_1000s_inst", "swc_1000s_inst", "sie_1000s_inst"])
+        @test keys(simulation.diagnostics[1].output_writer.dict) == Set([
+            "swp_1000s_inst",
+            "swc_1000s_inst",
+            "sie_1000s_inst",
+            "salb_1000s_inst",
+        ])
         @test length(
             simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
         ) == 1 # number of diagnostic computations so far
@@ -256,6 +260,46 @@ end
             ClimaCore.Fields.field2array(
                 simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
             ) .== FT(0.24),
+        )
+        # Depth interpolation of the uniform profile between layer centers
+        z_centers = ClimaLand.Diagnostics.layer_center_heights(
+            simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
+        )
+        @test issorted(z_centers) && all(z_centers .< 0)
+        depth = -(z_centers[end] + z_centers[end - 1]) / 2
+        (i_lo, i_hi, w_hi) =
+            ClimaLand.Diagnostics.depth_interpolation_weights(z_centers, depth)
+        @test (i_lo, i_hi) == (length(z_centers) - 1, length(z_centers))
+        @test w_hi ≈ 0.5
+        # Above the top center and below the bottom center, the end values hold
+        @test ClimaLand.Diagnostics.depth_interpolation_weights(
+            z_centers,
+            0,
+        )[1:2] == (length(z_centers), length(z_centers))
+        @test ClimaLand.Diagnostics.depth_interpolation_weights(
+            z_centers,
+            -2 * z_centers[1],
+        )[1:2] == (1, 1)
+        # A linear profile is reproduced between layer centers
+        swc_field =
+            simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1]
+        z_field = ClimaCore.Fields.coordinate_field(axes(swc_field)).z
+        @test ClimaLand.Diagnostics.at_depth(z_field, depth) ≈ -depth
+        @test ClimaLand.Diagnostics.at_depth(swc_field, depth) ≈ FT(0.24)
+        _, swc_at_depth = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            output_writer,
+            "swc_1000s_inst";
+            depth,
+        )
+        @test all(swc_at_depth .== FT(0.24))
+        # Variables without vertical resolution ignore the depth
+        @test ClimaLand.Diagnostics.diagnostic_as_vectors(
+            output_writer,
+            "salb_1000s_inst";
+            depth,
+        ) == ClimaLand.Diagnostics.diagnostic_as_vectors(
+            output_writer,
+            "salb_1000s_inst",
         )
 
         # Step the simulation once to compute diagnostics again

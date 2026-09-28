@@ -467,7 +467,10 @@ with values equal to the time at which the observations where made.
 Please note that
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
 case all possible variables will be plotted
-- The top layer of 3D variables is used for plotting.
+- The top layer of 3D variables is used for plotting, unless `layer` (counted
+  from the bottom) or `depth` (m below the surface, interpolated linearly
+  between layer centers) is given. If both are given, `depth` is used and
+  `layer` is ignored.
 """
 function LandSimVis.make_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
@@ -477,6 +480,7 @@ function LandSimVis.make_timeseries(
     comparison_data = nothing,
     spinup_date = sim.start_date,
     layer = nothing,
+    depth = nothing,
 )
     model = sim.model
     LandSimVis.make_timeseries(
@@ -489,6 +493,7 @@ function LandSimVis.make_timeseries(
         comparison_data,
         spinup_date,
         layer,
+        depth,
     )
 end
 
@@ -502,6 +507,7 @@ function LandSimVis.make_timeseries(
     comparison_data = nothing,
     spinup_date = start_date,
     layer = nothing,
+    depth = nothing,
 )
     @info "No method matching make_timeseries for $domain."
 end
@@ -511,6 +517,7 @@ function LandSimVis.make_timeseries(
     diagnostics,
     start_date;
     layer = nothing,
+    depth = nothing,
     plot_stem_name = "timeseries",
     savedir = ".",
     short_names = nothing,
@@ -533,6 +540,7 @@ function LandSimVis.make_timeseries(
         comparison_data,
         spinup_date,
         layer,
+        depth,
     )
 end
 
