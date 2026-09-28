@@ -32,6 +32,9 @@ tutorials = [
         "Data processing" => "integrated/fluxnet_data.jl",
         "Visualization" => "integrated/fluxnet_vis.jl",
     ],
+    "Running ERA5-forced single column simulations" => [
+        "Canopy, soil, and snow" => "integrated/snowy_land_era5_tutorial.jl",
+    ],
     "Running global simulations" => [
         "Bucket" => "global/bucket.jl",
         "Snow, soil, canopy" => "global/snowy_land.jl",
