@@ -909,7 +909,7 @@ function solve_for_surface_temp_at_a_point(
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
 )::FT where {FT}
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = ClimaLand.surface_flux_config(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,

@@ -641,7 +641,7 @@ function solve_soil_surface_temperature_at_a_point(
     gustiness,
     earth_param_set,
 ) where {FT}
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = ClimaLand.surface_flux_config(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,

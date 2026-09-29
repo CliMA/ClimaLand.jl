@@ -515,6 +515,31 @@ function compute_turbulent_fluxes_at_a_point(args...)
 end
 
 """
+    surface_flux_config(roughness_model, gustiness)
+
+Returns the SurfaceFluxes configuration used for the turbulent fluxes of all
+land surfaces: the given roughness and gustiness models, moist thermodynamics,
+no roughness sublayer correction, and the `MaxHeatFluxStabilityCap` in stable
+conditions.
+
+The stability cap holds the exchange coefficients at their values at the
+stability `ζ_p` at which the Monin-Obukhov sensible heat flux at fixed wind
+speed is maximal (`ζ_p` depends only on the ratio of the effective forcing
+height to the momentum roughness length; ≈ 0.2 over tall forests, ≈ 0.6–1 over
+bare soil, ≈ 1–2 over snow). Without a cap, the Monin-Obukhov exchange
+collapses once the bulk Richardson number becomes supercritical, which
+decouples canopies and snow from the atmosphere at night (runaway cooling).
+The cap has no free parameters. See the SurfaceFluxes documentation.
+"""
+surface_flux_config(roughness_model, gustiness) = SurfaceFluxes.SurfaceFluxConfig(
+    roughness_model,
+    gustiness,
+    SurfaceFluxes.MoistModel(),
+    SurfaceFluxes.NoRoughnessSubLayer(),
+    SurfaceFluxes.MaxHeatFluxStabilityCap(),
+)
+
+"""
     compute_turbulent_fluxes_and_ustar_at_a_point(args...)
 
 Same as `compute_turbulent_fluxes_at_a_point`, but additionally returns the
@@ -546,7 +571,7 @@ function compute_turbulent_fluxes_and_ustar_at_a_point(
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set) # used to compute surface potential
 
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = surface_flux_config(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
