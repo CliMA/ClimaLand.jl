@@ -2,6 +2,13 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
+  four prognostic pools (sugar, leaf, stem, root) around an LAI model, respires through
+  `PoolBasedAutotrophicRespirationModel`, and in `LandModel` and `SoilCanopyModel` feeds its
+  litter to a prognostic soil organic carbon (`SoilCarbonLitterInput`). Also adds
+  `Canopy.equilibrium_carbon_pools`, a `biomass` keyword to the integrated-model constructors,
+  and the `crd` (canopy leaf respiration) diagnostic.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 
 1.12.3
 ----

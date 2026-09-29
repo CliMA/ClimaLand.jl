@@ -146,6 +146,9 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Canopy integrated water and energy content" begin
         include("standalone/Vegetation/conservation.jl")
     end
+    @safetestset "Canopy prognostic carbon pools" begin
+        include("standalone/Vegetation/test_prognostic_carbon.jl")
+    end
     @safetestset "Canopy spatial parameters" begin
         include("standalone/Vegetation/spatial_parameters.jl")
     end

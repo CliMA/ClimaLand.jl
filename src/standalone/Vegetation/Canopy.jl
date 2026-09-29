@@ -693,22 +693,36 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
 end
 
 """
-    check_component_compatibility(photosynthesis, conductance, biomass)
+    check_component_compatibility(
+        photosynthesis,
+        conductance,
+        biomass,
+        autotrophic_respiration,
+    )
 
 Asserts that the canopy components can be used together: the P-model requires the
-P-model stomatal conductance and vice versa, and `ZhouOptimalLAIModel` requires the
-P-model.
+P-model stomatal conductance and vice versa, `ZhouOptimalLAIModel` (also when wrapped by
+`PrognosticCarbonModel`) requires the P-model, and `PrognosticCarbonModel` and
+`PoolBasedAutotrophicRespirationModel` require each other.
 """
-function check_component_compatibility(photosynthesis, conductance, biomass)
+function check_component_compatibility(
+    photosynthesis,
+    conductance,
+    biomass,
+    autotrophic_respiration,
+)
     if photosynthesis isa PModel
         @assert conductance isa PModelConductance "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
     end
     if conductance isa PModelConductance
         @assert photosynthesis isa PModel "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
     end
-    if biomass isa ZhouOptimalLAIModel
+    lai_model = biomass isa PrognosticCarbonModel ? biomass.lai_model : biomass
+    if lai_model isa ZhouOptimalLAIModel
         @assert photosynthesis isa PModel "When using ZhouOptimalLAIModel for biomass, you must also use PModel for photosynthesis"
     end
+    @assert (biomass isa PrognosticCarbonModel) ==
+            (autotrophic_respiration isa PoolBasedAutotrophicRespirationModel) "PrognosticCarbonModel and PoolBasedAutotrophicRespirationModel must be used together"
     return nothing
 end
 
@@ -755,7 +769,12 @@ function CanopyModel{FT}(;
     },
 ) where {FT, B, PSE}
 
-    check_component_compatibility(photosynthesis, conductance, biomass)
+    check_component_compatibility(
+        photosynthesis,
+        conductance,
+        biomass,
+        autotrophic_respiration,
+    )
 
     args = (
         autotrophic_respiration,
@@ -785,14 +804,14 @@ end
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
         prognostic_land_components = (:canopy,),
-        autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+        biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+        autotrophic_respiration = default_autotrophic_respiration(biomass, toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
         photosynthesis = PModel{FT}(domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
         energy = BigLeafEnergyModel{FT}(toml_dict),
-        biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
         turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
     ) where {FT, PSE}
@@ -826,14 +845,17 @@ function CanopyModel{FT}(
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
-    autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    autotrophic_respiration = default_autotrophic_respiration(
+        biomass,
+        toml_dict,
+    ),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
-    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,
@@ -862,7 +884,7 @@ function CanopyModel{FT}(
     end
 
     # Confirm that the LAI passed agrees with the LAI of the biomass model
-    @assert biomass.plant_area_index.LAI == LAI
+    @assert prescribed_lai_input(biomass) == LAI
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
@@ -886,7 +908,12 @@ function CanopyModel{FT}(
         earth_param_set,
         domain,
     )
-    check_component_compatibility(photosynthesis, conductance, biomass)
+    check_component_compatibility(
+        photosynthesis,
+        conductance,
+        biomass,
+        autotrophic_respiration,
+    )
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
@@ -926,14 +953,17 @@ function CanopyModel{FT}(
     forcing::NamedTuple,
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
-    autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+    biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+    autotrophic_respiration = default_autotrophic_respiration(
+        biomass,
+        toml_dict,
+    ),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
-    biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,
@@ -984,7 +1014,12 @@ function CanopyModel{FT}(
         earth_param_set,
         domain,
     )
-    check_component_compatibility(photosynthesis, conductance, biomass)
+    check_component_compatibility(
+        photosynthesis,
+        conductance,
+        biomass,
+        autotrophic_respiration,
+    )
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
@@ -1231,6 +1266,9 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
 
         # update stomatal conductance
         update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+
+        # update the carbon pool fluxes (after photosynthesis, before respiration)
+        update_carbon_fluxes!(p, Y, canopy.biomass, canopy)
 
         # update autotrophic respiration
         update_autotrophic_respiration!(
