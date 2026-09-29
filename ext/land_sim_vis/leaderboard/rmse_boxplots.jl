@@ -1,9 +1,11 @@
 # Energy and carbon RMSE boxplots: compare ClimaLand against an ILAMB land-hist
-# cohort. "Other-model" RMSE values are inlined from the ILAMB land-hist
-# dashboards (https://www.ilamb.org/land-hist/) and from the LE intercomparison
-# in the CliMA-Land RMSE tracker. ClimaLand RMSE is computed at runtime from
-# the diagnostics directory with ILAMB's default RMSE definition, so that it is
-# comparable with the cohort values.
+# cohort. "Other-model" RMSE values are inlined from the global table of the
+# ILAMB land-hist dashboards (https://www.ilamb.org/land-hist/): CLM,
+# ISBA-CTRIP and JSBACH (no LWup), each forced by CRUJRA, GSWP3 and Princeton,
+# in that order; the multi-model "Mean-*" rows are left out. LE values come
+# from the LE intercomparison in the CliMA-Land RMSE tracker. ClimaLand RMSE is
+# computed at runtime from the diagnostics directory with ILAMB's default RMSE
+# definition, so that it is comparable with the cohort values.
 
 # Convert ET in mm/day to LE in W/m^2 using the latent heat of vaporization
 # (2.45e6 J/kg) and seconds per day.
@@ -18,20 +20,7 @@ const _ENERGY_PANELS = (
         data_source = "ERA5",
         others_bench = "FLUXCOM",
         sim_bench = "ERA5",
-        others = [
-            19.1,
-            18.0,
-            15.3,
-            17.9,
-            18.9,
-            15.8,
-            22.9,
-            24.0,
-            22.6,
-            16.8,
-            17.8,
-            14.8,
-        ],
+        others = [18.7, 16.3, 16.3, 20.8, 21.0, 18.9, 27.3, 27.3, 27.4],
     ),
     (
         title = "LE",
@@ -69,20 +58,7 @@ const _ENERGY_PANELS = (
         data_source = "ERA5",
         others_bench = "CERESed4.1",
         sim_bench = "ERA5",
-        others = [
-            12.7,
-            12.3,
-            13.4,
-            15.1,
-            13.7,
-            14.8,
-            17.5,
-            15.4,
-            17.5,
-            12.9,
-            12.0,
-            13.7,
-        ],
+        others = [11.1, 10.5, 11.0, 12.7, 11.7, 12.1, 12.9, 11.5, 12.3],
     ),
     (
         title = "LWup",
@@ -90,7 +66,7 @@ const _ENERGY_PANELS = (
         data_source = "ERA5",
         others_bench = "CERESed4.1",
         sim_bench = "ERA5",
-        others = [12.1, 12.6, 12.3, 13.3, 10.8, 11.3, 11.5, 10.3, 11.0],
+        others = [14.1, 14.7, 14.4, 14.5, 13.0, 13.2],
     ),
 )
 
@@ -101,20 +77,7 @@ const _CARBON_PANELS = (
         data_source = "ILAMB",
         others_bench = "FLUXCOM",
         sim_bench = "FLUXCOM",
-        others = [
-            1.39,
-            1.08,
-            1.97,
-            1.01,
-            1.04,
-            1.13,
-            0.950,
-            0.828,
-            0.907,
-            1.42,
-            1.19,
-            1.67,
-        ],
+        others = [1.85, 1.73, 2.08, 1.5, 1.49, 1.81, 2.06, 1.85, 1.97],
     ),
     (
         title = "ER",
@@ -122,20 +85,7 @@ const _CARBON_PANELS = (
         data_source = "ILAMB",
         others_bench = "FLUXCOM",
         sim_bench = "FLUXCOM",
-        others = [
-            1.78,
-            1.38,
-            2.01,
-            4.07,
-            3.03,
-            3.87,
-            4.87,
-            2.98,
-            4.12,
-            2.01,
-            2.19,
-            2.07,
-        ],
+        others = [1.57, 1.32, 1.89, 1.43, 1.23, 1.75, 1.81, 1.53, 1.74],
     ),
 )
 
