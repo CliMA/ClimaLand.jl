@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] `FluxnetSimulations.get_location` and `get_fluxtower_height` now
+  work at any FLUXNET2015 site, reading the site metadata of the `fluxnet2015` artifact
+  (not downloadable; see ClimaArtifacts), so the default `LandModel` can be run at any
+  site (`experiments/integrated/generic_site/run_generic_site.jl`). Adds
+  `get_site_info`, `get_canopy_height` and `get_site_igbp` metadata helpers, a
+  `required_columns` keyword to `get_data_dates` that trims leading and trailing
+  missing forcing, and ecosystem respiration (`er`) to the fluxnet comparison data.
+  PR [#1896](https://github.com/CliMA/ClimaLand.jl/pull/1896)
 - ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
   are now computed throughout the simulation from time-integrated prognostic variables;
   trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in
