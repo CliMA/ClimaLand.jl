@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+1.12.3
+----
 - ![][badge-🔥behavioralΔ] Optimal-LAI climate inputs (`f0`, growing-season VPD and length)
   are now computed throughout the simulation from time-integrated prognostic variables;
   trees vs grass and C3 vs C4 are now predicted by `ZhouOptimalLAIModel` (stored in

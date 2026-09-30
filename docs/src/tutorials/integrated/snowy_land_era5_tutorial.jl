@@ -244,7 +244,7 @@ axes = map(enumerate(panels)) do (i, (ylabel, name))
         ax,
         dates,
         getproperty(stress, name)[keep];
-        color = :steelblue,
+        color = :black,
         label = "Default",
     )
     ax
