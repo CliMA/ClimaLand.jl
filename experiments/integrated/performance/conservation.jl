@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Day(1)
+stop_date = start_date + Month(3)
 Δt_seconds = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -66,8 +66,8 @@ diagnostics = ClimaLand.default_diagnostics(
     land,
     start_date,
     savedir;
-    conservation = true,
-    conservation_period = Month(1),
+   # conservation = true,
+   # conservation_period = Month(1),
 )
 simulation = ClimaLand.Simulations.LandSimulation(
     start_date,
@@ -81,6 +81,12 @@ simulation = ClimaLand.Simulations.LandSimulation(
 );
 
 @time sol = ClimaLand.Simulations.solve!(simulation);
+mass_change_actual = total_energy_array[2:end] .- total_energy_array[1];
+mass_change_expected =
+    [parent(sol.u[k].∫F_vol_e_dt)[1] for k in 2:(length(sol.t) - 1)];
+lai_vals = [parent(sv.saveval[k].canopy.biomass.area_index.leaf)[1] for k in 1:length(sv.t)]
+
+
 
 # Make plots using every timestep
 yearly = float.(sol.t[2:end]) ./ 3600 ./ 24 ./ 365
@@ -131,7 +137,7 @@ lines!(
     label = "Water Balance",
 )
 CairoMakie.save(joinpath(savedir, "water_conservation.png"), fig2)
-
+#=
 # Make plots using the diagnostics
 times = diagnostics[1].output_writer.dict["wvpac_1M_inst"].keys
 water_volume_per_area = diagnostics[1].output_writer.dict["wvpa_1M_inst"]
@@ -188,3 +194,4 @@ for i in 1:2
         fig_cycle,
     )
 end
+=#

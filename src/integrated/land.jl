@@ -919,7 +919,7 @@ function make_exp_tendency(land::LandModel)
             # To do - future PR: move this computation to a method
             # specific to biomass type
             lai_prev = p.scratch1
-            evaluate!(lai_prev, land.canopy.biomass.plant_area_index.LAI, ITime(t.counter + Int(land.snow.parameters.Δt), t.period, t.epoch))
+            evaluate!(lai_prev, land.canopy.biomass.plant_area_index.LAI, ITime(t.counter - Int(land.snow.parameters.Δt), t.period, t.epoch))
             @. lai_prev = Canopy.clip(lai_prev, FT(0.05))
             if hasproperty(p, :lake_fraction)
                 canopy_mask = p.lake_fraction
@@ -928,7 +928,7 @@ function make_exp_tendency(land::LandModel)
             
             lai_tendency = p.lai_tendency
             # Estimate the time derivative dLAI/dt using Euler/backward difference
-            @. lai_tendency = -1*(p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
+            @. lai_tendency = (p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
             dz = land.canopy.biomass.height
             lai_contribution = p.scratch3
             @. lai_contribution = lai_tendency * Y.canopy.hydraulics.ϑ_l* dz
@@ -966,9 +966,6 @@ function make_exp_tendency(land::LandModel)
             )
             energy_subsurface_runoff =
                 :R_ess ∈ propertynames(p.soil) ? p.soil.R_ess : FT(0)
-            Tc = ClimaLand.Canopy.canopy_temperature(land.canopy.energy, land.canopy, Y, p)
-            lai_contribution = p.scratch3
-            @. lai_contribution = lai_tendency * land.canopy.energy.parameters.ac_canopy * Tc
             @. dY.∫F_vol_e_dt = -(e_flux_falling_snow +
                 e_flux_falling_rain +
                 runoff_energy_flux +
@@ -982,8 +979,7 @@ function make_exp_tendency(land::LandModel)
                     p.soil.turbulent_fluxes.shf +
                     p.soil.R_n
                 ) - p.canopy.radiative_transfer.SW_n -
-                p.soil.bottom_bc.heat + energy_subsurface_runoff)
-              @. dY.∫F_vol_e_dt += lai_contribution
+                    p.soil.bottom_bc.heat + energy_subsurface_runoff)
             if !(land.lake isa Nothing)
                 @. dY.∫F_vol_e_dt +=
                     -p.lake_fraction * (
@@ -1018,6 +1014,11 @@ function make_compute_imp_tendency(land::LandModel)
                 p.canopy.turbulent_fluxes.shf + p.canopy.turbulent_fluxes.lhf -
                 p.canopy.radiative_transfer.LW_n
             )
+            Tc = ClimaLand.Canopy.canopy_temperature(land.canopy.energy, land.canopy, Y, p)
+            lai_contribution = p.scratch3
+            @. lai_contribution = p.lai_tendency * land.canopy.energy.parameters.ac_canopy * Tc
+            
+            @. dY.∫F_vol_e_dt += lai_contribution
         end
     end
     return imp_tendency!
