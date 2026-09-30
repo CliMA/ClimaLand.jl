@@ -8,6 +8,45 @@ using ClimaLand.Canopy
 using ClimaLand.Domains: Point, Plane
 import ClimaLand.Parameters as LP
 
+"""
+    set_state!(Y, p, canopy, t0; kwargs...)
+
+Sets a non-trivial canopy state, with carbon pools and climate means overridden by
+`kwargs`, and updates the cache.
+"""
+function set_state!(Y, p, canopy, t0; kwargs...)
+    FT = eltype(Y.canopy.energy.T)
+    Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
+    Y.canopy.energy.T .= FT(290.5)
+    if canopy.biomass isa Canopy.PrognosticCarbonModel
+        state = (;
+            C_sugar = 0.3,
+            C_leaf = 0.2,
+            C_stem = 5,
+            C_root = 1,
+            T_annual = 290,
+            P_annual = 1,
+            kwargs...,
+        )
+        for name in keys(state)
+            getproperty(Y.canopy.biomass, name) .= FT(state[name])
+        end
+    end
+    set_initial_cache! = make_set_initial_cache(canopy)
+    set_initial_cache!(p, Y, t0)
+    # Acclimated P-model capacities, so that GPP and Rd are not zero
+    ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+        Y,
+        p,
+        canopy.photosynthesis,
+        canopy,
+    )
+    set_initial_cache!(p, Y, t0)
+    return nothing
+end
+
+point(x) = first(Array(parent(x)))
+
 for FT in (Float32, Float64)
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)
@@ -60,55 +99,29 @@ for FT in (Float32, Float64)
     biomass = Canopy.PrognosticCarbonModel{FT}(lai_model, toml_dict)
     (; M_C, a) = biomass.parameters
 
-    # A canopy with its cache set from a non-trivial state
-    function canopy_state(
-        domain,
-        biomass;
-        C_sugar = FT(0.3),
-        C_leaf = FT(0.2),
-        C_stem = FT(5),
-        C_root = FT(1),
-        P_annual = FT(1),
-    )
-        canopy =
-            Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict; biomass)
-        Y, p, _ = initialize(canopy)
-        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
-        Y.canopy.energy.T .= FT(290.5)
-        if biomass isa Canopy.PrognosticCarbonModel
-            Y.canopy.biomass.C_sugar .= C_sugar
-            Y.canopy.biomass.C_leaf .= C_leaf
-            Y.canopy.biomass.C_stem .= C_stem
-            Y.canopy.biomass.C_root .= C_root
-            Y.canopy.biomass.T_annual .= FT(290)
-            Y.canopy.biomass.P_annual .= P_annual
-        end
-        set_initial_cache! = make_set_initial_cache(canopy)
-        set_initial_cache!(p, Y, t0)
-        # Acclimated P-model capacities, so that GPP and Rd are not zero
-        ClimaLand.Simulations.set_canopy_component_initial_conditions!(
-            Y,
-            p,
-            canopy.photosynthesis,
-            canopy,
-        )
-        set_initial_cache!(p, Y, t0)
-        return canopy, Y, p
-    end
+    canopy = Canopy.CanopyModel{FT}(pt, forcing, LAI, toml_dict; biomass)
+    Y, p, _ = initialize(canopy)
+    dY = similar(Y)
+    exp_tendency! = make_compute_exp_tendency(canopy)
 
     @testset "Carbon balance of the pools, FT = $FT" begin
-        for domain in (pt, plane)
-            canopy, Y, p = canopy_state(domain, biomass)
-            @test canopy.autotrophic_respiration isa
-                  Canopy.PoolBasedAutotrophicRespirationModel
-            dY = similar(Y)
-            make_compute_exp_tendency(canopy)(dY, Y, p, t0)
-            (; Rm, Rg, Ra, S, L_leaf, L_stem, L_root) = p.canopy.biomass.carbon
-            GPP = M_C .* Canopy.get_GPP(p, canopy.photosynthesis)
-            dC = @. dY.canopy.biomass.C_sugar +
-               dY.canopy.biomass.C_leaf +
-               dY.canopy.biomass.C_stem +
-               dY.canopy.biomass.C_root
+        @test canopy.autotrophic_respiration isa
+              Canopy.PoolBasedAutotrophicRespirationModel
+        canopy_plane =
+            Canopy.CanopyModel{FT}(plane, forcing, LAI, toml_dict; biomass)
+        Y_plane, p_plane, _ = initialize(canopy_plane)
+        for (model, Y_i, p_i) in
+            ((canopy, Y, p), (canopy_plane, Y_plane, p_plane))
+            set_state!(Y_i, p_i, model, t0)
+            dY_i = similar(Y_i)
+            make_compute_exp_tendency(model)(dY_i, Y_i, p_i, t0)
+            (; Rm, Rg, Ra, S, L_leaf, L_stem, L_root) =
+                p_i.canopy.biomass.carbon
+            GPP = M_C .* Canopy.get_GPP(p_i, model.photosynthesis)
+            dC = @. dY_i.canopy.biomass.C_sugar +
+               dY_i.canopy.biomass.C_leaf +
+               dY_i.canopy.biomass.C_stem +
+               dY_i.canopy.biomass.C_root
             residual = @. dC - (GPP - Ra - (L_leaf + L_stem + L_root))
             scale = maximum(abs, parent(GPP)) + maximum(abs, parent(dC))
             @test maximum(abs, parent(residual)) <= 10 * eps(FT) * scale
@@ -116,49 +129,49 @@ for FT in (Float32, Float64)
             @test all(parent(S) .> 0)
             @test parent(Ra) ≈ parent(Rm) .+ parent(Rg)
             @test parent(Rg) ≈ (1 - a) .* parent(S)
-            @test parent(p.canopy.autotrophic_respiration.Ra) ≈
+            @test parent(p_i.canopy.autotrophic_respiration.Ra) ≈
                   parent(Ra) ./ M_C
-            @test all(parent(p.canopy.biomass.cVeg) .≈ FT(6.5))
-            @test ClimaLand.initialize_jacobian(Y) isa Any
+            @test all(parent(p_i.canopy.biomass.cVeg) .≈ FT(6.5))
+            @test ClimaLand.initialize_jacobian(Y_i) isa Any
         end
     end
 
     @testset "GPP and LAI do not depend on the pools, FT = $FT" begin
-        _, _, p_without = canopy_state(pt, lai_model)
-        canopy, _, p_with = canopy_state(pt, biomass)
+        canopy_without = Canopy.CanopyModel{FT}(
+            pt,
+            forcing,
+            LAI,
+            toml_dict;
+            biomass = lai_model,
+        )
+        Y_without, p_without, _ = initialize(canopy_without)
+        set_state!(Y_without, p_without, canopy_without, t0)
+        set_state!(Y, p, canopy, t0)
         for name in (:leaf, :stem, :root)
             @test getproperty(p_without.canopy.biomass.area_index, name) ==
-                  getproperty(p_with.canopy.biomass.area_index, name)
+                  getproperty(p.canopy.biomass.area_index, name)
         end
         @test Canopy.get_GPP(p_without, canopy.photosynthesis) ==
-              Canopy.get_GPP(p_with, canopy.photosynthesis)
+              Canopy.get_GPP(p, canopy.photosynthesis)
     end
 
     @testset "Maintenance respiration, FT = $FT" begin
-        Rm(state) = first(Array(parent(state[3].canopy.biomass.carbon.Rm)))
+        Rm() = point(p.canopy.biomass.carbon.Rm)
         # Only the sapwood and roots have a Q10: the leaf term is Rd itself.
-        canopy, _, p = canopy_state(
-            pt,
-            biomass;
-            C_sugar = FT(1e3),
-            C_leaf = FT(0),
-            C_stem = FT(0),
-            C_root = FT(0),
-        )
-        Rd =
-            first(Array(parent(Canopy.get_Rd_canopy(p, canopy.photosynthesis))))
+        set_state!(Y, p, canopy, t0; C_sugar = 1e3, C_stem = 0, C_root = 0)
+        Rd = point(Canopy.get_Rd_canopy(p, canopy.photosynthesis))
         @test Rd > 0
-        @test Rm((canopy, nothing, p)) ≈ M_C * Rd
+        @test Rm() ≈ M_C * Rd
 
         # A healthy sugar pool barely limits respiration; an empty one stops it
-        R_ample = Rm(canopy_state(pt, biomass; C_sugar = FT(1e3)))
-        @test Rm(canopy_state(pt, biomass; C_sugar = FT(0.1))) ≈ R_ample rtol =
-            1e-3
-        canopy, Y, p = canopy_state(pt, biomass; C_sugar = FT(0))
-        @test Rm((canopy, Y, p)) == 0
+        set_state!(Y, p, canopy, t0; C_sugar = 1e3)
+        R_ample = Rm()
+        set_state!(Y, p, canopy, t0; C_sugar = 0.1)
+        @test Rm() ≈ R_ample rtol = 1e-3
+        set_state!(Y, p, canopy, t0; C_sugar = 0)
+        @test Rm() == 0
         @test all(parent(p.canopy.autotrophic_respiration.Ra) .== 0)
-        dY = similar(Y)
-        make_compute_exp_tendency(canopy)(dY, Y, p, t0)
+        exp_tendency!(dY, Y, p, t0)
         @test all(parent(dY.canopy.biomass.C_sugar) .>= 0)
     end
 
@@ -179,9 +192,8 @@ for FT in (Float32, Float64)
         @test Canopy.tau_stem_scale(FT(250), T_ref_τ_stem, FT(1)) == 1
 
         # Without precipitation, allocation withheld from the stem goes to roots
-        canopy, Y, p = canopy_state(pt, biomass; P_annual = FT(0))
-        dY = similar(Y)
-        make_compute_exp_tendency(canopy)(dY, Y, p, t0)
+        set_state!(Y, p, canopy, t0; P_annual = 0)
+        exp_tendency!(dY, Y, p, t0)
         (; S, L_stem, L_root) = p.canopy.biomass.carbon
         (; f_leaf_c3, f_leaf_c4) = biomass.parameters
         fc3 = Canopy.get_fractional_c3(p, canopy)
@@ -193,8 +205,7 @@ for FT in (Float32, Float64)
 
     @testset "Equilibrium pools, FT = $FT" begin
         # Drivers at a point, which do not depend on the pools
-        canopy, Y, p = canopy_state(pt, biomass)
-        point(x) = first(Array(parent(x)))
+        set_state!(Y, p, canopy, t0)
         GPP = point(Canopy.get_GPP(p, canopy.photosynthesis))
         Rd = point(Canopy.get_Rd_canopy(p, canopy.photosynthesis))
         fc3 = point(Canopy.get_fractional_c3(p, canopy))
@@ -215,24 +226,17 @@ for FT in (Float32, Float64)
 
         # With the pools at equilibrium, and ample sugar, the model's own fluxes
         # balance the sugar pool and the stem pool
-        _, _, p_eq = canopy_state(
-            pt,
-            biomass;
-            C_sugar = FT(1e3),
-            C_leaf = eq.C_leaf,
-            C_stem = eq.C_stem,
-            C_root = eq.C_root,
-        )
-        (; a, τ_leaf, f_leaf_c3, f_leaf_c4, f_stem_c3, f_stem_c4) =
+        set_state!(Y, p, canopy, t0; C_sugar = 1e3, eq...)
+        (; τ_leaf, f_leaf_c3, f_leaf_c4, f_stem_c3, f_stem_c4) =
             biomass.parameters
         (; map_half_woody, n_map_woody) = biomass.parameters
         S = eq.C_leaf / (a * Canopy.blend(f_leaf_c3, f_leaf_c4, fc3) * τ_leaf)
-        Rm = point(p_eq.canopy.biomass.carbon.Rm)
+        Rm = point(p.canopy.biomass.carbon.Rm)
         @test M_C * GPP - Rm ≈ S rtol = sqrt(eps(FT))
         f_stem =
             Canopy.blend(f_stem_c3, f_stem_c4, fc3) *
             Canopy.woody_fraction(MAP, map_half_woody, n_map_woody)
-        @test a * f_stem * S ≈ point(p_eq.canopy.biomass.carbon.L_stem) rtol =
+        @test a * f_stem * S ≈ point(p.canopy.biomass.carbon.L_stem) rtol =
             sqrt(eps(FT))
 
         # No pools where leaf respiration exceeds GPP
@@ -248,14 +252,14 @@ for FT in (Float32, Float64)
     end
 
     @testset "cveg diagnostic reads the pools, FT = $FT" begin
-        canopy, Y, p = canopy_state(pt, biomass)
+        set_state!(Y, p, canopy, t0)
         out = ClimaCore.Fields.zeros(canopy.domain.space.surface)
         ClimaLand.Diagnostics.compute_vegetation_carbon!(out, Y, p, t0, canopy)
         @test out == p.canopy.biomass.cVeg
     end
 
     @testset "Initial conditions, FT = $FT" begin
-        canopy, Y, p = canopy_state(pt, biomass)
+        set_state!(Y, p, canopy, t0)
         ClimaLand.Simulations.set_canopy_component_initial_conditions!(
             Y,
             p,
@@ -299,23 +303,22 @@ for FT in (Float32, Float64)
             ClimaLand.prognostic_vars(zhou),
             ClimaLand.prognostic_vars(wrapped),
         )
-        states = map((zhou, wrapped)) do biomass
-            canopy = Canopy.CanopyModel{FT}(pt, forcing, toml_dict; biomass)
-            Y, p, _ = initialize(canopy)
-            Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν / 2
-            Y.canopy.energy.T .= FT(290.5)
-            set_initial_cache! = make_set_initial_cache(canopy)
-            set_initial_cache!(p, Y, t0)
+        canopy_z =
+            Canopy.CanopyModel{FT}(pt, forcing, toml_dict; biomass = zhou)
+        canopy_w =
+            Canopy.CanopyModel{FT}(pt, forcing, toml_dict; biomass = wrapped)
+        Y_z, p_z, _ = initialize(canopy_z)
+        Y_w, p_w, _ = initialize(canopy_w)
+        for (canopy, Y, p) in ((canopy_z, Y_z, p_z), (canopy_w, Y_w, p_w))
+            set_state!(Y, p, canopy, t0)
             ClimaLand.Simulations.set_canopy_component_initial_conditions!(
                 Y,
                 p,
                 canopy.biomass,
                 canopy,
             )
-            set_initial_cache!(p, Y, t0)
-            (canopy, Y, p)
+            make_set_initial_cache(canopy)(p, Y, t0)
         end
-        ((canopy_z, Y_z, p_z), (canopy_w, Y_w, p_w)) = states
         @test p_z.canopy.biomass.area_index.leaf ==
               p_w.canopy.biomass.area_index.leaf
         @test Canopy.get_GPP(p_z, canopy_z.photosynthesis) ==
