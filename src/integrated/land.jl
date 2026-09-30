@@ -919,11 +919,16 @@ function make_exp_tendency(land::LandModel)
             # To do - future PR: move this computation to a method
             # specific to biomass type
             lai_prev = p.scratch1
-            evaluate!(lai_prev, land.canopy.biomass.plant_area_index.LAI, ITime(t.counter - Int(land.snow.parameters.Δt), t.period, t.epoch))
+            evaluate!(lai_prev, land.canopy.biomass.plant_area_index.LAI, ITime(t.counter + Int(land.snow.parameters.Δt), t.period, t.epoch))
             @. lai_prev = Canopy.clip(lai_prev, FT(0.05))
-            Canopy.mask_biomass!(p, Val(land.canopy.boundary_conditions.prognostic_land_components))
+            if hasproperty(p, :lake_fraction)
+                canopy_mask = p.lake_fraction
+                ifelse(p.lake_fraction == 1, FT(0), lai_prev)
+            end
+            
             lai_tendency = p.lai_tendency
-            @. lai_tendency = (p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
+            # Estimate the time derivative dLAI/dt using Euler/backward difference
+            @. lai_tendency = -1*(p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
             dz = land.canopy.biomass.height
             lai_contribution = p.scratch3
             @. lai_contribution = lai_tendency * Y.canopy.hydraulics.ϑ_l* dz
@@ -1035,11 +1040,6 @@ function make_compute_jacobian(land::LandModel{FT}) where {FT}
             ∂lhf∂T = p.canopy.turbulent_fluxes.∂lhf∂T
             ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
             ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
-            ϵ_c = p.canopy.radiative_transfer.ϵ
-            earth_param_set = land.canopy.earth_param_set
-            _σ = LP.Stefan(earth_param_set)
-            T_c = canopy_temperature(land.canopy.energy, land.canopy, Y, p)
-            @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * T_c^3 # ≈ ϵ_ground = 1
             ∂Xres∂T = matrix[@name(∫F_vol_e_dt), @name(canopy.energy.T)]
             @. ∂Xres∂T =
                 float(dtγ) * DiagonalMatrixRow((∂LW_n∂T - ∂shf∂T - ∂lhf∂T))
@@ -1406,7 +1406,8 @@ function make_update_aux(land::LandModel)
         update_canopy_aux!(p, Y, t)
         update_soilco2_aux!(p, Y, t)
         if land.conservation
-            sfc_cache = p.scratch1 .* 0
+            sfc_cache = p.scratch1
+            @. sfc_cache *= 0
             ClimaLand.total_liq_water_vol_per_area!(
                 p.total_water,
                 land,

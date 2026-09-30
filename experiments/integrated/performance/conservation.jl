@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Year(1)
+stop_date = start_date + Day(1)
 Δt_seconds = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -43,11 +43,12 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
 forcing = (; atmos, radiation);
 
 # Prescribed LAI (default): read LAI from MODIS data.
-LAI = ClimaLand.Canopy.prescribed_lai_modis(
-    surface_space,
-    start_date,
-    stop_date,
-)
+#LAI = ClimaLand.Canopy.prescribed_lai_modis(
+#    surface_space,
+#    start_date,
+#    stop_date,
+#)
+LAI = TimeVaryingInput((t) -> float(t)/(86400*365) + 0.1)
 land = LandModel{FT}(
     forcing,
     LAI,
@@ -82,7 +83,7 @@ simulation = ClimaLand.Simulations.LandSimulation(
 @time sol = ClimaLand.Simulations.solve!(simulation);
 
 # Make plots using every timestep
-yearly = float.(sol.t[2:end]) ./ 3600 ./ 24 ./ 364
+yearly = float.(sol.t[2:end]) ./ 3600 ./ 24 ./ 365
 # Energy balance
 total_energy_array =
     [parent(sv.saveval[k].total_energy)[1] for k in 2:length(sol.t)];
@@ -95,7 +96,7 @@ ax = Axis(
     fig[1, 1],
     xlabel = "Years",
     ylabel = "Fractional Error",
-   # yscale = log10,
+    #yscale = log10,
 )
 
 lines!(

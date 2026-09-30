@@ -145,14 +145,6 @@ NVTX.@annotate function ClimaLand.source!(
     @. dY.soil.ϑ_l += -1 * p.root_extraction
     @. dY.soil.ρe_int += -1 * p.root_energy_extraction
 
-    # if flow is negative, towards soil -> soil water increases, add in sign here.
-    # Currently, these column integrals are done twice rather than add space to the cache.
-    # We can revisit this as needed.
-    ClimaCore.Operators.column_integral_definite!(
-        p.scratch1,
-        p.root_energy_extraction,
-    )
-    ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
 end
 
 """

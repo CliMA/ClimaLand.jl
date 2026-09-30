@@ -351,7 +351,7 @@ function default_diagnostics(
         pre_output_hook! = nothing,
     )
 
-    if conservation
+    if conservation && land_model.conservation
         additional_diags = ["epa", "epac", "wvpa", "wvpac"]
         define_diagnostics!(land_model, additional_diags)
         additional_outputs = vcat(

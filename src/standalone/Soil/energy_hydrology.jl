@@ -625,7 +625,7 @@ A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
 ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT, FT)
+    (FT, FT, FT)
 
 ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
     (:subsurface, :subsurface, :subsurface)
