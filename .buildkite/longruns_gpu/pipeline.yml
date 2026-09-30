@@ -44,7 +44,7 @@ steps:
   # when a PR is labeled ONLY "long run opt lai" (that label runs just the
   # prognostic-LAI group below), so each label triggers exactly one mode.
   - group: "Global Land Models"
-    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null && (build.source == "schedule" || !(build.pull_request.labels includes "long run opt lai") || build.pull_request.labels includes "Run long runs")
+    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null && build.env("PREINDUSTRIAL_SPINUP") == null && (build.source == "schedule" || !(build.pull_request.labels includes "long run opt lai" || build.pull_request.labels includes "run pre-industrial spin-up") || build.pull_request.labels includes "Run long runs")
     steps:
 
       - label: ":snow_capped_mountain: Snowy Land + P Model"
@@ -107,6 +107,25 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
+
+  # Spin-up of the canopy carbon pools and the optimal-LAI model under a proxy for the
+  # pre-industrial climate, writing their initial conditions. Runs when a PR carries the
+  # "run pre-industrial spin-up" label, or with `PREINDUSTRIAL_SPINUP=""` set.
+  - group: "Pre-industrial spin-up"
+    if: build.env("PREINDUSTRIAL_SPINUP") != null || build.pull_request.labels includes "run pre-industrial spin-up"
+    steps:
+
+      - label: ":seedling: Pre-industrial spin-up"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/preindustrial_spinup.jl
+        artifact_paths:
+          - "preindustrial_spinup_gpu/*png"
+          - "preindustrial_spinup_gpu/*nc"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 4:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null
