@@ -230,7 +230,8 @@ for FT in (Float32, Float64)
             thermo_params,
         )
         _σ = LP.Stefan(param_set)
-        turb_fluxes = ClimaLand.compute_turbulent_fluxes_at_a_point(
+        turb_fluxes = ClimaLand.turbulent_fluxes_at_a_point(
+            Val(false),
             P_atmos,
             T_atmos,
             q_atmos,
@@ -255,7 +256,7 @@ for FT in (Float32, Float64)
             FT(1),
             param_set,
         )
-        sfc_flux = (SW_net + LW_n + turb_fluxes[1] + turb_fluxes[2])
+        sfc_flux = (SW_net + LW_n + turb_fluxes.lhf + turb_fluxes.shf)
         residual = (sfc_flux + κ_surf_test * (T_sfc - T_bulk_test) / d)
         @test abs(residual) / abs(sfc_flux) < 0.01
     end

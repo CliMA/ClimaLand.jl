@@ -925,26 +925,10 @@ function solve_for_surface_temp_at_a_point(
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
 ) where {FT}
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
-    positional_default_args = (
-        scheme = SurfaceFluxes.PointValueScheme(),
-        solver_opts = nothing,
-        flux_specs = nothing,
-    )
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
-    if u_atmos isa FT
-        u = (u_atmos, FT(0))
-    else
-        u = u_atmos
-    end
-
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
     d = surface_temp_scaling_length(κ_snow, ρ_snow, z_snow, earth_param_set)
-    ρ_atmos =
-        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
     update_q(args...) = update_q_vap_sfc_scheme(args..., q_l)
     update_T(args...) = update_T_sfc_scheme(
         args...,
@@ -967,69 +951,37 @@ function solve_for_surface_temp_at_a_point(
         surface_flux_params,
         thermo_params,
     )
-
-    output = SurfaceFluxes.surface_fluxes(
-        surface_flux_params,
-        T_atmos,
-        q_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
-        ρ_atmos,
+    output = ClimaLand.surface_fluxes_at_a_point(
         T_initial_guess,
         q_sfc,
-        _grav * h_sfc,
-        atmos_h - h_sfc,
-        displ,
-        u,
-        (FT(0), FT(0)), # u_sfc
-        nothing, # roughness inputs
-        config,
-        positional_default_args...,
         update_T,
         update_q,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        u_atmos,
+        atmos_h,
+        h_sfc,
+        displ,
+        roughness_model,
+        gustiness,
+        earth_param_set,
     )
     fluxes = ClimaLand.turbulent_fluxes_from_output(
+        return_extra_fluxes,
         output,
         output.T_sfc,
         output.q_vap_sfc,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
+        P_atmos,
         T_atmos,
-        ρ_atmos,
         q_atmos,
         atmos_h - h_sfc,
         earth_param_set,
     )
-    return snow_surface_solution(return_extra_fluxes, fluxes, output.T_sfc)
+    return (; fluxes..., T_sfc = output.T_sfc)
 end
-
-"""
-    snow_surface_solution(return_extra_fluxes, fluxes, T_sfc)
-
-Return the NamedTuple of the snow `surface_solve` cache variable from the tuple
-`fluxes` of `ClimaLand.turbulent_fluxes_from_output` and the surface
-temperature `T_sfc`: the fields of `p.snow.turbulent_fluxes` (including the
-momentum and buoyancy fluxes for `Val(true)`), followed by `T_sfc`.
-"""
-snow_surface_solution(::Val{false}, fluxes, T_sfc) = (;
-    lhf = fluxes[1],
-    shf = fluxes[2],
-    vapor_flux = fluxes[3],
-    ∂lhf∂T = fluxes[4],
-    ∂shf∂T = fluxes[5],
-    T_sfc,
-)
-snow_surface_solution(::Val{true}, fluxes, T_sfc) = (;
-    lhf = fluxes[1],
-    shf = fluxes[2],
-    vapor_flux = fluxes[3],
-    ∂lhf∂T = fluxes[4],
-    ∂shf∂T = fluxes[5],
-    ρτxz = fluxes[6],
-    ρτyz = fluxes[7],
-    buoyancy_flux = fluxes[8],
-    T_sfc,
-)
 
 without_surface_temperature(x::NamedTuple{names}) where {names} =
     NamedTuple{Base.front(names)}(Base.front(Tuple(x)))

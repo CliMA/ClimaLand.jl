@@ -446,45 +446,11 @@ function turbulent_fluxes!(
     return nothing
 end
 """
-    turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
-
-This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
-as we compute the turbulent fluxes pointwise. This is needed because space for the
-extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
-The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
-
-The `return_extra_fluxes` argument indicates whether to return momentum fluxes (`ρτxz`, `ρτyz`)
-and the bouyancy flux.
-"""
-function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, _, _, _) =
-        compute_turbulent_fluxes_at_a_point(args...)
-    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)
-end
-function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
-        compute_turbulent_fluxes_at_a_point(args...)
-    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux)
-end
-
-"""
-    compute_turbulent_fluxes_at_a_point(
-        P_atmos::FT,
-        T_atmos::FT,
-        q_tot_atmos::FT,
-        u_atmos,
-        h_atmos::FT,
-        T_sfc_guess::FT,
-        q_vap_sfc_guess::FT,
-        update_T_sfc,
-        update_q_vap_sfc,
-        roughness_model,
-        h_sfc::FT,
-        displ::FT,
-        update_∂T_sfc∂T,
-        update_∂q_sfc∂T,
-        gustiness,
-        earth_param_set)
+    turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
+                                u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,
+                                roughness_model, update_T_sfc, update_q_vap_sfc, h_sfc,
+                                displ, update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness,
+                                earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`,
@@ -503,49 +469,112 @@ Computes turbulent surface fluxes at a point on a surface given
     specific.
 (5) the parameter set.
 
-This returns an energy flux and a liquid water volume flux, stored in
-a tuple with self explanatory keys, as well as the derivative of the fluxes
-with respect to the component temperature. It also returns momentum flux
-components in the horizontal directions, and the buoyancy flux.
+This returns the NamedTuple `(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the
+energy fluxes, the liquid water volume flux, and the derivatives of the energy
+fluxes with respect to the component temperature. If `return_extra_fluxes` is
+`Val(true)`, it also returns the momentum flux components in the horizontal
+directions, `ρτxz` and `ρτyz`, and the buoyancy flux `buoyancy_flux`. Space for
+the extra fluxes is only allocated in the cache when running with a
+`CoupledAtmosphere`.
 """
-function compute_turbulent_fluxes_at_a_point(
+function turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Val,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
+    u_atmos,
+    h_atmos,
+    T_sfc_guess,
+    q_vap_sfc_guess,
+    roughness_model,
+    update_T_sfc,
+    update_q_vap_sfc,
+    h_sfc,
+    displ,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
+    gustiness,
+    earth_param_set,
+)
+    output = surface_fluxes_at_a_point(
+        T_sfc_guess,
+        q_vap_sfc_guess,
+        update_T_sfc,
+        update_q_vap_sfc,
+        P_atmos,
+        T_atmos,
+        q_tot_atmos,
+        u_atmos,
+        h_atmos,
+        h_sfc,
+        displ,
+        roughness_model,
+        gustiness,
+        earth_param_set,
+    )
+    return turbulent_fluxes_from_output(
+        return_extra_fluxes,
+        output,
+        T_sfc_guess,
+        q_vap_sfc_guess,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        P_atmos,
+        T_atmos,
+        q_tot_atmos,
+        h_atmos - h_sfc,
+        earth_param_set,
+    )
+end
+
+"""
+    surface_fluxes_at_a_point(T_sfc_guess, q_vap_sfc_guess, update_T_sfc, update_q_vap_sfc,
+                              P_atmos, T_atmos, q_tot_atmos, u_atmos, h_atmos, h_sfc, displ,
+                              roughness_model, gustiness, earth_param_set)
+
+Solve the Monin-Obukhov similarity equations with SurfaceFluxes.jl at a point
+and return its output. The surface temperature and specific humidity start
+from `T_sfc_guess` and `q_vap_sfc_guess` and are updated within the iterations
+by the callbacks `update_T_sfc` and `update_q_vap_sfc` (or held fixed if these
+are `nothing`). The atmospheric pressure, temperature, specific humidity, and
+wind (a speed or a horizontal vector) are given at the absolute height
+`h_atmos`, and the surface is at height `h_sfc` with displacement height
+`displ`.
+
+Called from `turbulent_fluxes_at_a_point` and the surface temperature solves of
+the soil and snow models, which use its output with
+`turbulent_fluxes_from_output`.
+"""
+function surface_fluxes_at_a_point(
+    T_sfc_guess::FT,
+    q_vap_sfc_guess::FT,
+    update_T_sfc,
+    update_q_vap_sfc,
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
     u_atmos,
     h_atmos::FT,
-    T_sfc_guess::FT,
-    q_vap_sfc_guess::FT,
-    roughness_model::SurfaceFluxes.AbstractRoughnessParams,
-    update_T_sfc,
-    update_q_vap_sfc,
     h_sfc::FT,
     displ::FT,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    roughness_model,
     gustiness,
     earth_param_set,
 ) where {FT}
-
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set) # used to compute surface potential
-
+    _grav = LP.grav(earth_param_set)
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
         flux_specs = nothing,
     )
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
-    if u_atmos isa FT
-        u = (u_atmos, FT(0))
-    else
-        u = u_atmos
-    end
+    # A coupled atmosphere provides a wind vector; a prescribed one a speed
+    u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
-    output = SurfaceFluxes.surface_fluxes(
+    return SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
         q_tot_atmos,
@@ -565,43 +594,33 @@ function compute_turbulent_fluxes_at_a_point(
         update_T_sfc,
         update_q_vap_sfc,
     )
-    return turbulent_fluxes_from_output(
-        output,
-        T_sfc_guess,
-        q_vap_sfc_guess,
-        update_∂T_sfc∂T,
-        update_∂q_sfc∂T,
-        T_atmos,
-        ρ_atmos,
-        q_tot_atmos,
-        h_atmos - h_sfc,
-        earth_param_set,
-    )
 end
 
 """
-    turbulent_fluxes_from_output(output, T_sfc_guess, q_vap_sfc_guess, update_∂T_sfc∂T,
-                                 update_∂q_sfc∂T, T_atmos, ρ_atmos, q_tot_atmos, Δz,
-                                 earth_param_set)
+    turbulent_fluxes_from_output(return_extra_fluxes, output, T_sfc_guess, q_vap_sfc_guess,
+                                 update_∂T_sfc∂T, update_∂q_sfc∂T, P_atmos, T_atmos,
+                                 q_tot_atmos, Δz, earth_param_set)
 
-Return the tuple `(lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz,
-buoyancy_flux)` of `compute_turbulent_fluxes_at_a_point` from the
-SurfaceFluxes.jl `output`: the vapor flux in volume of liquid water, the
-approximate derivatives of the heat fluxes with respect to the component
-temperature (evaluated with `update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the
-surface temperature and humidity `T_sfc_guess` and `q_vap_sfc_guess`), and the
-buoyancy flux, given the atmospheric state at height `Δz` above the surface.
-Models that solve for their surface temperature within the Monin-Obukhov
-iterations use it to obtain the fluxes from that solve.
+Return the NamedTuple of `turbulent_fluxes_at_a_point` from the SurfaceFluxes.jl
+`output` of `surface_fluxes_at_a_point`: the latent and sensible heat fluxes,
+the vapor flux in volume of liquid water, and the approximate derivatives of
+the heat fluxes with respect to the component temperature (evaluated with
+`update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the surface temperature and
+humidity `T_sfc_guess` and `q_vap_sfc_guess`), followed for
+`return_extra_fluxes = Val(true)` by the momentum fluxes and the buoyancy
+flux. The atmospheric state is given at height `Δz` above the surface. Models
+that solve for their surface temperature within the Monin-Obukhov iterations
+use it to obtain the fluxes from that solve.
 """
 function turbulent_fluxes_from_output(
+    return_extra_fluxes::Val,
     output,
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
     update_∂T_sfc∂T,
     update_∂q_sfc∂T,
+    P_atmos::FT,
     T_atmos::FT,
-    ρ_atmos::FT,
     q_tot_atmos::FT,
     Δz::FT,
     earth_param_set,
@@ -610,11 +629,8 @@ function turbulent_fluxes_from_output(
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
     _LH_v0 = LP.LH_v0(earth_param_set)
-    E = output.evaporation
-
-    # vapor flux in volume of liquid water
-    Ẽ = E / _ρ_liq
-
+    ρ_atmos =
+        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
     # Approximate derivatives of fluxes with respect to T_sfc
     g_h = output.g_h
     u_star = output.ustar
@@ -643,7 +659,38 @@ function turbulent_fluxes_from_output(
         )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    # Buoyancy Flux
+    fluxes = (;
+        lhf = output.lhf,
+        shf = output.shf,
+        vapor_flux = output.evaporation / _ρ_liq, # volume of liquid water
+        ∂lhf∂T,
+        ∂shf∂T,
+    )
+    return with_extra_fluxes(
+        return_extra_fluxes,
+        fluxes,
+        output,
+        surface_flux_params,
+        ρ_sfc,
+    )
+end
+
+"""
+    with_extra_fluxes(return_extra_fluxes, fluxes, output, surface_flux_params, ρ_sfc)
+
+Return the NamedTuple `fluxes`, followed for `Val(true)` by the momentum fluxes
+`ρτxz`, `ρτyz` of the SurfaceFluxes.jl `output` and the buoyancy flux at the
+surface air density `ρ_sfc`.
+"""
+with_extra_fluxes(::Val{false}, fluxes, args...) = fluxes
+function with_extra_fluxes(
+    ::Val{true},
+    fluxes,
+    output,
+    surface_flux_params,
+    ρ_sfc,
+)
+    FT = typeof(ρ_sfc)
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,
@@ -654,16 +701,7 @@ function turbulent_fluxes_from_output(
         FT(0),
         FT(0),
     )
-    return (
-        output.lhf,
-        output.shf,
-        Ẽ,
-        ∂lhf∂T,
-        ∂shf∂T,
-        output.ρτxz,
-        output.ρτyz,
-        buoyancy_flux,
-    )
+    return (; fluxes..., ρτxz = output.ρτxz, ρτyz = output.ρτyz, buoyancy_flux)
 end
 
 """

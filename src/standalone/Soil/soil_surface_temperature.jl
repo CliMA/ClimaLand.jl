@@ -288,6 +288,7 @@ end
                                               g_liq, β_ice, ψ_sfc, Tf_depressed, h_sfc, displ,
                                               P_atmos, T_atmos, q_atmos, u_atmos,
                                               roughness_model, atmos_h, gustiness,
+                                              update_∂T_sfc∂T, update_∂q_sfc∂T,
                                               earth_param_set)
 
 Solve the soil skin surface energy balance at a point within the Monin-Obukhov
@@ -312,6 +313,9 @@ temperature with the turbulent fluxes at it.
   horizontal vector) [m/s] at the reference height `atmos_h` [m].
 - `roughness_model`, `gustiness`: SurfaceFluxes roughness and gustiness
   specifications.
+- `update_∂T_sfc∂T`, `update_∂q_sfc∂T`: Functions for the derivatives of the
+  surface temperature and humidity with respect to the soil temperature, as in
+  `turbulent_fluxes!`.
 - `earth_param_set`: Land parameters.
 
 # Returns
@@ -319,7 +323,7 @@ temperature with the turbulent fluxes at it.
 and `buoyancy_flux` before `T_sfc` if `return_extra_fluxes` is `Val(true)`: the
 latent and sensible heat fluxes [W/m²], the vapor flux [m/s of liquid water]
 from liquid water or from ice (sublimation at and below the freezing
-temperature), and the skin temperature [K].
+temperature), and the skin temperature [K] (see `soil_turbulent_fluxes`).
 
 Called from [`update_soil_surface_temperature!`](@ref).
 """
@@ -343,22 +347,12 @@ function solve_soil_surface_temperature_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
     earth_param_set,
 ) where {FT}
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
-    positional_default_args = (
-        scheme = SurfaceFluxes.PointValueScheme(),
-        solver_opts = nothing,
-        flux_specs = nothing,
-    )
-    # A coupled atmosphere provides a wind vector; a prescribed one a speed
-    u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
-    ρ_atmos =
-        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
     update_T(args...) = update_soil_T_sfc_scheme(
         args...,
         T_top,
@@ -396,97 +390,36 @@ function solve_soil_surface_temperature_at_a_point(
         Tf_depressed,
         earth_param_set,
     )
-    output = SurfaceFluxes.surface_fluxes(
-        surface_flux_params,
-        T_atmos,
-        q_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
-        ρ_atmos,
+    output = ClimaLand.surface_fluxes_at_a_point(
         T_top,
         q_sfc_guess,
-        _grav * h_sfc,
-        atmos_h - h_sfc,
-        displ,
-        u,
-        (FT(0), FT(0)), # u_sfc
-        nothing, # roughness inputs
-        config,
-        positional_default_args...,
         update_T,
         update_q,
-    )
-    T_sfc = output.T_sfc
-    # Vapor flux in volume of liquid water
-    Ẽ = output.evaporation / LP.ρ_cloud_liq(earth_param_set)
-    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
-    fluxes = (;
-        lhf = output.lhf,
-        shf = output.shf,
-        vapor_flux_liq = Ẽ * is_liquid,
-        vapor_flux_ice = Ẽ * (1 - is_liquid),
-    )
-    return skin_solution(
-        return_extra_fluxes,
-        fluxes,
-        output,
-        surface_flux_params,
+        P_atmos,
         T_atmos,
-        ρ_atmos,
+        q_atmos,
+        u_atmos,
+        atmos_h,
+        h_sfc,
+        displ,
+        roughness_model,
+        gustiness,
+        earth_param_set,
+    )
+    fluxes = ClimaLand.turbulent_fluxes_from_output(
+        return_extra_fluxes,
+        output,
+        output.T_sfc,
+        output.q_vap_sfc,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        P_atmos,
+        T_atmos,
         q_atmos,
         atmos_h - h_sfc,
+        earth_param_set,
     )
-end
-
-"""
-    skin_solution(return_extra_fluxes, fluxes, output, surface_flux_params, T_atmos, ρ_atmos,
-                  q_atmos, Δz)
-
-Return the NamedTuple stored in `p.soil.turbulent_fluxes`: the `fluxes` with
-the skin temperature `output.T_sfc`, and, for `Val(true)`, the momentum fluxes
-and the buoyancy flux of the SurfaceFluxes `output` before it.
-"""
-skin_solution(::Val{false}, fluxes, output, args...) =
-    (; fluxes..., T_sfc = output.T_sfc)
-function skin_solution(
-    ::Val{true},
-    fluxes,
-    output,
-    surface_flux_params,
-    T_atmos,
-    ρ_atmos,
-    q_atmos,
-    Δz,
-)
-    FT = typeof(output.T_sfc)
-    ρ_sfc = SurfaceFluxes.surface_density(
-        surface_flux_params,
-        T_atmos,
-        ρ_atmos,
-        output.T_sfc,
-        Δz,
-        q_atmos,
-        FT(0),
-        FT(0),
-        output.q_vap_sfc,
-    )
-    buoyancy_flux = SurfaceFluxes.buoyancy_flux(
-        surface_flux_params,
-        output.shf,
-        output.lhf,
-        output.T_sfc,
-        ρ_sfc,
-        output.q_vap_sfc,
-        FT(0),
-        FT(0),
-    )
-    return (;
-        fluxes...,
-        ρτxz = output.ρτxz,
-        ρτyz = output.ρτyz,
-        buoyancy_flux,
-        T_sfc = output.T_sfc,
-    )
+    return soil_turbulent_fluxes(fluxes, output.T_sfc, Tf_depressed)
 end
 
 """
@@ -599,6 +532,8 @@ function update_soil_surface_temperature!(
     r = @. lazy(Δz_top / κ_top)
     β_ice = @. lazy((θ_i_sfc / ν_sfc)^4)
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
+    update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
+    update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
     p.soil.turbulent_fluxes .= solve_soil_surface_temperature_at_a_point.(
         return_extra_fluxes,
         T_top,
@@ -619,6 +554,8 @@ function update_soil_surface_temperature!(
         roughness_model,
         atmos.h,
         gustiness,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
         earth_param_set,
     )
     # Updates the cached surface humidity to match the new skin temperature

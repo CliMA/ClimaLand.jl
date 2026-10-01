@@ -1178,7 +1178,7 @@ function turbulent_fluxes!(
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     dest .= soil_turbulent_fluxes_at_a_point.(
         momentum_fluxes, # return_extra_fluxes
-        ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc), # is_liquid
+        Tf_depressed_sfc,
         p.drivers.P,
         p.drivers.T,
         p.drivers.q, # q_tot
@@ -1200,25 +1200,20 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, is_liquid, P, T, q, u, h, T_sfc, args...)
+    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, Tf_depressed, P, T, q, u, h,
+                                     T_sfc, args...)
 
-This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
-as we compute the soil turbulent fluxes pointwise. This is needed because space for the
-extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
-The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
-
-The `return_extra_fluxes` argument indicates whether to return the following:
-- momentum fluxes (`ρτxz`, `ρτyz`)
-- buoyancy flux (`buoy_flux`)
-
-The field `is_liquid` indicates if the vapor flux is attributed to liquid water evaporating
-or due to ice sublimating. The surface temperature `T_sfc` at which the fluxes are
-evaluated is returned with them, as in the soil skin temperature solve (see
-`solve_soil_surface_temperature_at_a_point`).
+Return the soil turbulent fluxes at a point, computed by
+`ClimaLand.turbulent_fluxes_at_a_point(return_extra_fluxes, P, T, q, u, h, T_sfc, args...)`
+and mapped by `soil_turbulent_fluxes` given the depressed freezing temperature
+`Tf_depressed` at the surface. The `return_extra_fluxes` argument indicates
+whether to return the momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux
+(`buoyancy_flux`), for which space is only allocated in the cache when running
+with a `CoupledAtmosphere`.
 """
 function soil_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{false},
-    is_liquid,
+    return_extra_fluxes::Val,
+    Tf_depressed,
     P,
     T,
     q,
@@ -1227,53 +1222,41 @@ function soil_turbulent_fluxes_at_a_point(
     T_sfc,
     args...,
 )
-    (lhf, shf, vapor_flux, _, _, _, _, _) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(
-            P,
-            T,
-            q,
-            u,
-            h,
-            T_sfc,
-            args...,
-        )
-    return (;
-        lhf,
-        shf,
-        vapor_flux_liq = vapor_flux * is_liquid,
-        vapor_flux_ice = vapor_flux * (1 - is_liquid),
+    fluxes = ClimaLand.turbulent_fluxes_at_a_point(
+        return_extra_fluxes,
+        P,
+        T,
+        q,
+        u,
+        h,
         T_sfc,
+        args...,
     )
+    return soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
 end
-function soil_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{true},
-    is_liquid,
-    P,
-    T,
-    q,
-    u,
-    h,
-    T_sfc,
-    args...,
-)
-    (lhf, shf, vapor_flux, _, _, ρτxz, ρτyz, buoyancy_flux) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(
-            P,
-            T,
-            q,
-            u,
-            h,
-            T_sfc,
-            args...,
-        )
+
+"""
+    soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+
+Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
+`fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
+`T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
+depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
+and below it, the temperature derivatives are dropped, and `T_sfc` is appended
+after the momentum and buoyancy fluxes, if present.
+"""
+function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
+    extra_fluxes = Base.structdiff(
+        fluxes,
+        NamedTuple{(:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T)},
+    )
     return (;
-        lhf,
-        shf,
-        vapor_flux_liq = vapor_flux * is_liquid,
-        vapor_flux_ice = vapor_flux * (1 - is_liquid),
-        ρτxz,
-        ρτyz,
-        buoyancy_flux,
+        lhf = fluxes.lhf,
+        shf = fluxes.shf,
+        vapor_flux_liq = fluxes.vapor_flux * is_liquid,
+        vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
+        extra_fluxes...,
         T_sfc,
     )
 end
