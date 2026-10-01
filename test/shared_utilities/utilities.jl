@@ -451,6 +451,21 @@ end
         :info,
         "Checking NaNs in var3",
     ) ClimaLand.call_count_nans_state(Y, mask = mask_ones)
+
+    # A field with several components per point, like the P-model capacities
+    multi = fill((; a = FT(0), b = FT(0)), sfc_space)
+    ClimaComms.allowscalar(ClimaComms.device()) do
+        parent(multi.b)[1] = NaN
+    end
+    @test_logs (:warn, "1 NaNs found") ClimaLand.count_nans_state(
+        multi,
+        mask = mask_ones,
+    )
+    @test_logs (:info, "No NaNs found") ClimaLand.count_nans_state(
+        multi,
+        mask = mask_zeros,
+        verbose = true,
+    )
 end
 
 @testset "isdivisible" begin
