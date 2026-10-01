@@ -1,4 +1,4 @@
-# Energy and carbon RMSE boxplots: compare ClimaLand against an ILAMB land-hist
+# Energy, water and carbon RMSE boxplots: compare ClimaLand against an ILAMB land-hist
 # cohort. "Other-model" RMSE values are inlined from the global table of the
 # ILAMB land-hist dashboards (https://www.ilamb.org/land-hist/): CLM,
 # ISBA-CTRIP and JSBACH (no LWup), each forced by CRUJRA, GSWP3 and Princeton,
@@ -6,13 +6,15 @@
 # computed at runtime from the diagnostics directory against the same
 # benchmark as the cohort, with ILAMB's default RMSE definition.
 
-# Energy benchmarks are read from the ILAMB `DATA` tree, as
-# `<var>/<source>/<file>.nc`, rooted at `ENV["ILAMB_ROOT"]` (the convention of
-# the ILAMB package) or at the copy on the CliMA cluster.
+# Energy and water benchmarks are read from the ILAMB `DATA` tree, as
+# `<var>/<source>/<name>.nc` holding variable `<name>`, rooted at
+# `ENV["ILAMB_ROOT"]` (the convention of the ILAMB package) or at the copy on
+# the CliMA cluster.
 const _DEFAULT_ILAMB_ROOT = "/net/sampo/data1/ilamb"
 
 # Panel definitions: sim short_name, benchmark name, benchmark file, factor
-# converting the benchmark to W m⁻², and cohort RMSEs.
+# converting the benchmark to the units of the preprocessed sim var, and cohort
+# RMSEs.
 const _ENERGY_PANELS = (
     (
         title = "H",
@@ -20,15 +22,8 @@ const _ENERGY_PANELS = (
         bench = "FLUXCOM",
         obs_path = ("hfss", "FLUXCOM", "hfss.nc"),
         obs_to_sim_units = 1e6 / 86400, # MJ m⁻² day⁻¹ to W m⁻²
+        obs_units = "W m^-2",
         others = [18.7, 16.3, 16.3, 20.8, 21.0, 18.9, 27.3, 27.3, 27.4],
-    ),
-    (
-        title = "LE",
-        sim_short_name = "lhf",
-        bench = "FLUXCOM",
-        obs_path = ("hfls", "FLUXCOM", "hfls.nc"),
-        obs_to_sim_units = 1e6 / 86400,
-        others = [16.4, 16.8, 19.3, 17.9, 18.9, 19.4, 25.8, 24.3, 24.2],
     ),
     (
         title = "SWup",
@@ -36,6 +31,7 @@ const _ENERGY_PANELS = (
         bench = "CERES",
         obs_path = ("rsus", "CERESed4.2", "rsus.nc"),
         obs_to_sim_units = 1.0,
+        obs_units = "W m^-2",
         others = [11.1, 10.5, 11.0, 12.7, 11.7, 12.1, 12.9, 11.5, 12.3],
     ),
     (
@@ -44,9 +40,20 @@ const _ENERGY_PANELS = (
         bench = "CERES",
         obs_path = ("rlus", "CERESed4.2", "rlus.nc"),
         obs_to_sim_units = 1.0,
+        obs_units = "W m^-2",
         others = [14.1, 14.7, 14.4, 14.5, 13.0, 13.2],
     ),
 )
+
+const _WATER_PANELS = ((
+    title = "ET",
+    sim_short_name = "et",
+    bench = "GLEAMv3.3a",
+    obs_path = ("evspsbl", "GLEAMv3.3a", "et.nc"),
+    obs_to_sim_units = 86400.0, # kg m⁻² s⁻¹ to mm day⁻¹
+    obs_units = "mm / day",
+    others = [0.586, 0.599, 0.661, 0.582, 0.628, 0.647, 0.793, 0.754, 0.742],
+),)
 
 const _CARBON_PANELS = (
     (
@@ -61,6 +68,13 @@ const _CARBON_PANELS = (
         bench = "FLUXCOM",
         others = [1.57, 1.32, 1.89, 1.43, 1.23, 1.75, 1.81, 1.53, 1.74],
     ),
+)
+
+# Panel groups drawn left to right, each sharing a y-axis.
+const _PANEL_GROUPS = (
+    (ylabel = "RMSE [W m⁻²]", panels = _ENERGY_PANELS),
+    (ylabel = "RMSE [mm day⁻¹]", panels = _WATER_PANELS),
+    (ylabel = "RMSE [g m⁻² day⁻¹]", panels = _CARBON_PANELS),
 )
 
 """
@@ -114,20 +128,20 @@ function _ilamb_cycle_rmse(sim_var, obs_var, mask_fn)
 end
 
 """
-    _ilamb_energy_benchmark(panel)
+    _ilamb_data_benchmark(panel)
 
-Load the benchmark of energy `panel` from the ILAMB `DATA` tree as an
-`OutputVar` in W m⁻² that follows CliMA conventions. Return `nothing` if the
+Load the benchmark of `panel` from the ILAMB `DATA` tree as an `OutputVar` in
+`panel.obs_units` that follows CliMA conventions. Return `nothing` if the
 file is not found.
 """
-function _ilamb_energy_benchmark(panel)
+function _ilamb_data_benchmark(panel)
     ilamb_root = get(ENV, "ILAMB_ROOT", _DEFAULT_ILAMB_ROOT)
     path = joinpath(ilamb_root, "DATA", panel.obs_path...)
     if !isfile(path)
         @warn "ILAMB benchmark $path not found; set ILAMB_ROOT to the ILAMB data root"
         return nothing
     end
-    var = ClimaAnalysis.OutputVar(path, first(panel.obs_path))
+    var = ClimaAnalysis.OutputVar(path, first(splitext(last(panel.obs_path))))
     for (dim, dim_units) in (("lon", "degrees_east"), ("lat", "degrees_north"))
         ClimaAnalysis.dim_units(var, dim) == "degree" &&
             ClimaAnalysis.set_dim_units!(var, dim, dim_units)
@@ -136,7 +150,7 @@ function _ilamb_energy_benchmark(panel)
     replace!(var, missing => NaN)
     var = ClimaAnalysis.convert_units(
         var,
-        "W m^-2",
+        panel.obs_units,
         conversion_function = x -> x * panel.obs_to_sim_units,
     )
     ClimaAnalysis.set_short_name!(var, panel.sim_short_name)
@@ -148,12 +162,13 @@ end
 
 Return the benchmark `OutputVar` of `panel` and a function of
 `(sim_var, obs_var)` returning its mask function, or `nothing` if the benchmark
-is unavailable. Energy benchmarks are masked to land cells where the benchmark
-is defined; carbon benchmarks use the `ILAMBDataLoader` masks.
+is unavailable. Benchmarks read from the ILAMB `DATA` tree are masked to land
+cells where the benchmark is defined; carbon benchmarks use the
+`ILAMBDataLoader` masks.
 """
 function _boxplot_benchmark(panel)
     if hasproperty(panel, :obs_path)
-        obs_var = _ilamb_energy_benchmark(panel)
+        obs_var = _ilamb_data_benchmark(panel)
         isnothing(obs_var) && return nothing
         make_mask =
             (sim_var, obs_var) -> begin
@@ -390,8 +405,8 @@ end
                           prev_diagnostics_folder_path = nothing)
 
 Generate `boxplot_rmse.png` in `leaderboard_base_path`: a single figure with
-four energy panels (H, LE, SWup, LWup) and two carbon panels (GPP, ER) side
-by side, separated by a slightly wider column gap because the two groups use
+three energy panels (H, SWup, LWup), a water panel (ET) and two carbon panels
+(GPP, ER) side by side, with wider column gaps between groups because they use
 different units.
 
 Each panel shows a boxplot of "other-model" RMSE values from the ILAMB
@@ -401,22 +416,19 @@ given, the equivalent RMSE from that earlier run is plotted as a gray dot,
 with a percent-change label drawn between the two.
 
 ClimaLand RMSE follows ILAMB's default definition (see `_ilamb_cycle_rmse`) and
-is computed against the benchmark of the cohort: FLUXCOM for H and LE, CERES
-EBAF for SWup and LWup (read from the ILAMB `DATA` tree, see
-`_ilamb_energy_benchmark`), and ILAMB FLUXCOM for GPP and ER. Energy panels are
-RMSE in W m⁻²; carbon panels are RMSE in g m⁻² day⁻¹.
+is computed against the benchmark of the cohort: FLUXCOM for H, CERES EBAF for
+SWup and LWup and GLEAM v3.3a for ET (read from the ILAMB `DATA` tree, see
+`_ilamb_data_benchmark`), and ILAMB FLUXCOM for GPP and ER. Energy panels are
+RMSE in W m⁻², ET in mm day⁻¹ and carbon panels in g m⁻² day⁻¹.
 """
 function compute_rmse_boxplots(
     leaderboard_base_path,
     diagnostics_folder_path;
     prev_diagnostics_folder_path = nothing,
 )
-    @info "Computing ClimaLand RMSE for energy/carbon boxplots"
+    @info "Computing ClimaLand RMSE for energy/water/carbon boxplots"
 
-    energy_panels = collect(_ENERGY_PANELS)
-    carbon_panels = collect(_CARBON_PANELS)
-    all_panels = vcat(energy_panels, carbon_panels)
-    n_energy = length(energy_panels)
+    all_panels = [p for g in _PANEL_GROUPS for p in g.panels]
 
     rmse_current = Dict{String, Float64}()
     rmse_prev = Dict{String, Float64}()
@@ -438,37 +450,37 @@ function compute_rmse_boxplots(
         finite = filter(isfinite, vals)
         return isempty(finite) ? 1.0 : maximum(finite) * 1.18
     end
-    y_max_energy = _group_y_max(energy_panels)
-    y_max_carbon = _group_y_max(carbon_panels)
 
-    fig = CairoMakie.Figure(size = (260 * length(all_panels) + 280, 560))
-    for (col, p) in enumerate(all_panels)
-        is_energy = col <= n_energy
-        y_max = is_energy ? y_max_energy : y_max_carbon
-        ylabel = if col == 1
-            "RMSE [W m⁻²]"
-        elseif col == n_energy + 1
-            "RMSE [g m⁻² day⁻¹]"
-        else
-            ""
+    fig = CairoMakie.Figure(
+        size = (260 * length(all_panels) + 140 * length(_PANEL_GROUPS), 560),
+    )
+    col = 0
+    group_ends = Int[]
+    for group in _PANEL_GROUPS
+        y_max = _group_y_max(group.panels)
+        for (i, p) in enumerate(group.panels)
+            col += 1
+            _draw_boxplot_panel!(
+                fig,
+                col,
+                p,
+                rmse_current[p.sim_short_name],
+                rmse_prev[p.sim_short_name],
+                y_max,
+                i == 1 ? group.ylabel : "",
+            )
         end
-        _draw_boxplot_panel!(
-            fig,
-            col,
-            p,
-            rmse_current[p.sim_short_name],
-            rmse_prev[p.sim_short_name],
-            y_max,
-            ylabel,
-        )
+        push!(group_ends, col)
     end
-    # Widen the gap between the last energy panel and the first carbon panel
-    # so the unit change reads as a deliberate split rather than another panel.
-    CairoMakie.colgap!(fig.layout, n_energy, 50)
+    # A wider gap between groups makes the unit change read as a deliberate
+    # split rather than another panel.
+    for c in group_ends[1:(end - 1)]
+        CairoMakie.colgap!(fig.layout, c, 50)
+    end
 
     CairoMakie.Label(
         fig[0, :],
-        "ClimaLand RMSE — Global energy and carbon fluxes";
+        "ClimaLand RMSE — Global energy, water and carbon fluxes";
         fontsize = 18,
         font = :bold,
     )
