@@ -109,6 +109,41 @@ function setup_model(
             start_date,
             stop_date,
         )
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+        rooting_depth = 3 .* ClimaLand.Canopy.clm_rooting_depth(surface_space)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            ClimaLand.Domains.obtain_surface_domain(domain),
+            (;
+                atmos = forcing.atmos,
+                radiation = forcing.radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+            soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{
+                FT,
+            }(
+                domain,
+                toml_dict;
+                soil_params = (;
+                    ν = soil.parameters.ν,
+                    θ_r = soil.parameters.θ_r,
+                ),
+            ),
+            biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+                ClimaLand.Domains.obtain_surface_domain(domain),
+                LAI,
+                toml_dict;
+                rooting_depth,
+            ),
+        )
         land = LandModel{FT}(
             forcing,
             LAI,
@@ -116,6 +151,8 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            soil,
+            canopy,
         )
     end
     return land
