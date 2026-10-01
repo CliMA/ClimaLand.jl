@@ -135,7 +135,7 @@ a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
 function ClimaLand.component_temperature(model::SnowModel, Y, p)
-    return p.snow.T_sfc
+    return p.snow.turbulent_fluxes.T_sfc
 end
 
 """
@@ -156,7 +156,7 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
 
     @. p.snow.q_sfc = snow_surface_specific_humidity(
-        p.snow.T_sfc,
+        p.snow.turbulent_fluxes.T_sfc,
         p.snow.q_l,
         p.drivers.T,
         p.drivers.P,
@@ -743,7 +743,9 @@ snow surface temperature.
 
 It makes this estimate by incrementing the initial guess for snow surface temperature
 `T_0` (stored in `inputs`) by the Newton update ΔT, where `ΔT = -f(T_0)/f'(T_0)` and
-f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0.
+f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0, and capping the result at the
+freezing temperature, with `ClimaLand.surface_temperature_newton_update` and the
+thermal resistance `d/κ` between the surface and the bulk snow.
 
 Be aware that if the snow surface specific humidity parameterization changes, 
 we must also change the internals of this function.
@@ -812,44 +814,29 @@ function update_T_sfc_scheme(
         z_0b,
         scheme,
     )
-    E = SurfaceFluxes.evaporation(
-        param_set,
+    # Energy that would warm the surface above freezing melts snow instead
+    _T_freeze = Thermodynamics.Parameters.T_freeze(thermo_params)
+    return ClimaLand.surface_temperature_newton_update(
         inputs,
+        param_set,
+        thermo_params,
         g_h,
-        q_atmos,
+        ρ_sfc,
         q_sfc,
-        ρ_sfc,
-        inputs.moisture_model,
+        ∂q∂T,
+        T_bulk,
+        d / κ, # r
+        _T_freeze,
+        ϵ,
+        σ,
+        SW_n,
+        LW_d,
     )
-    L = SurfaceFluxes.latent_heat_flux(
-        param_set,
-        inputs,
-        E,
-        inputs.moisture_model,
-    )
-    H = SurfaceFluxes.sensible_heat_flux(
-        param_set,
-        inputs,
-        g_h,
-        T_atmos,
-        T_sfc,
-        ρ_sfc,
-        E,
-    )
-    _LH_v0 = Thermodynamics.Parameters.LH_v0(thermo_params)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂L∂T = ρ_sfc * g_h * _LH_v0 * ∂q∂T
-    ∂H∂T = ρ_sfc * g_h * cp_d
-    LW_n = -ϵ * (LW_d - σ * T_sfc^4)
-    ∂LW_n∂T = 4 * ϵ * σ * T_sfc^3
-    ΔT =
-        -(d * (SW_n + LW_n + L + H) + κ * (T_sfc - T_bulk)) /
-        (d * (∂LW_n∂T + ∂L∂T + ∂H∂T) + κ)
-    return T_sfc + ΔT
 end
 
 """
     solve_for_surface_temp_at_a_point(
+        return_extra_fluxes::Val,
         T_initial_guess::FT,
         T_bulk::FT,
         z_snow::FT,
@@ -868,9 +855,11 @@ end
         roughness_model,
         atmos_h::FT,
         gustiness,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
         earth_param_set,
         surf_temp::EquilibriumGradientTemperatureModel,
-    )::FT where {FT}
+    ) where {FT}
 
 Solves for T satisfying:
 (A) f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0
@@ -882,12 +871,18 @@ by
 (2) Solving for the root of f(T) by evaluating these update functions each iteration of
     the surface fluxes solve.
 
-Please note that we cannot use `ClimaLand.turbulent_fluxes!` and that functionality directly,
-because the actual surface temperature may be different from the value found in the root solve.
-If the value found in the root solve is above the freezing temp, we convert the excess fluxes into
-melting, and recompute the surface fluxes using the freezing temperature of water.
+The update of T is capped at the freezing temperature of water, and the excess
+energy flux goes into melting (see `get_residual_melt_flux`). Because the cap is
+applied within the Monin-Obukhov iterations, the fluxes of the solve are those at
+the capped temperature, and they are returned with it: the NamedTuple stored in
+`p.snow.turbulent_fluxes` (with the momentum and buoyancy fluxes if
+`return_extra_fluxes` is `Val(true)`, for a coupled atmosphere), with `T_sfc`
+appended. The derivatives of the fluxes with respect to the surface temperature
+are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
+`turbulent_fluxes!`.
 """
 function solve_for_surface_temp_at_a_point(
+    return_extra_fluxes::Val,
     T_initial_guess::FT,
     T_bulk::FT,
     z_snow::FT,
@@ -906,29 +901,15 @@ function solve_for_surface_temp_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
-)::FT where {FT}
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
-    positional_default_args = (
-        scheme = SurfaceFluxes.PointValueScheme(),
-        solver_opts = nothing,
-        flux_specs = nothing,
-    )
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
-    if u_atmos isa FT
-        u = (u_atmos, FT(0))
-    else
-        u = u_atmos
-    end
-
+) where {FT}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
     d = surface_temp_scaling_length(κ_snow, ρ_snow, z_snow, earth_param_set)
-    ρ_atmos =
-        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
     update_q(args...) = update_q_vap_sfc_scheme(args..., q_l)
     update_T(args...) = update_T_sfc_scheme(
         args...,
@@ -951,34 +932,46 @@ function solve_for_surface_temp_at_a_point(
         surface_flux_params,
         thermo_params,
     )
-
-    output = SurfaceFluxes.surface_fluxes(
-        surface_flux_params,
-        T_atmos,
-        q_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
-        ρ_atmos,
+    output = ClimaLand.surface_fluxes_at_a_point(
         T_initial_guess,
         q_sfc,
-        _grav * h_sfc,
-        atmos_h - h_sfc,
-        displ,
-        u,
-        (FT(0), FT(0)), # u_sfc
-        nothing, # roughness inputs
-        config,
-        positional_default_args...,
         update_T,
         update_q,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        u_atmos,
+        atmos_h,
+        h_sfc,
+        displ,
+        roughness_model,
+        gustiness,
+        earth_param_set,
     )
-    return output.T_sfc
+    fluxes = ClimaLand.turbulent_fluxes_from_output(
+        return_extra_fluxes,
+        output,
+        output.T_sfc,
+        output.q_vap_sfc,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        atmos_h - h_sfc,
+        earth_param_set,
+    )
+    return ClimaLand.with_surface_temperature(Val(true), fluxes, output.T_sfc)
 end
 
 """
     update_surf_temp!(model::SnowModel, surf_temp::EquilibriumGradientTemperatureModel, SW_net, LW_down, Y, p, t)
 
-Updates the surface temperature variable.
+Solves for the snow surface temperature, capped at the freezing temperature,
+and stores it with the turbulent fluxes at it, from the same Monin-Obukhov
+solve, in `p.snow.turbulent_fluxes` (the surface temperature is
+`p.snow.turbulent_fluxes.T_sfc`). The surface specific humidity `p.snow.q_sfc`
+is updated at the new surface temperature.
 """
 function update_surf_temp!(
     model::SnowModel,
@@ -999,8 +992,14 @@ function update_surf_temp!(
     #might need to update this call as gustiness models change:
     gustiness = SurfaceFluxes.ConstantGustinessSpec(bc.atmos.gustiness)
 
-    #get surf_temp values, even if they are > T_freeze:
-    p.snow.T_sfc .= solve_for_surface_temp_at_a_point.(
+    return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(bc.atmos))
+    update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
+    update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
+    # The initial guess depends only on the state and drivers, not on the
+    # cached surface temperature, so a restart from the state alone reproduces
+    # the solve
+    p.snow.turbulent_fluxes .= solve_for_surface_temp_at_a_point.(
+        return_extra_fluxes,
         max.((p.drivers.T .+ p.snow.T) ./ 2, _T_freeze), # initial guess
         p.snow.T,
         p.snow.z_snow,
@@ -1019,22 +1018,21 @@ function update_surf_temp!(
         roughness_model,
         bc.atmos.h,
         gustiness,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
         model.parameters.earth_param_set,
         surf_temp,
     )
-
-    #reset T_sfc accordingly:
-    p.snow.T_sfc .= min.(_T_freeze, p.snow.T_sfc)
+    # Updates the cached surface humidity to match the new surface temperature
+    ClimaLand.component_specific_humidity(model, Y, p)
     return nothing
 end
-
 
 """
     update_surf_temp!(model::SnowModel, surf_temp::BulkSurfaceTemperatureModel, Y, p, t)
 
-Updates the surface temperature variable so that it matches the bulk temperature.
-Note, this update function is not called for the integrated land model - the update to the surface temperature happens via a different
-function that handles the radiation sent from the canopy (see `lsm_radiant_energy_fluxes!()`)
+Updates the surface temperature variable so that it matches the bulk temperature,
+and computes the turbulent fluxes, `p.snow.turbulent_fluxes`, at it.
 """
 function update_surf_temp!(
     model::SnowModel,
@@ -1045,7 +1043,15 @@ function update_surf_temp!(
     p,
     t,
 )
-    p.snow.T_sfc .= p.snow.T
+    p.snow.turbulent_fluxes.T_sfc .= p.snow.T
+    ClimaLand.turbulent_fluxes!(
+        p.snow.turbulent_fluxes,
+        model.boundary_conditions.atmos,
+        model,
+        Y,
+        p,
+        t,
+    )
     return nothing
 end
 
@@ -1090,7 +1096,7 @@ function get_residual_melt_flux(
         (
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
             p.snow.R_n +
-            κ * (p.snow.T_sfc - p.snow.T)/max(
+            κ * (p.snow.turbulent_fluxes.T_sfc - p.snow.T)/max(
                 surface_temp_scaling_length(κ, ρ, z, earth_param_set),
                 eps(FT),
             )

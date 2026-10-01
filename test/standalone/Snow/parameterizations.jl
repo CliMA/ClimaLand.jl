@@ -159,8 +159,13 @@ for FT in (Float32, Float64)
         q_atmos = FT(0.003)
         u_atmos = FT(3)
         atmos_h = FT(1)
+        # These only enter the flux derivatives ∂lhf∂T and ∂shf∂T returned by
+        # the solve, which this test does not check
+        ∂T_sfc∂T = (u_star, g_h, earth_param_set) -> FT(1)
+        ∂q_sfc∂T = (u_star, g_h, q_sat, T_sfc, earth_param_set) -> FT(0)
         #No snow - should T_bulk
         result = Snow.solve_for_surface_temp_at_a_point(
+            Val(false),
             T_sfc_test,
             T_bulk_test,
             FT(0),
@@ -179,12 +184,15 @@ for FT in (Float32, Float64)
             roughness_model,
             atmos_h,
             gustiness, #gustiness
+            ∂T_sfc∂T,
+            ∂q_sfc∂T,
             param_set,
             Snow.EquilibriumGradientTemperatureModel{FT}(),
-        )
+        ).T_sfc
         @test result == T_bulk_test
         #nonzero depth
         result = Snow.solve_for_surface_temp_at_a_point(
+            Val(false),
             T_sfc_test,
             T_bulk_test,
             FT(1),
@@ -203,9 +211,11 @@ for FT in (Float32, Float64)
             roughness_model,
             atmos_h,
             gustiness, #gustiness
+            ∂T_sfc∂T,
+            ∂q_sfc∂T,
             param_set,
             Snow.EquilibriumGradientTemperatureModel{FT}(),
-        )
+        ).T_sfc
         surface_flux_params = LP.surface_fluxes_parameters(param_set)
 
         T_sfc = result
@@ -220,7 +230,8 @@ for FT in (Float32, Float64)
             thermo_params,
         )
         _σ = LP.Stefan(param_set)
-        turb_fluxes = ClimaLand.compute_turbulent_fluxes_at_a_point(
+        turb_fluxes = ClimaLand.turbulent_fluxes_at_a_point(
+            Val(false),
             P_atmos,
             T_atmos,
             q_atmos,
@@ -245,7 +256,7 @@ for FT in (Float32, Float64)
             FT(1),
             param_set,
         )
-        sfc_flux = (SW_net + LW_n + turb_fluxes[1] + turb_fluxes[2])
+        sfc_flux = (SW_net + LW_n + turb_fluxes.lhf + turb_fluxes.shf)
         residual = (sfc_flux + κ_surf_test * (T_sfc - T_bulk_test) / d)
         @test abs(residual) / abs(sfc_flux) < 0.01
     end

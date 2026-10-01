@@ -22,6 +22,8 @@ function get_fluxtower_height end
 
 function get_parameters end
 
+function get_sensor_depths end
+
 function replace_hyphen end
 
 end

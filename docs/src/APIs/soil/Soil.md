@@ -101,3 +101,19 @@ ClimaLand.Soil.thermal_conductivity
 ClimaLand.Soil.phase_change_source
 ClimaLand.Soil.thermal_time
 ```
+
+## Soil Surface Fluxes
+
+```@docs
+ClimaLand.Soil.soil_surface_temperature
+ClimaLand.Soil.update_soil_surface_temperature!
+ClimaLand.Soil.soil_surface_vapor_weight
+ClimaLand.Soil.soil_skin_state
+ClimaLand.Soil.update_soil_T_sfc_scheme
+ClimaLand.Soil.update_soil_q_vap_sfc_scheme
+ClimaLand.Soil.solve_soil_surface_temperature_at_a_point
+ClimaLand.Soil.soil_surface_vapor_conductance!
+ClimaLand.Soil.soil_conductance
+ClimaLand.Soil.soil_tortuosity
+ClimaLand.Soil.dry_soil_layer_thickness
+```

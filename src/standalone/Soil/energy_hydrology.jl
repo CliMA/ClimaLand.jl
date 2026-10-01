@@ -552,8 +552,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 ),
             ) * p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ϑ =
-            negative_dtγ *
-            (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch) - (I,)
+            negative_dtγ * (divf2c_matrix() * p.soil.full_bidiag_matrix_scratch)
 
         # Now overwrite bidiag_matrix_scratch and full_bidiag scratch for the ρe ρe bidiagonal
         @. p.soil.bidiag_matrix_scratch =
@@ -961,16 +960,17 @@ end
 Returns the surface temperature field of the
 `EnergyHydrology` soil model.
 
-The assumption is that the soil surface temperature
-is the same as the temperature at the center of the
-first soil layer.
+For atmospherically driven soil (`AtmosDrivenFluxBC`), this is the soil skin
+temperature `p.soil.turbulent_fluxes.T_sfc`, solved for from the surface energy
+balance (see `update_soil_surface_temperature!`); otherwise it is the
+temperature at the center of the first soil layer.
 """
 function ClimaLand.component_temperature(
     model::EnergyHydrology{FT},
     Y,
     p,
 ) where {FT}
-    return ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    return soil_surface_temperature(model.boundary_conditions.top, p)
 end
 
 """
@@ -1088,7 +1088,8 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
         q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        if inputs.T_sfc_guess < Tf_depressed # sublimation
+        # Sublimation; at T_sfc = Tf_depressed, qsat_sfc is over ice
+        if inputs.T_sfc_guess <= Tf_depressed
             if q_air < qsat_sfc # water loss to atmosphere, adjust β
                 return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
             else
@@ -1107,28 +1108,10 @@ function ClimaLand.get_update_surface_humidity_function(
     qsat_sfc = component_specific_humidity(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
-        model.parameters
-    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
-    S_c_sfc = hydrology_cm_sfc.S_c
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
-    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
-    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
-    θ_l_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(
-        θ_l_sfc,
-        p.soil.θ_l,
-        model.domain.fields.z,
-        model.domain.fields.Δz_top,
-    )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + eps(FT))
-    S_l_sfc = p.soil.sfc_scratch # currently set to θ_l_sfc
-    @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
-    _D_vapor = FT(LP.D_vapor(earth_param_set))
-    g_soil_sfc = p.soil.sfc_scratch # currently set to S_l_sfc
-    g_soil_sfc .=
-        soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
-    # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
+    g_soil_sfc =
+        soil_surface_vapor_conductance!(p.soil.sfc_scratch, model, Y, p)
     update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
         (args...) -> update_q_vap_sfc_at_a_point(
             args...,
@@ -1195,7 +1178,7 @@ function turbulent_fluxes!(
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     dest .= soil_turbulent_fluxes_at_a_point.(
         momentum_fluxes, # return_extra_fluxes
-        ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc), # is_liquid
+        Tf_depressed_sfc,
         p.drivers.P,
         p.drivers.T,
         p.drivers.q, # q_tot
@@ -1217,49 +1200,64 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, is_liquid, args...;)
+    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, Tf_depressed, P, T, q, u, h,
+                                     T_sfc, args...)
 
-This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
-as we compute the soil turbulent fluxes pointwise. This is needed because space for the
-extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
-The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
-
-The `return_extra_fluxes` argument indicates whether to return the following:
-- momentum fluxes (`ρτxz`, `ρτyz`)
-- buoyancy flux (`buoy_flux`)
-
-The field `is_liquid` indicates if the vapor flux is attributed to liquid water evaporating
-or due to ice sublimating.
+Return the soil turbulent fluxes at a point, computed by
+`ClimaLand.turbulent_fluxes_at_a_point(return_extra_fluxes, P, T, q, u, h, T_sfc, args...)`
+and mapped by `soil_turbulent_fluxes` given the depressed freezing temperature
+`Tf_depressed` at the surface. The `return_extra_fluxes` argument indicates
+whether to return the momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux
+(`buoyancy_flux`), for which space is only allocated in the cache when running
+with a `CoupledAtmosphere`.
 """
 function soil_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{false},
-    is_liquid,
+    return_extra_fluxes::Val,
+    Tf_depressed,
+    P,
+    T,
+    q,
+    u,
+    h,
+    T_sfc,
     args...,
 )
-    (lhf, shf, vapor_flux, _, _, _, _, _) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(args...)
-    return (;
-        lhf,
-        shf,
-        vapor_flux_liq = vapor_flux * is_liquid,
-        vapor_flux_ice = vapor_flux * (1 - is_liquid),
+    fluxes = ClimaLand.turbulent_fluxes_at_a_point(
+        return_extra_fluxes,
+        P,
+        T,
+        q,
+        u,
+        h,
+        T_sfc,
+        args...,
     )
+    return soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
 end
-function soil_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{true},
-    is_liquid,
-    args...,
-)
-    (lhf, shf, vapor_flux, _, _, ρτxz, ρτyz, buoyancy_flux) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(args...)
+
+"""
+    soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+
+Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
+`fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
+`T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
+depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
+and below it, the temperature derivatives are dropped, and `T_sfc` is appended
+after the momentum and buoyancy fluxes, if present.
+"""
+function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
+    extra_fluxes = Base.structdiff(
+        fluxes,
+        NamedTuple{(:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T)},
+    )
     return (;
-        lhf,
-        shf,
-        vapor_flux_liq = vapor_flux * is_liquid,
-        vapor_flux_ice = vapor_flux * (1 - is_liquid),
-        ρτxz,
-        ρτyz,
-        buoyancy_flux,
+        lhf = fluxes.lhf,
+        shf = fluxes.shf,
+        vapor_flux_liq = fluxes.vapor_flux * is_liquid,
+        vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
+        extra_fluxes...,
+        T_sfc,
     )
 end
 
@@ -1319,20 +1317,49 @@ function ClimaLand.total_energy_per_area!(
 end
 
 """
-    soil_conductance(θ_l::FT,
-                    S_c::FT,
-                    ν::FT,
-                    θ_r::FT,
-                    d_ds::FT,
-                    p::FT,
-                    α::FT,
-                    _D_vapor::FT
-                   ) where {FT}
+    soil_tortuosity(ν::FT, θ_r::FT, θ_i::FT) where {FT}
+
+Compute the tortuosity factor `θ_a^2.5 / ν` [-] for water vapor diffusion
+through the dry surface layer of the soil, following Equation (1) of Shokri,
+Lehmann, and Or (2008), Geophys. Res. Lett., 35, L19407,
+doi:10.1029/2008GL035230, with porosity `ν`, residual water fraction `θ_r`,
+and ice fraction `θ_i`.
+
+The vapor diffuses through the air-filled pore space of the dry layer, where
+the liquid water content is residual, so `θ_a = ν - θ_r - θ_i`, independent of
+the moisture of the soil below the dry layer (as in Swenson and Lawrence 2014,
+J. Geophys. Res. Atmos., 119, 10299–10312, doi:10.1002/2014JD022314, and the
+Community Land Model).
+"""
+function soil_tortuosity(ν::FT, θ_r::FT, θ_i::FT) where {FT}
+    θ_a = ν - θ_r - θ_i
+    safe_θ_a = max(θ_a, eps(FT))
+    return safe_θ_a^FT(2.5) / ν
+end
+
+"""
+    soil_conductance(
+        S_l::FT,
+        S_c::FT,
+        d_ds::FT,
+        p::FT,
+        α::FT,
+        _D_vapor::FT,
+        ν::FT,
+        θ_r::FT,
+        θ_i::FT,
+    ) where {FT}
 
 Computes the conductance of the top of the soil column to
-water vapor diffusion, as a function of the surface 
-volumetric liquid water fraction `θ_l`, other soil parameters,
-and diffusivity of vapor in air.
+water vapor diffusion, as a function of the surface
+effective liquid water saturation `S_l`, critical saturation `S_c`,
+other soil parameters, and diffusivity of vapor in air.
+
+The conductance is the inverse of the diffusive resistance
+`dsl / (D_vapor τ_a)` of the dry soil layer of thickness `dsl`, with the
+tortuosity factor `τ_a` of the dry layer (see [`soil_tortuosity`](@ref)).
+When no dry layer has formed (`dsl = 0`), the resistance vanishes and the
+conductance is unbounded.
 """
 function soil_conductance(
     S_l::FT,
@@ -1341,10 +1368,14 @@ function soil_conductance(
     p::FT,
     α::FT,
     _D_vapor::FT,
+    ν::FT,
+    θ_r::FT,
+    θ_i::FT,
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
-    g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
-    return g_soil
+    τ_a::FT = soil_tortuosity(ν, θ_r, θ_i)
+    r_soil = dsl / (_D_vapor * τ_a) # [s/m]
+    return 1 / max(r_soil, eps(FT)) # [m/s]
 end
 
 """

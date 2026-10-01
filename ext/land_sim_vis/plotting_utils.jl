@@ -384,7 +384,8 @@ end
 
 """
     site_timeseries(diagnostics, short_name, start_date;
-                    layer = nothing, source = site_source(diagnostics))
+                    layer = nothing, depth = nothing,
+                    source = site_source(diagnostics))
 
 Return `(dates, values, units)` for the single-site diagnostic `short_name`,
 whether the simulation stored its output in memory with a `DictWriter` or on
@@ -394,16 +395,26 @@ Dates label the start of each reduction period in both cases, so plots do not
 have to know which writer produced them.
 
 For variables resolved in depth, `layer` selects a level counting from `1` at
-the bottom; the default is the top level.
+the bottom, and `depth` [m] interpolates linearly between layer centers to a
+depth below the surface (e.g. that of a sensor); the default is the top level.
+`layer` is only used if `depth` is `nothing`.
 """
 function site_timeseries(
     diagnostics,
     short_name,
     start_date;
     layer = nothing,
+    depth = nothing,
     source = site_source(diagnostics),
 )
-    return _site_timeseries(source, diagnostics, short_name, start_date, layer)
+    return _site_timeseries(
+        source,
+        diagnostics,
+        short_name,
+        start_date,
+        layer,
+        depth,
+    )
 end
 
 # On disk the SimDir holds everything: it knows the units, and the dates it
@@ -414,9 +425,18 @@ function _site_timeseries(
     short_name,
     _,
     layer,
+    depth,
 )
     var = get(sim_dir, short_name)
-    if ClimaAnalysis.has_altitude(var)
+    if ClimaAnalysis.has_altitude(var) && !isnothing(depth)
+        altitudes = ClimaAnalysis.altitudes(var)
+        (i_lo, i_hi, w_hi) =
+            ClimaLand.Diagnostics.depth_interpolation_weights(altitudes, depth)
+        var_lo = ClimaAnalysis.slice(var, z = altitudes[i_lo])
+        var_hi = ClimaAnalysis.slice(var, z = altitudes[i_hi])
+        values = (1 - w_hi) .* vec(var_lo.data) .+ w_hi .* vec(var_hi.data)
+        return (ClimaAnalysis.dates(var_lo), values, ClimaAnalysis.units(var))
+    elseif ClimaAnalysis.has_altitude(var)
         altitudes = ClimaAnalysis.altitudes(var)
         layer_id = isnothing(layer) ? length(altitudes) : layer
         var = ClimaAnalysis.slice(var, z = altitudes[layer_id])
@@ -433,6 +453,7 @@ function _site_timeseries(
     short_name,
     start_date,
     layer,
+    depth,
 )
     matches = filter(d -> d.variable.short_name == short_name, diagnostics)
     isempty(matches) &&
@@ -442,6 +463,7 @@ function _site_timeseries(
         writer,
         diagnostic.output_short_name;
         layer,
+        depth,
     )
     dates = time_to_date.(times, start_date)
     isnothing(diagnostic.reduction_time_func) ||
@@ -580,6 +602,7 @@ function LandSimVis.make_timeseries(
     diagnostics,
     start_date;
     layer = nothing,
+    depth = nothing,
     plot_stem_name = "timeseries",
     comparison_data = nothing,
     spinup_date = start_date,
@@ -588,7 +611,7 @@ function LandSimVis.make_timeseries(
     for d in diagnostics
         sn = d.variable.short_name
         model_dates, model_output, unit =
-            site_timeseries(diagnostics, sn, start_date; layer, source)
+            site_timeseries(diagnostics, sn, start_date; layer, depth, source)
         spinup_idx = findfirst(spinup_date .<= model_dates)
         fig = CairoMakie.Figure(size = (800, 400))
         ax = CairoMakie.Axis(
@@ -600,7 +623,8 @@ function LandSimVis.make_timeseries(
             ax,
             model_dates[spinup_idx:end],
             model_output[spinup_idx:end],
-            label = "Model",
+            label = isnothing(depth) ? "Model" :
+                    "Model, $(round(100 * depth; digits = 1)) cm",
             color = "blue",
         )
         xlims = extrema(model_dates[spinup_idx:end])

@@ -133,6 +133,23 @@ using Dates
     ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
     @test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
 
+    # The ground heat flux uses the snow surface temperature of the current
+    # state, not the one cached from a previous evaluation. A thin, cold
+    # snowpack makes the ground heat flux depend on the surface temperature.
+    Y.snow.S .= FT(0.02)
+    @. Y.snow.U = ClimaLand.Snow.energy_from_T_and_swe(
+        Y.snow.S,
+        FT(263),
+        land_model.snow.parameters.ΔS,
+        land_model.snow.parameters.earth_param_set,
+    )
+    set_initial_cache!(p, Y, t)
+    G_current = copy(parent(p.ground_heat_flux))
+    p.snow.turbulent_fluxes.T_sfc .= FT(200)
+    update_boundary_fluxes! = ClimaLand.make_update_boundary_fluxes(land_model)
+    update_boundary_fluxes!(p, Y, t)
+    @test parent(p.ground_heat_flux) == G_current
+
     # Make sure soil boundary flux method also worked
     G = deepcopy(p.ground_heat_flux)
     p_snow_alone = deepcopy(p)

@@ -725,7 +725,11 @@ An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
 net radiation to the auxiliary variables.
 
-These variables are updated in place in `soil_boundary_fluxes!`.
+These variables are updated in place in `soil_boundary_fluxes!` or, in
+integrated models with a canopy, `lsm_radiant_energy_fluxes!`. The turbulent
+fluxes are stored with the soil skin temperature `T_sfc` at which they are
+evaluated, both from the same solve of the surface energy balance (see
+`update_soil_surface_temperature!`).
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
@@ -776,8 +780,8 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice),
-        Tuple{FT, FT, FT, FT},
+        (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice, :T_sfc),
+        Tuple{FT, FT, FT, FT, FT},
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
@@ -825,8 +829,9 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
             :buoyancy_flux,
+            :T_sfc,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
@@ -901,7 +906,8 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    # The skin temperature and the turbulent fluxes at it, from one solve
+    update_soil_surface_temperature!(model, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx = compute_liquid_influx(p, model, prognostic_land_components)

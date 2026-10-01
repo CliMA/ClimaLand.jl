@@ -2,6 +2,54 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
+  balance within the Monin-Obukhov iterations, separating the radiating and
+  turbulent-exchange surface of the soil from the top cell center by the
+  half-cell conduction resistance `Δz_top/κ_top`, for standalone
+  `EnergyHydrology` and all integrated models, with a prescribed or coupled
+  atmosphere. The same solve yields the soil turbulent fluxes, which are
+  stored with the skin temperature. Over a frozen top cell, the skin temperature is capped at the
+  depressed freezing temperature. Conduction to a snowpack still uses the
+  top cell temperature.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🔥behavioralΔ] Include the porous-media tortuosity factor (`soil_tortuosity`) in the
+  dry-soil-layer resistance of `soil_conductance`, evaluated with the
+  air-filled porosity of the air-dry layer, `ν - θ_r - θ_i`, as in CLM5;
+  `soil_conductance` is written in resistance form so that a saturated surface
+  evaporates at the potential rate.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🐛bugfix] Fix the conduction lengths in the snow-soil ground heat flux and the lake
+  sediment heat flux: `Δz_top` is the half-thickness of the top soil layer and
+  was halved once more, doubling the soil-side conductance; the snow-side path
+  is now half the snow depth, capped at `Δz_top`.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-✨feature] Compare modeled soil temperature with FLUXNET observations at the depth of
+  the sensor: `diagnostic_as_vectors` and `LandSimVis.make_timeseries` take a
+  `depth` keyword that interpolates between layer centers, and
+  `FluxnetSimulations.get_sensor_depths` records the documented sensor depths
+  (US-Var: soil temperature at 2, 4, 8, 16, 32 cm; water content at the
+  surface, 10, 20 cm), used by `run_fluxnet.jl` and `vaira_paper.jl`.
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🚀performance] The snow surface temperature of the
+  `EquilibriumGradientTemperatureModel` is capped at the freezing temperature
+  within the Monin-Obukhov iterations, so the same solve yields the snow
+  turbulent fluxes at the capped temperature, and the second flux solve is
+  dropped. The soil skin and snow surface temperature solves share the
+  SurfaceFluxes.jl call (`surface_fluxes_at_a_point`), the flux
+  post-processing (`turbulent_fluxes_from_output`), and the Newton update of
+  the surface energy balance (`surface_temperature_newton_update`).
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-💥breaking] The snow surface temperature is stored with the snow
+  turbulent fluxes, in `p.snow.turbulent_fluxes.T_sfc`, as the soil skin
+  temperature is in `p.soil.turbulent_fluxes.T_sfc`; `p.snow.T_sfc` is
+  removed. `compute_turbulent_fluxes_at_a_point` is removed; use
+  `turbulent_fluxes_at_a_point`, which returns the same fluxes as a
+  NamedTuple. PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🐛bugfix] `SoilSnowModel` solves for the snow surface temperature
+  before computing the snow-soil ground heat flux, which depends on it through
+  the snowpack temperature profile; the flux used the snow surface temperature
+  of the previous evaluation (zero at initialization).
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----

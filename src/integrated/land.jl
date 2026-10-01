@@ -685,7 +685,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     α_snow_NIR = p.snow.α_snow
     α_snow_PAR = p.snow.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.T_sfc
+    T_snow = p.snow.turbulent_fluxes.T_sfc
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -739,6 +739,17 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         t,
     )
 
+    # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
+    # at it; the snow-soil ground heat flux uses the top cell temperature
+    Soil.update_soil_surface_temperature!(
+        land.soil,
+        R_net_soil, # at this point, R_net_soil equals the SW_net of the soil
+        LW_d_canopy,
+        Y,
+        p,
+        t,
+    )
+
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
@@ -784,7 +795,7 @@ NVTX.@annotate function implicit_radiant_energy_fluxes!(
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.T_sfc
+    T_snow = p.snow.turbulent_fluxes.T_sfc
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -845,7 +856,8 @@ NVTX.@annotate function soil_boundary_fluxes!(
     p,
     t,
 )
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
+    # The soil turbulent fluxes were computed with the skin temperature in
+    # `lsm_radiant_energy_fluxes!`
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)
@@ -978,10 +990,10 @@ NVTX.@annotate function snow_boundary_fluxes!(
     t,
 ) where {FT}
 
-    #In this integrated version, the surface temperature is instead
-    #set in the previous function call, in lsm_radiant_energy_fluxes!().
+    #In this integrated version, the surface temperature and turbulent fluxes
+    #are instead set in the previous function call, in
+    #lsm_radiant_energy_fluxes!().
 
-    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
     P_liq = p.drivers.P_liq

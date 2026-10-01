@@ -172,11 +172,13 @@ This function is called each ode function evaluation, prior to the tendency func
 evaluation.
 
 In this method, we
-1. Compute the ground heat flux between soil and snow. This is required to update the snow and soil boundary fluxes
-2. Update the snow boundary fluxes, which also computes any excess flux of energy or water which occurs when the snow
+1. Solve for the snow surface temperature and the snow turbulent fluxes at it. The ground heat flux depends on the
+snow surface temperature through the temperature profile of the snowpack (see `snow_T_bottom`)
+2. Compute the ground heat flux between soil and snow. This is required to update the snow and soil boundary fluxes
+3. Update the snow boundary fluxes, which also computes any excess flux of energy or water which occurs when the snow
 completely melts in a step. In this case, that excess must go to the soil for conservation
-3. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
-4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
+4. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
+5. Compute the net flux for the atmosphere, which is useful for assessing conservation.
 """
 function make_update_boundary_fluxes(
     land::SoilSnowModel{FT, SnM, SoM},
@@ -185,7 +187,16 @@ function make_update_boundary_fluxes(
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
-        # First compute the ground heat flux in place:
+        Snow.update_surf_temp!(
+            land.snow,
+            land.snow.parameters.surf_temp,
+            bare_snow_net_shortwave(p),
+            p.drivers.LW_d,
+            Y,
+            p,
+            t,
+        )
+        # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
@@ -210,6 +221,14 @@ function make_update_boundary_fluxes(
 end
 
 """
+    bare_snow_net_shortwave(p)
+
+Return the net shortwave radiation at the surface of bare snow, positive upward
+(the sign convention of `turbulent_fluxes!`), as a lazy broadcast.
+"""
+bare_snow_net_shortwave(p) = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d)
+
+"""
     update_soil_snow_ground_heat_flux!(p, Y, soil_params, snow_params, soil_domain, FT)
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
@@ -217,16 +236,17 @@ as
     F_g = - g_eff (T_snow_bottom - T_soil_sfc)
 
 where:
-    g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2).
+    g_eff = κ_soil * κ_snow / (κ_snow * Δz_top + κ_soil * min(z_snow / 2, Δz_top)).
 
-Here `T_snow_bottom` is the temperature at the base of the snowpack 
+Here `T_snow_bottom` is the temperature at the base of the snowpack
  and `T_soil_sfc` is the temperature of the top soil layer. The flux
 is positive when energy flows from the soil up into the snowpack.
 
-For simplicit, we assume that the thickness of the bottom layer of the
-snowpack is the same as the thickness of the soil top layer.
-When the snowpack is less than this 
-thickness in height, we use the thickness the snowpack directly.
+`Δz_top` is the distance between the soil surface and the center of the top
+soil layer (half the layer thickness). For simplicity, we assume that the
+bottom layer of the snowpack is as thick as the top soil layer, so the
+conduction path within the snow is also `Δz_top`, or half the snow depth
+when the snowpack is thinner than that layer.
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -238,15 +258,14 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
 )
     κ_snow = p.snow.κ
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
-    Δz_soil = soil_domain.fields.Δz_top
-    Δz_snow = Δz_soil
+    Δz_top = soil_domain.fields.Δz_top
     T̄ = p.snow.T
-    T_sfc = p.snow.T_sfc
+    T_sfc = p.snow.turbulent_fluxes.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     @. p.snow_T_bot = snow_T_bottom(
         κ_snow,
         κ_soil * κ_snow /
-        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2), # g_eff
+        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)), # g_eff
         T_soil,
         T̄,
         T_sfc,
@@ -254,11 +273,9 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
         p.snow.ρ_snow,
         snow_params.earth_param_set,
     )
-    # compute the flux
-    # g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)
     @. p.ground_heat_flux =
         -κ_soil * κ_snow /
-        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2) *
+        (κ_snow * Δz_top + κ_soil * min(p.snow.z_snow / 2, Δz_top)) *
         (p.snow_T_bot - T_soil)
     return nothing
 end
@@ -347,7 +364,8 @@ snow model accounting for a heat flux between the soil and snow.
 The snow surface is assumed to be bare (no vegetation).
 
 Currently this is almost identical to the method for snow alone, except for the
-inclusion of the ground heat flux (precomputed by the integrated land model).
+inclusion of the ground heat flux, which the integrated land model precomputes
+after solving for the snow surface temperature and the snow turbulent fluxes.
 However, this will change more if e.g. we allow for transmission of radiation
 through the snowpack.
 """
@@ -360,22 +378,14 @@ NVTX.@annotate function snow_boundary_fluxes!(
     t,
 ) where {FT}
 
-    SW_net = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d) #match sign convention in ./shared_utilities/drivers.jl
-    Snow.update_surf_temp!(
-        model,
-        model.parameters.surf_temp,
-        SW_net,
-        p.drivers.LW_d,
-        Y,
-        p,
-        t,
-    )
+    SW_net = bare_snow_net_shortwave(p)
     _σ = LP.Stefan(model.parameters.earth_param_set)
     ϵ_snow = model.parameters.ϵ_snow
-    LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
+    LW_net = @. lazy(
+        -ϵ_snow * (p.drivers.LW_d - _σ * p.snow.turbulent_fluxes.T_sfc^4),
+    ) #match sign convention in ./shared_utilities/drivers.jl
     p.snow.R_n .= SW_net .+ LW_net
 
-    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     P_snow = p.drivers.P_snow
     P_liq = p.drivers.P_liq
 
@@ -433,7 +443,9 @@ NVTX.@annotate function soil_boundary_fluxes!(
     p,
     t,
 )
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
+    # The skin temperature and the turbulent fluxes at it, from one solve; the
+    # snow-soil ground heat flux uses the top cell temperature
+    Soil.update_soil_surface_temperature!(soil, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =

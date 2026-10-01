@@ -47,6 +47,18 @@ function FluxnetSimulations.get_location(
 end
 
 """
+    get_sensor_depths(FT, ::Val{:US_Var})
+
+Returns the depths (m) of the soil temperature sensors at US-Var (2, 4, 8, 16,
+and 32 cm) and of the soil water content sensors (surface, 10, and 20 cm), from
+the AmeriFlux BASE measurement heights of the site (Ma et al. 2023). The
+surface water content sensor is assigned depth 0, which compares it with the
+top model layer.
+"""
+FluxnetSimulations.get_sensor_depths(FT, ::Val{:US_Var}) =
+    (; tsoil = FT.((0.02, 0.04, 0.08, 0.16, 0.32)), swc = FT.((0, 0.10, 0.20)))
+
+"""
     get_fluxtower_height(FT, ::Val{:US_Var}; kwargs...)
 
 Returns atmosphere height for US-Var (California Vaira Ranch Ione) Fluxnet site.

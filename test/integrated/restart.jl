@@ -109,7 +109,6 @@ using Dates
         step!(simulation)
     end
     Y_checkpoint = deepcopy(simulation._integrator.u)
-    snow_T_sfc_checkpoint = deepcopy(simulation._integrator.p.snow.T_sfc)
     for _ in 1:(n_steps - n_steps_to_checkpoint)
         step!(simulation)
     end
