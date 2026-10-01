@@ -45,7 +45,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 CalibrateEmulateSample = "1"
-ClimaAnalysis = "0.5.23"
+ClimaAnalysis = "0.5.24"
 ClimaCalibrate = "0.4"
 ClimaDiagnostics = "0.3.4"
 ClimaTimeSteppers = ">= 0.8.11"

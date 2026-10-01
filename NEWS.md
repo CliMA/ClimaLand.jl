@@ -50,6 +50,9 @@ main
   the snowpack temperature profile; the flux used the snow surface temperature
   of the previous evaluation (zero at initialization).
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🔥behavioralΔ] The leaderboards and the calibration observations use
+  NaN-aware resampling, so cells next to the ocean in the observations are no
+  longer dropped. PR [#1891](https://github.com/CliMA/ClimaLand.jl/pull/1891)
 
 1.12.3
 ----
@@ -118,7 +121,7 @@ v1.11.2
 v1.11.1
 -------
 - ![][badge-🔥behavioralΔ] Add support for ClimaCore v0.15.
-  PR [#XXXX](https://github.com/CliMA/ClimaLand.jl/pull/XXXX)
+  PR [#1849](https://github.com/CliMA/ClimaLand.jl/pull/1849)
 - ![][badge-✨feature] Add a `TimeIntegratedVariable` utility for prognostic time-integrated
   variables — a running mean/sum or plain time-integral stored in `Y` and advanced by the
   time-stepper (no callback, checkpoint/restart-safe). PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)

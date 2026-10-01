@@ -456,67 +456,6 @@ function preprocess(::ILAMBDataLoader, var, ::Val{:nee})
 end
 
 """
-    get_mask_dict(data_loader::ERA5DataLoader)
-
-Return a dictionary mapping short names to a function which takes in `sim_var`,
-an `OutputVar` containing simulation data, and `obs_var`, an `OutputVar`
-containing observational data, and returns a masking function. The masking
-function is used to correctly normalize the global bias and global RMSE.
-"""
-function get_mask_dict(data_loader::ERA5DataLoader)
-    # ERA5 is gap-free over land, so every variable uses the same ocean mask.
-    make_mask_fn =
-        (sim_var, obs_var) -> begin
-            return ClimaAnalysis.apply_oceanmask
-        end
-
-    mask_dict = Dict{String, Any}(
-        short_name => make_mask_fn for
-        short_name in available_vars(data_loader)
-    )
-
-    @assert keys(mask_dict) == available_vars(data_loader)
-    return mask_dict
-end
-
-"""
-    get_mask_dict(data_loader::ILAMBDataLoader)
-
-Return a dictionary mapping short names to a function which takes in `sim_var`,
-a `OutputVar` containing simulation data, and `obs_var`, a `OutputVar`
-containing observational data, and returns a masking function. The masking
-function is used to correctly normalize the global bias and global RMSE.
-"""
-function get_mask_dict(data_loader::ILAMBDataLoader)
-    # Dict for loading in masks
-    mask_dict = Dict{String, Any}()
-
-    mask_dict["lwu"] =
-        (sim_var, obs_var) -> begin
-            return ClimaAnalysis.apply_oceanmask
-        end
-
-    make_mask_fn =
-        (sim_var, obs_var) -> begin
-            return ClimaAnalysis.make_lonlat_mask(
-                ClimaAnalysis.slice(
-                    obs_var,
-                    time = ClimaAnalysis.times(obs_var) |> first,
-                );
-                set_to_val = isnan,
-            )
-        end
-
-    mask_dict["et"] = make_mask_fn
-    mask_dict["gpp"] = make_mask_fn
-    mask_dict["er"] = make_mask_fn
-    mask_dict["nee"] = make_mask_fn
-
-    @assert keys(mask_dict) == available_vars(data_loader)
-    return mask_dict
-end
-
-"""
     get_compare_vars_biases_plot_extrema(; annual = false)
 
 Return a dictionary mapping short names to ranges for the bias plots.
@@ -699,40 +638,6 @@ function Base.get(loader::FlagshipCarbonMetricsDataLoader, short_name::String)
 end
 
 """
-    get_mask_dict(data_loader::FlagshipCarbonMetricsDataLoader)
-
-Return a dictionary mapping model short names to a masking function used to
-normalize the global bias and RMSE. The inversion carbon variables
-(`nee`/`gpp`/`er`) are masked where the observation is missing (NaN), mirroring
-the ILAMB carbon-variable masks. `lai` uses `ClimaAnalysis.apply_oceanmask`
-instead: MODIS LAI is finite (≈0), not NaN, over ocean, so the `isnan` mask
-would mask nothing.
-"""
-function get_mask_dict(data_loader::FlagshipCarbonMetricsDataLoader)
-    mask_dict = Dict{String, Any}()
-
-    make_mask_fn =
-        (sim_var, obs_var) -> begin
-            return ClimaAnalysis.make_lonlat_mask(
-                ClimaAnalysis.slice(
-                    obs_var,
-                    time = ClimaAnalysis.times(obs_var) |> first,
-                );
-                set_to_val = isnan,
-            )
-        end
-
-    for short_name in available_vars(data_loader)
-        mask_dict[short_name] =
-            short_name == "lai" ?
-            ((sim_var, obs_var) -> ClimaAnalysis.apply_oceanmask) : make_mask_fn
-    end
-
-    @assert keys(mask_dict) == available_vars(data_loader)
-    return mask_dict
-end
-
-"""
     _fully_observed_month_starts(dates)
 
 Return the starts of the calendar months that `dates` spans in full.
@@ -810,6 +715,7 @@ function get_modis_lai_obs_var(; years = 2000:2020)
     obs_var = ClimaAnalysis.resampled_as(
         obs_var;
         time = seconds_since_start.(_mid_month.(month_starts)),
+        nan_threshold = 0.5,
     )
 
     obs_var = ClimaAnalysis.transform_dates(obs_var, Dates.firstdayofmonth)
