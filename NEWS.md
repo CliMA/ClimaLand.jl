@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The C3/C4 competition of `ZhouOptimalLAIModel` compares
+  potential GPP computed with its own P-model unit cost ratios (`optimal_lai_c3c4_β_c3`,
+  `optimal_lai_c3c4_β_c4`: the pyrealm defaults it was fitted with) rather than the
+  calibrated ones used for GPP, which favoured C4 in tropical forests.
+  PR [#PRNUM](https://github.com/CliMA/ClimaLand.jl/pull/PRNUM)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

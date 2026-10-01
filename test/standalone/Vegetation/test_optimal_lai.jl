@@ -39,6 +39,22 @@ using ClimaCore
             @test params.tc_c ≈ FT(-7.72)
             @test params.tc_gpp_ref ≈ FT(2.8)
 
+            # The competition's own P-model unit cost ratios (pyrealm defaults)
+            @test params.c3c4_β_c3 ≈ FT(146)
+            @test params.c3c4_β_c4 ≈ FT(146 / 9) rtol = 1e-4
+            pmodel = Canopy.PModel{FT}(
+                ClimaLand.Domains.Point(;
+                    z_sfc = FT(0),
+                    longlat = FT.((-60, -3)),
+                ),
+                toml_dict,
+            )
+            competition =
+                Canopy.competition_pmodel_parameters(pmodel.parameters, params)
+            @test competition.β_c3 == params.c3c4_β_c3
+            @test competition.β_c4 == params.c3c4_β_c4
+            @test competition.cstar == pmodel.parameters.cstar
+
             @test eltype(params) == FT
         end
 
