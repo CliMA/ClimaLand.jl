@@ -119,7 +119,10 @@ Lavergne et al. (2022) and used by pyrealm. The proportional C4 GPP advantage is
 through a logistic, then penalised by the C3 tree cover $tc(g) = a g^b + c$ estimated from
 the annual C3 GPP $g$, so C4 is suppressed where C3 trees would shade it. With this
 biomass model, the C3 fraction used by photosynthesis comes from the competition rather
-than from the photosynthesis model's static map, so it requires the P-model.
+than from the photosynthesis model's static map, so it requires the P-model. The
+per-pathway potential GPP the competition compares is computed with its own P-model unit
+cost ratios, the pyrealm defaults, so that recalibrating the P-model's β for GPP does not
+shift the C3/C4 balance.
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
@@ -129,6 +132,7 @@ than from the photosynthesis model's static map, so it requires the P-model.
 | Tree-cover exponent | $b$ | - | 1.41 | Exponent of the tree-cover relation |
 | Tree-cover offset | $c$ | - | -7.72 | Offset, so tree cover vanishes below a threshold GPP |
 | Tree-cover reference GPP | $g_{ref}$ | kg C m⁻² yr⁻¹ | 2.8 | Normalizes the tree-cover relation to a proportion in [0, 1] |
+| Unit cost ratio, C3 / C4 | $\beta_{C3}$, $\beta_{C4}$ | - | 146, 16.2 | P-model β of the competition's potential GPP |
 
 ## Drivers
 

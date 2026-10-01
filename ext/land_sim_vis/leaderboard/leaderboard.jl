@@ -35,7 +35,7 @@ lonlat-weighted global mean of `sim` and `obs` there.
 
 Both fields are restricted to the cells where *both* are finite, so the SIM/OBS
 gap here matches the global bias in the ANN column even where obs has gaps that
-sim does not.
+sim does not. Without observations (`obs` is `nothing`), `obs_global` is `NaN`.
 """
 function _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
     times = ClimaAnalysis.times(sim)
@@ -44,12 +44,19 @@ function _global_mean_series(sim, obs, mask_fn = ClimaAnalysis.apply_oceanmask)
     obs_global = Float64[]
     for t in times
         sim_t = mask_fn(ClimaAnalysis.slice(sim, time = t))
-        obs_t = mask_fn(ClimaAnalysis.slice(obs, time = t))
-        nan_either = isnan.(sim_t.data) .| isnan.(obs_t.data)
-        sim_t.data[nan_either] .= NaN
-        obs_t.data[nan_either] .= NaN
+        if isnothing(obs)
+            push!(obs_global, NaN)
+        else
+            obs_t = mask_fn(ClimaAnalysis.slice(obs, time = t))
+            nan_either = isnan.(sim_t.data) .| isnan.(obs_t.data)
+            sim_t.data[nan_either] .= NaN
+            obs_t.data[nan_either] .= NaN
+            push!(
+                obs_global,
+                ClimaAnalysis.weighted_average_lonlat(obs_t).data[],
+            )
+        end
         push!(sim_global, ClimaAnalysis.weighted_average_lonlat(sim_t).data[])
-        push!(obs_global, ClimaAnalysis.weighted_average_lonlat(obs_t).data[])
     end
     return (dates, sim_global, obs_global)
 end
@@ -426,19 +433,51 @@ function _prepare_for_bias(base_mask, sim, obs)
 end
 
 """
+    _repeat_static_obs(obs_var, sim_var)
+
+Return `obs_var` if it has a time dimension. Otherwise `obs_var` is a static map,
+which is resampled onto the grid of `sim_var` and repeated at each of its times,
+so that every simulated month is compared with it.
+"""
+function _repeat_static_obs(obs_var, sim_var)
+    ClimaAnalysis.has_time(obs_var) && return obs_var
+    sim_times = ClimaAnalysis.times(sim_var)
+    lonlat = ClimaAnalysis.resampled_as(
+        obs_var,
+        ClimaAnalysis.slice(sim_var, time = first(sim_times)),
+    )
+    time_dim = findfirst(
+        ==(ClimaAnalysis.time_name(sim_var)),
+        collect(keys(sim_var.dims)),
+    )
+    shape = collect(size(lonlat.data))
+    insert!(shape, time_dim, 1)
+    counts = ntuple(i -> i == time_dim ? length(sim_times) : 1, length(shape))
+    data = repeat(reshape(lonlat.data, shape...), counts...)
+    return ClimaAnalysis.remake(
+        sim_var;
+        data,
+        attributes = merge(sim_var.attributes, obs_var.attributes),
+    )
+end
+
+"""
     _get_data_loader(data_source)
 
 Return the observational data loader for `data_source` (case-insensitive), one
-of `"ERA5"`, `"FlagshipCarbonMetrics"`, or `"ILAMB"`. Errors on anything else.
+of `"ERA5"`, `"FlagshipCarbonMetrics"`, `"FlagshipVegetationMetrics"`, or
+`"ILAMB"`. Errors on anything else.
 """
 function _get_data_loader(data_source)
     source = uppercase(data_source)
     source == "ERA5" && return ERA5DataLoader()
     source == "FLAGSHIPCARBONMETRICS" &&
         return FlagshipCarbonMetricsDataLoader()
+    source == "FLAGSHIPVEGETATIONMETRICS" &&
+        return FlagshipVegetationMetricsDataLoader()
     source == "ILAMB" && return ILAMBDataLoader()
     return error(
-        "Unknown data_source \"$data_source\"; expected \"ERA5\", \"FlagshipCarbonMetrics\", or \"ILAMB\".",
+        "Unknown data_source \"$data_source\"; expected \"ERA5\", \"FlagshipCarbonMetrics\", \"FlagshipVegetationMetrics\", or \"ILAMB\".",
     )
 end
 
@@ -471,10 +510,14 @@ function compute_monthly_leaderboard(
     mask_dict = get_mask_dict(data_loader)
 
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
-    short_names = intersect(
-        ClimaAnalysis.available_vars(sim_dir),
-        available_vars(data_loader),
+    short_names = setdiff(
+        intersect(
+            ClimaAnalysis.available_vars(sim_dir),
+            available_vars(data_loader),
+        ),
+        sim_only_vars(data_loader),
     )
+    isempty(short_names) && return nothing
     issubset(short_names, keys(mask_dict)) ||
         error("Not all variables ($short_names) have a mask $(keys(mask_dict))")
 
@@ -510,6 +553,7 @@ function compute_monthly_leaderboard(
 
         # Preprocess sim var to match conventions of data loaders
         sim_var = preprocess_sim_var(sim_var)
+        obs_var = _repeat_static_obs(obs_var, sim_var)
 
         # Make the relative time the same between observational and simulation data
         ClimaAnalysis.set_reference_date!(
@@ -770,6 +814,9 @@ function compute_seasonal_leaderboard(
         ClimaAnalysis.available_vars(sim_dir),
         available_vars(data_loader),
     )
+    isempty(short_names) && return nothing
+    # Variables without observations are only mapped, not compared
+    compared_names = setdiff(short_names, sim_only_vars(data_loader))
 
     # Need to initialize mask function
     mask_dict = get_mask_dict(data_loader)
@@ -815,6 +862,15 @@ function compute_seasonal_leaderboard(
 
         # Preprocess sim var to match conventions of data loaders
         sim_var = preprocess_sim_var(sim_var)
+        if isnothing(obs_var)
+            sim_obs_full_dict[short_name] = (sim_var, nothing)
+            global_series_dict[short_name] =
+                _global_mean_series(sim_var, nothing, mask_fn_dict[short_name])
+            sim_obs_season_comparison_dict[short_name] =
+                Dict("ANN" => (ClimaAnalysis.average_time(sim_var), nothing))
+            continue
+        end
+        obs_var = _repeat_static_obs(obs_var, sim_var)
 
         # Make the relative time the same between observational and simulation data
         ClimaAnalysis.set_reference_date!(
@@ -888,9 +944,9 @@ function compute_seasonal_leaderboard(
     # Cols correspond to seasons
     groups = ["ANN", "MAM", "JJA", "SON", "DJF"]
     fig_bias = CairoMakie.Figure(;
-        size = (600 * length(groups), 400 * length(short_names)),
+        size = (600 * length(groups), 400 * length(compared_names)),
     )
-    for (row_idx, short_name) in enumerate(short_names)
+    for (row_idx, short_name) in enumerate(compared_names)
         CairoMakie.Label(
             fig_bias[row_idx, 0],
             short_name,
@@ -1047,11 +1103,21 @@ function compute_seasonal_leaderboard(
                 isempty(sim_var) && break
                 # Average both fields over the same cells, as the bias plots do,
                 # so the two profiles stay comparable where obs has gaps.
-                sim_c, obs_c, mask_c = _prepare_for_bias(
-                    mask_fn_dict[short_name],
-                    sim_var,
-                    obs_var,
-                )
+                sim_c, obs_c, mask_c =
+                    isnothing(obs_var) ?
+                    (
+                        sim_var,
+                        ClimaAnalysis.remake(
+                            sim_var;
+                            data = fill(NaN, size(sim_var.data)),
+                        ),
+                        mask_fn_dict[short_name],
+                    ) :
+                    _prepare_for_bias(
+                        mask_fn_dict[short_name],
+                        sim_var,
+                        obs_var,
+                    )
                 sim_lats, sim_zonal = _zonal_means(sim_c, mask_c)
                 _, obs_zonal = _zonal_means(obs_c, mask_c)
                 sim_zonal_std = _zonal_std(sim_c, mask_c)
@@ -1178,6 +1244,16 @@ function compute_seasonal_leaderboard(
                 sim_var, obs_var =
                     sim_obs_season_comparison_dict[short_name][group]
                 isempty(sim_var) && break
+                if isnothing(obs_var)
+                    CairoMakie.Label(
+                        fig_sim_ann[row_idx, col_idx],
+                        "No observations",
+                        tellwidth = false,
+                        tellheight = false,
+                        fontsize = 30,
+                    )
+                    continue
+                end
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
                 sim_c, obs_c, mask_c = _prepare_for_bias(
                     mask_fn_dict[short_name],
@@ -1213,12 +1289,12 @@ function compute_seasonal_leaderboard(
     # Rows correspond to short names
     # Cols correspond to SIM and ANN
     # Set up figure to plot on
-    fig = CairoMakie.Figure(size = (450 * length(short_names), 900))
+    fig = CairoMakie.Figure(size = (450 * length(compared_names), 900))
     fig_rmse_bias = fig[1, 1] = CairoMakie.GridLayout()
 
 
     # Loop over sim_obs_season_over_time_comparison_dict
-    for (col, short_name) in enumerate(short_names)
+    for (col, short_name) in enumerate(compared_names)
         sim_vars, obs_vars =
             sim_obs_time_avg_over_seasons_comparison_dict[short_name]
         mask = mask_fn_dict[short_name]

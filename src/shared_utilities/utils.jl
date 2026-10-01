@@ -646,12 +646,8 @@ function count_nans_state(
     if isnothing(mask)
         num_nans = count(isnan, parent(state))
     else
-        num_nans = mapreduce(
-            (s, m) -> m != 0 && isnan(s),
-            Base.add_sum,
-            parent(state),
-            parent(mask),
-        )
+        # Broadcasting expands the mask over the components of `state`
+        num_nans = count((parent(mask) .!= 0) .& isnan.(parent(state)))
     end
     if isapprox(num_nans, 0)
         verbose && @info "No NaNs found"

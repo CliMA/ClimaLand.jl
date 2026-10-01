@@ -50,6 +50,11 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation:
     `tc(g)/tc(tc_gpp_ref)`, clamped to [0, 1], is the C3 tree proportion."""
     tc_gpp_ref::FT
+    """P-model unit cost ratio β of C3 plants with which the competition computes the
+    per-pathway potential GPP (dimensionless), independent of the β used for GPP."""
+    c3c4_β_c3::FT
+    """The same unit cost ratio for C4 plants (dimensionless)."""
+    c3c4_β_c4::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -76,6 +81,8 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tc_b = FT(toml_dict["optimal_lai_tc_b"]),
         tc_c = FT(toml_dict["optimal_lai_tc_c"]),
         tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
+        c3c4_β_c3 = FT(toml_dict["optimal_lai_c3c4_β_c3"]),
+        c3c4_β_c4 = FT(toml_dict["optimal_lai_c3c4_β_c4"]),
     )
 end
 
@@ -424,6 +431,49 @@ above `f0_max` has no preimage and returns the peak `1.9`.
 function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
     f0 = clamp(f0, eps(FT), f0_max)
     return FT(AI_PEAK) * exp(sqrt(log(f0_max / f0) / FT(AI_WIDTH)))
+end
+
+"""
+    competition_pmodel_parameters(pmodel_parameters, parameters::OptimalLAIParameters)
+
+The P-model parameters `pmodel_parameters` with the unit cost ratios β of C3 and C4
+plants of the C3/C4 competition (`c3c4_β_c3`, `c3c4_β_c4`).
+"""
+function competition_pmodel_parameters(
+    pmodel_parameters,
+    parameters::OptimalLAIParameters,
+)
+    names = fieldnames(typeof(pmodel_parameters))
+    values = merge(
+        NamedTuple{names}(getfield.(Ref(pmodel_parameters), names)),
+        (; β_c3 = parameters.c3c4_β_c3, β_c4 = parameters.c3c4_β_c4),
+    )
+    return typeof(pmodel_parameters)(values...)
+end
+
+"""
+    optimal_lai_potentials(
+        fractional_c3,
+        pmodel_parameters,
+        competition_parameters,
+        args...,
+    )
+
+`compute_A0_and_χ` for the optimal-LAI model: the potential GPP `A0` and the ci/ca
+ratio `χ` of the canopy with `pmodel_parameters`, and the per-pathway potential GPP
+`A0_c3` and `A0_c4` compared by the C3/C4 competition, with `competition_parameters`.
+`args` are the remaining arguments of `compute_A0_and_χ`.
+"""
+function optimal_lai_potentials(
+    fractional_c3,
+    pmodel_parameters,
+    competition_parameters,
+    args...,
+)
+    canopy = compute_A0_and_χ(fractional_c3, pmodel_parameters, args...)
+    competition =
+        compute_A0_and_χ(fractional_c3, competition_parameters, args...)
+    return (; canopy.A0, competition.A0_c3, competition.A0_c4, canopy.χ)
 end
 
 """
