@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The C3/C4 competition of `ZhouOptimalLAIModel` compares
+  potential GPP computed with its own P-model unit cost ratios (`optimal_lai_c3c4_β_c3`,
+  `optimal_lai_c3c4_β_c4`: the pyrealm defaults it was fitted with) rather than the
+  calibrated ones used for GPP, which favoured C4 in tropical forests.
+  PR [#PRNUM](https://github.com/CliMA/ClimaLand.jl/pull/PRNUM)
 
 1.12.3
 ----
