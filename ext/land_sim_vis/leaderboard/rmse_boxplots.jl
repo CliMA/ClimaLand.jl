@@ -1,167 +1,215 @@
-# Energy and carbon RMSE boxplots: compare ClimaLand against an ILAMB land-hist
-# cohort. "Other-model" RMSE values are inlined from the ILAMB land-hist
-# dashboards (https://www.ilamb.org/land-hist/) and from the LE intercomparison
-# in the CliMA-Land RMSE tracker. ClimaLand RMSE is computed at runtime from
-# the diagnostics directory using the same workflow as
-# `compute_seasonal_leaderboard`.
+# Energy, water and carbon RMSE boxplots: compare ClimaLand against an ILAMB land-hist
+# cohort. "Other-model" RMSE values are inlined from the global table of the
+# ILAMB land-hist dashboards (https://www.ilamb.org/land-hist/): CLM,
+# ISBA-CTRIP and JSBACH (no LWup), each forced by CRUJRA, GSWP3 and Princeton,
+# in that order; the multi-model "Mean-*" rows are left out. ClimaLand RMSE is
+# computed at runtime from the diagnostics directory against the same
+# benchmark as the cohort, with ILAMB's default RMSE definition.
 
-# Convert ET in mm/day to LE in W/m^2 using the latent heat of vaporization
-# (2.45e6 J/kg) and seconds per day.
-const _ET_TO_LE = 2.45e6 / 86400
+# Energy and water benchmarks are read from the ILAMB `DATA` tree, as
+# `<var>/<source>/<name>.nc` holding variable `<name>`, rooted at
+# `ENV["ILAMB_ROOT"]` (the convention of the ILAMB package) or at the copy on
+# the CliMA cluster.
+const _DEFAULT_ILAMB_ROOT = "/net/sampo/data1/ilamb"
 
-# Panel definitions (sim short_name + benchmark used by the cohort + cohort RMSEs).
+# Panel definitions: sim short_name, benchmark name, benchmark file, factor
+# converting the benchmark to the units of the preprocessed sim var, and cohort
+# RMSEs.
 const _ENERGY_PANELS = (
     (
         title = "H",
         sim_short_name = "shf",
-        data_source = "ERA5",
-        bench = "vs FLUXCOM",
-        others = [
-            19.1,
-            18.0,
-            15.3,
-            17.9,
-            18.9,
-            15.8,
-            22.9,
-            24.0,
-            22.6,
-            16.8,
-            17.8,
-            14.8,
-        ],
-    ),
-    (
-        title = "LE",
-        sim_short_name = "lhf",
-        data_source = "ERA5",
-        bench = "vs ERA5",
-        others = [
-            0.529,
-            0.789,
-            0.600,
-            0.491,
-            0.657,
-            0.621,
-            0.756,
-            0.618,
-            0.779,
-            0.805,
-            0.569,
-            0.702,
-            0.494,
-            0.563,
-            0.622,
-            0.671,
-            0.566,
-            0.561,
-            0.650,
-            0.620,
-            0.616,
-        ] .* _ET_TO_LE,
+        bench = "FLUXCOM",
+        obs_path = ("hfss", "FLUXCOM", "hfss.nc"),
+        obs_to_sim_units = 1e6 / 86400, # MJ m⁻² day⁻¹ to W m⁻²
+        obs_units = "W m^-2",
+        others = [18.7, 16.3, 16.3, 20.8, 21.0, 18.9, 27.3, 27.3, 27.4],
     ),
     (
         title = "SWup",
         sim_short_name = "swu",
-        data_source = "ERA5",
-        bench = "vs CERESed4.1",
-        others = [
-            12.7,
-            12.3,
-            13.4,
-            15.1,
-            13.7,
-            14.8,
-            17.5,
-            15.4,
-            17.5,
-            12.9,
-            12.0,
-            13.7,
-        ],
+        bench = "CERES",
+        obs_path = ("rsus", "CERESed4.2", "rsus.nc"),
+        obs_to_sim_units = 1.0,
+        obs_units = "W m^-2",
+        others = [11.1, 10.5, 11.0, 12.7, 11.7, 12.1, 12.9, 11.5, 12.3],
     ),
     (
         title = "LWup",
         sim_short_name = "lwu",
-        data_source = "ERA5",
-        bench = "vs CERESed4.1",
-        others = [12.1, 12.6, 12.3, 13.3, 10.8, 11.3, 11.5, 10.3, 11.0],
+        bench = "CERES",
+        obs_path = ("rlus", "CERESed4.2", "rlus.nc"),
+        obs_to_sim_units = 1.0,
+        obs_units = "W m^-2",
+        others = [14.1, 14.7, 14.4, 14.5, 13.0, 13.2],
     ),
 )
+
+const _WATER_PANELS = ((
+    title = "ET",
+    sim_short_name = "et",
+    bench = "GLEAMv3.3a",
+    obs_path = ("evspsbl", "GLEAMv3.3a", "et.nc"),
+    obs_to_sim_units = 86400.0, # kg m⁻² s⁻¹ to mm day⁻¹
+    obs_units = "mm / day",
+    others = [0.586, 0.599, 0.661, 0.582, 0.628, 0.647, 0.793, 0.754, 0.742],
+),)
 
 const _CARBON_PANELS = (
     (
         title = "GPP",
         sim_short_name = "gpp",
-        data_source = "ILAMB",
-        bench = "vs FLUXCOM",
-        others = [
-            1.39,
-            1.08,
-            1.97,
-            1.01,
-            1.04,
-            1.13,
-            0.950,
-            0.828,
-            0.907,
-            1.42,
-            1.19,
-            1.67,
-        ],
+        bench = "FLUXCOM",
+        others = [1.85, 1.73, 2.08, 1.5, 1.49, 1.81, 2.06, 1.85, 1.97],
     ),
     (
         title = "ER",
         sim_short_name = "er",
-        data_source = "ILAMB",
-        bench = "vs FLUXCOM",
-        others = [
-            1.78,
-            1.38,
-            2.01,
-            4.07,
-            3.03,
-            3.87,
-            4.87,
-            2.98,
-            4.12,
-            2.01,
-            2.19,
-            2.07,
-        ],
+        bench = "FLUXCOM",
+        others = [1.57, 1.32, 1.89, 1.43, 1.23, 1.75, 1.81, 1.53, 1.74],
     ),
 )
 
-"""
-    _annual_global_rmse(diagnostics_folder_path, short_name, data_source;
-                        spin_up_months = 12)
-
-Compute the global, annual-mean RMSE of ClimaLand `short_name` against the
-benchmark indicated by `data_source` (`"ILAMB"` or `"ERA5"`). The pipeline
-mirrors `compute_seasonal_leaderboard`: spinup removed, windowed to overlap,
-resampled, time-averaged, then `ClimaAnalysis.global_rmse` with the same mask.
-
-Returns `NaN` if the variable is not in the simulation directory or in the
-benchmark.
-"""
-function _annual_global_rmse(
-    diagnostics_folder_path,
-    short_name,
-    data_source;
-    spin_up_months = 12,
+# Panel groups drawn left to right, each sharing a y-axis.
+const _PANEL_GROUPS = (
+    (ylabel = "RMSE [W m⁻²]", panels = _ENERGY_PANELS),
+    (ylabel = "RMSE [mm day⁻¹]", panels = _WATER_PANELS),
+    (ylabel = "RMSE [g m⁻² day⁻¹]", panels = _CARBON_PANELS),
 )
-    sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
-    data_loader =
-        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
-    mask_dict = get_mask_dict(data_loader)
-    available = ClimaAnalysis.available_vars(
-        ClimaAnalysis.SimDir(diagnostics_folder_path),
+
+"""
+    _monthly_climatology_maps(var)
+
+Return a 12-element vector of lon-lat arrays, the mean of `var` over all
+samples of each calendar month. `NaN` samples are skipped; cells with no valid
+sample in a month are `NaN`.
+"""
+function _monthly_climatology_maps(var)
+    months = Dates.month.(ClimaAnalysis.dates(var))
+    grid_size = size(_mask_template(var).data)
+    return map(1:12) do m
+        total = zeros(grid_size)
+        count = zeros(grid_size)
+        for t in ClimaAnalysis.times(var)[months .== m]
+            x = ClimaAnalysis.slice(var, time = t).data
+            valid = isfinite.(x)
+            total[valid] .+= x[valid]
+            count .+= valid
+        end
+        total ./ count
+    end
+end
+
+"""
+    _ilamb_cycle_rmse(sim_var, obs_var, mask_fn)
+
+Return ILAMB's default global RMSE (`rmse_score_basis = "cycle"`) of `sim_var`
+against `obs_var`, two monthly `OutputVar`s on the same grid and times. At each
+cell, the RMSE is taken over the 12 months of the mean annual cycle of each
+field; the global value is the area-weighted mean of that map over the cells
+kept by `mask_fn`. Unlike the RMSE of time means, this includes seasonal-cycle
+errors.
+"""
+function _ilamb_cycle_rmse(sim_var, obs_var, mask_fn)
+    template = _mask_template(sim_var)
+    sum_sq = zeros(size(template.data))
+    n_months = zeros(size(template.data))
+    for (sim_m, obs_m) in zip(
+        _monthly_climatology_maps(sim_var),
+        _monthly_climatology_maps(obs_var),
     )
-    (short_name in available_vars(data_loader) && short_name in available) ||
-        return NaN
+        sq = (sim_m .- obs_m) .^ 2
+        valid = isfinite.(sq)
+        sum_sq[valid] .+= sq[valid]
+        n_months .+= valid
+    end
+    rmse_map = ClimaAnalysis.remake(template; data = sqrt.(sum_sq ./ n_months))
+    return ClimaAnalysis.weighted_average_lonlat(mask_fn(rmse_map)).data[]
+end
+
+"""
+    _ilamb_data_benchmark(panel)
+
+Load the benchmark of `panel` from the ILAMB `DATA` tree as an `OutputVar` in
+`panel.obs_units` that follows CliMA conventions. Return `nothing` if the
+file is not found.
+"""
+function _ilamb_data_benchmark(panel)
+    ilamb_root = get(ENV, "ILAMB_ROOT", _DEFAULT_ILAMB_ROOT)
+    path = joinpath(ilamb_root, "DATA", panel.obs_path...)
+    if !isfile(path)
+        @warn "ILAMB benchmark $path not found; set ILAMB_ROOT to the ILAMB data root"
+        return nothing
+    end
+    var = ClimaAnalysis.OutputVar(path, first(splitext(last(panel.obs_path))))
+    for (dim, dim_units) in (("lon", "degrees_east"), ("lat", "degrees_north"))
+        ClimaAnalysis.dim_units(var, dim) == "degree" &&
+            ClimaAnalysis.set_dim_units!(var, dim, dim_units)
+    end
+    ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
+    replace!(var, missing => NaN)
+    var = ClimaAnalysis.convert_units(
+        var,
+        panel.obs_units,
+        conversion_function = x -> x * panel.obs_to_sim_units,
+    )
+    ClimaAnalysis.set_short_name!(var, panel.sim_short_name)
+    return _preprocess_var(var)
+end
+
+"""
+    _boxplot_benchmark(panel)
+
+Return the benchmark `OutputVar` of `panel` and a function of
+`(sim_var, obs_var)` returning its mask function, or `nothing` if the benchmark
+is unavailable. Benchmarks read from the ILAMB `DATA` tree are masked to land
+cells where the benchmark is defined; carbon benchmarks use the
+`ILAMBDataLoader` masks.
+"""
+function _boxplot_benchmark(panel)
+    if hasproperty(panel, :obs_path)
+        obs_var = _ilamb_data_benchmark(panel)
+        isnothing(obs_var) && return nothing
+        make_mask =
+            (sim_var, obs_var) -> begin
+                valid_obs = ClimaAnalysis.make_lonlat_mask(
+                    ClimaAnalysis.slice(
+                        obs_var,
+                        time = ClimaAnalysis.times(obs_var) |> first,
+                    );
+                    set_to_val = isnan,
+                )
+                return var -> ClimaAnalysis.apply_oceanmask(valid_obs(var))
+            end
+        return obs_var, make_mask
+    end
+    data_loader = ILAMBDataLoader()
+    panel.sim_short_name in available_vars(data_loader) || return nothing
+    return get(data_loader, panel.sim_short_name),
+    get_mask_dict(data_loader)[panel.sim_short_name]
+end
+
+"""
+    _boxplot_rmse(diagnostics_folder_path, panel; spin_up_months = 12)
+
+Compute the global RMSE of ClimaLand `panel.sim_short_name` against the
+benchmark of `panel`, the one the cohort values are scored against, as ILAMB
+does (see `_ilamb_cycle_rmse`). The leaderboard figures keep the RMSE of time
+means. Spinup is removed and both fields are windowed to their overlap and
+resampled onto the simulation grid as in `compute_seasonal_leaderboard`.
+
+Returns `NaN` if the variable is not in the simulation directory or the
+benchmark is unavailable.
+"""
+function _boxplot_rmse(diagnostics_folder_path, panel; spin_up_months = 12)
+    short_name = panel.sim_short_name
+    sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
+    short_name in ClimaAnalysis.available_vars(sim_dir) || return NaN
+    benchmark = _boxplot_benchmark(panel)
+    isnothing(benchmark) && return NaN
+    obs_var, make_mask = benchmark
 
     sim_var = get(sim_dir, short_name)
-    obs_var = get(data_loader, short_name)
 
     # Preprocess sim var to match conventions of data loaders
     sim_var = preprocess_sim_var(sim_var)
@@ -185,10 +233,7 @@ function _annual_global_rmse(
     obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
     obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
 
-    mask_fn = mask_dict[short_name](sim_var, obs_var)
-    sim_avg = ClimaAnalysis.average_time(sim_var)
-    obs_avg = ClimaAnalysis.average_time(obs_var)
-    return ClimaAnalysis.global_rmse(sim_avg, obs_avg; mask = mask_fn)
+    return _ilamb_cycle_rmse(sim_var, obs_var, make_mask(sim_var, obs_var))
 end
 
 # Box-and-whisker statistics with Tukey-style 1.5*IQR fences clipped to data
@@ -215,12 +260,13 @@ function _draw_boxplot_panel!(
     y_max,
     ylabel,
 )
+    xlabel = "vs $(panel.bench)\n(n=$(length(panel.others)) other models)"
     ax = CairoMakie.Axis(
         fig[1, col],
         title = panel.title,
         titlesize = 18,
         ylabel = ylabel,
-        xlabel = "$(panel.bench)\nn=$(length(panel.others))",
+        xlabel = xlabel,
         xlabelsize = 12,
         xlabelcolor = :gray,
         xticks = (Float64[], String[]),
@@ -359,8 +405,8 @@ end
                           prev_diagnostics_folder_path = nothing)
 
 Generate `boxplot_rmse.png` in `leaderboard_base_path`: a single figure with
-four energy panels (H, LE, SWup, LWup) and two carbon panels (GPP, ER) side
-by side, separated by a slightly wider column gap because the two groups use
+three energy panels (H, SWup, LWup), a water panel (ET) and two carbon panels
+(GPP, ER) side by side, with wider column gaps between groups because they use
 different units.
 
 Each panel shows a boxplot of "other-model" RMSE values from the ILAMB
@@ -369,37 +415,29 @@ in `diagnostics_folder_path` (red dot). If `prev_diagnostics_folder_path` is
 given, the equivalent RMSE from that earlier run is plotted as a gray dot,
 with a percent-change label drawn between the two.
 
-Energy panels are RMSE in W m⁻² (ClimaLand vs ERA5); the cohort benchmark
-differs per panel — see the per-panel label. Carbon panels are RMSE in
-g m⁻² day⁻¹ (ClimaLand and cohort both vs ILAMB FLUXCOM).
+ClimaLand RMSE follows ILAMB's default definition (see `_ilamb_cycle_rmse`) and
+is computed against the benchmark of the cohort: FLUXCOM for H, CERES EBAF for
+SWup and LWup and GLEAM v3.3a for ET (read from the ILAMB `DATA` tree, see
+`_ilamb_data_benchmark`), and ILAMB FLUXCOM for GPP and ER. Energy panels are
+RMSE in W m⁻², ET in mm day⁻¹ and carbon panels in g m⁻² day⁻¹.
 """
 function compute_rmse_boxplots(
     leaderboard_base_path,
     diagnostics_folder_path;
     prev_diagnostics_folder_path = nothing,
 )
-    @info "Computing ClimaLand RMSE for energy/carbon boxplots"
+    @info "Computing ClimaLand RMSE for energy/water/carbon boxplots"
 
-    energy_panels = collect(_ENERGY_PANELS)
-    carbon_panels = collect(_CARBON_PANELS)
-    all_panels = vcat(energy_panels, carbon_panels)
-    n_energy = length(energy_panels)
+    all_panels = [p for g in _PANEL_GROUPS for p in g.panels]
 
     rmse_current = Dict{String, Float64}()
     rmse_prev = Dict{String, Float64}()
     for p in all_panels
-        rmse_current[p.sim_short_name] = _annual_global_rmse(
-            diagnostics_folder_path,
-            p.sim_short_name,
-            p.data_source,
-        )
+        rmse_current[p.sim_short_name] =
+            _boxplot_rmse(diagnostics_folder_path, p)
         rmse_prev[p.sim_short_name] =
             isnothing(prev_diagnostics_folder_path) ? NaN :
-            _annual_global_rmse(
-                prev_diagnostics_folder_path,
-                p.sim_short_name,
-                p.data_source,
-            )
+            _boxplot_rmse(prev_diagnostics_folder_path, p)
     end
 
     function _group_y_max(panels)
@@ -412,37 +450,37 @@ function compute_rmse_boxplots(
         finite = filter(isfinite, vals)
         return isempty(finite) ? 1.0 : maximum(finite) * 1.18
     end
-    y_max_energy = _group_y_max(energy_panels)
-    y_max_carbon = _group_y_max(carbon_panels)
 
-    fig = CairoMakie.Figure(size = (260 * length(all_panels) + 280, 560))
-    for (col, p) in enumerate(all_panels)
-        is_energy = col <= n_energy
-        y_max = is_energy ? y_max_energy : y_max_carbon
-        ylabel = if col == 1
-            "RMSE [W m⁻²]"
-        elseif col == n_energy + 1
-            "RMSE [g m⁻² day⁻¹]"
-        else
-            ""
+    fig = CairoMakie.Figure(
+        size = (260 * length(all_panels) + 140 * length(_PANEL_GROUPS), 560),
+    )
+    col = 0
+    group_ends = Int[]
+    for group in _PANEL_GROUPS
+        y_max = _group_y_max(group.panels)
+        for (i, p) in enumerate(group.panels)
+            col += 1
+            _draw_boxplot_panel!(
+                fig,
+                col,
+                p,
+                rmse_current[p.sim_short_name],
+                rmse_prev[p.sim_short_name],
+                y_max,
+                i == 1 ? group.ylabel : "",
+            )
         end
-        _draw_boxplot_panel!(
-            fig,
-            col,
-            p,
-            rmse_current[p.sim_short_name],
-            rmse_prev[p.sim_short_name],
-            y_max,
-            ylabel,
-        )
+        push!(group_ends, col)
     end
-    # Widen the gap between the last energy panel and the first carbon panel
-    # so the unit change reads as a deliberate split rather than another panel.
-    CairoMakie.colgap!(fig.layout, n_energy, 50)
+    # A wider gap between groups makes the unit change read as a deliberate
+    # split rather than another panel.
+    for c in group_ends[1:(end - 1)]
+        CairoMakie.colgap!(fig.layout, c, 50)
+    end
 
     CairoMakie.Label(
         fig[0, :],
-        "ClimaLand RMSE — Global energy and carbon fluxes";
+        "ClimaLand RMSE — Global energy, water and carbon fluxes";
         fontsize = 18,
         font = :bold,
     )
@@ -495,7 +533,7 @@ function compute_rmse_boxplots(
     disclaimer =
         "Disclaimer: For internal use only. A proper Model Intercomparison " *
         "Project (MIP) is beyond scope here, so this comparison is not " *
-        "strictly fair: reference datasets and forcings differ across " *
+        "strictly fair: forcings differ across " *
         "models, tuning targets differ, and some variables are prescribed " *
         "rather than predicted (e.g., LAI in ClimaLand). Only a MIP would " *
         "enable a fair comparison."
