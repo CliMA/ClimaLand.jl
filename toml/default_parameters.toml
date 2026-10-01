@@ -172,6 +172,164 @@ type = "float"
 description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation: tc(gpp)/tc(gpp_ref) clamped to [0,1] is the C3 tree proportion. Fitted by Lavergne et al. (2022)."
 tag = "OptimalLAIModel"
 
+["optimal_lai_c3c4_β_c3"]
+value = 146.0
+type = "float"
+description = "Unit cost ratio β of C3 plants (dimensionless) with which the C3/C4 competition computes the per-pathway potential GPP: the pyrealm default (Stocker et al., 2020), independent of pmodel_β_c3 used for GPP."
+tag = "OptimalLAIModel"
+
+["optimal_lai_c3c4_β_c4"]
+value = 16.222
+type = "float"
+description = "Unit cost ratio β of C4 plants (dimensionless) for the C3/C4 competition: the pyrealm default, 146/9, independent of pmodel_β_c4 used for GPP."
+tag = "OptimalLAIModel"
+
+# Prognostic carbon pools
+
+["carbon_construction_efficiency"]
+value = 0.7
+type = "float"
+description = "Construction efficiency (-): the fraction of the sugar allocated to growth that becomes structural carbon; the rest is growth respiration."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c3"]
+value = 0.3
+type = "float"
+description = "Leaf allocation fraction of C3 vegetation (-). Roots take 1 - f_leaf - f_stem."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c3"]
+value = 0.4
+type = "float"
+description = "Stem allocation fraction of C3 vegetation (-), before the precipitation limit."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_c4"]
+value = 0.4
+type = "float"
+description = "Leaf allocation fraction of C4 vegetation (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_c4"]
+value = 0.05
+type = "float"
+description = "Stem allocation fraction of C4 vegetation (-), before the precipitation limit; C4 vegetation is herbaceous."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_leaf"]
+value = 4.7304e7
+type = "float"
+description = "Leaf turnover time (s), 1.5 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c3"]
+value = 9.4608e8
+type = "float"
+description = "Stem turnover time of C3 vegetation (s), 30 years, at mean annual temperatures above carbon_tau_stem_T_ref."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_c4"]
+value = 3.1536e7
+type = "float"
+description = "Stem turnover time of C4 vegetation (s), 1 year, at mean annual temperatures above carbon_tau_stem_T_ref."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_root"]
+value = 6.3072e7
+type = "float"
+description = "Fine-root turnover time (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_stem"]
+value = 3.17e-9
+type = "float"
+description = "Sapwood maintenance respiration rate at carbon_T_ref (s^-1), about 0.1 per year."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_root"]
+value = 1.585e-8
+type = "float"
+description = "Fine-root maintenance respiration rate at carbon_T_ref (s^-1), about 0.5 per year."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sap_half"]
+value = 2.0
+type = "float"
+description = "Sapwood carbon of a large stem (kg C m^-2): sapwood is C_stem/(1 + C_stem/C_sap_half), half the stem when C_stem equals this value."
+tag = "PrognosticCarbonParameters"
+
+["carbon_c_nsc"]
+value = 0.1
+type = "float"
+description = "Target sugar (non-structural carbon) pool as a fraction of the living biomass (-); observed values are about 0.05-0.2."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_alloc"]
+value = 864000.0
+type = "float"
+description = "Timescale of allocation from the sugar pool (s), 10 days."
+tag = "PrognosticCarbonParameters"
+
+["carbon_alloc_ramp_n"]
+value = 3.0
+type = "float"
+description = "Exponent n of the ramp x^n/(1 + x^n) switching on allocation and maintenance respiration as the sugar pool fills (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sugar_ref"]
+value = 1.0e-3
+type = "float"
+description = "Sugar pool below which maintenance respiration shuts down (kg C m^-2), small next to a typical pool of 0.05-0.2."
+tag = "PrognosticCarbonParameters"
+
+["carbon_Q10"]
+value = 2.0
+type = "float"
+description = "Q10 of sapwood and fine-root maintenance respiration (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature of the sapwood and fine-root maintenance respiration rates (K)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_q"]
+value = 2.0
+type = "float"
+description = "Factor by which stem turnover time lengthens per 10 K of mean annual temperature below carbon_tau_stem_T_ref (-), up to tenfold; 1 disables."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_T_ref"]
+value = 283.0
+type = "float"
+description = "Mean annual temperature below which stem turnover time lengthens (K)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_map_half_woody"]
+value = 0.8
+type = "float"
+description = "Mean annual precipitation at which the stem allocation fraction is halved (m yr^-1); 0 disables. Chosen from an offline sweep of equilibrium woody biomass against six ILAMB biomass products."
+tag = "PrognosticCarbonParameters"
+
+["carbon_n_map_woody"]
+value = 2.0
+type = "float"
+description = "Exponent of the precipitation limit on stem allocation (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_climate"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale of the mean annual temperature and precipitation of the carbon pools (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_soil_litter_depth"]
+value = 0.05
+type = "float"
+description = "E-folding depth of the leaf and stem litter input to soil carbon (m)."
+tag = "PrognosticCarbonParameters"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]

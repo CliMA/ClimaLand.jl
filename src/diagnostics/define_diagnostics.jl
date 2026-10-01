@@ -487,6 +487,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_respiration_leaf!(out, Y, p, t, land_model),
     )
 
+    # Canopy leaf respiration
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "crd",
+        long_name = "Canopy Leaf Respiration",
+        standard_name = "canopy_leaf_dark_respiration",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "Dark respiration of the leaves of the canopy, per unit ground area.",
+        compute! = (out, Y, p, t) ->
+            compute_respiration_canopy!(out, Y, p, t, land_model),
+    )
+
     # Vcmax25
     conditional_add_diagnostic_variable!(
         possible_diags;

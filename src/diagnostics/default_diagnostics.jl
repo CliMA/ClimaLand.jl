@@ -450,6 +450,15 @@ function add_diagnostics!(
     )
     return nothing
 end
+# The carbon pools keep the diagnostics of the LAI model they wrap
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::PrognosticCarbonModel,
+)
+    add_diagnostics!(diagnostics, model, subcomponent.lai_model)
+    return nothing
+end
 
 ## Possible diagnostics for standalone models
 """
@@ -511,6 +520,7 @@ function get_possible_diagnostics(model::CanopyModel)
         "gpp",
         "an",
         "rd",
+        "crd",
         "vcmax25",
         "nir",
         "anir",

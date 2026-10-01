@@ -27,6 +27,17 @@ ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
 ClimaLand.Canopy.prescribed_climatological_lai_modis
 ClimaLand.Canopy.update_biomass!
+ClimaLand.Canopy.PrognosticCarbonModel
+ClimaLand.Canopy.PrognosticCarbonModel{FT}(
+    lai_model::AbstractBiomassModel{FT},
+    parameters::PrognosticCarbonParameters{FT},
+) where {FT}
+ClimaLand.Canopy.PrognosticCarbonParameters
+ClimaLand.Canopy.PrognosticCarbonParameters(toml_dict::CP.ParamDict)
+ClimaLand.Canopy.update_carbon_fluxes!
+ClimaLand.Canopy.equilibrium_carbon_pools
+ClimaLand.Canopy.woody_fraction
+ClimaLand.Canopy.tau_stem_scale
 ClimaLand.Canopy.mask_biomass!(p, prognostic_land_components)
 ClimaLand.Canopy.mask_biomass!(
     p,

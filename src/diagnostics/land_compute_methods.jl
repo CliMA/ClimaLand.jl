@@ -438,7 +438,8 @@ end
     CanopyModel,
 } p.canopy.radiative_transfer.SW_n
 
-# Vegetation carbon (derived from prescribed biomass)
+# Vegetation carbon: the carbon pools, or without them an estimate from the
+# area indices, cLeaf = σl * LAI and cStem = ηsl * h * SAI (kg C m^-2)
 function compute_vegetation_carbon!(
     out,
     Y,
@@ -447,25 +448,22 @@ function compute_vegetation_carbon!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, CanopyModel{FT}},
 ) where {FT}
     canopy = get_canopy(land_model)
-
-    # Get parameters
-    σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
-    ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
-
-    # Get area indices
-    LAI = p.canopy.biomass.area_index.leaf
-    SAI = p.canopy.biomass.area_index.stem
-
-    # Get canopy height from biomass model
-    h = canopy.biomass.height
-
-    # Compute vegetation carbon
-    # cLeaf = σl * LAI (kg C/m^2)
-    # cStem = ηsl * h * SAI (kg C/m^2)
     if isnothing(out)
         out = zeros(canopy.domain.space.surface)
         fill!(field_values(out), NaN)
     end
+    vegetation_carbon!(out, p, canopy, canopy.biomass)
+end
+
+vegetation_carbon!(out, p, canopy, ::PrognosticCarbonModel) =
+    (out .= p.canopy.biomass.cVeg)
+
+function vegetation_carbon!(out, p, canopy, biomass)
+    σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
+    ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
+    h = biomass.height
     @. out = σl * LAI + ηsl * h * SAI
 end
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P

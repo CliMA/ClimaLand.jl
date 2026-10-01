@@ -566,6 +566,58 @@ end
     set_canopy_component_initial_conditions!(
         Y,
         p,
+        model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+        canopy,
+        ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+            context = ClimaComms.context(axes(Y.canopy.biomass.C_leaf)),
+        ),
+    ) where {FT}
+
+Sets the initial state of the LAI model wrapped by `model`, then that of the carbon
+pools, which start empty. The mean annual temperature `T_annual` starts at the air
+temperature, and the mean annual precipitation `P_annual` at the climatology
+`precip_annual` of the netCDF file at `ic_path` (by default the optimal-LAI initial
+conditions), or zero where the file has no data.
+"""
+function set_canopy_component_initial_conditions!(
+    Y,
+    p,
+    model::ClimaLand.Canopy.PrognosticCarbonModel{FT},
+    canopy,
+    ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(axes(Y.canopy.biomass.C_leaf)),
+    ),
+) where {FT}
+    set_canopy_component_initial_conditions!(Y, p, model.lai_model, canopy)
+    Y.canopy.biomass.C_sugar .= 0
+    Y.canopy.biomass.C_leaf .= 0
+    Y.canopy.biomass.C_stem .= 0
+    Y.canopy.biomass.C_root .= 0
+    Y.canopy.biomass.T_annual .= p.drivers.T
+    precip_annual = SpaceVaryingInput(
+        ic_path,
+        "precip_annual",
+        axes(Y.canopy.biomass.P_annual);
+        regridder_type = :InterpolationsRegridder,
+        regridder_kwargs = (;
+            extrapolation_bc = (
+                Interpolations.Periodic(),
+                Interpolations.Flat(),
+            ),
+            interpolation_method = Interpolations.Constant(),
+        ),
+    )
+    # From mol H2O m^-2 yr^-1 to m yr^-1
+    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
+    @. Y.canopy.biomass.P_annual =
+        ifelse(isnan(precip_annual), 0, precip_annual / ρ_m_liq)
+    return nothing
+end
+
+"""
+    set_canopy_component_initial_conditions!(
+        Y,
+        p,
         model::ClimaLand.Canopy.PModel{FT},
         canopy,
     ) where {FT}

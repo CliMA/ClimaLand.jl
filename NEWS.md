@@ -2,6 +2,18 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
+  four prognostic pools (sugar, leaf, stem, root) around an LAI model, respires through
+  `PoolBasedAutotrophicRespirationModel`, and in `LandModel` and `SoilCanopyModel` feeds its
+  litter to a prognostic soil organic carbon (`SoilCarbonLitterInput`). Also adds
+  `Canopy.equilibrium_carbon_pools`, a `biomass` keyword to the integrated-model constructors,
+  and the `crd` (canopy leaf respiration) diagnostic.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-🔥behavioralΔ] The C3/C4 competition of `ZhouOptimalLAIModel` compares
+  potential GPP computed with its own P-model unit cost ratios (`optimal_lai_c3c4_β_c3`,
+  `optimal_lai_c3c4_β_c4`: the pyrealm defaults it was fitted with) rather than the
+  calibrated ones used for GPP, which favoured C4 in tropical forests.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 
 1.12.3
 ----
