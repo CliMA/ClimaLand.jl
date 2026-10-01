@@ -373,7 +373,6 @@ NVTX.@annotate function snow_boundary_fluxes!(
     LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
     p.snow.R_n .= SW_net .+ LW_net
 
-    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     P_snow = p.drivers.P_snow
     P_liq = p.drivers.P_liq
 

@@ -990,10 +990,10 @@ NVTX.@annotate function snow_boundary_fluxes!(
     t,
 ) where {FT}
 
-    #In this integrated version, the surface temperature is instead
-    #set in the previous function call, in lsm_radiant_energy_fluxes!().
+    #In this integrated version, the surface temperature and turbulent fluxes
+    #are instead set in the previous function call, in
+    #lsm_radiant_energy_fluxes!().
 
-    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
     P_liq = p.drivers.P_liq

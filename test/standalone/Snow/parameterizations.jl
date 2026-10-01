@@ -159,8 +159,13 @@ for FT in (Float32, Float64)
         q_atmos = FT(0.003)
         u_atmos = FT(3)
         atmos_h = FT(1)
+        # These only enter the flux derivatives ∂lhf∂T and ∂shf∂T returned by
+        # the solve, which this test does not check
+        ∂T_sfc∂T = (u_star, g_h, earth_param_set) -> FT(1)
+        ∂q_sfc∂T = (u_star, g_h, q_sat, T_sfc, earth_param_set) -> FT(0)
         #No snow - should T_bulk
         result = Snow.solve_for_surface_temp_at_a_point(
+            Val(false),
             T_sfc_test,
             T_bulk_test,
             FT(0),
@@ -179,12 +184,15 @@ for FT in (Float32, Float64)
             roughness_model,
             atmos_h,
             gustiness, #gustiness
+            ∂T_sfc∂T,
+            ∂q_sfc∂T,
             param_set,
             Snow.EquilibriumGradientTemperatureModel{FT}(),
-        )
+        ).T_sfc
         @test result == T_bulk_test
         #nonzero depth
         result = Snow.solve_for_surface_temp_at_a_point(
+            Val(false),
             T_sfc_test,
             T_bulk_test,
             FT(1),
@@ -203,9 +211,11 @@ for FT in (Float32, Float64)
             roughness_model,
             atmos_h,
             gustiness, #gustiness
+            ∂T_sfc∂T,
+            ∂q_sfc∂T,
             param_set,
             Snow.EquilibriumGradientTemperatureModel{FT}(),
-        )
+        ).T_sfc
         surface_flux_params = LP.surface_fluxes_parameters(param_set)
 
         T_sfc = result

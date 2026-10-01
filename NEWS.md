@@ -30,6 +30,12 @@ main
   (US-Var: soil temperature at 2, 4, 8, 16, 32 cm; water content at the
   surface, 10, 20 cm), used by `run_fluxnet.jl` and `vaira_paper.jl`.
   PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🚀performance] The snow surface temperature of the
+  `EquilibriumGradientTemperatureModel` is capped at the freezing temperature
+  within the Monin-Obukhov iterations, so the same solve yields the snow
+  turbulent fluxes at the capped temperature (stored in `p.snow.surface_solve`
+  and copied into `p.snow.turbulent_fluxes`), and the second flux solve is
+  dropped. PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----

@@ -621,7 +621,7 @@ function update_soil_surface_temperature!(
         gustiness,
         earth_param_set,
     )
-    # Keeps the cached surface humidity at the new skin temperature
+    # Updates the cached surface humidity to match the new skin temperature
     ClimaLand.component_specific_humidity(model, Y, p)
     return nothing
 end

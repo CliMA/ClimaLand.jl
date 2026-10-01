@@ -565,6 +565,49 @@ function compute_turbulent_fluxes_at_a_point(
         update_T_sfc,
         update_q_vap_sfc,
     )
+    return turbulent_fluxes_from_output(
+        output,
+        T_sfc_guess,
+        q_vap_sfc_guess,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        T_atmos,
+        ρ_atmos,
+        q_tot_atmos,
+        h_atmos - h_sfc,
+        earth_param_set,
+    )
+end
+
+"""
+    turbulent_fluxes_from_output(output, T_sfc_guess, q_vap_sfc_guess, update_∂T_sfc∂T,
+                                 update_∂q_sfc∂T, T_atmos, ρ_atmos, q_tot_atmos, Δz,
+                                 earth_param_set)
+
+Return the tuple `(lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz,
+buoyancy_flux)` of `compute_turbulent_fluxes_at_a_point` from the
+SurfaceFluxes.jl `output`: the vapor flux in volume of liquid water, the
+approximate derivatives of the heat fluxes with respect to the component
+temperature (evaluated with `update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the
+surface temperature and humidity `T_sfc_guess` and `q_vap_sfc_guess`), and the
+buoyancy flux, given the atmospheric state at height `Δz` above the surface.
+Models that solve for their surface temperature within the Monin-Obukhov
+iterations use it to obtain the fluxes from that solve.
+"""
+function turbulent_fluxes_from_output(
+    output,
+    T_sfc_guess::FT,
+    q_vap_sfc_guess::FT,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
+    T_atmos::FT,
+    ρ_atmos::FT,
+    q_tot_atmos::FT,
+    Δz::FT,
+    earth_param_set,
+) where {FT}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
     _LH_v0 = LP.LH_v0(earth_param_set)
     E = output.evaporation
@@ -580,7 +623,7 @@ function compute_turbulent_fluxes_at_a_point(
         T_atmos,
         ρ_atmos,
         output.T_sfc,
-        h_atmos - h_sfc,
+        Δz,
         q_tot_atmos,
         FT(0),
         FT(0),

@@ -778,7 +778,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    surf_temp_auxiliary_types(snow.parameters.surf_temp)...,
+    surf_temp_auxiliary_types(snow.parameters.surf_temp, snow)...,
     boundary_var_types(
         snow,
         snow.boundary_conditions,
@@ -821,21 +821,42 @@ by the surface temperature parmaeterization choice.
 surf_temp_auxiliary_vars(m::AbstractSnowSurfaceTemperatureModel) = ()
 
 surf_temp_auxiliary_vars(m::EquilibriumGradientTemperatureModel) =
-    (:surf_residual_flux,)
+    (:surf_residual_flux, :surface_solve)
 
 """
-    surf_temp_auxiliary_types(::AbstractSnowSurfaceTemperatureModel)
+    surf_temp_auxiliary_types(::AbstractSnowSurfaceTemperatureModel, snow)
 
 A default method for specifying variable types of the auxiliary variables required
 by the surface temperature parameterization choice, similar to `auxiliary_types()`.
+For the `EquilibriumGradientTemperatureModel`, `surface_solve` holds the turbulent
+fluxes and the surface temperature from the surface temperature solve (see
+`update_surf_temp!`), so its type is that of `p.snow.turbulent_fluxes` with
+`T_sfc` appended.
 """
 surf_temp_auxiliary_types(
     m::AbstractSnowSurfaceTemperatureModel{FT},
+    snow,
 ) where {FT} = ()
 
 surf_temp_auxiliary_types(
     m::EquilibriumGradientTemperatureModel{FT},
-) where {FT} = (FT,)
+    snow,
+) where {FT} = (
+    FT,
+    surface_solve_type(
+        first(
+            boundary_var_types(
+                snow,
+                snow.boundary_conditions,
+                ClimaLand.TopBoundary(),
+            ),
+        ),
+        FT,
+    ),
+)
+
+surface_solve_type(::Type{NamedTuple{names, T}}, FT) where {names, T} =
+    NamedTuple{(names..., :T_sfc), Tuple{fieldtypes(T)..., FT}}
 
 """
     surf_temp_auxiliary_domain_names(::AbstractSnowSurfaceTemperatureModel)
@@ -846,7 +867,7 @@ by the surface temperature parameterization choice, similar to `auxiliary_domain
 surf_temp_auxiliary_domain_names(m::AbstractSnowSurfaceTemperatureModel) = ()
 
 surf_temp_auxiliary_domain_names(m::EquilibriumGradientTemperatureModel) =
-    (:surface,)
+    (:surface, :surface)
 
 ClimaLand.name(::SnowModel) = :snow
 
