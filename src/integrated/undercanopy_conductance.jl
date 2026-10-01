@@ -30,12 +30,16 @@ consistently with the bare-soil path and `g_eff ≤ g_h` (see
 `Soil.soil_conductance_ratio`); this overestimates the resistance above a
 rough canopy, which is typically smaller than `r'`.
 
-The friction velocity above the canopy is estimated from neutral similarity
-with the canopy roughness length and displacement height, and the canopy air
-temperature from the conductance-weighted mean of the air and canopy (leaf and
-stem) temperatures. The ground temperature in the Richardson number is the soil
-surface temperature at the time of evaluation (the top layer temperature, as
-the skin temperature is solved for afterwards).
+The friction velocity `u*_c` and aerodynamic conductance `g_ac` above the canopy
+are estimated from Monin-Obukhov similarity with the canopy roughness lengths and
+displacement height (using a two-step fixed-point evaluation of the stability
+parameter `ζ_c` from the bulk Richardson number between the canopy air space and
+the reference height, capped in stable conditions at the maximum sustainable
+downward heat flux stability `max_heat_flux_stability`), and the canopy air
+temperature `T_af` from the conductance-weighted mean of the air and canopy (leaf
+and stem) temperatures. The ground temperature in the under-canopy Richardson
+number is the soil surface temperature at the time of evaluation (the top layer
+temperature, as the skin temperature is solved for afterwards).
 
 The resulting `W` and `r'` are stored in `p.soil.W_gap` and
 `p.soil.r_undercanopy`, and are used in the soil skin temperature solve and in
@@ -73,24 +77,87 @@ function undercanopy_resistance_at_a_point(
 ) where {FT}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    uf = SurfaceFluxes.Parameters.uf_params(surface_flux_params)
     κ = SurfaceFluxes.Parameters.von_karman_const(surface_flux_params)
     grav = LP.grav(earth_param_set)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     U = max(u_air isa FT ? abs(u_air) : hypot(u_air[1], u_air[2]), gustiness)
-    # Neutral similarity above the canopy. When the reference height is close
-    # to the canopy top (or below it), the logarithmic profile does not apply;
-    # we then use the log-law value at the height z_0m e above the
-    # displacement height, which bounds u*_c by κU.
+    # Effective height above the canopy displacement height. When the reference
+    # height is close to the canopy top (or below it), the logarithmic profile
+    # does not apply; we then bound z_eff below by z_0m_c * e.
     z_eff = max(Δz_ref - displ_c, z_0m_c * FT(ℯ))
-    u_star_c = κ * U / log(z_eff / z_0m_c)
-    g_ac = κ * u_star_c / log(z_eff / z_0b_c)
-    # Canopy air temperature: conductance-weighted mean of the air (brought
-    # dry-adiabatically to the surface) and canopy temperatures; PAI is the
-    # plant (leaf + stem) area index
+    # Air temperature brought dry-adiabatically to the surface, and positive
+    # plant (leaf + stem) area index exchanging sensible heat
     T_a = T_air + grav * Δz_ref / cp_d
-    g_leaf = leaf_Cd * u_star_c * max(PAI, FT(0))
+    pai_pos = max(PAI, FT(0))
+    # Above-canopy Monin-Obukhov similarity with two-step fixed-point refinement
+    # of the stability parameter ζ_c ∈ [-10, ζ_cap], where ζ_cap is the stability
+    # parameter of maximum sustainable downward heat flux. Since g_ac = κ u*_c / F_h
+    # and g_leaf = leaf_Cd u*_c PAI, the conductance ratio g_leaf / g_ac =
+    # leaf_Cd PAI F_h / κ is independent of u*_c.
+    pv = SurfaceFluxes.UniversalFunctions.PointValueScheme()
+    mt = SurfaceFluxes.UniversalFunctions.MomentumTransport()
+    ht = SurfaceFluxes.UniversalFunctions.HeatTransport()
+    F_m0 = log(z_eff / z_0m_c)
+    F_h0 = SurfaceFluxes.UniversalFunctions.dimensionless_profile(
+        uf,
+        z_eff,
+        zero(FT),
+        z_0b_c,
+        ht,
+        pv,
+    )
+    r_0 = leaf_Cd * pai_pos * F_h0 / κ
+    T_af0 = (T_a + r_0 * T_canopy) / (1 + r_0)
+    Ri_b0 = grav * z_eff * (T_a - T_af0) / (T_a * U^2)
+    ζ_cap = SurfaceFluxes.max_heat_flux_stability(
+        surface_flux_params,
+        z_eff,
+        z_0m_c,
+        pv,
+    )
+    ζ_1 = clamp(Ri_b0 * F_m0^2 / F_h0, FT(-10), ζ_cap)
+    F_m1 = SurfaceFluxes.UniversalFunctions.dimensionless_profile(
+        uf,
+        z_eff,
+        ζ_1,
+        z_0m_c,
+        mt,
+        pv,
+    )
+    F_h1 = SurfaceFluxes.UniversalFunctions.dimensionless_profile(
+        uf,
+        z_eff,
+        ζ_1,
+        z_0b_c,
+        ht,
+        pv,
+    )
+    r_1 = leaf_Cd * pai_pos * F_h1 / κ
+    T_af1 = (T_a + r_1 * T_canopy) / (1 + r_1)
+    Ri_b1 = grav * z_eff * (T_a - T_af1) / (T_a * U^2)
+    ζ_c = clamp(Ri_b1 * F_m1^2 / F_h1, FT(-10), ζ_cap)
+    F_m = SurfaceFluxes.UniversalFunctions.dimensionless_profile(
+        uf,
+        z_eff,
+        ζ_c,
+        z_0m_c,
+        mt,
+        pv,
+    )
+    F_h = SurfaceFluxes.UniversalFunctions.dimensionless_profile(
+        uf,
+        z_eff,
+        ζ_c,
+        z_0b_c,
+        ht,
+        pv,
+    )
+    u_star_c = κ * U / F_m
+    g_ac = κ * u_star_c / F_h
+    g_leaf = leaf_Cd * u_star_c * pai_pos
     T_af = (g_ac * T_a + g_leaf * T_canopy) / (g_ac + g_leaf)
-    # Stability correction (Sakaguchi and Zeng, 2009)
+    # Under-canopy stability correction (Sakaguchi and Zeng, 2009)
     Ri = grav * h_c * (T_af - T_ground) / (T_af * u_star_c^2)
     stability_factor = 1 + FT(0.5) * min(max(Ri, FT(0)), FT(10))
     return stability_factor / (C_s * u_star_c)
