@@ -123,7 +123,7 @@ steps:
           - "preindustrial_spinup_gpu/*nc"
         agents:
           slurm_gpus: 1
-          slurm_time: 4:00:00
+          slurm_time: 6:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 

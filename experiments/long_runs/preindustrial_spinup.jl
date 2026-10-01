@@ -1,10 +1,11 @@
-# # Pre-industrial spin-up
+# # Spin-up for initial conditions
 
-# Initial conditions for the canopy carbon pools and the optimal-LAI model under a
-# proxy for the pre-industrial climate: the earliest ERA5 years (1979-1982) with
-# pre-industrial CO2. The global land model with prognostic LAI runs for three years,
-# ending on March 1 as the long runs start. The optimal-LAI state is its final state;
-# the carbon pools are set to their equilibrium under the climate of the last two years
+# Initial conditions for the canopy carbon pools and the optimal-LAI model: the global
+# land model with prognostic LAI runs for seven years under the earliest ERA5 years
+# (1979-1986) and their CO2, ending on March 1 as the long runs start. Vegetation carbon
+# lags rising CO2 by decades, so these pools are closer to present-day ones than an
+# equilibrium with present CO2 would be. The optimal-LAI state is the final state; the
+# carbon pools are set to their equilibrium under the climate of the last two years
 # (see `equilibrium_biomass.jl`). The carbon pools do not feed back on GPP, LAI or
 # climate, so they are not needed in the simulation itself.
 
@@ -13,6 +14,9 @@
 #   annual temperature T_annual and precipitation P_annual, and the time-integrated
 #   variables of `ZhouOptimalLAIModel`, on the lon-lat grid of the diagnostics
 # - `equilibrium_woody_carbon.png`: the equilibrium woody carbon against XuSaatchi
+# - `c3_fraction.png`: the C3 fraction against the static CLM map photosynthesis is
+#   seeded with
+# - `spinup_state.png`: the tree share, GPP and LAI
 
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -37,10 +41,10 @@ outdir = ClimaUtilities.OutputPathGenerator.generate_output_path(
 )
 
 start_date = DateTime("1979-03-01")
-stop_date = DateTime("1982-03-01")
+stop_date = DateTime("1986-03-01")
 Δt = 900.0
-# Pre-industrial atmospheric CO2 (mol mol^-1)
-c_co2 = TimeVaryingInput((t) -> 2.8e-4)
+# Atmospheric CO2 (mol mol^-1) of the forcing years: 337-347 ppm at Mauna Loa
+c_co2 = TimeVaryingInput((t) -> 3.4e-4)
 
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -66,14 +70,14 @@ diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date,
     outdir;
-    output_vars = ["gpp", "crd", "ct", "tair", "precip", "fc3"],
+    output_vars = ["gpp", "crd", "ct", "tair", "precip", "fc3", "ftr", "lai"],
 )
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Pre-industrial spin-up" start_date stop_date Δt domain.nelements
 ClimaLand.Simulations.solve!(simulation)
 
-skip_months = 12
+skip_months = 60
 parameters = ClimaLand.Canopy.PrognosticCarbonParameters(toml_dict)
 lon, lat, pools = equilibrium_pools(outdir, parameters; skip_months)
 
@@ -99,3 +103,42 @@ write_initial_conditions(
 (; bias, rmse) =
     plot_equilibrium_woody_carbon(lon, lat, pools.C_stem; savedir = root_path)
 @info "Equilibrium woody carbon against XuSaatchi (kg m^-2)" bias rmse
+
+# Mean state over the last two years; the C3 fraction is compared where there is
+# vegetation, as the CLM map is 1 where it has none.
+simdir = ClimaAnalysis.SimDir(outdir)
+template = ClimaAnalysis.average_time(
+    get(simdir; short_name = "gpp", reduction = "average", period = "1M"),
+)
+mean_of(short_name) = time_mean(monthly(simdir, short_name; skip_months))
+gpp = mean_of("gpp") .* (parameters.M_C * 365 * 86400)
+vegetated = @. ifelse(gpp > 0.05, 1, NaN)
+clm_c3 = Array(
+    ClimaCore.Remapping.interpolate(
+        remapper,
+        model.canopy.photosynthesis.fractional_c3,
+    ),
+)
+(; bias, rmse) = plot_against_benchmark(
+    template,
+    vegetated .* mean_of("fc3"),
+    vegetated .* clm_c3;
+    short_name = "fc3",
+    titles = ("C3 fraction", "CLM C3 fraction"),
+    benchmark_name = "CLM",
+    units = "",
+    colorrange = (0, 1),
+    difference_range = (-1, 1),
+    path = joinpath(root_path, "c3_fraction.png"),
+)
+@info "C3 fraction against CLM where GPP > 0.05 kg C m^-2 yr^-1" bias rmse
+land = @. ifelse(isnan(gpp), NaN, 1)
+plot_spinup_state(
+    template,
+    [
+        (land .* mean_of("ftr"), "ftr", "Tree share", "", (0, 1)),
+        (gpp, "gpp", "GPP", "kg C m^-2 yr^-1", (0, 4)),
+        (mean_of("lai"), "lai", "LAI", "m^2 m^-2", (0, 6)),
+    ];
+    savedir = root_path,
+)

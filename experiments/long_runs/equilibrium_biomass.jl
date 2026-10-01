@@ -166,12 +166,101 @@ function block_mean(lon, lat, x, block_lon, block_lat)
 end
 
 """
+    lonlat_var(template, data, short_name, long_name, units)
+
+An `OutputVar` with the `(lon, lat)` array `data` on the longitude-latitude grid of the
+`OutputVar` `template`.
+"""
+function lonlat_var(template, data, short_name, long_name, units)
+    order = indexin(
+        collect(keys(template.dims)),
+        [
+            ClimaAnalysis.Var.longitude_name(template),
+            ClimaAnalysis.Var.latitude_name(template),
+        ],
+    )
+    return ClimaAnalysis.remake(
+        template;
+        data = permutedims(data, order),
+        attributes = Dict(
+            "short_name" => short_name,
+            "long_name" => long_name,
+            "units" => units,
+        ),
+    )
+end
+
+"""
+    plot_against_benchmark(template, model, benchmark; short_name, titles,
+        benchmark_name, units, colorrange, difference_range, path)
+
+Maps the `(lon, lat)` arrays `model` and `benchmark`, titled `titles`, on the grid of
+the `OutputVar` `template`, and their difference with its bias and RMSE over the
+points both cover (weighted by area). Saves the figure at `path` and returns
+`(; bias, rmse)`.
+"""
+function plot_against_benchmark(
+    template,
+    model,
+    benchmark;
+    short_name,
+    titles,
+    benchmark_name,
+    units,
+    colorrange,
+    difference_range,
+    path,
+)
+    difference = model .- benchmark
+    both = isfinite.(difference)
+    weights = [
+        cosd(φ) for _ in ClimaAnalysis.longitudes(template),
+        φ in ClimaAnalysis.latitudes(template)
+    ][both]
+    weighted_mean(x) = sum(weights .* x[both]) / sum(weights)
+    bias = weighted_mean(difference)
+    rmse = sqrt(weighted_mean(difference .^ 2))
+
+    fig = CairoMakie.Figure(size = (1000, 1500))
+    maps = Dict(:plot => Dict(:colormap => :viridis, :colorrange => colorrange))
+    for (row, (data, long_name)) in enumerate(zip((model, benchmark), titles))
+        viz.heatmap2D_on_globe!(
+            fig,
+            lonlat_var(template, data, short_name, long_name, units);
+            p_loc = (row, 1),
+            more_kwargs = maps,
+        )
+    end
+    unit_label = isempty(units) ? "" : " ($units)"
+    title = "Model - $benchmark_name$unit_label: bias $(round(bias; sigdigits = 2)), RMSE $(round(rmse; sigdigits = 2))"
+    viz.heatmap2D_on_globe!(
+        fig,
+        lonlat_var(
+            template,
+            difference,
+            short_name,
+            "Model - $benchmark_name",
+            units,
+        );
+        p_loc = (3, 1),
+        more_kwargs = Dict(
+            :plot => Dict(
+                :colormap => CairoMakie.Reverse(:RdBu),
+                :colorrange => difference_range,
+            ),
+            :axis => Dict(:title => title),
+        ),
+    )
+    CairoMakie.save(path, fig)
+    return (; bias, rmse)
+end
+
+"""
     plot_equilibrium_woody_carbon(lon, lat, C_stem; savedir, obs_path = XUSAATCHI_PATH)
 
-Maps the equilibrium woody carbon `C_stem[lon, lat]`, the XuSaatchi woody carbon in
-`obs_path`, and their difference, in 2° blocks, with the bias and RMSE over the blocks
-both cover (weighted by area). Saves `equilibrium_woody_carbon.png` in `savedir` and
-returns `(; bias, rmse)`.
+Maps the equilibrium woody carbon `C_stem[lon, lat]` against the XuSaatchi woody carbon
+in `obs_path`, in 2° blocks (`plot_against_benchmark`). Saves
+`equilibrium_woody_carbon.png` in `savedir` and returns `(; bias, rmse)`.
 """
 function plot_equilibrium_woody_carbon(
     lon,
@@ -181,53 +270,42 @@ function plot_equilibrium_woody_carbon(
     obs_path = XUSAATCHI_PATH,
 )
     obs = ClimaAnalysis.OutputVar(obs_path, "woody_carbon")
-    obs_data = Float64.(coalesce.(obs.data, NaN))
     block_lon = ClimaAnalysis.longitudes(obs)
     block_lat = ClimaAnalysis.latitudes(obs)
-    model = block_mean(lon, lat, C_stem, block_lon, block_lat)
-    difference = model .- obs_data
-    both = isfinite.(difference)
-    weights = [cosd(φ) for _ in block_lon, φ in block_lat][both]
-    weighted_mean(x) = sum(weights .* x[both]) / sum(weights)
-    bias = weighted_mean(difference)
-    rmse = sqrt(weighted_mean(difference .^ 2))
+    return plot_against_benchmark(
+        obs,
+        block_mean(lon, lat, C_stem, block_lon, block_lat),
+        Float64.(coalesce.(obs.data, NaN));
+        short_name = "cwood",
+        titles = ("Equilibrium woody carbon", "XuSaatchi woody carbon"),
+        benchmark_name = "XuSaatchi",
+        units = "kg m^-2",
+        colorrange = (0, 25),
+        difference_range = (-15, 15),
+        path = joinpath(savedir, "equilibrium_woody_carbon.png"),
+    )
+end
 
-    var(data, long_name) = ClimaAnalysis.remake(
-        obs;
-        data,
-        attributes = Dict(
-            "short_name" => "cwood",
-            "long_name" => long_name,
-            "units" => "kg m^-2",
-        ),
-    )
-    maps = Dict(:plot => Dict(:colormap => :viridis, :colorrange => (0, 25)))
-    fig = CairoMakie.Figure(size = (1000, 1500))
-    viz.heatmap2D_on_globe!(
-        fig,
-        var(model, "Equilibrium woody carbon");
-        p_loc = (1, 1),
-        more_kwargs = maps,
-    )
-    viz.heatmap2D_on_globe!(
-        fig,
-        var(obs_data, "XuSaatchi woody carbon");
-        p_loc = (2, 1),
-        more_kwargs = maps,
-    )
-    title = "Model - XuSaatchi (kg m^-2): bias $(round(bias; digits = 2)), RMSE $(round(rmse; digits = 2))"
-    viz.heatmap2D_on_globe!(
-        fig,
-        var(difference, "Model - XuSaatchi");
-        p_loc = (3, 1),
-        more_kwargs = Dict(
-            :plot => Dict(
-                :colormap => CairoMakie.Reverse(:RdBu),
-                :colorrange => (-15, 15),
+"""
+    plot_spinup_state(template, fields; savedir)
+
+Maps the `(lon, lat)` arrays of `fields`, a vector of
+`(data, short_name, long_name, units, colorrange)`, on the grid of the `OutputVar`
+`template`. Saves `spinup_state.png` in `savedir`.
+"""
+function plot_spinup_state(template, fields; savedir)
+    fig = CairoMakie.Figure(size = (1000, 500 * length(fields)))
+    for (row, (data, short_name, long_name, units, colorrange)) in
+        enumerate(fields)
+        viz.heatmap2D_on_globe!(
+            fig,
+            lonlat_var(template, data, short_name, long_name, units);
+            p_loc = (row, 1),
+            more_kwargs = Dict(
+                :plot => Dict(:colormap => :viridis, :colorrange => colorrange),
             ),
-            :axis => Dict(:title => title),
-        ),
-    )
-    CairoMakie.save(joinpath(savedir, "equilibrium_woody_carbon.png"), fig)
-    return (; bias, rmse)
+        )
+    end
+    CairoMakie.save(joinpath(savedir, "spinup_state.png"), fig)
+    return nothing
 end
