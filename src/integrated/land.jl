@@ -685,7 +685,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     α_snow_NIR = p.snow.α_snow
     α_snow_PAR = p.snow.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.T_sfc
+    T_snow = p.snow.turbulent_fluxes.T_sfc
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -795,7 +795,7 @@ NVTX.@annotate function implicit_radiant_energy_fluxes!(
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.T_sfc
+    T_snow = p.snow.turbulent_fluxes.T_sfc
 
     # in W/m^2
     LW_d_canopy = p.scratch1

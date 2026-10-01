@@ -135,7 +135,7 @@ a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
 function ClimaLand.component_temperature(model::SnowModel, Y, p)
-    return p.snow.T_sfc
+    return p.snow.turbulent_fluxes.T_sfc
 end
 
 """
@@ -156,7 +156,7 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
 
     @. p.snow.q_sfc = snow_surface_specific_humidity(
-        p.snow.T_sfc,
+        p.snow.turbulent_fluxes.T_sfc,
         p.snow.q_l,
         p.drivers.T,
         p.drivers.P,
@@ -961,20 +961,17 @@ function solve_for_surface_temp_at_a_point(
         atmos_h - h_sfc,
         earth_param_set,
     )
-    return (; fluxes..., T_sfc = output.T_sfc)
+    return ClimaLand.with_surface_temperature(Val(true), fluxes, output.T_sfc)
 end
-
-without_surface_temperature(x::NamedTuple{names}) where {names} =
-    NamedTuple{Base.front(names)}(Base.front(Tuple(x)))
 
 """
     update_surf_temp!(model::SnowModel, surf_temp::EquilibriumGradientTemperatureModel, SW_net, LW_down, Y, p, t)
 
 Solves for the snow surface temperature, capped at the freezing temperature,
-and stores it in `p.snow.T_sfc` and the turbulent fluxes at it, from the same
-Monin-Obukhov solve, in `p.snow.turbulent_fluxes`. The solution is first
-stored in `p.snow.surface_solve`, so that the solve runs once. The surface
-specific humidity `p.snow.q_sfc` is updated at the new surface temperature.
+and stores it with the turbulent fluxes at it, from the same Monin-Obukhov
+solve, in `p.snow.turbulent_fluxes` (the surface temperature is
+`p.snow.turbulent_fluxes.T_sfc`). The surface specific humidity `p.snow.q_sfc`
+is updated at the new surface temperature.
 """
 function update_surf_temp!(
     model::SnowModel,
@@ -998,7 +995,10 @@ function update_surf_temp!(
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(bc.atmos))
     update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
-    p.snow.surface_solve .= solve_for_surface_temp_at_a_point.(
+    # The initial guess depends only on the state and drivers, not on the
+    # cached surface temperature, so a restart from the state alone reproduces
+    # the solve
+    p.snow.turbulent_fluxes .= solve_for_surface_temp_at_a_point.(
         return_extra_fluxes,
         max.((p.drivers.T .+ p.snow.T) ./ 2, _T_freeze), # initial guess
         p.snow.T,
@@ -1023,9 +1023,6 @@ function update_surf_temp!(
         model.parameters.earth_param_set,
         surf_temp,
     )
-    p.snow.T_sfc .= p.snow.surface_solve.T_sfc
-    p.snow.turbulent_fluxes .=
-        without_surface_temperature.(p.snow.surface_solve)
     # Updates the cached surface humidity to match the new surface temperature
     ClimaLand.component_specific_humidity(model, Y, p)
     return nothing
@@ -1046,7 +1043,7 @@ function update_surf_temp!(
     p,
     t,
 )
-    p.snow.T_sfc .= p.snow.T
+    p.snow.turbulent_fluxes.T_sfc .= p.snow.T
     ClimaLand.turbulent_fluxes!(
         p.snow.turbulent_fluxes,
         model.boundary_conditions.atmos,
@@ -1099,7 +1096,7 @@ function get_residual_melt_flux(
         (
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
             p.snow.R_n +
-            κ * (p.snow.T_sfc - p.snow.T)/max(
+            κ * (p.snow.turbulent_fluxes.T_sfc - p.snow.T)/max(
                 surface_temp_scaling_length(κ, ρ, z, earth_param_set),
                 eps(FT),
             )

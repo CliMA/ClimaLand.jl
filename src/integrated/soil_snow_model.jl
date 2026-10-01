@@ -241,7 +241,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
     Δz_top = soil_domain.fields.Δz_top
     T̄ = p.snow.T
-    T_sfc = p.snow.T_sfc
+    T_sfc = p.snow.turbulent_fluxes.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     @. p.snow_T_bot = snow_T_bottom(
         κ_snow,
@@ -370,7 +370,9 @@ NVTX.@annotate function snow_boundary_fluxes!(
     )
     _σ = LP.Stefan(model.parameters.earth_param_set)
     ϵ_snow = model.parameters.ϵ_snow
-    LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
+    LW_net = @. lazy(
+        -ϵ_snow * (p.drivers.LW_d - _σ * p.snow.turbulent_fluxes.T_sfc^4),
+    ) #match sign convention in ./shared_utilities/drivers.jl
     p.snow.R_n .= SW_net .+ LW_net
 
     P_snow = p.drivers.P_snow

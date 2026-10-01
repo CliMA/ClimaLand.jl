@@ -1193,7 +1193,7 @@ end
 @diagnostic_compute "snow_water_equivalent" Union{LandModel, SnowModel} Y.snow.S
 @diagnostic_compute "snow_depth" Union{LandModel, SnowModel} p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" Union{LandModel, SnowModel} p.snow.snow_cover_fraction
-@diagnostic_compute "snow_sfc_temp" Union{LandModel, SnowModel} p.snow.T_sfc
+@diagnostic_compute "snow_sfc_temp" Union{LandModel, SnowModel} p.snow.turbulent_fluxes.T_sfc
 @diagnostic_compute "snow_bot_temp" LandModel p.snow_T_bot
 @diagnostic_compute "snowk" LandModel p.snow.κ
 @diagnostic_compute "snow_bulk_temp" Union{LandModel, SnowModel} p.snow.T

@@ -33,9 +33,18 @@ main
 - ![][badge-🚀performance] The snow surface temperature of the
   `EquilibriumGradientTemperatureModel` is capped at the freezing temperature
   within the Monin-Obukhov iterations, so the same solve yields the snow
-  turbulent fluxes at the capped temperature (stored in `p.snow.surface_solve`
-  and copied into `p.snow.turbulent_fluxes`), and the second flux solve is
-  dropped. PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+  turbulent fluxes at the capped temperature, and the second flux solve is
+  dropped. The soil skin and snow surface temperature solves share the
+  SurfaceFluxes.jl call (`surface_fluxes_at_a_point`), the flux
+  post-processing (`turbulent_fluxes_from_output`), and the Newton update of
+  the surface energy balance (`surface_temperature_newton_update`).
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-💥breaking] The snow surface temperature is stored with the snow
+  turbulent fluxes, in `p.snow.turbulent_fluxes.T_sfc`, as the soil skin
+  temperature is in `p.soil.turbulent_fluxes.T_sfc`; `p.snow.T_sfc` is
+  removed. `compute_turbulent_fluxes_at_a_point` is removed; use
+  `turbulent_fluxes_at_a_point`, which returns the same fluxes as a
+  NamedTuple. PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----

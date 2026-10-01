@@ -400,7 +400,9 @@ including turbulent energy fluxes as well as the water vapor flux
 Positive fluxes indicate flow from the ground to the atmosphere.
 
 It solves for these given atmospheric conditions,
-model parameters, and the surface conditions.
+model parameters, and the surface conditions. If the elements of `dest` have a
+field `T_sfc`, the surface temperature at which the fluxes are evaluated is
+stored in it (see `with_surface_temperature`).
 """
 function turbulent_fluxes!(
     dest,
@@ -423,28 +425,43 @@ function turbulent_fluxes!(
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
-
-    dest .= turbulent_fluxes_at_a_point.(
-        momentum_fluxes, # return_extra_fluxes
-        p.drivers.P,
-        p.drivers.T,
-        p.drivers.q, # q_tot
-        p.drivers.u,
-        atmos.h,
+    stores_T_sfc = Val(hasfield(eltype(dest), :T_sfc))
+    dest .= with_surface_temperature.(
+        stores_T_sfc,
+        turbulent_fluxes_at_a_point.(
+            momentum_fluxes, # return_extra_fluxes
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q, # q_tot
+            p.drivers.u,
+            atmos.h,
+            T_sfc,
+            q_sfc,
+            roughness_model,
+            update_T_sfc,
+            update_q_sfc,
+            h_sfc,
+            displ,
+            update_∂T_sfc∂T,
+            update_∂q_sfc∂T,
+            gustiness,
+            earth_param_set,
+        ),
         T_sfc,
-        q_sfc,
-        roughness_model,
-        update_T_sfc,
-        update_q_sfc,
-        h_sfc,
-        displ,
-        update_∂T_sfc∂T,
-        update_∂q_sfc∂T,
-        gustiness,
-        earth_param_set,
     )
     return nothing
 end
+
+"""
+    with_surface_temperature(stores_T_sfc, fluxes, T_sfc)
+
+Return the NamedTuple `fluxes`, followed by the surface temperature `T_sfc` at
+which they are evaluated if `stores_T_sfc` is `Val(true)`. Models whose surface
+temperature is solved for with their fluxes, such as the snow model, store it
+with them.
+"""
+with_surface_temperature(::Val{false}, fluxes, T_sfc) = fluxes
+with_surface_temperature(::Val{true}, fluxes, T_sfc) = (; fluxes..., T_sfc)
 """
     turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
                                 u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,

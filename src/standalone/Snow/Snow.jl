@@ -722,10 +722,10 @@ include
 - the mass fraction in liquid water (`q_l`, unitless),
 - the thermal conductivity (`κ`, W/m/K),
 - the bulk temperature (`T`, K),
-- the surface temperature (`T_sfc`, K),
 - the snow depth (averaged over the ground area, like Y.snow.S) (`z_snow`, m),
 - the bulk snow density (`ρ_snow`, kg/m^3)
-- the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
+- the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc), stored with the
+  surface temperature at which they are evaluated (`turbulent_fluxes.T_sfc`, K),
 - the net radiation (`R_n, J/m^2/s)`,
 - the energy flux in liquid water runoff (`energy_runoff`, J/m^2/s),
 - the water volume in runoff (`water_runoff`, m/s),
@@ -741,7 +741,6 @@ auxiliary_vars(snow::SnowModel) = (
     :q_l,
     :κ,
     :T,
-    :T_sfc,
     :z_snow,
     :α_snow,
     :ρ_snow,
@@ -777,8 +776,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    surf_temp_auxiliary_types(snow.parameters.surf_temp, snow)...,
+    surf_temp_auxiliary_types(snow.parameters.surf_temp)...,
     boundary_var_types(
         snow,
         snow.boundary_conditions,
@@ -787,7 +785,6 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -821,42 +818,21 @@ by the surface temperature parmaeterization choice.
 surf_temp_auxiliary_vars(m::AbstractSnowSurfaceTemperatureModel) = ()
 
 surf_temp_auxiliary_vars(m::EquilibriumGradientTemperatureModel) =
-    (:surf_residual_flux, :surface_solve)
+    (:surf_residual_flux,)
 
 """
-    surf_temp_auxiliary_types(::AbstractSnowSurfaceTemperatureModel, snow)
+    surf_temp_auxiliary_types(::AbstractSnowSurfaceTemperatureModel)
 
 A default method for specifying variable types of the auxiliary variables required
 by the surface temperature parameterization choice, similar to `auxiliary_types()`.
-For the `EquilibriumGradientTemperatureModel`, `surface_solve` holds the turbulent
-fluxes and the surface temperature from the surface temperature solve (see
-`update_surf_temp!`), so its type is that of `p.snow.turbulent_fluxes` with
-`T_sfc` appended.
 """
 surf_temp_auxiliary_types(
     m::AbstractSnowSurfaceTemperatureModel{FT},
-    snow,
 ) where {FT} = ()
 
 surf_temp_auxiliary_types(
     m::EquilibriumGradientTemperatureModel{FT},
-    snow,
-) where {FT} = (
-    FT,
-    surface_solve_type(
-        first(
-            boundary_var_types(
-                snow,
-                snow.boundary_conditions,
-                ClimaLand.TopBoundary(),
-            ),
-        ),
-        FT,
-    ),
-)
-
-surface_solve_type(::Type{NamedTuple{names, T}}, FT) where {names, T} =
-    NamedTuple{(names..., :T_sfc), Tuple{fieldtypes(T)..., FT}}
+) where {FT} = (FT,)
 
 """
     surf_temp_auxiliary_domain_names(::AbstractSnowSurfaceTemperatureModel)
@@ -867,7 +843,7 @@ by the surface temperature parameterization choice, similar to `auxiliary_domain
 surf_temp_auxiliary_domain_names(m::AbstractSnowSurfaceTemperatureModel) = ()
 
 surf_temp_auxiliary_domain_names(m::EquilibriumGradientTemperatureModel) =
-    (:surface, :surface)
+    (:surface,)
 
 ClimaLand.name(::SnowModel) = :snow
 

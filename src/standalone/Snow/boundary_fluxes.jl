@@ -116,7 +116,9 @@ function snow_boundary_fluxes!(
     )
     _σ = LP.Stefan(model.parameters.earth_param_set)
     ϵ_snow = model.parameters.ϵ_snow
-    LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
+    LW_net = @. lazy(
+        -ϵ_snow * (p.drivers.LW_d - _σ * p.snow.turbulent_fluxes.T_sfc^4),
+    ) #match sign convention in ./shared_utilities/drivers.jl
     p.snow.R_n .= SW_net .+ LW_net
 
     P_snow = p.drivers.P_snow
@@ -154,14 +156,15 @@ end
     boundary_var_types(::SnowModel, bc, ::ClimaLand.TopBoundary)
 
 Fallbacks for the boundary conditions methods which add the turbulent
-fluxes to the auxiliary variables.
+fluxes, with the surface temperature `T_sfc` at which they are evaluated, to
+the auxiliary variables.
 """
 boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
 boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::SnowModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-        Tuple{FT, FT, FT, FT, FT},
+        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T, :T_sfc),
+        Tuple{FT, FT, FT, FT, FT, FT},
     },
 )
 
@@ -200,7 +203,8 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
             :buoyancy_flux,
+            :T_sfc,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )
