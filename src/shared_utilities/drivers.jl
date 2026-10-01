@@ -705,6 +705,79 @@ function with_extra_fluxes(
 end
 
 """
+    surface_temperature_newton_update(inputs, param_set, thermo_params, g_h, ρ_sfc, q_sfc,
+                                      ∂q_sfc∂T, T_below, r, T_max, ϵ, σ, SW_n, LW_d)
+
+Return the Newton update `min(T + ΔT, T_max)` [K] of the temperature
+`T = inputs.T_sfc_guess` of a surface with zero heat capacity, connected by the
+thermal resistance `r` [m² K/W] to a layer at temperature `T_below` [K], with
+`ΔT = -f(T)/f'(T)` and
+
+    r f(T) = r (SW_n + LW_n(T) + L(T) + H(T)) + (T - T_below),
+
+where all fluxes are positive upward and `LW_n = -ϵ (LW_d - σ T⁴)`. The latent
+and sensible heat fluxes `L` and `H` are evaluated with the SurfaceFluxes.jl
+`inputs`, the heat conductance `g_h` [m/s], the surface air density `ρ_sfc`
+[kg/m³], and the surface specific humidity `q_sfc` [kg/kg]; `f'(T)` uses its
+derivative `∂q_sfc∂T` [1/K] and neglects those of `g_h` and `ρ_sfc`. The cap
+`T_max` [K] applies within the Monin-Obukhov iterations, so the fluxes of the
+solve are those at the capped temperature; the energy that would warm the
+surface above `T_max` goes into phase change.
+
+Called from the SurfaceFluxes.jl `update_T` callbacks of the soil skin and the
+snow surface temperature.
+"""
+function surface_temperature_newton_update(
+    inputs,
+    param_set,
+    thermo_params,
+    g_h,
+    ρ_sfc,
+    q_sfc,
+    ∂q_sfc∂T,
+    T_below,
+    r,
+    T_max,
+    ϵ,
+    σ,
+    SW_n,
+    LW_d,
+)
+    T_sfc = inputs.T_sfc_guess
+    E = SurfaceFluxes.evaporation(
+        param_set,
+        inputs,
+        g_h,
+        inputs.q_tot_int,
+        q_sfc,
+        ρ_sfc,
+        inputs.moisture_model,
+    )
+    L = SurfaceFluxes.latent_heat_flux(
+        param_set,
+        inputs,
+        E,
+        inputs.moisture_model,
+    )
+    H = SurfaceFluxes.sensible_heat_flux(
+        param_set,
+        inputs,
+        g_h,
+        inputs.T_int,
+        T_sfc,
+        ρ_sfc,
+        E,
+    )
+    _LH_v0 = Thermodynamics.Parameters.LH_v0(thermo_params)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    LW_n = -ϵ * (LW_d - σ * T_sfc^4)
+    F = SW_n + LW_n + L + H
+    ∂F∂T = 4 * ϵ * σ * T_sfc^3 + ρ_sfc * g_h * (_LH_v0 * ∂q_sfc∂T + cp_d)
+    ΔT = -(r * F + (T_sfc - T_below)) / (r * ∂F∂T + 1)
+    return min(T_sfc + ΔT, T_max)
+end
+
+"""
     PrescribedRadiativeFluxes{FT, SW, LW, DT, T, TP} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.

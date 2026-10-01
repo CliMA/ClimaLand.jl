@@ -744,9 +744,8 @@ snow surface temperature.
 It makes this estimate by incrementing the initial guess for snow surface temperature
 `T_0` (stored in `inputs`) by the Newton update ΔT, where `ΔT = -f(T_0)/f'(T_0)` and
 f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0, and capping the result at the
-freezing temperature. SurfaceFluxes.jl evaluates its fluxes at the value returned
-by this callback at the final Monin-Obukhov state, so the cap within the callback
-makes the fluxes of the solve those of the capped surface temperature.
+freezing temperature, with `ClimaLand.surface_temperature_newton_update` and the
+thermal resistance `d/κ` between the surface and the bulk snow.
 
 Be aware that if the snow surface specific humidity parameterization changes, 
 we must also change the internals of this function.
@@ -815,42 +814,24 @@ function update_T_sfc_scheme(
         z_0b,
         scheme,
     )
-    E = SurfaceFluxes.evaporation(
-        param_set,
-        inputs,
-        g_h,
-        q_atmos,
-        q_sfc,
-        ρ_sfc,
-        inputs.moisture_model,
-    )
-    L = SurfaceFluxes.latent_heat_flux(
-        param_set,
-        inputs,
-        E,
-        inputs.moisture_model,
-    )
-    H = SurfaceFluxes.sensible_heat_flux(
-        param_set,
-        inputs,
-        g_h,
-        T_atmos,
-        T_sfc,
-        ρ_sfc,
-        E,
-    )
-    _LH_v0 = Thermodynamics.Parameters.LH_v0(thermo_params)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂L∂T = ρ_sfc * g_h * _LH_v0 * ∂q∂T
-    ∂H∂T = ρ_sfc * g_h * cp_d
-    LW_n = -ϵ * (LW_d - σ * T_sfc^4)
-    ∂LW_n∂T = 4 * ϵ * σ * T_sfc^3
-    ΔT =
-        -(d * (SW_n + LW_n + L + H) + κ * (T_sfc - T_bulk)) /
-        (d * (∂LW_n∂T + ∂L∂T + ∂H∂T) + κ)
     # Energy that would warm the surface above freezing melts snow instead
     _T_freeze = Thermodynamics.Parameters.T_freeze(thermo_params)
-    return min(T_sfc + ΔT, _T_freeze)
+    return ClimaLand.surface_temperature_newton_update(
+        inputs,
+        param_set,
+        thermo_params,
+        g_h,
+        ρ_sfc,
+        q_sfc,
+        ∂q∂T,
+        T_bulk,
+        d / κ, # r
+        _T_freeze,
+        ϵ,
+        σ,
+        SW_n,
+        LW_d,
+    )
 end
 
 """

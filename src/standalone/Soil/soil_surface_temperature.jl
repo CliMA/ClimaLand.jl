@@ -126,11 +126,10 @@ end
                              T_top, r, ϵ, σ, SW_n, LW_d, g_liq, β_ice, ψ_sfc, Tf_depressed,
                              earth_param_set)
 
-Return the Newton update `T + ΔT` of the soil skin temperature [K], with
-`ΔT = -f(T)/f'(T)` and
-`r f(T) = r (SW_n + LW_n(T) + L(T) + H(T)) + (T - T_top)`, capped at the
-depressed freezing temperature `Tf_depressed` when the top cell is frozen
-(contains ice, `β_ice > 0`, and `T_top < Tf_depressed`). Used as the
+Return the Newton update of the soil skin temperature [K] from
+`ClimaLand.surface_temperature_newton_update`, with the layer below at `T_top`,
+capped at the depressed freezing temperature `Tf_depressed` when the top cell
+is frozen (contains ice, `β_ice > 0`, and `T_top < Tf_depressed`). Used as the
 `update_T` callback of `SurfaceFluxes.surface_fluxes`, which passes the first
 eight arguments.
 
@@ -192,45 +191,26 @@ function update_soil_T_sfc_scheme(
         scheme,
     )
     w = soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
-    q_sfc = w * qsat + (1 - w) * q_air
-    E = SurfaceFluxes.evaporation(
-        param_set,
-        inputs,
-        g_h,
-        inputs.q_tot_int,
-        q_sfc,
-        ρ_sfc,
-        inputs.moisture_model,
-    )
-    L = SurfaceFluxes.latent_heat_flux(
-        param_set,
-        inputs,
-        E,
-        inputs.moisture_model,
-    )
-    H = SurfaceFluxes.sensible_heat_flux(
-        param_set,
-        inputs,
-        g_h,
-        inputs.T_int,
-        T_sfc,
-        ρ_sfc,
-        E,
-    )
-    _LH_v0 = Thermodynamics.Parameters.LH_v0(thermo_params)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂L∂T = ρ_sfc * g_h * _LH_v0 * w * ∂qsat∂T
-    ∂H∂T = ρ_sfc * g_h * cp_d
-    LW_n = -ϵ * (LW_d - σ * T_sfc^4)
-    ∂LW_n∂T = 4 * ϵ * σ * T_sfc^3
-    ΔT =
-        -(r * (SW_n + LW_n + L + H) + (T_sfc - T_top)) /
-        (r * (∂LW_n∂T + ∂L∂T + ∂H∂T) + 1)
     # Keyed on T_top, so trace ice in a cell above the melting point does not
     # pin the skin
     frozen_top = β_ice > 0 && T_top < Tf_depressed
     T_max = frozen_top ? Tf_depressed : oftype(T_sfc, Inf)
-    return min(T_sfc + ΔT, T_max)
+    return ClimaLand.surface_temperature_newton_update(
+        inputs,
+        param_set,
+        thermo_params,
+        g_h,
+        ρ_sfc,
+        w * qsat + (1 - w) * q_air, # q_sfc
+        w * ∂qsat∂T, # ∂q_sfc∂T
+        T_top,
+        r,
+        T_max,
+        ϵ,
+        σ,
+        SW_n,
+        LW_d,
+    )
 end
 
 """
