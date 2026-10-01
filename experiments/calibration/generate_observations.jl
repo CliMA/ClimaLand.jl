@@ -60,6 +60,7 @@ function make_observation_vector(
     sample_date_ranges,
     nelements,
 )
+@show sample_date_ranges
     # The start date doesn't matter since we never resample along the
     # time dimension, so we grab the first date in sample_date_ranges
     start_date = first(first(sample_date_ranges))
@@ -112,10 +113,12 @@ function preprocess_obs_vars(short_names, start_date, nelements)
             "There is no variable with the short name $short_name. Add this variable to get_calibration_obs_var_dict in data_sources.jl",
         )
     end
+    ocean_mask = make_ocean_mask(nelements)
+
     vars = map(short_names) do short_name
         var = obs_var_dict[short_name]
         ClimaAnalysis.set_reference_date!(var, start_date)
-        preprocess_single_obs_var(var, short_name, nelements)
+        preprocess_single_obs_var(var, short_name, nelements, ocean_mask)
     end
     return vars
 end
@@ -133,7 +136,7 @@ The preprocessing is:
 - removing the last longitude point to avoid double counting,
 - and excluding the poles.
 """
-function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
+function preprocess_single_obs_var(var::OutputVar, short_name, nelements, ocean_mask)
     lats, lons = get_lat_lon_from_resolution(nelements)
 
     # Window to ensure that each season contains all three months.
@@ -161,6 +164,7 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
 
     # Take seasonal average, resample, and apply mask. Resampling is an
     # expensive operation, so it is good to do as many reductions as we can.
+    var.data[findall(ismissing.(var.data))] .= NaN
     var = ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
 
     var = ClimaAnalysis.resampled_as(
@@ -172,7 +176,6 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
 
     # Cannot apply ClimaLand.apply_oceanmask because of the small
     # differences between the ClimaLand mask and ClimaAnalysis.apply_ocean_mask
-    ocean_mask = make_ocean_mask(nelements)
     var = ocean_mask(var)
 
     # To prevent double counting along the longitudes since -180 and 180 degrees

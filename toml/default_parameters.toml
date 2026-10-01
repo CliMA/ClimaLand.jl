@@ -289,10 +289,37 @@ type = "float"
 description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (kg/m^3)"
 tag = "SturmSnowConductivityModel"
 
+[holding_capacity_of_water_in_snow]
+value = 0.08
+type = "float"
+description = "Volumetric holding capacity of liquid water in a snowpack (unitless)."
+
+[wet_snow_hydraulic_conductivity]
+value = 1e-3
+type = "float"
+description = "Hydraulic conductivity of wet snow (m s⁻¹)."
 # WuWuSnowCoverFractionModel parameters
 
+["topo_scf_z0"]
+value = 0.5
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
+["topo_scf_mu_exp"]
+value = 0.3
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
+["topo_scf_xi_exp"]
+value = 2.0
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
 ["gamma"]
-value = 0.08
+value = 0.001
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
@@ -304,7 +331,7 @@ description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_min"]
-value = 1.0
+value = 0.1
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"
@@ -355,19 +382,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.463
+value = 0.41
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 112.0
+value = 146.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 1.76
+value = 16.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"

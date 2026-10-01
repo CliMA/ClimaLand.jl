@@ -38,7 +38,7 @@ const OUTPUT_DIR = if length(ARGS) >= 1
 elseif basename(PROGRAM_FILE) == "model_run.jl"
     dirname(dirname(dirname(abspath(PROGRAM_FILE))))
 else
-    "experiments/calibration/land_model"
+    "/glade/derecho/scratch/kdeck/calibrate_modis_scf_gpp_eflux"
 end
 
 # Include the calibration configuration. This defines CALIBRATE_CONFIG,
