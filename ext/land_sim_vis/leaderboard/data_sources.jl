@@ -125,6 +125,10 @@ _preprocess_sim_var(var, ::Val{:shf}) = var
 _preprocess_sim_var(var, ::Val{:swu}) = var
 # LAI is already dimensionless (m^2 m^-2), matching the MODIS obs; no conversion.
 _preprocess_sim_var(var, ::Val{:lai}) = var
+# The canopy fractions are written without units, which `ClimaAnalysis.bias`
+# rejects.
+_preprocess_sim_var(var, ::Val{:fc3}) = ClimaAnalysis.set_units(var, "fraction")
+_preprocess_sim_var(var, ::Val{:ftr}) = ClimaAnalysis.set_units(var, "fraction")
 _preprocess_sim_var(var, name::Val) =
     error("Preprocessing var with short name ($name) is not defined")
 
@@ -147,6 +151,14 @@ abstract type AbstractDataLoader end
 Return the available preprocessed variables in `data_loader`.
 """
 available_vars(data_loader::AbstractDataLoader) = data_loader.available_vars
+
+"""
+    sim_only_vars(data_loader::AbstractDataLoader)
+
+Return the variables in `available_vars(data_loader)` without observations, which
+the leaderboard maps from the simulation alone; `get` returns `nothing` for them.
+"""
+sim_only_vars(data_loader::AbstractDataLoader) = Set{String}()
 
 function Base.show(io::IO, data_loader::AbstractDataLoader)
     vars = sort(collect(data_loader.available_vars))
@@ -481,6 +493,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "lhf" => (-40.0, 40.0) .* factor,
         "swu" => (-50.0, 50.0) .* factor,
         "lai" => (-3.0, 3.0) .* factor,
+        "fc3" => (-1.0, 1.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -576,8 +589,7 @@ end
 
 # Map the calibration aliases (artifact-derived short names) to the model
 # diagnostic short names used by the simulation output and the leaderboard.
-# `inv_hr` (Hashimoto Rh) is intentionally excluded: the leaderboard shows the
-# MODIS `lai` target in its place (see FlagshipCarbonMetricsDataLoader).
+# `inv_hr` (Hashimoto Rh) is intentionally excluded.
 const _INVERSION_ALIAS_TO_MODEL_NAME =
     Dict("inv_nee" => "nee", "sif_gpp" => "gpp", "res_er" => "er")
 
@@ -585,10 +597,9 @@ const _INVERSION_ALIAS_TO_MODEL_NAME =
     FlagshipCarbonMetricsDataLoader
 
 Loads our flagship carbon-cycle observations for the leaderboard: CT2022 NEE,
-GOSIF GPP, and residual ER from the `inversion_nee` artifact, plus the MODIS
-`lai` target. Like `ILAMBDataLoader`, it serves monthly obs keyed by the model
-short names `nee`/`gpp`/`er`/`lai`, but sourced from these products instead of
-FLUXCOM.
+GOSIF GPP, and residual ER from the `inversion_nee` artifact. Like
+`ILAMBDataLoader`, it serves monthly obs keyed by the model short names
+`nee`/`gpp`/`er`, but sourced from these products instead of FLUXCOM.
 """
 struct FlagshipCarbonMetricsDataLoader <: AbstractDataLoader
     """Preprocessed inversion `OutputVar`s, keyed by model short name."""
@@ -601,12 +612,11 @@ end
 """
     FlagshipCarbonMetricsDataLoader()
 
-Construct a data loader for the inversion-derived carbon targets and MODIS LAI.
-The carbon variables are already preprocessed (monthly total → daily rate,
-latitude sorted ascending, longitude shifted to [-180, 180], units set to
-`g m-2 day-1`) by `get_inversion_obs_var_dict`; here they are re-keyed and
-re-tagged from `inv_nee`/`sif_gpp`/`res_er` to `nee`/`gpp`/`er`. The `lai` target
-(m^2 m^-2) is loaded from `get_modis_lai_obs_var`.
+Construct a data loader for the inversion-derived carbon targets. They are
+already preprocessed (monthly total → daily rate, latitude sorted ascending,
+longitude shifted to [-180, 180], units set to `g m-2 day-1`) by
+`get_inversion_obs_var_dict`; here they are re-keyed and re-tagged from
+`inv_nee`/`sif_gpp`/`res_er` to `nee`/`gpp`/`er`.
 """
 function FlagshipCarbonMetricsDataLoader()
     inversion_dict = get_inversion_obs_var_dict()
@@ -616,9 +626,6 @@ function FlagshipCarbonMetricsDataLoader()
         obs_var.attributes["short_name"] = model_name
         obs_var_dict[model_name] = obs_var
     end
-    lai_obs = get_modis_lai_obs_var()
-    lai_obs.attributes["short_name"] = "lai"
-    obs_var_dict["lai"] = lai_obs
     return FlagshipCarbonMetricsDataLoader(
         obs_var_dict,
         Set(keys(obs_var_dict)),
@@ -629,12 +636,89 @@ end
     get(loader::FlagshipCarbonMetricsDataLoader, short_name::String)
 
 Get the preprocessed `OutputVar` with the model short name `short_name` (one of
-`nee`, `gpp`, `er`, `lai`).
+`nee`, `gpp`, `er`).
 """
 function Base.get(loader::FlagshipCarbonMetricsDataLoader, short_name::String)
     short_name in loader.available_vars ||
         error("$short_name is not available to load")
     return loader.obs_var_dict[short_name]
+end
+
+"""
+    FlagshipVegetationMetricsDataLoader
+
+Loads the observations of the vegetation structure for the leaderboard: the
+MODIS `lai` target and the C3 fraction `fc3` of the CLM surface data, a static
+map. The tree share `ftr` has no observations yet, so it is mapped from the
+simulation alone (see `sim_only_vars`).
+"""
+struct FlagshipVegetationMetricsDataLoader <: AbstractDataLoader
+    """Preprocessed `OutputVar`s, keyed by model short name."""
+    obs_var_dict::Dict{String, Any}
+
+    """A list of available variables to load."""
+    available_vars::Set{String}
+end
+
+"""
+    FlagshipVegetationMetricsDataLoader()
+
+Construct a data loader for MODIS LAI (`get_modis_lai_obs_var`), the CLM C3
+fraction (`get_clm_c3_fraction_obs_var`) and the tree share, which has no
+observations.
+"""
+function FlagshipVegetationMetricsDataLoader()
+    obs_var_dict = Dict{String, Any}(
+        "lai" => get_modis_lai_obs_var(),
+        "fc3" => get_clm_c3_fraction_obs_var(),
+    )
+    return FlagshipVegetationMetricsDataLoader(
+        obs_var_dict,
+        Set(["lai", "fc3", "ftr"]),
+    )
+end
+
+"""
+    get(loader::FlagshipVegetationMetricsDataLoader, short_name::String)
+
+Get the preprocessed `OutputVar` with the model short name `short_name` (`lai` or
+`fc3`), or `nothing` for `ftr`, which has no observations.
+"""
+function Base.get(
+    loader::FlagshipVegetationMetricsDataLoader,
+    short_name::String,
+)
+    short_name in loader.available_vars ||
+        error("$short_name is not available to load")
+    return get(loader.obs_var_dict, short_name, nothing)
+end
+
+sim_only_vars(loader::FlagshipVegetationMetricsDataLoader) =
+    setdiff(loader.available_vars, keys(loader.obs_var_dict))
+
+"""
+    get_clm_c3_fraction_obs_var()
+
+The C3 fraction of the vegetation in the CLM surface data (`c3_proportion` on the
+0.9°×1.25° grid of the `clm_data` artifact) as a static `OutputVar` keyed `fc3`,
+NaN where there is no vegetation (`vcmx25` is zero), as the map is near 1 there.
+Latitude is sorted ascending and longitude shifted to [-180, 180].
+"""
+function get_clm_c3_fraction_obs_var()
+    path = joinpath(
+        ClimaLand.Artifacts.clm_data_folder_path(; lowres = true),
+        "vegetation_properties_map.nc",
+    )
+    c3 = ClimaAnalysis.OutputVar(path, "c3_proportion")
+    vcmax = ClimaAnalysis.OutputVar(path, "vcmx25")
+    obs_var = ClimaAnalysis.remake(
+        c3;
+        data = Float64.(ifelse.(vcmax.data .== 0, NaN, c3.data)),
+    )
+    obs_var = _preprocess_var(obs_var)
+    obs_var.attributes["short_name"] = "fc3"
+    obs_var.attributes["units"] = "fraction"
+    return obs_var
 end
 
 """
