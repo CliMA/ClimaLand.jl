@@ -172,6 +172,18 @@ type = "float"
 description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation: tc(gpp)/tc(gpp_ref) clamped to [0,1] is the C3 tree proportion. Fitted by Lavergne et al. (2022)."
 tag = "OptimalLAIModel"
 
+["optimal_lai_c3c4_β_c3"]
+value = 146.0
+type = "float"
+description = "Unit cost ratio β of C3 plants (dimensionless) with which the C3/C4 competition computes the per-pathway potential GPP: the pyrealm default (Stocker et al., 2020), independent of pmodel_β_c3 used for GPP."
+tag = "OptimalLAIModel"
+
+["optimal_lai_c3c4_β_c4"]
+value = 16.222
+type = "float"
+description = "Unit cost ratio β of C4 plants (dimensionless) for the C3/C4 competition: the pyrealm default, 146/9, independent of pmodel_β_c4 used for GPP."
+tag = "OptimalLAIModel"
+
 # Prognostic carbon pools
 
 ["carbon_construction_efficiency"]

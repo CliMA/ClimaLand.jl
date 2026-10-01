@@ -563,7 +563,7 @@ end
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
 - `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel
-- `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
+- `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares, with the competition's unit cost ratios (`c3c4_β_c3`, `c3c4_β_c4`)
 - `L_opt`: Optimal LAI predicted by Zhou et al.
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
 - `vpd_gs`: A0-weighted mean VPD (Pa), for the water-limitation term of LAI_max
@@ -683,6 +683,8 @@ function ClimaLand.make_compute_exp_tendency(
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
+    competition_parameters =
+        competition_pmodel_parameters(pmodel_parameters, parameters)
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
         fractional_c3 = get_fractional_c3(p, canopy)
@@ -701,9 +703,10 @@ function ClimaLand.make_compute_exp_tendency(
 
         # A0 is a potential GPP, so βm = 1: water limitation enters once, through
         # the f0·P/A0 term of LAI_max.
-        @. p.canopy.biomass.OptVars = compute_A0_and_χ(
+        @. p.canopy.biomass.OptVars = optimal_lai_potentials(
             fractional_c3,
             pmodel_parameters,
+            competition_parameters,
             pmodel_constants,
             earth_param_set,
             p.drivers.T,
