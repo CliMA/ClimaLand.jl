@@ -278,10 +278,19 @@ type = "float"
 description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (kg/m^3)"
 tag = "SturmSnowConductivityModel"
 
+[holding_capacity_of_water_in_snow]
+value = 0.08
+type = "float"
+description = "Volumetric holding capacity of liquid water in a snowpack (unitless)."
+
+[wet_snow_hydraulic_conductivity]
+value = 1e-3
+type = "float"
+description = "Hydraulic conductivity of wet snow (m s⁻¹)."
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
-value = 0.08
+value = 0.001
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
@@ -293,7 +302,7 @@ description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_min"]
-value = 1.0
+value = 0.1
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"

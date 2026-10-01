@@ -257,8 +257,8 @@ function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
 
     catalog = NCCatalog()
     ClimaAnalysis.add_file!(catalog, flux_file, era5_to_clima_names...)
-    ClimaAnalysis.add_file!(catalog, "/net/sampo/data1/ilamb/DATA/twsa/GRACE/twsa_0.5x0.5.nc", "twsa" => "twsa")
-    ClimaAnalysis.add_file!(catalog, "/net/sampo/data1/ilamb/DATA/scf/MODIS/scf_0.5x0.5_ILAMB_filled.nc", "scf" => "snowc")
+    ClimaAnalysis.add_file!(catalog, "/glade/derecho/scratch/kdeck/ilamb/twsa_0.5x0.5.nc", "twsa" => "twsa")
+    ClimaAnalysis.add_file!(catalog, "/glade/derecho/scratch/kdeck/ilamb/scf_0.5x0.5_ILAMB_filled.nc", "scf" => "snowc")
 
     return ERA5DataLoader(catalog, Set([last.(era5_to_clima_names)..., "twsa", "snowc"]))
 end
@@ -292,7 +292,7 @@ preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
 preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
 function preprocess(::ERA5DataLoader, var, ::Val{:twsa})
     replace!(var, missing => NaN)
-    return _preprocess_var(var, flip_sign=false)
+    return _preprocess_var(var, flip_sign=true)
 end
 function preprocess(::ERA5DataLoader, var, ::Val{:snowc})
     replace!(var, missing => NaN)

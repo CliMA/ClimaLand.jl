@@ -45,6 +45,20 @@ function setup_model(
         stop_date,
     )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+      α_snow =  NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = float(Δt))
+    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = float(Δt))
+    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, FT(1.0))
+    snow = ClimaLand.Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        float(Δt);
+        prognostic_land_components,
+        α_snow,
+	density,
+	scf
+    )
     land = LandModel{FT}(
         forcing,
         LAI,
@@ -52,6 +66,7 @@ function setup_model(
         domain,
         Δt;
         prognostic_land_components,
+        snow
     )
     return land
 end
@@ -116,7 +131,7 @@ function ClimaCalibrate.forward_model(
     short_names = unique!(
         [
             short_names
-            ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
+            ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee", "snowc"]
         ],
     )
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
