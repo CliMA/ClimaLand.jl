@@ -49,7 +49,7 @@ end
 #   CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh
 const CONFIG_FILE =
     TEST_CALIBRATION ? "test.jl" :
-    get(ENV, "CALIBRATION_CONFIG", "energy_fluxes.jl")
+    get(ENV, "CALIBRATION_CONFIG", "energy_gpp_twsa.jl")
 include(
     joinpath(
         pkgdir(ClimaLand),
