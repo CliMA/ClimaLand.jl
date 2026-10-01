@@ -627,6 +627,7 @@ function get_possible_diagnostics(model::LandModel)
         "snowtbot",
         "snowk",
         "ghf",
+        "twsa"
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
@@ -688,6 +689,7 @@ function get_short_diagnostics(model::LandModel)
         "ra",
         "tr",
         "et",
+        "twsa"
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

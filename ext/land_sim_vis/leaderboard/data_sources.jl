@@ -75,8 +75,18 @@ function _preprocess_sim_var(var, ::Val{:hr})
 end
 
 """
-    _water_mass_flux_to_mm_per_day(var)
+    _convert_to_monthly(var)
+"""
+_convert_to_monthly(var) = 
+    ClimaAnalysis.units(var) != "kg m^-2 s^-1" ? var :
+    ClimaAnalysis.convert_units(
+        var,
+        "kg m-2",
+        conversion_function = units -> units * 30.4*86400.0,
+    )
 
+"""
+    _water_mass_flux_to_mm_per_day(var)
 Convert a simulation water mass flux (`kg m^-2 s^-1`) to `mm / day`.
 """
 _water_mass_flux_to_mm_per_day(var) =
@@ -119,6 +129,11 @@ function _preprocess_sim_var(var, ::Val{:precip})
     return ClimaAnalysis.remake(var; data = abs.(var.data))
 end
 
+function _preprocess_sim_var(var, ::Val{:twsa})
+    var = _convert_to_monthly(var)
+    return ClimaAnalysis.remake(var; data = var.data)
+end
+_preprocess_sim_var(var, ::Val{:snowc}) = var
 _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
@@ -211,7 +226,7 @@ const ERA5_PARTITION_TO_CLIMA_NAMES = [
     "mer" => "et"
 ]
 
-const STANDARD_UNITS = Dict("W m**-2" => "W m^-2", "W m-2" => "W m^-2")
+const STANDARD_UNITS = Dict("W m**-2" => "W m^-2", "W m-2" => "W m^-2", "kg m-2" => "kg m^-2", "kg/m2" => "kg m^-2")
 
 """
     ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
@@ -242,7 +257,10 @@ function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
 
     catalog = NCCatalog()
     ClimaAnalysis.add_file!(catalog, flux_file, era5_to_clima_names...)
-    return ERA5DataLoader(catalog, Set(last.(era5_to_clima_names)))
+    ClimaAnalysis.add_file!(catalog, "/net/sampo/data1/ilamb/DATA/twsa/GRACE/twsa_0.5x0.5.nc", "twsa" => "twsa")
+    ClimaAnalysis.add_file!(catalog, "/net/sampo/data1/ilamb/DATA/scf/MODIS/scf_0.5x0.5_ILAMB_filled.nc", "scf" => "snowc")
+
+    return ERA5DataLoader(catalog, Set([last.(era5_to_clima_names)..., "twsa", "snowc"]))
 end
 
 """
@@ -272,6 +290,14 @@ preprocess(::ERA5DataLoader, var, ::Val{:lhf}) =
     _preprocess_var(var; flip_sign = true)
 preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
 preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
+function preprocess(::ERA5DataLoader, var, ::Val{:twsa})
+    replace!(var, missing => NaN)
+    return _preprocess_var(var, flip_sign=false)
+end
+function preprocess(::ERA5DataLoader, var, ::Val{:snowc})
+    replace!(var, missing => NaN)
+    return _preprocess_var(var)
+end
 preprocess(::ERA5DataLoader, var, ::Val{:sr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
 preprocess(::ERA5DataLoader, var, ::Val{:ssr}) =
@@ -542,6 +568,8 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "lhf" => (-40.0, 40.0) .* factor,
         "swu" => (-50.0, 50.0) .* factor,
         "lai" => (-3.0, 3.0) .* factor,
+        "twsa" => (-200.0,200.0) .* factor,
+        "snowc" => (-0.3,0.3) .* factor
     )
     return compare_vars_biases_plot_extrema
 end

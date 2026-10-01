@@ -175,6 +175,7 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
 
     # Take seasonal average, resample, and apply mask. Resampling is an
     # expensive operation, so it is good to do as many reductions as we can.
+    var.data[findall(ismissing.(var.data))] .= NaN
     var = ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
 
     var = ClimaAnalysis.resampled_as(var, lon = lons, lat = lats)

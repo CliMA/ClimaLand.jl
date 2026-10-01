@@ -881,6 +881,36 @@ function compute_total_runoff!(
     return out
 end
 
+function compute_twsa_accum!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel,
+)   
+    soil = get_soil(land_model)
+    runoff = soil.boundary_conditions.top.runoff
+    surface = Runoff.get_surface_runoff(runoff, Y, p)
+    subsurface = Runoff.get_subsurface_runoff(runoff, Y, p)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (p.drivers.P_liq + p.drivers.P_snow +  
+                (1 - p.snow.snow_cover_fraction) *
+                (p.soil.turbulent_fluxes.vapor_flux_liq + p.soil.turbulent_fluxes.vapor_flux_ice) +
+                p.canopy.turbulent_fluxes.vapor_flux +
+                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux + subsurface + surface) * 1000
+        return out
+    else
+        @. out = (p.drivers.P_liq + p.drivers.P_snow +  
+                (1 - p.snow.snow_cover_fraction) *
+                (p.soil.turbulent_fluxes.vapor_flux_liq + p.soil.turbulent_fluxes.vapor_flux_ice) +
+                p.canopy.turbulent_fluxes.vapor_flux +
+                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux + subsurface + surface) * 1000
+        return nothing
+    end
+end
+
 function compute_saturated_height!(
     out,
     Y,
