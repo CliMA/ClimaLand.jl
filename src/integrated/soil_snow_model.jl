@@ -172,11 +172,13 @@ This function is called each ode function evaluation, prior to the tendency func
 evaluation.
 
 In this method, we
-1. Compute the ground heat flux between soil and snow. This is required to update the snow and soil boundary fluxes
-2. Update the snow boundary fluxes, which also computes any excess flux of energy or water which occurs when the snow
+1. Solve for the snow surface temperature and the snow turbulent fluxes at it. The ground heat flux depends on the
+snow surface temperature through the temperature profile of the snowpack (see `snow_T_bottom`)
+2. Compute the ground heat flux between soil and snow. This is required to update the snow and soil boundary fluxes
+3. Update the snow boundary fluxes, which also computes any excess flux of energy or water which occurs when the snow
 completely melts in a step. In this case, that excess must go to the soil for conservation
-3. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
-4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
+4. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
+5. Compute the net flux for the atmosphere, which is useful for assessing conservation.
 """
 function make_update_boundary_fluxes(
     land::SoilSnowModel{FT, SnM, SoM},
@@ -185,7 +187,16 @@ function make_update_boundary_fluxes(
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
-        # First compute the ground heat flux in place:
+        Snow.update_surf_temp!(
+            land.snow,
+            land.snow.parameters.surf_temp,
+            bare_snow_net_shortwave(p),
+            p.drivers.LW_d,
+            Y,
+            p,
+            t,
+        )
+        # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
@@ -208,6 +219,14 @@ function make_update_boundary_fluxes(
     end
     return update_boundary_fluxes!
 end
+
+"""
+    bare_snow_net_shortwave(p)
+
+Return the net shortwave radiation at the surface of bare snow, positive upward
+(the sign convention of `turbulent_fluxes!`), as a lazy broadcast.
+"""
+bare_snow_net_shortwave(p) = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d)
 
 """
     update_soil_snow_ground_heat_flux!(p, Y, soil_params, snow_params, soil_domain, FT)
@@ -345,7 +364,8 @@ snow model accounting for a heat flux between the soil and snow.
 The snow surface is assumed to be bare (no vegetation).
 
 Currently this is almost identical to the method for snow alone, except for the
-inclusion of the ground heat flux (precomputed by the integrated land model).
+inclusion of the ground heat flux, which the integrated land model precomputes
+after solving for the snow surface temperature and the snow turbulent fluxes.
 However, this will change more if e.g. we allow for transmission of radiation
 through the snowpack.
 """
@@ -358,16 +378,7 @@ NVTX.@annotate function snow_boundary_fluxes!(
     t,
 ) where {FT}
 
-    SW_net = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d) #match sign convention in ./shared_utilities/drivers.jl
-    Snow.update_surf_temp!(
-        model,
-        model.parameters.surf_temp,
-        SW_net,
-        p.drivers.LW_d,
-        Y,
-        p,
-        t,
-    )
+    SW_net = bare_snow_net_shortwave(p)
     _σ = LP.Stefan(model.parameters.earth_param_set)
     ϵ_snow = model.parameters.ϵ_snow
     LW_net = @. lazy(

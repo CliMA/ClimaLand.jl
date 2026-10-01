@@ -45,6 +45,11 @@ main
   removed. `compute_turbulent_fluxes_at_a_point` is removed; use
   `turbulent_fluxes_at_a_point`, which returns the same fluxes as a
   NamedTuple. PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
+- ![][badge-🐛bugfix] `SoilSnowModel` solves for the snow surface temperature
+  before computing the snow-soil ground heat flux, which depends on it through
+  the snowpack temperature profile; the flux used the snow surface temperature
+  of the previous evaluation (zero at initialization).
+  PR [#1894](https://github.com/CliMA/ClimaLand.jl/pull/1894)
 
 1.12.3
 ----
