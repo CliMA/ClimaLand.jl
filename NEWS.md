@@ -12,6 +12,10 @@ main
   observations yet; the optimal-LAI long run plots it, and LAI moves out of
   `FlagshipCarbonMetrics`. Static observations are compared with every simulated month.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
+  with several components per point (such as the P-model acclimated capacities), which
+  stopped CPU global runs at their first NaN check.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
