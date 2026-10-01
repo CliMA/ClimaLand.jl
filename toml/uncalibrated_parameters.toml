@@ -615,7 +615,7 @@ description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.16
+value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
