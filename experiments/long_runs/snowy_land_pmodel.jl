@@ -160,10 +160,12 @@ ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"]
+PROGNOSTIC_LAI && push!(leaderboard_data_sources, "FlagshipVegetationMetrics")
 LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,
-    leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"],
+    leaderboard_data_sources,
 )
 
 if LONGER_RUN
