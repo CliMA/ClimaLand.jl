@@ -672,7 +672,7 @@ description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0416
+value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
@@ -681,6 +681,12 @@ tag = "MoninObukhovCanopyFluxes"
 value = 0.07
 type = "float"
 description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+["undercanopy_ground_transfer_coefficient"]
+value = 0.004
+type = "float"
+description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters
