@@ -442,7 +442,8 @@ Six further 1-year `RunningSum`s carry the climate the LAI formulas respond to:
 (with `A0_annual`, the A0-weighted growing-season VPD `vpd_gs`), `growing_days`
 (the growing-season length `GSL`), `A0c3_annual`/`A0c4_annual`, the per-pathway
 potential GPP the C3/C4 competition compares, and `GPPc3_annual`, the C3 potential
-GPP scaled by the realized fAPAR, from which the competition estimates tree cover.
+GPP scaled by the realized fAPAR and soil-moisture stress `βm`, from which the
+competition estimates tree cover.
 
 Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
 smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
@@ -785,10 +786,11 @@ function ClimaLand.make_compute_exp_tendency(
             tivs.A0c4_annual.reduction,
         )
         # The tree-cover relation is fitted to annual realized GPP, so the C3
-        # potential is scaled by the realized fAPAR before the yearly total.
+        # potential is scaled by the realized fAPAR and soil-moisture stress.
         @. dY.canopy.biomass.GPPc3_annual = apply_time_reduction(
             p.canopy.biomass.OptVars.A0_c3 *
-            (1 - exp(-parameters.k * Y.canopy.biomass.LAI)),
+            (1 - exp(-parameters.k * Y.canopy.biomass.LAI)) *
+            p.canopy.soil_moisture_stress.βm,
             Y.canopy.biomass.GPPc3_annual,
             tivs.GPPc3_annual.reduction,
         )
