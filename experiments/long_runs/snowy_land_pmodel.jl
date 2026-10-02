@@ -121,13 +121,17 @@ function setup_model(
     return land
 end
 
-# If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-# If LONGER run, run for 19 years, with the correct forcing each year.
-# Note that since the Northern hemisphere's winter season is defined as DJF,
-# we simulate from and until the beginning of
-# March so that a full season is included in seasonal metrics.
+# If not LONGER_RUN, run for 2 years (3 with prognostic LAI, whose canopy composition
+# relaxes over 2 years); note that the forcing from 2008 is repeated. The leaderboard
+# compares the last year. If LONGER run, run for 19 years, with the correct forcing
+# each year. Note that since the Northern hemisphere's winter season is defined as
+# DJF, we simulate from and until the beginning of March so that a full season is
+# included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+stop_date =
+    LONGER_RUN ? DateTime("2019-03-01") :
+    PROGNOSTIC_LAI ? DateTime("2011-03-01") : DateTime("2010-03-01")
+spin_up_months = !LONGER_RUN && PROGNOSTIC_LAI ? 24 : 12
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -166,6 +170,7 @@ LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,
     leaderboard_data_sources,
+    spin_up_months,
 )
 
 if LONGER_RUN

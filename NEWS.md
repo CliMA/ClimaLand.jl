@@ -5,12 +5,17 @@ main
 - ![][badge-🔥behavioralΔ] The C3/C4 competition of `ZhouOptimalLAIModel` compares
   potential GPP computed with its own P-model unit cost ratios (`optimal_lai_c3c4_β_c3`,
   `optimal_lai_c3c4_β_c4`: the pyrealm defaults it was fitted with) rather than the
-  calibrated ones used for GPP, which favoured C4 in tropical forests.
+  calibrated ones used for GPP, which favoured C4 in tropical forests. The realized C3
+  GPP from which it estimates tree cover includes the soil-moisture stress `βm`, as
+  the GPP the tree-cover relation was fitted to does, so that water-limited savannas
+  are not taken for forest.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] A `FlagshipVegetationMetrics` leaderboard source compares LAI with
-  MODIS and the C3 fraction with the static CLM map, and maps the tree share, which has no
-  observations yet; the optimal-LAI long run plots it, and LAI moves out of
-  `FlagshipCarbonMetrics`. Static observations are compared with every simulated month.
+  MODIS, and the C3 fraction and the tree share with static maps of the CLM surface data;
+  the optimal-LAI long run plots it, and LAI moves out of `FlagshipCarbonMetrics`. Static
+  observations are compared with every simulated month. `make_leaderboard_plots` takes a
+  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years and compares the
+  last.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
   with several components per point (such as the P-model acclimated capacities), which
