@@ -7,6 +7,8 @@ main
   configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,
   and bare snow stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
   1.3.
+- ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
+  0.67.
 
 v1.13.0
 ----
