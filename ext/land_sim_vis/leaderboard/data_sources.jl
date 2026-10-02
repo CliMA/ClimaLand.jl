@@ -494,6 +494,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "swu" => (-50.0, 50.0) .* factor,
         "lai" => (-3.0, 3.0) .* factor,
         "fc3" => (-1.0, 1.0) .* factor,
+        "ftr" => (-1.0, 1.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -648,9 +649,8 @@ end
     FlagshipVegetationMetricsDataLoader
 
 Loads the observations of the vegetation structure for the leaderboard: the
-MODIS `lai` target and the C3 fraction `fc3` of the CLM surface data, a static
-map. The tree share `ftr` has no observations yet, so it is mapped from the
-simulation alone (see `sim_only_vars`).
+MODIS `lai` target, and the C3 fraction `fc3` and tree share `ftr` of the CLM
+surface data, static maps.
 """
 struct FlagshipVegetationMetricsDataLoader <: AbstractDataLoader
     """Preprocessed `OutputVar`s, keyed by model short name."""
@@ -664,13 +664,14 @@ end
     FlagshipVegetationMetricsDataLoader()
 
 Construct a data loader for MODIS LAI (`get_modis_lai_obs_var`), the CLM C3
-fraction (`get_clm_c3_fraction_obs_var`) and the tree share, which has no
-observations.
+fraction (`get_clm_c3_fraction_obs_var`) and the CLM tree share
+(`get_clm_tree_share_obs_var`).
 """
 function FlagshipVegetationMetricsDataLoader()
     obs_var_dict = Dict{String, Any}(
         "lai" => get_modis_lai_obs_var(),
         "fc3" => get_clm_c3_fraction_obs_var(),
+        "ftr" => get_clm_tree_share_obs_var(),
     )
     return FlagshipVegetationMetricsDataLoader(
         obs_var_dict,
@@ -681,8 +682,8 @@ end
 """
     get(loader::FlagshipVegetationMetricsDataLoader, short_name::String)
 
-Get the preprocessed `OutputVar` with the model short name `short_name` (`lai` or
-`fc3`), or `nothing` for `ftr`, which has no observations.
+Get the preprocessed `OutputVar` with the model short name `short_name` (`lai`,
+`fc3` or `ftr`).
 """
 function Base.get(
     loader::FlagshipVegetationMetricsDataLoader,
@@ -717,6 +718,29 @@ function get_clm_c3_fraction_obs_var()
     )
     obs_var = _preprocess_var(obs_var)
     obs_var.attributes["short_name"] = "fc3"
+    obs_var.attributes["units"] = "fraction"
+    return obs_var
+end
+
+"""
+    get_clm_tree_share_obs_var()
+
+The tree share of the natural vegetation in the CLM surface data (the cover of the
+tree PFTs over that of all vegetated PFTs, on its 0.9°×1.25° grid; see
+`artifacts/clm_tree_share/create_clm_tree_share.jl`) as a static `OutputVar` keyed
+`ftr`, NaN where there is no vegetation. It is a share of cover, which the model's
+share of productivity is compared with. Latitude is sorted ascending and longitude
+shifted to [-180, 180].
+"""
+function get_clm_tree_share_obs_var()
+    path = joinpath(
+        pkgdir(ClimaLand),
+        "artifacts",
+        "clm_tree_share",
+        "clm_tree_share.nc",
+    )
+    obs_var = _preprocess_var(ClimaAnalysis.OutputVar(path, "tree_share"))
+    obs_var.attributes["short_name"] = "ftr"
     obs_var.attributes["units"] = "fraction"
     return obs_var
 end
