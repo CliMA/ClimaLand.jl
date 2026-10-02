@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
+  stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
+  configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,
+  and bare snow stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
+  1.3.
 
 v1.13.0
 ----

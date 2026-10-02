@@ -881,7 +881,7 @@ appended. The derivatives of the fluxes with respect to the surface temperature
 are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
 `turbulent_fluxes!`.
 """
-function solve_for_surface_temp_at_a_point(
+@inline function solve_for_surface_temp_at_a_point(
     return_extra_fluxes::Val,
     T_initial_guess::FT,
     T_bulk::FT,
@@ -901,11 +901,11 @@ function solve_for_surface_temp_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
-) where {FT}
+) where {FT, UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
