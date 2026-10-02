@@ -482,8 +482,8 @@ end
 Partition of the canopy into C3 trees, C3 grasses and C4 grasses from the C3/C4
 competition of Lavergne et al. (2022), as implemented in pyrealm, on the trailing
 per-pathway potential GPP `A0c3_annual`/`A0c4_annual` and the trailing realized C3
-GPP `GPPc3_annual` (the potential scaled by fAPAR; all mol CO2 m^-2 yr^-1); `Mc` is
-the molar mass of carbon (kg mol^-1). Returns a `NamedTuple`
+GPP `GPPc3_annual` (the potential scaled by fAPAR and soil-moisture stress; all
+mol CO2 m^-2 yr^-1); `Mc` is the molar mass of carbon (kg mol^-1). Returns a `NamedTuple`
 `(; tree, c3_grass, c4_grass)` summing to one.
 
 The fractions are shares of productivity, not of ground area: the proportional C4 GPP
