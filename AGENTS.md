@@ -31,6 +31,7 @@ Always read the ClimaLand-specific structure guide before working in this reposi
 - Run `julia -e 'using JuliaFormatter; format(".")'` before committing code, adhering to the rules in `.JuliaFormatter.toml`.
 - When you `export` a new symbol from `ClimaLand`, add it to a `@docs` block on the matching `docs/src/APIs/*.md` page. The docs build sets `checkdocs = :exports`, so an exported name with a docstring that is not included in the manual fails the docs CI job.
 - Never tag people on GitHub (`@username`) in PR descriptions, issues, or comments you write; an `@` mention notifies a real person on your behalf. Refer to them by name without the `@`, or cite the PR or issue number instead.
+- Keep restarts reproducible: initial guesses of Newton and other iterative solves (e.g., surface temperature solves) depend only on the state `Y`, the drivers, and constants, never on values cached in `p` from an earlier step, because a restart rebuilds `p` from `Y` alone.
 
 ## Self-correction
 
