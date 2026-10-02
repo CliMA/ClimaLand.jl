@@ -7,6 +7,8 @@ main
   configured in `ClimaLand.surface_flux_config`), so that canopies and snow
   stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
   1.3.
+- ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
+  0.67.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

@@ -581,25 +581,31 @@ tag = "MoninObukhovCanopyFluxes"
 ["canopy_z_0m_coeff"]
 value = 0.0175
 type = "float"
-description = "Scalar multipling canopy height to get z_0m"
+description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
 value = 0.0175
 type = "float"
-description = "Scalar multipling canopy height to get z_0b"
+description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. The leaf boundary layer conductance (leaf_Cd) accounts for the extra resistance to scalar transfer"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.16
+value = 0.67
 type = "float"
-description = "Scalar multipling canopy height to get displacement height"
+description = "Ratio of the canopy displacement height to the canopy height (unitless). Brutsaert 1982, p. 116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
 value = 0.1
 type = "float"
-description = ""
+description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the canopy and the canopy air is Cd * u_star * PAI (m/s). Compare the laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2) of Choudhury and Monteith 1988; Jones 2014, Ch. 3"
+tag = "MoninObukhovCanopyFluxes"
+
+["undercanopy_ground_transfer_coefficient"]
+value = 0.004
+type = "float"
+description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters
