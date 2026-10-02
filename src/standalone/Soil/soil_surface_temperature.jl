@@ -307,7 +307,7 @@ temperature), and the skin temperature [K] (see `soil_turbulent_fluxes`).
 
 Called from [`update_soil_surface_temperature!`](@ref).
 """
-function solve_soil_surface_temperature_at_a_point(
+@inline function solve_soil_surface_temperature_at_a_point(
     return_extra_fluxes::Val,
     T_top::FT,
     r::FT,
@@ -327,10 +327,10 @@ function solve_soil_surface_temperature_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     earth_param_set,
-) where {FT}
+) where {FT, UDT, UDQ}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
     update_T(args...) = update_soil_T_sfc_scheme(

@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
+  stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
+  configured in `ClimaLand.surface_flux_config`), so that canopies and snow
+  stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
+  1.3.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
