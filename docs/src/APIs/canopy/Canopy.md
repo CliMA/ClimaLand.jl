@@ -27,6 +27,15 @@ ClimaLand.Canopy.clm_canopy_height
 ```@docs
 ClimaLand.Canopy.AbstractCanopyBC
 ClimaLand.Canopy.AtmosDrivenCanopyBC
+ClimaLand.Canopy.canopy_boundary_fluxes!
+ClimaLand.Canopy.canopy_turbulent_fluxes!
+ClimaLand.Canopy.canopy_root_fluxes!
+ClimaLand.Canopy.zero_canopy_fluxes_without_plants!
+ClimaLand.Canopy.plants_present
 ClimaLand.Canopy.MoninObukhovCanopyFluxes
+ClimaLand.Canopy.subcanopy_wind
+ClimaLand.Canopy.subcanopy_reference_height
+ClimaLand.Canopy.subcanopy_forcing
+ClimaLand.Canopy.ground_gustiness
 ```
 

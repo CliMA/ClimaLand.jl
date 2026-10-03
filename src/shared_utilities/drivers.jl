@@ -379,7 +379,6 @@ function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
         Δh,
         q_air,
     )
-    return ρ_sfc
 end
 
 return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
@@ -391,7 +390,12 @@ return_momentum_fluxes(atmos::CoupledAtmosphere) = true
                       model::AbstractModel,
                       Y,
                       p,
-                      t
+                      t;
+                      h_atmos = atmos.h,
+                      u_atmos = p.drivers.u,
+                      T_atmos = p.drivers.T,
+                      q_atmos = p.drivers.q,
+                      gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
                       )
 
 Computes the turbulent surface flux terms at the ground,
@@ -403,6 +407,12 @@ It solves for these given atmospheric conditions,
 model parameters, and the surface conditions. The elements of `dest` select,
 by name, which of the quantities of `turbulent_fluxes_at_a_point` are stored
 (see `select_fluxes`).
+
+The reference height `h_atmos`, the wind `u_atmos`, temperature `T_atmos`, and
+specific humidity `q_atmos` at it, and the gustiness model default to those of
+the atmospheric forcing. Integrated models pass the sub-canopy reference height,
+attenuated wind, canopy-air temperature and humidity, and zero gustiness for
+the surfaces beneath a canopy (see `Canopy.subcanopy_forcing`).
 """
 function turbulent_fluxes!(
     dest,
@@ -410,7 +420,12 @@ function turbulent_fluxes!(
     model::AbstractModel,
     Y,
     p,
-    t,
+    t;
+    h_atmos = atmos.h,
+    u_atmos = p.drivers.u,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
@@ -423,15 +438,14 @@ function turbulent_fluxes!(
     update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     stored = Val(fieldnames(eltype(dest)))
     dest .= turbulent_fluxes_at_a_point.(
         stored,
         p.drivers.P,
-        p.drivers.T,
-        p.drivers.q, # q_tot
-        p.drivers.u,
-        atmos.h,
+        T_atmos,
+        q_atmos, # q_tot
+        u_atmos,
+        h_atmos,
         T_sfc,
         q_sfc,
         roughness_model,
@@ -1617,6 +1631,16 @@ and linear spatial interpolation for high resolution forcing.
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
     clima cluster.
+
+!!! note "Reference heights"
+    The wind is the ERA5 10 m wind, `sqrt(u10² + v10²)`, and the reference
+    height of the forcing is set to 10 m. The temperature and humidity are the
+    ERA5 2 m fields (`t2m`, `d2m`), which are themselves products of ERA5's own
+    surface-layer scheme, not 10 m values. The Monin-Obukhov solve therefore
+    evaluates the temperature and humidity differences to the surface over
+    2 m but the wind over 10 m, which weakens the diagnosed stability and
+    instability. The hourly-mean components also give a scalar wind speed
+    somewhat below the mean of the instantaneous speed.
 """
 function prescribed_forcing_era5(
     start_date,

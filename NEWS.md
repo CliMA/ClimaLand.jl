@@ -24,9 +24,11 @@ main
   of these the destination names (`ClimaLand.select_fluxes`), while
   `ClimaLand.turbulent_fluxes_at_a_point` keeps returning the energy and vapor
   fluxes and their derivatives (and, for `Val(true)`, the momentum and
-  buoyancy fluxes) that ClimaCoupler evaluates directly. `t2m`, `q2m`, and
-  `u10m` are possible diagnostics of `LandModel` and `SoilCanopyModel` and are
-  included in the default short diagnostics of `LandModel`.
+  buoyancy fluxes) that ClimaCoupler evaluates directly. Below a canopy, the
+  soil and snow profiles are reconstructed toward the canopy-air state of
+  their flux solves. `t2m`, `q2m`, and `u10m` are possible diagnostics of
+  `LandModel` and `SoilCanopyModel` and are included in the default short
+  diagnostics of `LandModel`.
 - ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
   stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
   configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,
@@ -72,6 +74,40 @@ main
 - ![][badge-✨feature] Register the fluxes of the soil below the canopy, `soilrn`, `soilshf`,
   and `soillhf`, in the possible diagnostics of `LandModel` and
   `SoilCanopyModel`.
+- ![][badge-🔥behavioralΔ] Evaluate the soil and snow turbulent fluxes below a canopy at a
+  sub-canopy reference height, with the wind attenuated by the canopy and the
+  temperature and humidity of the canopy air, instead of at the forcing height
+  with the above-canopy state. The reference height is the apparent sink height
+  of the canopy `d + z_0m`, at least `canopy_subcanopy_min_reference_height`
+  (new TOML parameter, default 2 m) above the ground or snow surface
+  (`Canopy.subcanopy_reference_height`). The wind there is the neutral
+  log-profile wind at `max(z_ref, h)` attenuated by `exp(-α (LAI + SAI))`
+  across the full plant area index (`Canopy.subcanopy_wind`; Shuttleworth and
+  Wallace, 1985; Choudhury and Monteith, 1988), so that short canopies
+  (`h < z_ref`) also shelter the ground beneath them; `α` is read from the new
+  TOML parameter `canopy_subcanopy_wind_extinction_coefficient` (default 0.5).
+  Both parameters are stored in the new fields
+  `MoninObukhovCanopyFluxes.subcanopy_min_reference_height` and
+  `subcanopy_wind_extinction`. Where plants are present (`LAI + SAI >= 0.05`),
+  `Canopy.subcanopy_forcing` also returns the canopy-air temperature `T_sfc`
+  and specific humidity `q_sfc` at the scalar roughness height `d + z_0b` from
+  the canopy Monin-Obukhov solve, and the gustiness model of the forcing
+  without its floor, which is folded into the sub-canopy wind
+  (`Canopy.ground_gustiness`); where plants are absent, the ground is forced
+  as a standalone surface, at the forcing height with the forcing wind,
+  temperature, humidity, and gustiness. `LandModel` and `SoilCanopyModel`
+  compute the canopy turbulent fluxes (`Canopy.canopy_turbulent_fluxes!`)
+  before the ground skin solves, the canopy root fluxes
+  (`Canopy.canopy_root_fluxes!`) after them, and pass the sub-canopy height,
+  wind, temperature, humidity, and gustiness to
+  `Soil.update_soil_surface_temperature!`, `Snow.update_surf_temp!`, and
+  `ClimaLand.turbulent_fluxes!` through their new `h_atmos`, `u_atmos`,
+  `T_atmos`, `q_atmos`, and `gustiness` keyword arguments. Prevent reverse
+  transpiration through stomata during condensation: the canopy surface
+  humidity is floored at the atmospheric value (`q_sfc >= q_vap_int`, with
+  `∂q_sfc/∂T = 0` where the floor binds), and the canopy latent heat flux and
+  transpiration are zeroed where `vapor_flux <= 0` in both the explicit and
+  implicit boundary flux updates (`Canopy.zero_canopy_fluxes_without_plants!`).
 - ![][badge-🔥behavioralΔ] Apply the soil moisture stress factor `βm` instantaneously to `GPP`,
   `Rd`, `An`, and `gs_co2` in `PModel` while acclimating well-watered capacities
   (`βm = 1`), and set the upper moisture threshold `θ_high` in

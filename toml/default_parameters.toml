@@ -717,7 +717,13 @@ tag = "MoninObukhovCanopyFluxes"
 ["canopy_subcanopy_wind_extinction_coefficient"]
 value = 0.5
 type = "float"
-description = "Extinction coefficient of the wind speed below a plant canopy per unit plant area index (LAI + SAI); the wind driving the turbulent fluxes of the ground under a canopy is the reference-height wind times exp(-coefficient * PAI). Unitless. Brutsaert (1982); Mahfouf and Noilhan (1991); Norman et al. (1995)."
+description = "Extinction coefficient of the wind speed across a plant canopy per unit plant area index (LAI + SAI), unitless: the wind driving the ground below the canopy is the neutral log-profile wind at max(z_ref, height) times exp(-coefficient * PAI). Inoue (1963); Cionco (1965); Brutsaert (1982); Shuttleworth and Wallace (1985); Choudhury and Monteith (1988)."
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_subcanopy_min_reference_height"]
+value = 2.0
+type = "float"
+description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 2.7 m. Set to the WMO screen height."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters

@@ -262,10 +262,12 @@ function make_update_boundary_fluxes(
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
-    update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land)
+        # The canopy turbulent fluxes come first: the soil skin solve in
+        # lsm_radiant_energy_fluxes! reads the canopy-air state they produce
+        Canopy.canopy_turbulent_fluxes!(p, land.canopy, Y, t)
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,
@@ -276,7 +278,7 @@ function make_update_boundary_fluxes(
         )
 
         update_soil_bf!(p, Y, t)
-        update_canopy_bf!(p, Y, t)
+        Canopy.canopy_root_fluxes!(p, land.canopy, Y, t)
         update_soilco2_bf!(p, Y, t)
     end
     return update_boundary_fluxes!
@@ -390,13 +392,26 @@ function lsm_radiant_energy_fluxes!(
     # R_net_soil is positive towards the soil; the skin solve takes SW_n
     # positive upward
     SW_n_soil = @. lazy(-R_net_soil)
+    # The soil surface below the canopy exchanges with the air at the
+    # sub-canopy reference height, with the wind there; bare ground is forced
+    # as a standalone surface
+    soil_forcing = Canopy.subcanopy_forcing(
+        land.canopy,
+        p,
+        ClimaLand.surface_height(land.soil, Y, p),
+    )
     Soil.update_soil_surface_temperature!(
         land.soil,
         SW_n_soil,
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        h_atmos = soil_forcing.h_atmos,
+        u_atmos = soil_forcing.u_atmos,
+        T_atmos = soil_forcing.T_atmos,
+        q_atmos = soil_forcing.q_atmos,
+        gustiness = soil_forcing.gustiness,
     )
 
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)

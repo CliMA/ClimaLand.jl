@@ -480,14 +480,18 @@ function soil_surface_vapor_conductance!(
 end
 
 """
-    update_soil_surface_temperature!(model::EnergyHydrology, SW_n, LW_d, Y, p, t)
+    update_soil_surface_temperature!(model::EnergyHydrology, SW_n, LW_d, Y, p, t;
+                                     h_atmos = atmos.h, u_atmos = p.drivers.u,
+                                     T_atmos = p.drivers.T, q_atmos = p.drivers.q,
+                                     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness))
     update_soil_surface_temperature!(model::EnergyHydrology, Y, p, t)
 
 Solve for the soil skin temperature from the surface energy balance and store
 it, with the turbulent fluxes at it from the same Monin-Obukhov solve, in
 `p.soil.turbulent_fluxes`, and update the surface specific humidity
-`p.soil.q_sfc` at it; return `nothing`. A no-op unless the top boundary
-condition is an `AtmosDrivenFluxBC`.
+`p.soil.q_sfc` at it; return `nothing`. The top boundary condition of the
+soil must be an `AtmosDrivenFluxBC` with the atmospheric driver `atmos`; an
+`ArgumentError` is thrown otherwise.
 
 # Arguments
 - `SW_n`: Net shortwave radiation at the soil surface, positive upward, i.e.
@@ -497,9 +501,14 @@ condition is an `AtmosDrivenFluxBC`.
 `SW_n` and `LW_d` may be fields or lazy broadcasts; land models with a canopy
 pass the radiation transmitted and emitted by the canopy. The four-argument
 method is for soil exposed to the sky and uses the downwelling radiation in
-`p.drivers` and the soil albedo. The atmospheric state at the reference height
-`atmos.h` is read from `p.drivers`, whether prescribed or supplied by a
-coupler, and `p.soil.sfc_scratch` is overwritten.
+`p.drivers` and the soil albedo. The atmospheric pressure is read from
+`p.drivers`, whether prescribed or supplied by a coupler, and
+`p.soil.sfc_scratch` is overwritten. The reference height `h_atmos`, the wind
+`u_atmos`, temperature `T_atmos`, and specific humidity `q_atmos` at it, and
+the gustiness model default to those of the atmospheric forcing; land models
+with a canopy pass the sub-canopy reference height, attenuated wind,
+canopy-air temperature and humidity, and gustiness model (see
+`Canopy.subcanopy_forcing`).
 
 Called from the `soil_boundary_fluxes!` methods and, in integrated models,
 from `lsm_radiant_energy_fluxes!`. See also
@@ -511,10 +520,21 @@ function update_soil_surface_temperature!(
     LW_d,
     Y,
     p,
-    t,
+    t;
+    h_atmos = model.boundary_conditions.top.atmos.h,
+    u_atmos = p.drivers.u,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(
+        model.boundary_conditions.top.atmos.gustiness,
+    ),
 )
     bc = model.boundary_conditions.top
-    bc isa AtmosDrivenFluxBC || return nothing
+    bc isa AtmosDrivenFluxBC || throw(
+        ArgumentError(
+            "The soil skin temperature solve requires an AtmosDrivenFluxBC at the top of the soil",
+        ),
+    )
     atmos = bc.atmos
     earth_param_set = model.parameters.earth_param_set
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
@@ -531,7 +551,6 @@ function update_soil_surface_temperature!(
     h_sfc = ClimaLand.surface_height(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     r = @. lazy(Δz_top / κ_top)
     β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
@@ -551,11 +570,11 @@ function update_soil_surface_temperature!(
         h_sfc,
         displ,
         p.drivers.P,
-        p.drivers.T,
-        p.drivers.q,
-        p.drivers.u,
+        T_atmos,
+        q_atmos,
+        u_atmos,
         roughness_model,
-        atmos.h,
+        h_atmos,
         gustiness,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,

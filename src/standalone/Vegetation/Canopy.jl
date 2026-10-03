@@ -12,6 +12,7 @@ import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 import StaticArrays
+import SurfaceFluxes
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP

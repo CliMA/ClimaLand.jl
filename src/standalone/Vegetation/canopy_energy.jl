@@ -126,18 +126,7 @@ function make_update_implicit_boundary_fluxes(
 
         # Compute transpiration, SHF, LHF
         ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
-        # Due to roundoff problem when multiplying and dividing by cp_d, set
-        # SHF to zero if the plant area index (leaves and stems) is < 0.05
-        zero_on_lai(X::FT, pai::FT) where {FT} = pai < FT(0.05) ? FT(0) : X
-        area_index = p.canopy.biomass.area_index
-        @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
-            p.canopy.turbulent_fluxes.shf,
-            area_index.leaf + area_index.stem,
-        )
-        @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
-            p.canopy.turbulent_fluxes.∂shf∂T,
-            area_index.leaf + area_index.stem,
-        )
+        zero_canopy_fluxes_without_plants!(canopy_tf, p)
         # Update the canopy radiation
         canopy_radiant_energy_fluxes!(
             p,
