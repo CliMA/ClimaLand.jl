@@ -45,6 +45,24 @@ soil_surface_temperature(_, p) =
     ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
 """
+    frozen_soil_vapor_weight(θ_i, ν)
+
+Return the weight `β_ice = (θ_i / ν)^4` [-] of the saturation specific
+humidity in the surface specific humidity of a frozen soil losing water by
+sublimation, given the volumetric ice content `θ_i` and the porosity `ν`
+[m³/m³]. This is a heuristic without a published source: it suppresses
+sublimation from a frozen surface whose pores hold little ice, in the same
+way that the dry-soil-layer conductance suppresses evaporation from an
+unfrozen surface holding little liquid water, and reaches one when the pores
+are filled with ice. The exponent is chosen so that the suppression is strong
+at intermediate ice contents.
+
+Called from `update_soil_surface_temperature!` and
+`get_update_surface_humidity_function(::EnergyHydrology)`.
+"""
+frozen_soil_vapor_weight(θ_i, ν) = (θ_i / ν)^4
+
+"""
     soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
 
 Return the weight `w` [-] such that the surface specific humidity of the soil
@@ -510,7 +528,7 @@ function update_soil_surface_temperature!(
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     r = @. lazy(Δz_top / κ_top)
-    β_ice = @. lazy((θ_i_sfc / ν_sfc)^4)
+    β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
     update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
