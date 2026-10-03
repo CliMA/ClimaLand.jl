@@ -159,15 +159,16 @@ NVTX.@annotate function canopy_boundary_fluxes!(
         t,
     )
     # Due to roundoff problem when multiplying and dividing by cp_d, set
-    # SHF to zero if LAI < 0.01
-    zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
+    # SHF to zero if the plant area index (leaves and stems) is < 0.05
+    zero_on_lai(X::FT, pai::FT) where {FT} = pai < FT(0.05) ? FT(0) : X
+    area_index = p.canopy.biomass.area_index
     @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
         p.canopy.turbulent_fluxes.shf,
-        p.canopy.biomass.area_index.leaf,
+        area_index.leaf + area_index.stem,
     )
     @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
         p.canopy.turbulent_fluxes.∂shf∂T,
-        p.canopy.biomass.area_index.leaf,
+        area_index.leaf + area_index.stem,
     )
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
@@ -335,7 +336,10 @@ function ClimaLand.get_update_surface_temperature_function(
 )
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    # Sensible heat is exchanged by all plant surfaces, leaves and stems
+    # (plant area index); transpiration (humidity callback) passes through
+    # stomata and uses the leaf area only.
+    area_index = p.canopy.biomass.area_index
     T_canopy = canopy_temperature(model.energy, model, Y, p)
     function update_T_sfc_at_a_point(
         ζ,
@@ -347,7 +351,7 @@ function ClimaLand.get_update_surface_temperature_function(
         z_0m,
         z_0b,
         leaf_Cd,
-        AI,
+        area_index_pt,
         T_canopy,
     )
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
@@ -362,6 +366,7 @@ function ClimaLand.get_update_surface_temperature_function(
             z_0b,
             scheme,
         )
+        AI = area_index_pt.leaf + area_index_pt.stem
         g_land = leaf_Cd * u_star * AI
 
         ΔΦ = Φ_int - Φ_sfc
@@ -373,7 +378,7 @@ function ClimaLand.get_update_surface_temperature_function(
     # Closure
     update_T_sfc_field(Cd, AI, T_c) =
         (args...) -> update_T_sfc_at_a_point(args..., Cd, AI, T_c)
-    return @. lazy(update_T_sfc_field(Cd, AI, T_canopy))
+    return @. lazy(update_T_sfc_field(Cd, area_index, T_canopy))
 end
 
 
@@ -427,14 +432,15 @@ the canopy temperature.
 function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    area_index = p.canopy.biomass.area_index
     function update_∂T_sfc∂T_at_a_point(
         u_star,
         g_h,
         earth_param_set,
         leaf_Cd,
-        AI,
+        area_index_pt,
     )
+        AI = area_index_pt.leaf + area_index_pt.stem
         g_land = leaf_Cd * u_star * AI
         ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T
@@ -442,7 +448,7 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     # Closure
     update_∂T_sfc∂T_field(AI_val, leaf_Cd) =
         (args...) -> update_∂T_sfc∂T_at_a_point(args..., leaf_Cd, AI_val)
-    return @. lazy(update_∂T_sfc∂T_field(AI, Cd))
+    return @. lazy(update_∂T_sfc∂T_field(area_index, Cd))
 end
 
 """

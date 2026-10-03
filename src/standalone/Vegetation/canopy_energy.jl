@@ -127,15 +127,16 @@ function make_update_implicit_boundary_fluxes(
         # Compute transpiration, SHF, LHF
         ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
         # Due to roundoff problem when multiplying and dividing by cp_d, set
-        # SHF to zero if LAI < 0.01
-        zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
+        # SHF to zero if the plant area index (leaves and stems) is < 0.05
+        zero_on_lai(X::FT, pai::FT) where {FT} = pai < FT(0.05) ? FT(0) : X
+        area_index = p.canopy.biomass.area_index
         @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
             p.canopy.turbulent_fluxes.shf,
-            p.canopy.biomass.area_index.leaf,
+            area_index.leaf + area_index.stem,
         )
         @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
             p.canopy.turbulent_fluxes.∂shf∂T,
-            p.canopy.biomass.area_index.leaf,
+            area_index.leaf + area_index.stem,
         )
         # Update the canopy radiation
         canopy_radiant_energy_fluxes!(
@@ -161,6 +162,8 @@ function make_compute_imp_tendency(
         # Energy Equation:
         # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
         # or( ac_canopy AI)∂T∂t = -∑F
+        # where AI = LAI + SAI is the plant area index: leaves and stems
+        # share the canopy temperature and both store heat.
         # where ∑F = F_sfc - F_bot, and both F_sfc and F_bot are per
         # unit area ground [W/m^2].
         # Because they are per unit area ground, we need the factor of
@@ -177,7 +180,7 @@ function make_compute_imp_tendency(
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf, eps(FT)))
+            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!
 end
@@ -246,7 +249,7 @@ function ClimaLand.make_compute_jacobian(
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
-                (ac_canopy * max(area_index.leaf, eps(FT))),
+                (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
     end
     return compute_jacobian!
@@ -279,7 +282,9 @@ function ClimaLand.total_energy_per_area!(
 )
     area_index = p.canopy.biomass.area_index
     @. surface_field .=
-        model.parameters.ac_canopy * area_index.leaf * Y.canopy.energy.T
+        model.parameters.ac_canopy *
+        (area_index.leaf + area_index.stem) *
+        Y.canopy.energy.T
     return nothing
 end
 

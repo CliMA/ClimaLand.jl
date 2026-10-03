@@ -782,7 +782,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
     λ_γ_PAR = canopy.radiative_transfer.parameters.λ_γ_PAR
-    fAPAR = p.canopy.radiative_transfer.par.abs
+    fAPAR = leaf_fAPAR(p) # PAR absorbed by leaves
     PAR = p.canopy.radiative_transfer.par_d
     βm = p.canopy.soil_moisture_stress.βm
     APAR_canopy_moles = @. lazy(
@@ -1059,7 +1059,7 @@ end
 function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     earth_param_set = canopy.earth_param_set
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
