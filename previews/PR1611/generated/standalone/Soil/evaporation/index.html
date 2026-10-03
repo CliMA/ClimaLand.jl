@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Coarse Sand Evaporation · ClimaLand.jl</title><meta name="title" content="Coarse Sand Evaporation · ClimaLand.jl"/><meta property="og:title" content="Coarse Sand Evaporation · ClimaLand.jl"/><meta property="twitter:title" content="Coarse Sand Evaporation · ClimaLand.jl"/><meta name="description" content="Documentation for ClimaLand.jl."/><meta property="og:description" content="Documentation for ClimaLand.jl."/><meta property="twitter:description" content="Documentation for ClimaLand.jl."/><script data-outdated-warner src="../../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../../assets/documenter.js"></script><script src="../../../../search_index.js"></script><script src="../../../../siteinfo.js"></script><script src="../../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../../"><img src="../../../../assets/logo.svg" alt="ClimaLand.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../../">ClimaLand.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../../">Home</a></li><li><a class="tocitem" href="../../../../fundamental_concepts/">Fundamental Concepts</a></li><li><a class="tocitem" href="../../../../getting_started/">Running your first simulation</a></li><li><a class="tocitem" href="../../../../available_models/">Available Models and Parameterizations</a></li><li><a class="tocitem" href="../../../../parameters/">Parameters</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox" checked/><label class="tocitem" for="menuitem-6"><span class="docs-label">Tutorials</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1" type="checkbox" checked/><label class="tocitem" for="menuitem-6-1"><span class="docs-label">Running standalone component simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Bucket/bucket_tutorial/">Bucket</a></li><li><input class="collapse-toggle" id="menuitem-6-1-2" type="checkbox" checked/><label class="tocitem" for="menuitem-6-1-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../boundary_conditions/">Boundary conditions</a></li><li><a class="tocitem" href="../richards_equation/">Richards Equation</a></li><li><a class="tocitem" href="../soil_energy_hydrology/">Energy and Hydrology</a></li><li><input class="collapse-toggle" id="menuitem-6-1-2-4" type="checkbox"/><label class="tocitem" for="menuitem-6-1-2-4"><span class="docs-label">Phase Changes</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../freezing_front/">Modeling a freezing front in unsaturated soil</a></li><li><a class="tocitem" href="../phase_change_analytic/">The Stefan problem</a></li></ul></li><li><a class="tocitem" href="../layered_soil/">Layered Soil</a></li><li class="is-active"><a class="tocitem" href>Coarse Sand Evaporation</a></li><li><a class="tocitem" href="../evaporation_gilat_loess/">Gilat Loess Evaporation</a></li><li><a class="tocitem" href="../sublimation/">Bare soil site</a></li><li><a class="tocitem" href="../changing_soil_parameterizations/">Changing soil parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-3" type="checkbox"/><label class="tocitem" for="menuitem-6-1-3"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Canopy/default_canopy/">Default canopy</a></li><li><a class="tocitem" href="../../Canopy/canopy_tutorial/">Default canopy fluxtower simulation </a></li><li><a class="tocitem" href="../../Canopy/changing_canopy_parameterizations/">Changing canopy parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-4" type="checkbox"/><label class="tocitem" for="menuitem-6-1-4"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Snow/base_tutorial/">Base tutorial</a></li><li><a class="tocitem" href="../../Snow/data_tutorial/">Data tutorial</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2"><span class="docs-label">Running Fluxnet simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../integrated/soil_canopy_fluxnet_tutorial/">Canopy and soil</a></li><li><a class="tocitem" href="../../../integrated/snowy_land_fluxnet_tutorial/">Canopy, soil, and snow</a></li><li><a class="tocitem" href="../../../integrated/changing_snowy_land_parameterizations/">Changing LandModel parameterizations</a></li><li><a class="tocitem" href="../../../integrated/fluxnet_data/">Data processing</a></li><li><a class="tocitem" href="../../../integrated/fluxnet_vis/">Visualization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-3" type="checkbox"/><label class="tocitem" for="menuitem-6-3"><span class="docs-label">Running global simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../global/bucket/">Bucket</a></li><li><a class="tocitem" href="../../../global/snowy_land/">Snow, soil, canopy</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-4" type="checkbox"/><label class="tocitem" for="menuitem-6-4"><span class="docs-label">Calibrating a ClimaLand model</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../calibration/perfect_model_site_level_calibration/">Single site perfect model</a></li><li><a class="tocitem" href="../../../calibration/obs_site_level_calibration/">Single site observations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-5" type="checkbox"/><label class="tocitem" for="menuitem-6-5"><span class="docs-label">Running coupled simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Bucket/coupled_bucket/">Coupled bucket model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-6" type="checkbox"/><label class="tocitem" for="menuitem-6-6"><span class="docs-label">For model developers</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Usage/model_tutorial/">Intro to standalone models</a></li><li><input class="collapse-toggle" id="menuitem-6-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-6-2"><span class="docs-label">Intro to multi-component models</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Usage/LSM_single_column_tutorial/">Single column tutorial</a></li><li><a class="tocitem" href="../../../integrated/handling_soil_fluxes/">Adjusting boundary conditions for the soil</a></li><li><a class="tocitem" href="../../../integrated/handling_snow_fluxes/">Adjusting boundary conditions for the snow</a></li></ul></li><li><a class="tocitem" href="../../Usage/domain_tutorial/">Intro to ClimaLand Domains</a></li><li><a class="tocitem" href="../../../shared_utilities/driver_tutorial/">Intro to forced site-level runs</a></li><li><a class="tocitem" href="../../../shared_utilities/timestepping/">Intro to implicit/explicit timestepping</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-7" type="checkbox"/><label class="tocitem" for="menuitem-7"><span class="docs-label">Writing and accessing outputs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../diagnostics/users_diagnostics/">For users</a></li><li><a class="tocitem" href="../../../../diagnostics/developers_diagnostics/">For developers</a></li><li><a class="tocitem" href="../../../../diagnostics/available_diagnostics/">Available diagnostics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8" type="checkbox"/><label class="tocitem" for="menuitem-8"><span class="docs-label">Model Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-1" type="checkbox"/><label class="tocitem" for="menuitem-8-1"><span class="docs-label">Vegetation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-1-1" type="checkbox"/><label class="tocitem" for="menuitem-8-1-1"><span class="docs-label">Radiative transfer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/radiative_transfer/beer_model/">Beer model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/radiative_transfer/twostream_model/">Two-Stream model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-2" type="checkbox"/><label class="tocitem" for="menuitem-8-1-2"><span class="docs-label">Photosynthesis</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/photosynthesis/farquhar_model/">Farquhar model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-3" type="checkbox"/><label class="tocitem" for="menuitem-8-1-3"><span class="docs-label">Stomatal conductance</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/stomatal_conductance/medlyn_model/">Medlyn model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-4" type="checkbox"/><label class="tocitem" for="menuitem-8-1-4"><span class="docs-label">Plant hydraulics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/plant_hydraulics/prognostic/">Prognostic model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-5" type="checkbox"/><label class="tocitem" for="menuitem-8-1-5"><span class="docs-label">Solar Induced Fluorescence</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/solar_induced_fluorescence/lee_model/">Lee model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-6" type="checkbox"/><label class="tocitem" for="menuitem-8-1-6"><span class="docs-label">Canopy structure</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/canopy_structure/prescribed_structure/">Prescribed structure</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-7" type="checkbox"/><label class="tocitem" for="menuitem-8-1-7"><span class="docs-label">Canopy energy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/canopy_energy/canopy_energy/">Physics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-8" type="checkbox"/><label class="tocitem" for="menuitem-8-1-8"><span class="docs-label">Canopy energy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/turbulent_fluxes/turbulent_fluxes/">Physics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-9" type="checkbox"/><label class="tocitem" for="menuitem-8-1-9"><span class="docs-label">Soil moisture stress</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/soil_moisture_stress/piecewise_model/">Piecewise model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/soil_moisture_stress/tuzet_model/">Tuzet model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/soil_moisture_stress/no_moisture_stress/">No moisture stress</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-1-10" type="checkbox"/><label class="tocitem" for="menuitem-8-1-10"><span class="docs-label">Autotrophic respiration</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/autotrophic_respiration/jules_model/">JULES model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2" type="checkbox"/><label class="tocitem" for="menuitem-8-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-2-1" type="checkbox"/><label class="tocitem" for="menuitem-8-2-1"><span class="docs-label">Physics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/soil/physics/richards_model/">Richards model</a></li><li><a class="tocitem" href="../../../../standalone/pages/soil/physics/energy_model/">Energy+Hydrology model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-2" type="checkbox"/><label class="tocitem" for="menuitem-8-2-2"><span class="docs-label">Biogeochemistry</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/soil/biogeochemistry/DAMM_model/">DAMM model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-3" type="checkbox"/><label class="tocitem" for="menuitem-8-3"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/snow/snow_model/">Snow model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-9" type="checkbox"/><label class="tocitem" for="menuitem-9"><span class="docs-label">Calibration and benchmark</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../calibration/">Calibrating model parameters</a></li><li><a class="tocitem" href="../../../../leaderboard/leaderboard/">Model Benchmark</a></li></ul></li><li><a class="tocitem" href="../../../../architectures/">Running on GPU or with MPI</a></li><li><input class="collapse-toggle" id="menuitem-11" type="checkbox"/><label class="tocitem" for="menuitem-11"><span class="docs-label">Additional resources</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../repo_structure/">Repository structure</a></li><li><a class="tocitem" href="../../../../restarts/">Restarting a simulation</a></li><li><input class="collapse-toggle" id="menuitem-11-3" type="checkbox"/><label class="tocitem" for="menuitem-11-3"><span class="docs-label">Software utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../itime/">ITime type</a></li><li><a class="tocitem" href="../../../../shared_utilities/">Shared utilities</a></li></ul></li><li><a class="tocitem" href="../../../../physical_units/">Physical units</a></li></ul></li><li><a class="tocitem" href="../../../../julia/">Julia background</a></li><li><input class="collapse-toggle" id="menuitem-13" type="checkbox"/><label class="tocitem" for="menuitem-13"><span class="docs-label">APIs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-13-1" type="checkbox"/><label class="tocitem" for="menuitem-13-1"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/soil/Soil/">Soil Energy and Hydrology</a></li><li><a class="tocitem" href="../../../../APIs/soil/SoilSourcesandBCs/">Soil Sources and Boundary Conditions</a></li><li><a class="tocitem" href="../../../../APIs/soil/SoilBiogeochemistry/">Soil Biogeochemistry</a></li><li><a class="tocitem" href="../../../../APIs/soil/SoilAlbedo/">Soil Albedo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-13-2" type="checkbox"/><label class="tocitem" for="menuitem-13-2"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/canopy/Canopy/">Canopy Models</a></li><li><a class="tocitem" href="../../../../APIs/canopy/PlantHydraulics/">Plant Hydraulics</a></li><li><a class="tocitem" href="../../../../APIs/canopy/Biomass/">Leaf, stem, root dynamics</a></li><li><a class="tocitem" href="../../../../APIs/canopy/Photosynthesis/">Photosynthesis</a></li><li><a class="tocitem" href="../../../../APIs/canopy/RadiativeTransfer/">Radiative Transfer</a></li><li><a class="tocitem" href="../../../../APIs/canopy/CanopyEnergy/">Energy</a></li><li><a class="tocitem" href="../../../../APIs/canopy/StomatalConductance/">Stomatal Conductance</a></li><li><a class="tocitem" href="../../../../APIs/canopy/AutotrophicRespiration/">Autotrophic Respiration</a></li></ul></li><li><a class="tocitem" href="../../../../APIs/SurfaceWater/">Surface Water Models</a></li><li><a class="tocitem" href="../../../../APIs/Bucket/">Bucket Model</a></li><li><a class="tocitem" href="../../../../APIs/Snow/">Snow Model</a></li><li><a class="tocitem" href="../../../../APIs/ClimaLand/">Integrated Models</a></li><li><input class="collapse-toggle" id="menuitem-13-7" type="checkbox"/><label class="tocitem" for="menuitem-13-7"><span class="docs-label">Shared Utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/AbstractModels/">Abstract Models and Functions</a></li><li><a class="tocitem" href="../../../../APIs/AuxiliaryVariablesCache/">Auxiliary Variables Cache</a></li><li><a class="tocitem" href="../../../../APIs/Callbacks/">Callbacks</a></li><li><a class="tocitem" href="../../../../APIs/Domains/">Domains</a></li><li><a class="tocitem" href="../../../../APIs/Drivers/">Drivers</a></li><li><a class="tocitem" href="../../../../APIs/Simulations/">Simulations</a></li><li><a class="tocitem" href="../../../../APIs/SolverFunctions/">Solver Functions</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../../contributing/">Contributor guide</a></li><li><a class="tocitem" href="../../../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Running standalone component simulations</a></li><li><a class="is-disabled">Soil</a></li><li class="is-active"><a href>Coarse Sand Evaporation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Coarse Sand Evaporation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl/../../../../.." title="View source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Soil-evaporation"><a class="docs-heading-anchor" href="#Soil-evaporation">Soil evaporation</a><a id="Soil-evaporation-1"></a><a class="docs-heading-anchor-permalink" href="#Soil-evaporation" title="Permalink"></a></h1><p>This sets up the simulation that mimicks the coarse sand lab experiment presented in Figures 7 and 8a of <a href="../../../../references/#Lehmann2008">Lehmann <em>et al.</em> [14]</a></p><pre><code class="language-julia hljs">using CairoMakie
+import SciMLBase
+import ClimaTimeSteppers as CTS
+using Thermodynamics
+
+using ClimaCore
+import ClimaParams as CP
+using SurfaceFluxes
+using StaticArrays
+using Statistics
+using Dates
+using DelimitedFiles: readdlm
+using ClimaUtilities.Utils: linear_interpolation
+
+using ClimaLand
+using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
+using ClimaLand.Soil
+import ClimaLand
+import ClimaLand.Parameters as LP
+import SurfaceFluxes.Parameters as SFP
+
+FT = Float64;
+toml_dict = LP.create_toml_dict(FT);
+earth_param_set = LP.LandParameters(toml_dict);
+thermo_params = LP.thermodynamic_parameters(earth_param_set);</code></pre><p>We model evaporation using Monin-Obukhov surface theory. In our soil model, it is not possible to set the initial condition corresponding to  MOST fluxes, but not include radiative fluxes. This is because for land surface models does not make sense to include atmospheric forcing but not radiative forcing.</p><p>Because of this, we need to supply downward welling short and long wave radiation. We chose SW = 0 and LW = σT^4, in order to approximately balance out the blackbody emission of the soil which is accounted for by our model. Our assumption is that in the lab experiment there was no radiative heating or cooling of the soil.</p><p>Timestepping:</p><pre><code class="language-julia hljs">start_date = DateTime(2005)
+stop_date = start_date + Day(13)
+dt = Float64(900.0)
+
+SW_d = (t) -&gt; 0
+LW_d = (t) -&gt; 301.15^4 * 5.67e-8
+radiation = PrescribedRadiativeFluxes(
+    FT,
+    TimeVaryingInput(SW_d),
+    TimeVaryingInput(LW_d),
+    start_date,
+);</code></pre><p>Set up atmospheric conditions that result in the potential evaporation rate obsereved in the experiment. Some of these conditions are reported in the paper.</p><pre><code class="language-julia hljs">T_air = FT(301.15)
+rh = FT(0.38)
+esat = Thermodynamics.saturation_vapor_pressure(
+    thermo_params,
+    T_air,
+    Thermodynamics.Liquid(),
+)
+e = rh * esat
+q = FT(0.622 * e / (101325 - 0.378 * e))
+precip = (t) -&gt; 0.0
+T_atmos = (t) -&gt; T_air
+u_atmos = (t) -&gt; 0.44
+q_atmos = (t) -&gt; q
+h_atmos = FT(0.1)
+P_atmos = (t) -&gt; 101325
+gustiness = FT(1e-2)
+atmos = PrescribedAtmosphere(
+    TimeVaryingInput(precip),
+    TimeVaryingInput(precip),
+    TimeVaryingInput(T_atmos),
+    TimeVaryingInput(u_atmos),
+    TimeVaryingInput(q_atmos),
+    TimeVaryingInput(P_atmos),
+    start_date,
+    h_atmos,
+    toml_dict;
+    gustiness = gustiness,
+);</code></pre><p>Define the boundary conditions</p><pre><code class="language-julia hljs">top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation);
+zero_water_flux = WaterFluxBC((p, t) -&gt; 0)
+zero_heat_flux = HeatFluxBC((p, t) -&gt; 0)
+boundary_fluxes = (;
+    top = top_bc,
+    bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
+);</code></pre><pre><code class="nohighlight hljs">[ Info: Warning: No runoff model was provided; zero runoff generated.
+</code></pre><p>Define the parameters n and alpha estimated by matching air entry and Δh_cap values in Lehmann paper</p><pre><code class="language-julia hljs">K_sat = FT(225.1 / 3600 / 24 / 1000)
+vg_n = FT(8.91)
+vg_α = FT(3)
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+ν = FT(0.43)
+θ_r = FT(0.043)
+S_s = FT(1e-3)
+ν_ss_om = FT(0.0)
+ν_ss_quartz = FT(1.0)
+ν_ss_gravel = FT(0.0)
+emissivity = FT(1.0)
+z_0m = FT(1e-2)
+z_0b = FT(1e-2)
+d_ds = FT(0.01)
+params = ClimaLand.Soil.EnergyHydrologyParameters(
+    toml_dict;
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm = hcm,
+    K_sat,
+    S_s,
+    θ_r,
+    emissivity,
+    z_0m,
+    z_0b,
+    d_ds,
+);</code></pre><p>IC functions</p><pre><code class="language-julia hljs">function hydrostatic_equilibrium(z, z_interface, params)
+    (; ν, S_s, hydrology_cm) = params
+    (; α, n, m) = hydrology_cm
+    if z &lt; z_interface
+        return -S_s * (z - z_interface) + ν
+    else
+        return ν * (1 + (α * (z - z_interface))^n)^(-m)
+    end
+end
+function set_ic!(Y, p, t0, model)
+    params = model.parameters
+    z = model.domain.fields.z
+    FT = eltype(Y.soil.ϑ_l)
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.001), params)
+    Y.soil.θ_i .= 0
+    T = FT(296.15)
+    ρc_s = @. Soil.volumetric_heat_capacity(
+        Y.soil.ϑ_l,
+        FT(0),
+        params.ρc_ds,
+        params.earth_param_set,
+    )
+    Y.soil.ρe_int =
+        Soil.volumetric_internal_energy.(FT(0), ρc_s, T, params.earth_param_set)
+end</code></pre><pre><code class="nohighlight hljs">set_ic! (generic function with 1 method)</code></pre><p>Domain - single column</p><pre><code class="language-julia hljs">zmax = FT(0)
+zmin = FT(-0.35)
+nelems = 28
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
+z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;</code></pre><p>Soil model, and create the prognostic vector Y and cache p:</p><pre><code class="language-julia hljs">soil = Soil.EnergyHydrology{FT}(;
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = boundary_fluxes,
+    sources = (),
+);</code></pre><p>Timestepping:</p><pre><code class="language-julia hljs">timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 6,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+saveat = Second(3600.0)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+sv_hr = saving_cb.affect!.saved_values
+
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; saveat),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    updateat = Second(3600.0),
+    diagnostics = (),
+);</code></pre><p>Solve</p><pre><code class="language-julia hljs">sol_hr = solve!(simulation);</code></pre><p>Repeat at lower resolution</p><pre><code class="language-julia hljs">zmax = FT(0)
+zmin = FT(-0.35)
+nelems = 7
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
+z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;</code></pre><p>Soil model, and create the prognostic vector Y and cache p:</p><pre><code class="language-julia hljs">soil = Soil.EnergyHydrology{FT}(;
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = boundary_fluxes,
+    sources = (),
+);</code></pre><p>Timestepping:</p><pre><code class="language-julia hljs">timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 6,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+
+saveat = Second(3600.0)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
+sv_lr = saving_cb.affect!.saved_values;
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    updateat = Second(3600.0),
+    solver_kwargs = (; saveat),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
+);</code></pre><p>Solve</p><pre><code class="language-julia hljs">sol_lr = solve!(simulation);</code></pre><p>Extract the evaporation at each saved step, and convert to mm/day</p><pre><code class="language-julia hljs">evap_hr =
+    [
+        parent(sv_hr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+        k in 1:length(sol_hr.t)
+    ] .* (1000 * 3600 * 24)
+evap_lr =
+    [
+        parent(sv_lr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+        k in 1:length(sol_lr.t)
+    ] .* (1000 * 3600 * 24)
+evaporation_data = ClimaLand.Artifacts.lehmann2008_evaporation_data();
+ref_soln_E = readdlm(evaporation_data, &#39;,&#39;)
+ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
+data_dates = ref_soln_E_350mm[:, 1]
+data_e = ref_soln_E_350mm[:, 2];</code></pre><p>Goodness of fit metrics: Mean Absolute Error (MAE) and Kling-Gupta Efficiency (KGE)</p><pre><code class="language-julia hljs">mae(x, obs) = mean(abs.(x .- obs));
+function kge(x, obs)
+    σx = std(x)
+    σo = std(obs)
+    μx = mean(x)
+    μo = mean(obs)
+    α = σx / σo
+    β = μx / μo
+    r = mean((x .- μx) .* (obs .- μo)) / (σx * σo)
+    return 1 - sqrt((β - 1)^2 + (r - 1)^2 + (α - 1)^2)
+end;</code></pre><p>We need to interpolate the simulation output to the timestamps of the data</p><pre><code class="language-julia hljs">interpolated_lr = [
+    linear_interpolation(FT.(sol_lr.t) ./ 3600 ./ 24, evap_lr, data_date)
+    for data_date in data_dates
+]
+interpolated_hr = [
+    linear_interpolation(FT.(sol_hr.t) ./ 3600 ./ 24, evap_hr, data_date)
+    for data_date in data_dates
+];</code></pre><pre><code class="language-julia hljs">@show mae(interpolated_lr, data_e)</code></pre><pre><code class="nohighlight hljs">1.00504009962844</code></pre><pre><code class="language-julia hljs">@show mae(interpolated_hr, data_e)</code></pre><pre><code class="nohighlight hljs">0.9791345504203255</code></pre><pre><code class="language-julia hljs">@show kge(interpolated_lr, data_e)</code></pre><pre><code class="nohighlight hljs">0.31352038497391155</code></pre><pre><code class="language-julia hljs">@show kge(interpolated_hr, data_e)</code></pre><pre><code class="nohighlight hljs">0.33707676714342905</code></pre><p>Figures</p><pre><code class="language-julia hljs">fig = Figure(size = (800, 400), fontsize = 22)
+ax = Axis(
+    fig[1, 1],
+    xlabel = &quot;Day&quot;,
+    ylabel = &quot;Evaporation rate (mm/d)&quot;,
+    xgridvisible = false,
+    ygridvisible = false,
+)
+CairoMakie.xlims!(minimum(data_dates), maximum(float.(sol_lr.t) ./ 3600 ./ 24))
+CairoMakie.lines!(
+    ax,
+    FT.(data_dates),
+    FT.(data_e),
+    label = &quot;Data&quot;,
+    color = :orange,
+    linewidth = 3,
+)
+CairoMakie.lines!(
+    ax,
+    FT.(sol_lr.t) ./ 3600 ./ 24,
+    evap_lr,
+    label = &quot;Model, 7 elements&quot;,
+    color = :blue,
+    linewidth = 3,
+)
+CairoMakie.lines!(
+    ax,
+    FT.(sol_hr.t) ./ 3600 ./ 24,
+    evap_hr,
+    label = &quot;Model, 28 elements&quot;,
+    color = :blue,
+    linestyle = :dash,
+    linewidth = 3,
+)
+CairoMakie.axislegend(ax, framevisible = false)
+
+ax = Axis(
+    fig[1, 2],
+    xlabel = &quot;Mass (g)&quot;,
+    yticksvisible = false,
+    yticklabelsvisible = false,
+    xgridvisible = false,
+    ygridvisible = false,
+)
+A_col = π * (0.027)^2
+mass_0_hr = sum(sol_hr.u[1].soil.ϑ_l) * 1e6 * A_col
+mass_loss_hr = [
+    mass_0_hr - sum(sol_hr.u[k].soil.ϑ_l) * 1e6 * A_col for
+    k in 1:length(sol_hr.t)
+]
+
+mass_0_lr = sum(sol_lr.u[1].soil.ϑ_l) * 1e6 * A_col
+mass_loss_lr = [
+    mass_0_lr - sum(sol_lr.u[k].soil.ϑ_l) * 1e6 * A_col for
+    k in 1:length(sol_lr.t)
+]
+CairoMakie.lines!(
+    ax,
+    cumsum(FT.(data_e)) ./ (1000 * 24) .* A_col .* 1e6,
+    FT.(data_e),
+    color = :orange,
+    linewidth = 3,
+)
+CairoMakie.lines!(ax, mass_loss_lr, evap_lr, color = :blue, linewidth = 3)
+CairoMakie.lines!(
+    ax,
+    mass_loss_hr,
+    evap_hr,
+    color = :blue,
+    linewidth = 3,
+    linestyle = :dash,
+)
+
+save(&quot;evaporation_lehmann2008_fig8.png&quot;, fig);</code></pre><p><img src="../evaporation_lehmann2008_fig8.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../layered_soil/">« Layered Soil</a><a class="docs-footer-nextpage" href="../evaporation_gilat_loess/">Gilat Loess Evaporation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Saturday 24 January 2026 06:08">Saturday 24 January 2026</span>. Using Julia version 1.11.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
