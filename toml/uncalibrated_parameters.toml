@@ -455,6 +455,37 @@ type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
+[stem_PAR_reflectance]
+value = 0.16
+type = "float"
+description = "PAR reflectance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_PAR_transmittance]
+value = 0.001
+type = "float"
+description = "PAR transmittance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_reflectance]
+value = 0.39
+type = "float"
+description = "NIR reflectance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_transmittance]
+value = 0.001
+type = "float"
+description = "NIR transmittance of stems (unitless); woody-plant value. Source: CLM5 (rhos, taus); Oleson et al. (2013), Lawrence et al. (2019)"
+tag = "AbstractRadiationModel"
+
+# Farquhar canopy scaling
+["canopy_nitrogen_extinction_coefficient"]
+value = 0.5
+type = "float"
+description = "Extinction coefficient of the exponential decay of leaf photosynthetic capacity (Vcmax25) with cumulative leaf area index from the top of the canopy, per unit LAI. Unitless. Sellers et al. (1992); Bonan (2019), Eq. 15.6."
+tag = "FarquharParameters"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]
@@ -602,10 +633,10 @@ type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
 
-["undercanopy_ground_transfer_coefficient"]
-value = 0.004
+["canopy_subcanopy_wind_extinction_coefficient"]
+value = 0.5
 type = "float"
-description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
+description = "Extinction coefficient of the wind speed below a plant canopy per unit plant area index (LAI + SAI); the wind driving the turbulent fluxes of the ground under a canopy is the reference-height wind times exp(-coefficient * PAI). Unitless. Brutsaert (1982); Mahfouf and Noilhan (1991); Norman et al. (1995)."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters

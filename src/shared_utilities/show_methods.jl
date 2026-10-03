@@ -734,6 +734,10 @@ function Base.show(io::IO, ::MIME"text/plain", ps::Canopy.TwoStreamParameters)
             _scalar_or_field_str(ps.α_PAR_leaf),
             ", τ_leaf=",
             _scalar_or_field_str(ps.τ_PAR_leaf),
+            ", α_stem=",
+            _scalar_or_field_str(ps.α_PAR_stem),
+            ", τ_stem=",
+            _scalar_or_field_str(ps.τ_PAR_stem),
         )
         println(
             io,
@@ -741,6 +745,10 @@ function Base.show(io::IO, ::MIME"text/plain", ps::Canopy.TwoStreamParameters)
             _scalar_or_field_str(ps.α_NIR_leaf),
             ", τ_leaf=",
             _scalar_or_field_str(ps.τ_NIR_leaf),
+            ", α_stem=",
+            _scalar_or_field_str(ps.α_NIR_stem),
+            ", τ_stem=",
+            _scalar_or_field_str(ps.τ_NIR_stem),
         )
         println(
             io,

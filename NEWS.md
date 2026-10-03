@@ -9,6 +9,25 @@ main
   1.3.
 - ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
   0.67.
+- ![][badge-🔥behavioralΔ] Use the plant area index `LAI + SAI` and plant-area-weighted optical
+  properties in canopy shortwave radiative transfer (`TwoStreamModel` and
+  `BeerLambertModel`), longwave emissivity (`1 - exp(-K_lw * (LAI + SAI))`),
+  big-leaf heat capacity (`ac_canopy * (LAI + SAI)`), and canopy sensible heat
+  exchange (`leaf_Cd * u_star * (LAI + SAI)`), while weighting the absorbed PAR
+  that drives photosynthesis and fluorescence by the leaf share `LAI / (LAI + SAI)`
+  (`Canopy.leaf_fAPAR`).
+- ![][badge-🔥behavioralΔ] Scale leaf-level photosynthetic capacities in `FarquharModel` by the
+  canopy-mean nitrogen decay factor `(1 - exp(-kn * LAI)) / (kn * LAI)` with
+  `kn = 0.5` (Sellers et al. 1992; Bonan 2019, Eq. 15.6).
+- ![][badge-🐛bugfix] Update the volumetric liquid water fraction `p.soil.θ_l` in
+  `make_update_implicit_aux` of `Soil.EnergyHydrology` so that implicit
+  evaluations see the updated liquid water fraction.
+- ![][badge-🐛bugfix] Convert `soil_vg_α` in the `US-NR1`, `US-MOz`, and `US-Ha1`
+  FLUXNET site configurations from $\text{cm}^{-1}$ (Wang et al. 2021) to SI
+  ($\text{m}^{-1}$), update `K_sat_plant` at `US-NR1` and `US-Ha1` to match
+  `default_parameters.toml` (`7e-8 m/s`), and mask frozen-soil dielectric sensor
+  readings (`TS <= 0 °C`) when initializing total volumetric water in
+  `FluxnetSimulations`.
 - ![][badge-✨feature] Register `soilrn`, `soilshf`, and `soillhf` in the default diagnostics of
   `Soil.EnergyHydrology` (and `LandModel`).
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
