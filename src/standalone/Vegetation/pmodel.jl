@@ -301,10 +301,11 @@ Defines the auxiliary vars of the P-model:
 
 - `instantaneous`: a NamedTuple with the canopy-level net photosynthesis (`An`),
     gross photosynthesis (`GPP`), dark respiration (`Rd`) and stomatal conductance
-    to CO2 (`gs_co2`), computed each step from the acclimated capacities.
+    to CO2 (`gs_co2`), computed each step from the acclimated capacities and scaled
+    instantaneously by the moisture stress factor `βm`.
 - `optimal`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
     `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4`, holding the instantaneous optimal
-    capacities — the target that the prognostic acclimated capacities
+    well-watered (`βm = 1`) capacities — the target that the prognostic acclimated capacities
     `Y.canopy.photosynthesis.acclimated` relax toward (see `prognostic_vars`).
 """
 ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous, :optimal)
@@ -445,6 +446,9 @@ function compute_full_pmodel_outputs(
     )
     (; Jmax25_c3, Jmax25_c4, Vcmax25_c3, Vcmax25_c4) = optimal_capacities
 
+    # The capacities are the stressed optimum itself, as in rpmodel, so βm is
+    # already contained in Vcmax25 and Jmax25 (βm = 1 below). At the optimum
+    # this equals applying βm to the unstressed GPP, Rd, and gs.
     blended_output = compute_blended_pmodel_photosynthesis(
         optimal_capacities,
         fractional_c3,
@@ -453,6 +457,7 @@ function compute_full_pmodel_outputs(
         ca,
         T_canopy,
         APAR,
+        FT(1),
         parameters,
         constants,
     )
@@ -770,7 +775,7 @@ Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along
 dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
-function update_photosynthesis!(p, Y, model::PModel, canopy)
+function update_photosynthesis!(p, Y, model::PModel{FT}, canopy) where {FT}
     parameters = model.parameters
     constants = model.constants
 
@@ -795,6 +800,10 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.N_a,
         ),
     )
+    # The acclimated capacities are the well-watered ones (βm = 1), which
+    # acclimate slowly to light, temperature, VPD, and CO2. The water stress
+    # βm acts instantaneously on assimilation and conductance below (Stocker
+    # et al., 2020), so that stomata close as soon as the water supply fails.
     @. p.canopy.photosynthesis.optimal = compute_optimal_capacities(
         parameters,
         constants,
@@ -804,7 +813,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         P_air,
         q_air,
         c_co2_air,
-        βm,
+        FT(1),
         APAR_canopy_moles,
     )
 
@@ -819,6 +828,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             c_co2_air,
             T_canopy,
             APAR_canopy_moles,
+            βm,
             parameters,
             constants,
             thermo_params,
@@ -836,6 +846,7 @@ function compute_blended_pmodel_photosynthesis(
     c_co2_air::FT,
     T_canopy::FT,
     APAR_canopy_moles::FT,
+    βm::FT,
     parameters,
     constants,
     thermo_params,
@@ -855,6 +866,7 @@ function compute_blended_pmodel_photosynthesis(
         c_co2_air,
         T_canopy,
         APAR_canopy_moles,
+        βm,
         parameters,
         constants,
     )
@@ -868,6 +880,7 @@ function compute_blended_pmodel_photosynthesis(
     c_co2_air::FT,
     T_canopy::FT,
     APAR_canopy_moles::FT,
+    βm::FT,
     parameters,
     constants,
 ) where {FT}
@@ -956,6 +969,7 @@ function compute_blended_pmodel_photosynthesis(
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
     # This function below would become c3_dark_respiration_pmodel
     Rd = blend(
+        βm *
         constants.fC3 *
         Vcmax25_c3 *
         inst_temp_scaling_rd(
@@ -964,6 +978,7 @@ function compute_blended_pmodel_photosynthesis(
             constants.aRd,
             constants.bRd,
         ),
+        βm *
         constants.fC3 *
         Vcmax25_c4 *
         inst_temp_scaling_rd(
@@ -975,11 +990,15 @@ function compute_blended_pmodel_photosynthesis(
         fractional_c3,
     )
 
-    # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
-    # this factor to Vcmax and Jmax, we do not apply it again here
+    # The moisture stress factor βm multiplies GPP, Rd, and (through
+    # gs = A / (ca (1 - χ)) at fixed χ) the stomatal conductance, as in
+    # Stocker et al. (2020) and rpmodel. Since the optimal Vcmax25 ∝ βm and
+    # Jmax25 is such that J(I_acc) ∝ βm, this equals acclimating to the
+    # stressed optimum at the acclimation light level, without the acclimation
+    # lag. βm is applied to each photosynthetic pathway before blending.
     GPP = blend(
-        gross_photosynthesis(Ac_c3, Aj_c3),
-        gross_photosynthesis(Ac_c4, Aj_c4),
+        βm * gross_photosynthesis(Ac_c3, Aj_c3),
+        βm * gross_photosynthesis(Ac_c4, Aj_c4),
         fractional_c3,
     )
     An = net_photosynthesis(GPP, Rd)
@@ -987,9 +1006,9 @@ function compute_blended_pmodel_photosynthesis(
     χ_c3 = clamp(ci_c3 / ca_pp, FT(0), FT(1))
     χ_c4 = clamp(ci_c4 / ca_pp, FT(0), FT(1))
     gs_co2_c3 =
-        gs_co2_pmodel(χ_c3, c_co2_air, gross_photosynthesis(Ac_c3, Aj_c3))
+        βm * gs_co2_pmodel(χ_c3, c_co2_air, gross_photosynthesis(Ac_c3, Aj_c3))
     gs_co2_c4 =
-        gs_co2_pmodel(χ_c4, c_co2_air, gross_photosynthesis(Ac_c4, Aj_c4))
+        βm * gs_co2_pmodel(χ_c4, c_co2_air, gross_photosynthesis(Ac_c4, Aj_c4))
     gs_co2 = blend(gs_co2_c3, gs_co2_c4, fractional_c3) # Assumes C3 and C4 plants act in parallel
     return (; Rd, GPP, An, gs_co2)
 end

@@ -97,6 +97,21 @@ for FT in (Float32, Float64)
             θ_r + (ν - θ_r) / 2,
         )
         @test βm_computed ≈ βm_expected
+
+        hydrology_cm = Soil.vanGenuchten{FT}(; α = FT(2.0), n = FT(1.5))
+        sms_fc = PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict;
+            soil_params = (; ν, θ_r, hydrology_cm),
+        )
+        @test sms_fc.θ_low == θ_r
+        S_fc = (1 + 1 / hydrology_cm.m)^(-hydrology_cm.m)
+        @test S_fc ≈ FT(0.63) atol = FT(0.01) # n = 1.5
+        @test Soil.field_capacity_saturation(hydrology_cm) ≈ S_fc
+        @test sms_fc.θ_high ≈ θ_r + S_fc * (ν - θ_r)
+        @test Soil.field_capacity_saturation(
+            Soil.BrooksCorey{FT}(; c = FT(0.3), ψb = FT(-0.1)),
+        ) == 1
     end
 
 end
