@@ -1212,15 +1212,24 @@ end
 ### Screen-level diagnostics: t2m, q2m, u10m ###
 
 """
-    screen_level(model, Y, p)
+    screen_level(model, Y, p; T_atmos = p.drivers.T, q_atmos = p.drivers.q)
 
 Return the lazy broadcast of `ClimaLand.screen_level_values` for the surface
 of a soil, snow, or canopy `model`: the air temperature and specific humidity
 2 m above its apparent sink for heat, the wind speed 10 m above its apparent
 sink for momentum, and its heat conductance, reconstructed from the stored
-Monin-Obukhov profiles of its flux solve.
+Monin-Obukhov profiles of its flux solve. `T_atmos` and `q_atmos` are the air
+temperature and specific humidity the solve was forced with at its reference
+height; for soil and snow below a canopy, integrated models pass the
+canopy-air values of `Canopy.subcanopy_forcing`.
 """
-function screen_level(model::EnergyHydrology{FT}, Y, p) where {FT}
+function screen_level(
+    model::EnergyHydrology{FT},
+    Y,
+    p;
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+) where {FT}
     tf = p.soil.turbulent_fluxes
     params = model.parameters
     earth_param_set = params.earth_param_set
@@ -1234,15 +1243,21 @@ function screen_level(model::EnergyHydrology{FT}, Y, p) where {FT}
             FT(0), # displacement height
             params.z_0m,
             params.z_0b,
-            p.drivers.T,
-            p.drivers.q,
+            T_atmos,
+            q_atmos,
             FT(2),
             FT(10),
             earth_param_set,
         ),
     )
 end
-function screen_level(model::SnowModel{FT}, Y, p) where {FT}
+function screen_level(
+    model::SnowModel{FT},
+    Y,
+    p;
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+) where {FT}
     tf = p.snow.turbulent_fluxes
     params = model.parameters
     earth_param_set = params.earth_param_set
@@ -1256,8 +1271,8 @@ function screen_level(model::SnowModel{FT}, Y, p) where {FT}
             FT(0), # displacement height
             params.z_0m,
             params.z_0b,
-            p.drivers.T,
-            p.drivers.q,
+            T_atmos,
+            q_atmos,
             FT(2),
             FT(10),
             earth_param_set,
@@ -1294,17 +1309,35 @@ Return the tuple of `(area fraction, screen-level values)` pairs of the
 surfaces of `land_model` that exchange with the atmosphere, each as a lazy
 broadcast of a `Tuple`, for `ClimaLand.screen_level_mean`. The soil and
 snow of a `LandModel` are weighted by the bare soil and snow cover fractions,
-the canopy covers the whole area, and lakes are not included.
+the canopy covers the whole area, and lakes are not included. Below a canopy,
+the soil and snow profiles are reconstructed toward the canopy-air state their
+flux solves were forced with (`Canopy.subcanopy_forcing`).
 """
 screen_level_pairs(
     model::Union{EnergyHydrology{FT}, SnowModel{FT}, CanopyModel{FT}},
     Y,
     p,
 ) where {FT} = (weighted_screen_level(FT(1), screen_level(model, Y, p)),)
-screen_level_pairs(model::SoilCanopyModel{FT}, Y, p) where {FT} = (
-    weighted_screen_level(FT(1), screen_level(model.soil, Y, p)),
-    weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
-)
+function screen_level_pairs(model::SoilCanopyModel{FT}, Y, p) where {FT}
+    soil_forcing = ClimaLand.Canopy.subcanopy_forcing(
+        model.canopy,
+        p,
+        ClimaLand.surface_height(model.soil, Y, p),
+    )
+    return (
+        weighted_screen_level(
+            FT(1),
+            screen_level(
+                model.soil,
+                Y,
+                p;
+                T_atmos = soil_forcing.T_atmos,
+                q_atmos = soil_forcing.q_atmos,
+            ),
+        ),
+        weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+    )
+end
 function screen_level_pairs(model::SoilSnowModel{FT}, Y, p) where {FT}
     scf = p.snow.snow_cover_fraction
     return (
@@ -1315,14 +1348,41 @@ function screen_level_pairs(model::SoilSnowModel{FT}, Y, p) where {FT}
         weighted_screen_level(scf, screen_level(model.snow, Y, p)),
     )
 end
-screen_level_pairs(model::LandModel{FT}, Y, p) where {FT} = (
-    weighted_screen_level(p.bare_soil_fraction, screen_level(model.soil, Y, p)),
-    weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
-    weighted_screen_level(
-        p.snow.snow_cover_fraction,
-        screen_level(model.snow, Y, p),
-    ),
-)
+function screen_level_pairs(model::LandModel{FT}, Y, p) where {FT}
+    soil_forcing = ClimaLand.Canopy.subcanopy_forcing(
+        model.canopy,
+        p,
+        ClimaLand.surface_height(model.soil, Y, p),
+    )
+    snow_forcing = ClimaLand.Canopy.subcanopy_forcing(
+        model.canopy,
+        p,
+        ClimaLand.surface_height(model.snow, Y, p),
+    )
+    return (
+        weighted_screen_level(
+            p.bare_soil_fraction,
+            screen_level(
+                model.soil,
+                Y,
+                p;
+                T_atmos = soil_forcing.T_atmos,
+                q_atmos = soil_forcing.q_atmos,
+            ),
+        ),
+        weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+        weighted_screen_level(
+            p.snow.snow_cover_fraction,
+            screen_level(
+                model.snow,
+                Y,
+                p;
+                T_atmos = snow_forcing.T_atmos,
+                q_atmos = snow_forcing.q_atmos,
+            ),
+        ),
+    )
+end
 
 # Lazy broadcast of the pair (weight, screen-level values)
 weighted_screen_level(w, s) = @. lazy(tuple(w, s))

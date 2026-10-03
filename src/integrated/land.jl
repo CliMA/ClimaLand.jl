@@ -553,6 +553,11 @@ function make_update_boundary_fluxes(
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+        # The canopy fluxes come first, so that the canopy-air state
+        # p.canopy.turbulent_fluxes.T_sfc and q_sfc is current when the ground
+        # solves in lsm_radiant_energy_fluxes! read it; the canopy radiation
+        # LW_n and SW_n is set there, after the canopy fluxes
+        update_canopy_bf!(p, Y, t)
         # Radiation - updates Rn for soil, lake, snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -596,8 +601,6 @@ function make_update_boundary_fluxes(
             land.lake,
         )
 
-        # Update canopy
-        update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
     end
@@ -732,6 +735,19 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
+    # The snow and soil surfaces below the canopy exchange with the air at the
+    # sub-canopy reference height, with the wind there; bare ground is forced
+    # as a standalone surface
+    snow_forcing = Canopy.subcanopy_forcing(
+        canopy,
+        p,
+        ClimaLand.surface_height(snow, Y, p),
+    )
+    soil_forcing = Canopy.subcanopy_forcing(
+        canopy,
+        p,
+        ClimaLand.surface_height(land.soil, Y, p),
+    )
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
         snow,
@@ -740,7 +756,12 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        h_atmos = snow_forcing.h_atmos,
+        u_atmos = snow_forcing.u_atmos,
+        T_atmos = snow_forcing.T_atmos,
+        q_atmos = snow_forcing.q_atmos,
+        gustiness = snow_forcing.gustiness,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -751,7 +772,12 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        h_atmos = soil_forcing.h_atmos,
+        u_atmos = soil_forcing.u_atmos,
+        T_atmos = soil_forcing.T_atmos,
+        q_atmos = soil_forcing.q_atmos,
+        gustiness = soil_forcing.gustiness,
     )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
