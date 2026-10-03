@@ -37,6 +37,14 @@ main
 - ![][badge-✨feature] Register the fluxes of the soil below the canopy, `soilrn`, `soilshf`,
   and `soillhf`, in the possible diagnostics of `LandModel` and
   `SoilCanopyModel`.
+- ![][badge-🔥behavioralΔ] Apply the soil moisture stress factor `βm` instantaneously to `GPP`,
+  `Rd`, `An`, and `gs_co2` in `PModel` while acclimating well-watered capacities
+  (`βm = 1`), and set the upper moisture threshold `θ_high` in
+  `PiecewiseMoistureStressModel` to the field capacity
+  `θ_fc = θ_r + S_fc * (ν - θ_r)`, with `S_fc = (1 + 1/m)^(-m)` the effective
+  saturation at the inflection point of the van Genuchten retention curve
+  (`Soil.field_capacity_saturation`; van Genuchten 1980; Assouline and Or
+  2014), when soil hydrology parameters are available.
 
 v1.13.0
 ----
