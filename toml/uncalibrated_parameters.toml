@@ -455,6 +455,37 @@ type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
+[stem_PAR_reflectance]
+value = 0.16
+type = "float"
+description = "PAR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_PAR_transmittance]
+value = 0.001
+type = "float"
+description = "PAR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_reflectance]
+value = 0.39
+type = "float"
+description = "NIR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_transmittance]
+value = 0.001
+type = "float"
+description = "NIR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+# Farquhar canopy scaling
+["canopy_nitrogen_extinction_coefficient"]
+value = 0.5
+type = "float"
+description = "Extinction coefficient of the exponential decay of leaf photosynthetic capacity (Vcmax25) with cumulative leaf area index from the top of the canopy, per unit LAI. Unitless. With this scaling, Vcmax25 is the capacity of leaves at the top of the canopy; set to 0 to use Vcmax25 as the canopy-mean leaf capacity. Sellers et al. (1992); Bonan (2019), Eq. 15.6."
+tag = "FarquharParameters"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]
@@ -602,10 +633,10 @@ type = "float"
 description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the plant surfaces and the canopy air is Cd * u_star * PAI (m/s), in series with the aerodynamic conductance from the canopy air to the atmosphere. Compare the laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2) of Choudhury and Monteith 1988; Jones 2014, Ch. 3"
 tag = "MoninObukhovCanopyFluxes"
 
-["undercanopy_ground_transfer_coefficient"]
-value = 0.004
+["canopy_subcanopy_wind_extinction_coefficient"]
+value = 0.5
 type = "float"
-description = "Turbulent transfer coefficient C_s between the ground and the canopy air under a dense canopy, giving the under-canopy resistance 1/(C_s u*) (unitless). Source: CLM5 (csoilc); Zeng et al. (2005)"
+description = "Extinction coefficient of the wind speed below a plant canopy per unit plant area index (LAI + SAI); the wind driving the turbulent fluxes of the ground under a canopy is the reference-height wind times exp(-coefficient * PAI). Unitless. Brutsaert (1982); Mahfouf and Noilhan (1991); Norman et al. (1995)."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters
