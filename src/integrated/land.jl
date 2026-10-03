@@ -728,6 +728,11 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
+    # The snow and soil surfaces below the canopy see the attenuated wind,
+    # into which the gustiness is already folded
+    u_ground = Canopy.subcanopy_wind(canopy, p)
+    gustiness_ground = SurfaceFluxes.ConstantGustinessSpec(FT(0))
+
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
         snow,
@@ -736,7 +741,9 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        u_atmos = u_ground,
+        gustiness = gustiness_ground,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -747,7 +754,9 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        u_atmos = u_ground,
+        gustiness = gustiness_ground,
     )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked

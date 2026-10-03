@@ -30,6 +30,11 @@ main
   `FluxnetSimulations`.
 - ![][badge-✨feature] Register `soilrn`, `soilshf`, and `soillhf` in the default diagnostics of
   `Soil.EnergyHydrology` (and `LandModel`).
+- ![][badge-🔥behavioralΔ] Attenuate the wind speed driving sub-canopy soil turbulent fluxes
+  exponentially with plant area index (`u_soil = sqrt(u^2 + u_gust^2) * exp(-0.5 * (LAI + SAI))`)
+  in `update_soil_surface_temperature!`, and prevent reverse transpiration
+  through stomata during condensation (`q_sfc >= q_vap_int` and `lhf = 0` when
+  `vapor_flux <= 0`) in `canopy_boundary_fluxes!`.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

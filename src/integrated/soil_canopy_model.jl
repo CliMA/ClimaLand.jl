@@ -390,13 +390,18 @@ function lsm_radiant_energy_fluxes!(
     # R_net_soil is positive towards the soil; the skin solve takes SW_n
     # positive upward
     SW_n_soil = @. lazy(-R_net_soil)
+    # The soil surface below the canopy sees the attenuated wind, into which
+    # the gustiness is already folded
+    u_ground = Canopy.subcanopy_wind(land.canopy, p)
     Soil.update_soil_surface_temperature!(
         land.soil,
         SW_n_soil,
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        u_atmos = u_ground,
+        gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(0)),
     )
 
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)
