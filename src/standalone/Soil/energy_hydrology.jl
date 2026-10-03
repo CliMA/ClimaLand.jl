@@ -1125,11 +1125,11 @@ function ClimaLand.get_update_surface_humidity_function(
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,
-            (θ_i_sfc / ν_sfc)^4,
+            frozen_soil_vapor_weight(θ_i_sfc, ν_sfc),
             Tf_depressed_sfc,
             qsat_sfc,
         ),
-    ) # β_ice = (θ_i_sfc / ν_sfc)^4
+    )
 end
 
 function ClimaLand.surface_roughness_model(
