@@ -99,7 +99,7 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Latent Heat Flux",
         standard_name = "latent_heat_flux",
         units = "W m^-2",
-        comments = "Exchange of energy at the land-atmosphere interface due to water evaporation or sublimation.",
+        comments = "Exchange of energy at the land-atmosphere interface due to water evaporation or sublimation. The vapor flux is multiplied by the latent heat of vaporization also where it sublimates from snow or frozen soil, so over sublimating surfaces this is about 12% smaller than the flux-tower convention using the latent heat of sublimation; the energy budget of the land is closed because the internal energy of ice carries the latent heat of fusion.",
         compute! = (out, Y, p, t) ->
             compute_latent_heat_flux!(out, Y, p, t, land_model),
     )
@@ -901,7 +901,7 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Soil Latent Heat Flux",
         standard_name = "soil_Latent_Heat_Flux",
         units = "W m^-2",
-        comments = "Soil latent heat flux, the amount of liquid water evaporated by the soil, expressed in energy units (W m^-2).",
+        comments = "Soil latent heat flux, the water evaporated or sublimated by the soil surface, expressed in energy units (W m^-2) with the latent heat of vaporization (see `lhf`).",
         compute! = (out, Y, p, t) ->
             compute_soil_latent_heat_flux!(out, Y, p, t, land_model),
     )

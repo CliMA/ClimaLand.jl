@@ -23,8 +23,24 @@ main
   that drives photosynthesis and fluorescence by the leaf share `LAI / (LAI + SAI)`
   (`Canopy.leaf_fAPAR`).
 - ![][badge-🔥behavioralΔ] Scale leaf-level photosynthetic capacities in `FarquharModel` by the
-  canopy-mean nitrogen decay factor `(1 - exp(-kn * LAI)) / (kn * LAI)` with
-  `kn = 0.5` (Sellers et al. 1992; Bonan 2019, Eq. 15.6).
+  canopy-mean nitrogen decay factor `(1 - exp(-kn * LAI)) / (kn * LAI)`
+  (Sellers et al. 1992; Bonan 2019, Eq. 15.6), with the extinction coefficient
+  `kn` read from the new TOML parameter `canopy_nitrogen_extinction_coefficient`
+  (default 0.5) into the new field `FarquharParameters.kn`. The parameter
+  `Vcmax25` now denotes the capacity of leaves at the top of the canopy;
+  `get_Vcmax25_leaf` returns the canopy-mean leaf value and
+  `get_Vcmax25_canopy` (the `vcmax25` diagnostic) its integral over the leaf
+  area index. Site values of `Vcmax25` calibrated as canopy-mean leaf values
+  are reproduced by setting `canopy_nitrogen_extinction_coefficient` to zero,
+  or by dividing them by `canopy_nitrogen_scaling(kn, LAI)`.
+- ![][badge-🔥behavioralΔ] Start the snow surface temperature solve of the
+  `EquilibriumGradientTemperatureModel` from `min((T_air + T_snow)/2, T_freeze)`
+  instead of `max(...)`, so that the initial guess lies at or below the freezing
+  cap of the solution.
+- ![][badge-🔥behavioralΔ] `AtmosDrivenCanopyBC` throws an `ArgumentError` when the
+  reference height of a `PrescribedAtmosphere` does not exceed the canopy
+  displacement height plus the momentum roughness length everywhere, instead of
+  producing undefined Monin-Obukhov fluxes at run time.
 - ![][badge-🐛bugfix] Update the volumetric liquid water fraction `p.soil.θ_l` in
   `make_update_implicit_aux` of `Soil.EnergyHydrology` so that implicit
   evaluations see the updated liquid water fraction.
