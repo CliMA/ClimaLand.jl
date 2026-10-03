@@ -143,6 +143,9 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Big Leaf model tests" begin
         include("standalone/Vegetation/test_bigleaf_parameterizations.jl")
     end
+    @safetestset "Canopy helper function tests" begin
+        include("standalone/Vegetation/test_canopy_helpers.jl")
+    end
     @safetestset "Two Stream model tests" begin
         include("standalone/Vegetation/test_two_stream.jl")
     end
