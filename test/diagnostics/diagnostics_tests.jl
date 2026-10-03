@@ -407,7 +407,16 @@ end
             ) .== FT(0.000412),
         )
 
-        snow_diag_vars = ["snowtbot", "ghf", "snowk", "snowtsfc", "snowtb"]
+        snow_diag_vars = [
+            "snowtbot",
+            "ghf",
+            "snowk",
+            "snowtsfc",
+            "snowtb",
+            "soilrn",
+            "soilshf",
+            "soillhf",
+        ]
         possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
         for v in snow_diag_vars
             @test v in possible

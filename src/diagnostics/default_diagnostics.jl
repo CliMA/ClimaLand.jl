@@ -404,7 +404,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.AtmosDrivenFluxBC,
 )
-    append!(diagnostics, ["salb"])
+    append!(diagnostics, ["salb", "soilrn", "soilshf", "soillhf"])
     return nothing
 end
 function add_diagnostics!(

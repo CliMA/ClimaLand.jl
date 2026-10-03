@@ -105,10 +105,21 @@ function set_fluxnet_ic!(
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
         θ_l_0 = tmp_ic
     else
+        swc_col = data[:, column_name_map["SWC_F_MDS_1"]]
+        ts_idx = column_name_map["TS_F_MDS_1"]
+        if !isnothing(ts_idx)
+            ts_col = data[:, ts_idx]
+            # Frozen records are masked with the missing-value marker
+            unfrozen_swc =
+                ifelse.(ts_col .> 0, swc_col, oftype(first(swc_col), val))
+            if any(x -> !var_missing(x; val), unfrozen_swc)
+                swc_col = unfrozen_swc
+            end
+        end
         θ_l_0 = min.(
             FT(
                 get_data_at_start_date(
-                    data[:, column_name_map["SWC_F_MDS_1"]],
+                    swc_col,
                     Δ_date;
                     preprocess_func = x -> x / 100,
                     val,
