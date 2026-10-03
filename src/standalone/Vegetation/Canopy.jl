@@ -11,6 +11,7 @@ import ClimaCore.MatrixFields: @name
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
+import StaticArrays
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
@@ -108,15 +109,23 @@ end
     soil_params
 ) where {FT <: AbstractFloat}
 
-Helper function to create `PiecewiseMoistureStressModel` by calculating field capacity (θ_high)
-and wilting point (θ_low) from the soil parameters.
+Create a `PiecewiseMoistureStressModel` whose thresholds are computed from the
+soil parameters: the low threshold `θ_low` is the residual water content `θ_r`,
+and the high threshold `θ_high` is the field capacity
 
-The low and high thresholds for the piecewise soil moisture stress function are given by
-the residual soil water content and the soil porosity, respectively.
+    θ_high = θ_r + S_c (ν - θ_r),
 
-The soil parameters should be a named tuple with keys of `ν` and `θ_r` 
-(additional keys may be present but they will not be used). These may 
-be ClimaCore fields or floats, but must be consistently one or the other.
+where `S_c` is the critical effective saturation of the van Genuchten
+retention curve (Lehmann et al., 2008). This is the water content at the
+inflection point of the retention curve, which Assouline and Or (2014) use as
+the field capacity. Stomata are then unstressed above field capacity instead
+of only at saturation.
+
+The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
+the field capacity, `hydrology_cm` with a field `S_c` (as returned by
+`Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`, `θ_high` is the
+porosity `ν`. The entries may be ClimaCore fields or floats, but must be
+consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
 """
@@ -134,8 +143,13 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = soil_params.ν
-    θ_low = soil_params.θ_r
+    θ_high = if :hydrology_cm in propertynames(soil_params)
+        S_c = soil_params.hydrology_cm.S_c
+        @. soil_params.θ_r + S_c * (soil_params.ν - soil_params.θ_r)
+    else
+        copy(soil_params.ν)
+    end
+    θ_low = copy(soil_params.θ_r)
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
 end

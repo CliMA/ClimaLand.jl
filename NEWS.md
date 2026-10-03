@@ -35,6 +35,11 @@ main
   in `update_soil_surface_temperature!`, and prevent reverse transpiration
   through stomata during condensation (`q_sfc >= q_vap_int` and `lhf = 0` when
   `vapor_flux <= 0`) in `canopy_boundary_fluxes!`.
+- ![][badge-🔥behavioralΔ] Apply the soil moisture stress factor `βm` instantaneously to `GPP`,
+  `Rd`, `An`, and `gs_co2` in `PModel` while acclimating well-watered capacities
+  (`βm = 1`), and set the upper moisture threshold `θ_high` in
+  `PiecewiseMoistureStressModel` to the van Genuchten field capacity
+  `θ_fc = θ_r + S_c * (ν - θ_r)` when soil hydrology parameters are available.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

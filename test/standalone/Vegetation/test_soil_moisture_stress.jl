@@ -97,6 +97,15 @@ for FT in (Float32, Float64)
             θ_r + (ν - θ_r) / 2,
         )
         @test βm_computed ≈ βm_expected
+
+        hydrology_cm = Soil.vanGenuchten{FT}(; α = FT(2.0), n = FT(1.5))
+        sms_fc = PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict;
+            soil_params = (; ν, θ_r, hydrology_cm),
+        )
+        @test sms_fc.θ_low == θ_r
+        @test sms_fc.θ_high ≈ θ_r + hydrology_cm.S_c * (ν - θ_r)
     end
 
 end

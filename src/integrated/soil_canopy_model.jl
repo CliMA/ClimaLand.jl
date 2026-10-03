@@ -84,10 +84,6 @@ struct SoilCanopyModel{
         if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
             check_land_equality(
-                canopy.soil_moisture_stress.θ_high,
-                soil.parameters.ν,
-            )
-            check_land_equality(
                 canopy.soil_moisture_stress.θ_low,
                 soil.parameters.θ_r,
             )
@@ -128,7 +124,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
-            soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
+            soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
         ),
     ) where {FT}
 
@@ -174,7 +170,11 @@ function SoilCanopyModel{FT}(
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
             toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
         ),
     ),
 ) where {FT}
