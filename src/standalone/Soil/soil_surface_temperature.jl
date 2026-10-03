@@ -45,16 +45,38 @@ soil_surface_temperature(_, p) =
     ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
 """
-    soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
+    frozen_soil_vapor_weight(θ_i, ν)
 
-Return the weight `w` [-] such that the surface specific humidity of the soil
-is `q_sfc = w * qsat + (1 - w) * q_air`: the ice fraction `β_ice` over a frozen
-surface losing water, one over a frozen surface gaining water, and the
-conductance ratio `g_liq / (g_liq + g_h)` otherwise. This is the same
-parameterization as `get_update_surface_humidity_function(::EnergyHydrology)`,
-which `turbulent_fluxes!(dest, atmos, ::EnergyHydrology, Y, p, t)` uses.
+Return the weight `β_ice = (θ_i / ν)^4` [-] of the saturation specific
+humidity in the surface specific humidity of a frozen soil losing water by
+sublimation, given the volumetric ice content `θ_i` and the porosity `ν`
+[m³/m³]. The flux at given air humidity and surface temperature does not
+otherwise depend on the ice present, so this weight makes the sublimation
+vanish as the ice does, faster than `θ_i` itself, which keeps an explicit
+time step from drawing on ice that is not there; it plays the role of the
+dry-soil-layer conductance for an unfrozen surface. The weight is a
+heuristic without a published source; the exponent gives strong suppression
+at intermediate ice contents.
+
+Called from `update_soil_surface_temperature!` and
+`get_update_surface_humidity_function(::EnergyHydrology)`.
 """
-function soil_surface_vapor_weight(
+frozen_soil_vapor_weight(θ_i, ν) = (θ_i / ν)^4
+
+"""
+    soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
+
+Return the β factor [-] of the β approach to soil evaporation (Mahfouf and
+Noilhan, 1991): the surface specific humidity of the soil is
+`q_sfc = β * qsat + (1 - β) * q_air`, so that the vapor flux is
+`β g_h (qsat - q_air)`. β is the ice weight `β_ice` over a frozen surface
+losing water (`frozen_soil_vapor_weight`), one over a frozen surface gaining
+water, and the conductance ratio `g_liq / (g_liq + g_h)` of the dry soil
+layer otherwise. This is the same parameterization as
+`get_update_surface_humidity_function(::EnergyHydrology)`, which
+`turbulent_fluxes!(dest, atmos, ::EnergyHydrology, Y, p, t)` uses.
+"""
+function soil_evaporation_beta(
     q_air::FT,
     qsat::FT,
     g_liq::FT,
@@ -190,7 +212,7 @@ function update_soil_T_sfc_scheme(
         z_0b,
         scheme,
     )
-    w = soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
+    w = soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
     # Keyed on T_top, so trace ice in a cell above the melting point does not
     # pin the skin
     frozen_top = β_ice > 0 && T_top < Tf_depressed
@@ -259,7 +281,7 @@ function update_soil_q_vap_sfc_scheme(
         z_0b,
         scheme,
     )
-    w = soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
+    w = soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
     return w * qsat + (1 - w) * q_air
 end
 
@@ -510,7 +532,7 @@ function update_soil_surface_temperature!(
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     r = @. lazy(Δz_top / κ_top)
-    β_ice = @. lazy((θ_i_sfc / ν_sfc)^4)
+    β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
     update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
