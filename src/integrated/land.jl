@@ -93,10 +93,6 @@ struct LandModel{
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
             check_land_equality(
-                canopy.soil_moisture_stress.θ_high,
-                soil.parameters.ν,
-            )
-            check_land_equality(
                 canopy.soil_moisture_stress.θ_low,
                 soil.parameters.θ_r,
             )
@@ -253,7 +249,11 @@ function LandModel{FT}(
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
             toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
         ),
     ),
     snow = Snow.SnowModel(
@@ -314,7 +314,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
+            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -380,7 +380,11 @@ function LandModel{FT}(
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
             toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
         ),
     ),
     snow = Snow.SnowModel(
@@ -728,6 +732,11 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
+    # The snow and soil surfaces below the canopy see the attenuated wind,
+    # into which the gustiness is already folded
+    u_ground = Canopy.subcanopy_wind(canopy, p)
+    gustiness_ground = SurfaceFluxes.ConstantGustinessSpec(FT(0))
+
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
         snow,
@@ -736,7 +745,9 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        u_atmos = u_ground,
+        gustiness = gustiness_ground,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -747,7 +758,9 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        u_atmos = u_ground,
+        gustiness = gustiness_ground,
     )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked

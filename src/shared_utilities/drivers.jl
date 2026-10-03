@@ -379,7 +379,6 @@ function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
         Δh,
         q_air,
     )
-    return ρ_sfc
 end
 
 return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
@@ -391,7 +390,9 @@ return_momentum_fluxes(atmos::CoupledAtmosphere) = true
                       model::AbstractModel,
                       Y,
                       p,
-                      t
+                      t;
+                      u_atmos = p.drivers.u,
+                      gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
                       )
 
 Computes the turbulent surface flux terms at the ground,
@@ -403,6 +404,11 @@ It solves for these given atmospheric conditions,
 model parameters, and the surface conditions. If the elements of `dest` have a
 field `T_sfc`, the surface temperature at which the fluxes are evaluated is
 stored in it (see `with_surface_temperature`).
+
+The wind at the reference height `atmos.h` and the gustiness model default to
+those of the atmospheric forcing. Integrated models pass the wind below the
+canopy and zero gustiness for the surfaces beneath it (see
+`Canopy.subcanopy_wind`).
 """
 function turbulent_fluxes!(
     dest,
@@ -410,7 +416,9 @@ function turbulent_fluxes!(
     model::AbstractModel,
     Y,
     p,
-    t,
+    t;
+    u_atmos = p.drivers.u,
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
@@ -424,7 +432,6 @@ function turbulent_fluxes!(
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     stores_T_sfc = Val(hasfield(eltype(dest), :T_sfc))
     dest .= with_surface_temperature.(
         stores_T_sfc,
@@ -433,7 +440,7 @@ function turbulent_fluxes!(
             p.drivers.P,
             p.drivers.T,
             p.drivers.q, # q_tot
-            p.drivers.u,
+            u_atmos,
             atmos.h,
             T_sfc,
             q_sfc,
@@ -460,8 +467,9 @@ which they are evaluated if `stores_T_sfc` is `Val(true)`. Models whose surface
 temperature is solved for with their fluxes, such as the snow model, store it
 with them.
 """
-with_surface_temperature(::Val{false}, fluxes, T_sfc) = fluxes
-with_surface_temperature(::Val{true}, fluxes, T_sfc) = (; fluxes..., T_sfc)
+@inline with_surface_temperature(::Val{false}, fluxes, T_sfc) = fluxes
+@inline with_surface_temperature(::Val{true}, fluxes, T_sfc) =
+    (; fluxes..., T_sfc)
 """
     turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
                                 u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,
@@ -494,7 +502,7 @@ directions, `ρτxz` and `ρτyz`, and the buoyancy flux `buoyancy_flux`. Space 
 the extra fluxes is only allocated in the cache when running with a
 `CoupledAtmosphere`.
 """
-function turbulent_fluxes_at_a_point(
+@inline function turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val,
     P_atmos,
     T_atmos,
@@ -504,15 +512,15 @@ function turbulent_fluxes_at_a_point(
     T_sfc_guess,
     q_vap_sfc_guess,
     roughness_model,
-    update_T_sfc,
-    update_q_vap_sfc,
+    update_T_sfc::UT,
+    update_q_vap_sfc::UQ,
     h_sfc,
     displ,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     gustiness,
     earth_param_set,
-)
+) where {UT, UQ, UDT, UDQ}
     output = surface_fluxes_at_a_point(
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -545,6 +553,33 @@ function turbulent_fluxes_at_a_point(
 end
 
 """
+    surface_flux_config(roughness_model, gustiness)
+
+Return the SurfaceFluxes configuration used for the turbulent fluxes of all
+land surfaces: the given roughness and gustiness models, moist thermodynamics,
+no roughness sublayer correction, and the `MaxHeatFluxStabilityCap` in stable
+conditions.
+
+The stability cap holds the exchange coefficients at their values at the
+stability `ζ_p` at which the Monin-Obukhov sensible heat flux at fixed wind
+speed is maximal. `ζ_p` depends only on the ratio of the effective forcing
+height to the momentum roughness length: ≈ 0.15–0.4 over tall forests,
+≈ 0.4–0.8 over grass, ≈ 1–1.2 over bare soil, and ≈ 1.4–1.6 over snow.
+Without a cap, the Monin-Obukhov exchange collapses once the bulk Richardson
+number becomes supercritical, which decouples canopies and snow from the
+atmosphere at night (runaway cooling). The cap has no free parameters. See the
+SurfaceFluxes documentation.
+"""
+@inline surface_flux_config(roughness_model, gustiness) =
+    SurfaceFluxes.SurfaceFluxConfig(
+        roughness_model,
+        gustiness,
+        SurfaceFluxes.MoistModel(),
+        SurfaceFluxes.NoRoughnessSubLayer(),
+        SurfaceFluxes.MaxHeatFluxStabilityCap(),
+    )
+
+"""
     surface_fluxes_at_a_point(T_sfc_guess, q_vap_sfc_guess, update_T_sfc, update_q_vap_sfc,
                               P_atmos, T_atmos, q_tot_atmos, u_atmos, h_atmos, h_sfc, displ,
                               roughness_model, gustiness, earth_param_set)
@@ -562,11 +597,11 @@ Called from `turbulent_fluxes_at_a_point` and the surface temperature solves of
 the soil and snow models, which use its output with
 `turbulent_fluxes_from_output`.
 """
-function surface_fluxes_at_a_point(
+@inline function surface_fluxes_at_a_point(
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    update_T_sfc,
-    update_q_vap_sfc,
+    update_T_sfc::UT,
+    update_q_vap_sfc::UQ,
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
@@ -577,11 +612,11 @@ function surface_fluxes_at_a_point(
     roughness_model,
     gustiness,
     earth_param_set,
-) where {FT}
+) where {FT, UT, UQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set)
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = surface_flux_config(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
@@ -629,19 +664,19 @@ flux. The atmospheric state is given at height `Δz` above the surface. Models
 that solve for their surface temperature within the Monin-Obukhov iterations
 use it to obtain the fluxes from that solve.
 """
-function turbulent_fluxes_from_output(
+@inline function turbulent_fluxes_from_output(
     return_extra_fluxes::Val,
     output,
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
     Δz::FT,
     earth_param_set,
-) where {FT}
+) where {FT, UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
@@ -699,8 +734,8 @@ Return the NamedTuple `fluxes`, followed for `Val(true)` by the momentum fluxes
 `ρτxz`, `ρτyz` of the SurfaceFluxes.jl `output` and the buoyancy flux at the
 surface air density `ρ_sfc`.
 """
-with_extra_fluxes(::Val{false}, fluxes, args...) = fluxes
-function with_extra_fluxes(
+@inline with_extra_fluxes(::Val{false}, fluxes, args...) = fluxes
+@inline function with_extra_fluxes(
     ::Val{true},
     fluxes,
     output,
@@ -1532,6 +1567,16 @@ and linear spatial interpolation for high resolution forcing.
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
     clima cluster.
+
+!!! note "Reference heights"
+    The wind is the ERA5 10 m wind, `sqrt(u10² + v10²)`, and the reference
+    height of the forcing is set to 10 m. The temperature and humidity are the
+    ERA5 2 m fields (`t2m`, `d2m`), which are themselves products of ERA5's own
+    surface-layer scheme, not 10 m values. The Monin-Obukhov solve therefore
+    evaluates the temperature and humidity differences to the surface over
+    2 m but the wind over 10 m, which weakens the diagnosed stability and
+    instability. The hourly-mean components also give a scalar wind speed
+    somewhat below the mean of the instantaneous speed.
 """
 function prescribed_forcing_era5(
     start_date,

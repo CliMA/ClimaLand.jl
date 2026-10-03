@@ -2,6 +2,69 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
+  stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
+  configured in `ClimaLand.surface_flux_config`), so that canopies and snow
+  stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
+  1.3.
+- ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
+  0.67.
+- ![][badge-🔥behavioralΔ] Use the plant area index `LAI + SAI` and plant-area-weighted optical
+  properties in canopy shortwave radiative transfer (`TwoStreamModel` and
+  `BeerLambertModel`), longwave emissivity (`1 - exp(-K_lw * (LAI + SAI))`),
+  big-leaf heat capacity (`ac_canopy * (LAI + SAI)`), and canopy sensible heat
+  exchange (`leaf_Cd * u_star * (LAI + SAI)`), while weighting the absorbed PAR
+  that drives photosynthesis and fluorescence by the leaf share `LAI / (LAI + SAI)`
+  (`Canopy.leaf_fAPAR`).
+- ![][badge-🔥behavioralΔ] Scale leaf-level photosynthetic capacities in `FarquharModel` by the
+  canopy-mean nitrogen decay factor `(1 - exp(-kn * LAI)) / (kn * LAI)`
+  (Sellers et al. 1992; Bonan 2019, Eq. 15.6), with the extinction coefficient
+  `kn` read from the new TOML parameter `canopy_nitrogen_extinction_coefficient`
+  (default 0.5) into the new field `FarquharParameters.kn`. The parameter
+  `Vcmax25` now denotes the capacity of leaves at the top of the canopy;
+  `get_Vcmax25_leaf` returns the canopy-mean leaf value and
+  `get_Vcmax25_canopy` (the `vcmax25` diagnostic) its integral over the leaf
+  area index.
+- ![][badge-🔥behavioralΔ] Start the snow surface temperature solve of the
+  `EquilibriumGradientTemperatureModel` from `min((T_air + T_snow)/2, T_freeze)`
+  instead of `max(...)`, so that the initial guess lies at or below the freezing
+  cap of the solution.
+- ![][badge-🔥behavioralΔ] `AtmosDrivenCanopyBC` throws an `ArgumentError` when the
+  reference height of a `PrescribedAtmosphere` does not exceed the canopy
+  displacement height plus the momentum roughness length everywhere, instead of
+  producing undefined Monin-Obukhov fluxes at run time.
+- ![][badge-🐛bugfix] Update the volumetric liquid water fraction `p.soil.θ_l` in
+  `make_update_implicit_aux` of `Soil.EnergyHydrology` so that implicit
+  evaluations see the updated liquid water fraction.
+- ![][badge-🐛bugfix] Convert `soil_vg_α` in the `US-NR1`, `US-MOz`, and `US-Ha1`
+  FLUXNET site configurations from $\text{cm}^{-1}$ (Wang et al. 2021) to SI
+  ($\text{m}^{-1}$), update `K_sat_plant` at `US-NR1` and `US-Ha1` to match
+  `default_parameters.toml` (`7e-8 m/s`), and mask frozen-soil dielectric sensor
+  readings (`TS <= 0 °C`) when initializing total volumetric water in
+  `FluxnetSimulations`.
+- ![][badge-✨feature] Register `soilrn`, `soilshf`, and `soillhf` in the default diagnostics of
+  `Soil.EnergyHydrology` (and `LandModel`).
+- ![][badge-🔥behavioralΔ] Attenuate the wind speed driving the soil and snow turbulent fluxes
+  below a canopy exponentially with plant area index,
+  `u_ground = max(u, u_gust) * exp(-α (LAI + SAI))` (`Canopy.subcanopy_wind`),
+  with `α` read from the new TOML parameter
+  `canopy_subcanopy_wind_extinction_coefficient` (default 0.5) into the new
+  field `MoninObukhovCanopyFluxes.subcanopy_wind_extinction`. The integrated
+  models pass this wind and zero gustiness to `Soil.update_soil_surface_temperature!`,
+  `Snow.update_surf_temp!`, and `ClimaLand.turbulent_fluxes!` through their new
+  `u_atmos` and `gustiness` keyword arguments. Prevent reverse transpiration
+  through stomata during condensation: the canopy surface humidity is floored at
+  the atmospheric value (`q_sfc >= q_vap_int`, with `∂q_sfc/∂T = 0` where the
+  floor binds), and the canopy latent heat flux and transpiration are zeroed
+  where `vapor_flux <= 0` in both the explicit and implicit boundary flux
+  updates (`Canopy.zero_canopy_fluxes_without_plants!`).
+- ![][badge-🔥behavioralΔ] Apply the soil moisture stress factor `βm` instantaneously to `GPP`,
+  `Rd`, `An`, and `gs_co2` in `PModel` while acclimating well-watered capacities
+  (`βm = 1`), and set the upper moisture threshold `θ_high` in
+  `PiecewiseMoistureStressModel` to the field capacity
+  `θ_fc = θ_r + S_c * (ν - θ_r)`, the water content at the inflection point of
+  the van Genuchten retention curve (Assouline and Or 2014; `S_c` of Lehmann et
+  al. 2008), when soil hydrology parameters are available.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

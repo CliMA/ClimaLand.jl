@@ -427,11 +427,13 @@ end
 function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
     NVTX.@annotate function update_imp_aux!(p, Y, t)
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
+        @. p.soil.θ_l =
+            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
         @. p.soil.T = temperature_from_ρe_int(
             Y.soil.ρe_int,
             Y.soil.θ_i,
             volumetric_heat_capacity(
-                min(ν - Y.soil.θ_i, Y.soil.ϑ_l), # compute θ_l
+                p.soil.θ_l,
                 Y.soil.θ_i,
                 ρc_ds,
                 earth_param_set,
@@ -1123,11 +1125,11 @@ function ClimaLand.get_update_surface_humidity_function(
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,
-            (θ_i_sfc / ν_sfc)^4,
+            frozen_soil_vapor_weight(θ_i_sfc, ν_sfc),
             Tf_depressed_sfc,
             qsat_sfc,
         ),
-    ) # β_ice = (θ_i_sfc / ν_sfc)^4
+    )
 end
 
 function ClimaLand.surface_roughness_model(

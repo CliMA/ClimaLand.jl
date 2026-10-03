@@ -16,6 +16,7 @@ ClimaLand.AbstractAtmosphericDrivers
 ClimaLand.AbstractRadiativeDrivers
 ClimaLand.turbulent_fluxes!
 ClimaLand.turbulent_fluxes_at_a_point
+ClimaLand.surface_flux_config
 ClimaLand.component_temperature
 ClimaLand.component_specific_humidity
 ClimaLand.surface_roughness_model
