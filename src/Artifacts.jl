@@ -415,6 +415,43 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
 end
 
 """
+    callmip_phase1_forcing_path(site_ID; context = nothing)
+
+Returns the path to the meteorological forcing NetCDF (`*_Met.nc`) for a CalLMIP
+Phase 1b `site_ID` (e.g. "DK-Sor"). The data are the gap-filled in-situ drivers from the
+PLUMBER2 dataset (Abramowitz et al., 2024) / FLUXNET2015 (CC-BY-4.0), obtained from the
+CalLMIP workspace on modelevaluation.org.
+"""
+function callmip_phase1_forcing_path(site_ID; context = nothing)
+    folder = @clima_artifact("callmip_phase1_forcing", context)
+    matches =
+        filter(f -> startswith(f, "$(site_ID)_") && endswith(f, "_Met.nc"), readdir(folder))
+    isempty(matches) &&
+        error("No CalLMIP met forcing for site $site_ID in callmip_phase1_forcing")
+    return joinpath(folder, first(matches))
+end
+
+"""
+    callmip_phase1_flux_path(site_ID; phase = "1b", context = nothing)
+
+Returns the path to the daily-aggregated flux-observation NetCDF (`*_Flux.nc`) for a
+CalLMIP `site_ID`. `phase = "1a"` returns the single-site DK-Sor test file
+(`Data/Phase1a-test`); `phase = "1b"` returns the multi-site file (`Data/Phase1b`).
+The data are from the callmip-org/Phase1 repository (MIT), derived from FLUXNET2015.
+"""
+function callmip_phase1_flux_path(site_ID; phase = "1b", context = nothing)
+    folder = @clima_artifact("callmip_phase1", context)
+    subdir =
+        phase == "1a" ? joinpath(folder, "Data", "Phase1a-test") :
+        joinpath(folder, "Data", "Phase1b")
+    matches =
+        filter(f -> startswith(f, "$(site_ID)_") && endswith(f, "_Flux.nc"), readdir(subdir))
+    isempty(matches) &&
+        error("No CalLMIP flux obs for site $site_ID (phase $phase) in callmip_phase1")
+    return joinpath(subdir, first(matches))
+end
+
+"""
     esm_snowmip_data_path(; context = nothing)
 
 Returns the path to the ESM-Snowmip data set.

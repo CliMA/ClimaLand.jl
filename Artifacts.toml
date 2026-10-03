@@ -281,3 +281,11 @@ git-tree-sha1 = "d400472ea191639cb1dafac41b09ce36383aee54"
     [[inversion_nee.download]]
     sha256 = "84ccc2b60b276575342886535d78faa83f64dd83e327f65b31a10da8f9da721c"
     url = "https://caltech.box.com/shared/static/13xeg76obc5cc73h2sqzhogx0hr97poz.gz"
+
+[callmip_phase1]
+git-tree-sha1 = "c8014d3bbd838fcaa01bd2a69523b3fa98f28c5c"
+lazy = true
+
+[callmip_phase1_forcing]
+git-tree-sha1 = "a0c004071c73d047095a01faedf017571e5237ef"
+lazy = true
