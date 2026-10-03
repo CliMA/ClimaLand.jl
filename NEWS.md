@@ -2,6 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
+  at the water content of the permanent wilting point (ψ = -150 m). At sites
+  where the observed water content is below the residual water content of the
+  soil parameters (US-SRG), the soil started outside the domain of the
+  retention curve, where the pressure head is unbounded and its derivative
+  vanishes, and the first rain produced an unbounded flux and NaNs.
 - ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
   stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
   configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,
@@ -9,6 +15,9 @@ main
   1.3.
 - ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
   0.67.
+- ![][badge-✨feature] Register the fluxes of the soil below the canopy, `soilrn`, `soilshf`,
+  and `soillhf`, in the possible diagnostics of `LandModel` and
+  `SoilCanopyModel`.
 
 v1.13.0
 ----

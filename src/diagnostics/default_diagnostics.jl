@@ -600,7 +600,8 @@ function get_possible_diagnostics(model::SoilCanopyModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics = ["swa", "swu", "lwu", "infil"]
+    additional_diagnostics =
+        ["swa", "swu", "lwu", "infil", "soilrn", "soilshf", "soillhf"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -627,6 +628,9 @@ function get_possible_diagnostics(model::LandModel)
         "snowtbot",
         "snowk",
         "ghf",
+        "soilrn",
+        "soilshf",
+        "soillhf",
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))

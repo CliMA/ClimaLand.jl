@@ -412,6 +412,10 @@ end
         for v in snow_diag_vars
             @test v in possible
         end
+        # Fluxes of the soil below the canopy
+        for v in ("soilrn", "soilshf", "soillhf")
+            @test v in possible
+        end
         snow_diags = ClimaLand.Diagnostics.default_diagnostics(
             model,
             start_date;
