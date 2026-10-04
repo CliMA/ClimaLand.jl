@@ -325,7 +325,7 @@ temperature with the turbulent fluxes at it.
 and `buoyancy_flux` before `T_sfc` if `return_extra_fluxes` is `Val(true)`: the
 latent and sensible heat fluxes [W/m²], the vapor flux [m/s of liquid water]
 from liquid water or from ice (sublimation at and below the freezing
-temperature), and the skin temperature [K] (see `soil_turbulent_fluxes`).
+temperature), and the skin temperature in K (see `soil_turbulent_fluxes`).
 
 Called from [`update_soil_surface_temperature!`](@ref).
 """
@@ -483,7 +483,7 @@ end
     update_soil_surface_temperature!(model::EnergyHydrology, SW_n, LW_d, Y, p, t;
                                      h_atmos = atmos.h, u_atmos = p.drivers.u,
                                      T_atmos = p.drivers.T, q_atmos = p.drivers.q,
-                                     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness))
+                                     gustiness = ClimaLand.gustiness_spec(atmos))
     update_soil_surface_temperature!(model::EnergyHydrology, Y, p, t)
 
 Solve for the soil skin temperature from the surface energy balance and store
@@ -525,9 +525,7 @@ function update_soil_surface_temperature!(
     u_atmos = p.drivers.u,
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(
-        model.boundary_conditions.top.atmos.gustiness,
-    ),
+    gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.top.atmos),
 )
     bc = model.boundary_conditions.top
     bc isa AtmosDrivenFluxBC || throw(

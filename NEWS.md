@@ -29,6 +29,23 @@ main
   their flux solves. `t2m`, `q2m`, and `u10m` are possible diagnostics of
   `LandModel` and `SoilCanopyModel` and are included in the default short
   diagnostics of `LandModel`.
+- ![][badge-🔥behavioralΔ] Add convective gustiness to the effective wind speed of the land
+  surface fluxes: `PrescribedAtmosphere` and `CoupledAtmosphere` now hold a
+  gustiness model in their `gustiness` field, and the default of
+  `PrescribedAtmosphere` and of the ERA5, CRU-JRA, and FLUXNET forcing helpers
+  is `SurfaceFluxes.FlooredDeardorffGustinessSpec(1 m/s)` (SurfaceFluxes
+  1.4), the larger of the previous 1 m/s floor and the Deardorff convective
+  velocity `β (B z_i)^{1/3}` (`gustiness_coeff`, `gustiness_zi` of
+  SurfaceFluxes; Deardorff 1970, Beljaars 1995). The buoyancy flux `B` is that
+  of the flux solve itself, which SurfaceFluxes.jl makes consistent with the
+  friction velocity, so the fluxes depend only on the current state. Requires
+  SurfaceFluxes 1.4. The ground below a canopy keeps the convective part of
+  the model with a zero floor, since the floor is folded into the wind above
+  the canopy (`ClimaLand.gustiness_floor`, `Canopy.ground_gustiness`). The flux
+  functions take gustiness models only (`ClimaLand.gustiness_spec`);
+  `PrescribedAtmosphere` stores a number passed for `gustiness` as a
+  `SurfaceFluxes.ConstantGustinessSpec`, which recovers the constant floor
+  everywhere.
 - ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
   stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
   configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,

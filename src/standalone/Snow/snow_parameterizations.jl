@@ -972,7 +972,7 @@ end
                       u_atmos = p.drivers.u,
                       T_atmos = p.drivers.T,
                       q_atmos = p.drivers.q,
-                      gustiness = SurfaceFluxes.ConstantGustinessSpec(bc.atmos.gustiness))
+                      gustiness = ClimaLand.gustiness_spec(bc.atmos))
 
 Solves for the snow surface temperature, capped at the freezing temperature,
 and stores it with the turbulent fluxes at it, from the same Monin-Obukhov
@@ -981,9 +981,10 @@ solve, in `p.snow.turbulent_fluxes` (the surface temperature is
 is updated at the new surface temperature.
 
 The reference height, the wind, temperature, and humidity at it, and the
-gustiness model default to those of the atmospheric forcing; integrated models pass the sub-canopy reference
-height, attenuated wind, canopy-air temperature and humidity, and zero
-gustiness for snow beneath a canopy (see `Canopy.subcanopy_forcing`).
+gustiness model default to those of the atmospheric forcing
+(`ClimaLand.gustiness_spec`); integrated models pass the sub-canopy reference
+height, attenuated wind, canopy-air temperature and humidity, and gustiness
+model for snow beneath a canopy (see `Canopy.subcanopy_forcing`).
 """
 function update_surf_temp!(
     model::SnowModel,
@@ -997,9 +998,7 @@ function update_surf_temp!(
     u_atmos = p.drivers.u,
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(
-        model.boundary_conditions.atmos.gustiness,
-    ),
+    gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.atmos),
 )
     bc = model.boundary_conditions
     _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
@@ -1052,12 +1051,12 @@ end
                       u_atmos = p.drivers.u,
                       T_atmos = p.drivers.T,
                       q_atmos = p.drivers.q,
-wind `u_atmos`, temperature `T_atmos`, and specific humidity `q_atmos` at the
-                      gustiness = SurfaceFluxes.ConstantGustinessSpec(bc.atmos.gustiness))
+                      gustiness = ClimaLand.gustiness_spec(bc.atmos))
 
 Updates the surface temperature variable so that it matches the bulk temperature,
 and computes the turbulent fluxes, `p.snow.turbulent_fluxes`, at it, with the
-wind `u_atmos` at the reference height and the gustiness model `gustiness`.
+wind `u_atmos`, temperature `T_atmos`, and specific humidity `q_atmos` at the
+reference height `h_atmos` and the gustiness model `gustiness`.
 """
 function update_surf_temp!(
     model::SnowModel,
@@ -1071,9 +1070,7 @@ function update_surf_temp!(
     u_atmos = p.drivers.u,
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(
-        model.boundary_conditions.atmos.gustiness,
-    ),
+    gustiness = ClimaLand.gustiness_spec(model.boundary_conditions.atmos),
 )
     p.snow.turbulent_fluxes.T_sfc .= p.snow.T
     ClimaLand.turbulent_fluxes!(

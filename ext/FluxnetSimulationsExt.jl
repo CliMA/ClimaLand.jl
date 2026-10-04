@@ -4,6 +4,7 @@ import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.TimeManager: ITime, date
 using Thermodynamics
+import SurfaceFluxes
 using Dates
 using DelimitedFiles
 using DocStringExtensions

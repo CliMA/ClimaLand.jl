@@ -665,7 +665,8 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
         sfp
     h_forcing = atmos.h
-    floor = atmos.gustiness
+    atmos_gustiness = ClimaLand.gustiness_spec(atmos)
+    floor = ClimaLand.gustiness_floor(atmos_gustiness)
     height = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u
@@ -701,6 +702,6 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     q_ca = p.canopy.turbulent_fluxes.q_sfc
     T_atmos = @. lazy(ifelse(plants, T_ca, p.drivers.T))
     q_atmos = @. lazy(ifelse(plants, q_ca, p.drivers.q))
-    gustiness = ground_gustiness(atmos.gustiness, plants)
+    gustiness = ground_gustiness(atmos_gustiness, plants)
     return (; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)
 end

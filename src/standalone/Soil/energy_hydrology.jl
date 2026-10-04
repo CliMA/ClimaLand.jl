@@ -1177,7 +1177,7 @@ function turbulent_fluxes!(
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
+    gustiness = ClimaLand.gustiness_spec(atmos)
     dest .= soil_turbulent_fluxes_at_a_point.(
         soil_flux_inputs(momentum_fluxes),
         Tf_depressed_sfc,
