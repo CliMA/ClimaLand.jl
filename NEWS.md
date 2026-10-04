@@ -8,6 +8,25 @@ main
   soil parameters (US-SRG), the soil started outside the domain of the
   retention curve, where the pressure head is unbounded and its derivative
   vanishes, and the first rain produced an unbounded flux and NaNs.
+- ![][badge-✨feature] Add the screen-level diagnostics `t2m`, `q2m`, and `u10m` (air
+  temperature and specific humidity 2 m above the apparent sink for heat, and
+  wind speed 10 m above the apparent sink for momentum) for the soil, snow,
+  and canopy models and the integrated models, reconstructed from the
+  Monin-Obukhov profiles of the flux solves (`ClimaLand.screen_level_values`),
+  with the temperature following the dry static energy. Integrated models
+  average over their surfaces weighted by area fraction and heat conductance
+  (`ClimaLand.screen_level_mean`). To support this, the soil, snow, and canopy
+  turbulent flux cache variables store the friction velocity `ustar`, the
+  (capped) stability parameter `ζ`, and the effective forcing height `Δz_eff`
+  of the solve, the soil and canopy also store the effective surface humidity
+  `q_sfc` at which their fluxes were evaluated, and the canopy stores the
+  temperature `T_sfc` as well; `ClimaLand.turbulent_fluxes!` stores whichever
+  of these the destination names (`ClimaLand.select_fluxes`), while
+  `ClimaLand.turbulent_fluxes_at_a_point` keeps returning the energy and vapor
+  fluxes and their derivatives (and, for `Val(true)`, the momentum and
+  buoyancy fluxes) that ClimaCoupler evaluates directly. `t2m`, `q2m`, and
+  `u10m` are possible diagnostics of `LandModel` and `SoilCanopyModel` and are
+  included in the default short diagnostics of `LandModel`.
 - ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
   stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
   configured in `ClimaLand.surface_flux_config`), so that canopies, bare soil,

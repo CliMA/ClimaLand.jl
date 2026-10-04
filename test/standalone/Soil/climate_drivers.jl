@@ -137,8 +137,17 @@ for FT in (Float32, Float64)
                 :cosθs,
                 :frac_diff,
             )
-            @test propertynames(p.soil.turbulent_fluxes) ==
-                  (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice, :T_sfc)
+            @test propertynames(p.soil.turbulent_fluxes) == (
+                :lhf,
+                :shf,
+                :vapor_flux_liq,
+                :vapor_flux_ice,
+                :T_sfc,
+                :q_sfc,
+                :ustar,
+                :ζ,
+                :Δz_eff,
+            )
             @test propertynames(p.soil) == (
                 :total_water,
                 :total_energy,
@@ -260,6 +269,9 @@ for FT in (Float32, Float64)
                 FT(0.01) .*
                 (abs.(parent(conditions.vapor_flux_liq)) .+ eps(FT)),
             )
+            @test parent(conditions.Δz_eff) == parent(stored.Δz_eff)
+            @test all(parent(stored.ustar) .> 0)
+            @test all(isfinite, parent(stored.ζ))
 
             ClimaLand.Soil.soil_boundary_fluxes!(
                 top_bc,
