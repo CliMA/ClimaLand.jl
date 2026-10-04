@@ -959,9 +959,10 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
         T_atmos,
         q_atmos,
         atmos_h - h_sfc,
+        displ,
         earth_param_set,
     )
-    return ClimaLand.with_surface_temperature(Val(true), fluxes, output.T_sfc)
+    return ClimaLand.select_fluxes(snow_flux_names(return_extra_fluxes), fluxes)
 end
 
 """

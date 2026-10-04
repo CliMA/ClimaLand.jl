@@ -9,6 +9,8 @@ using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
 using Dates
+import SurfaceFluxes
+import SurfaceFluxes.Parameters as SFP
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
@@ -137,6 +139,59 @@ end
     end
 end
 
+@testset "Turbulent flux selections, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    fluxes(stored) = ClimaLand.turbulent_fluxes_at_a_point(
+        stored,
+        FT(101325), # P_atmos
+        FT(290), # T_atmos
+        FT(0.005), # q_atmos
+        FT(2), # u_atmos
+        FT(10), # h_atmos
+        FT(295), # T_sfc
+        FT(0.015), # q_sfc
+        roughness_model,
+        nothing,
+        nothing,
+        FT(0), # h_sfc
+        FT(0), # displ
+        (args...) -> FT(1),
+        (args...) -> FT(1),
+        gustiness,
+        earth_param_set,
+    )
+    # The Boolean selections are the contract of ClimaCoupler, which
+    # evaluates them directly into its flux fields
+    @test propertynames(fluxes(Val(false))) ==
+          (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T)
+    @test propertynames(fluxes(Val(true))) == (
+        :lhf,
+        :shf,
+        :vapor_flux,
+        :∂lhf∂T,
+        :∂shf∂T,
+        :ρτxz,
+        :ρτyz,
+        :buoyancy_flux,
+    )
+    # A tuple of names selects from the full output, in the order given
+    stored = Val((:ustar, :shf, :T_sfc, :q_sfc, :ζ, :Δz_eff, :buoyancy_flux))
+    selected = fluxes(stored)
+    @test propertynames(selected) ==
+          (:ustar, :shf, :T_sfc, :q_sfc, :ζ, :Δz_eff, :buoyancy_flux)
+    @test selected.shf == fluxes(Val(false)).shf
+    @test selected.buoyancy_flux == fluxes(Val(true)).buoyancy_flux
+    @test selected.T_sfc == FT(295)
+    @test selected.q_sfc == FT(0.015)
+    @test selected.Δz_eff == FT(10)
+    @test selected.ustar > 0
+    @test selected.ζ < 0 # unstable
+    @test eltype(values(selected)) == FT
+end
+
 @testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin
     domain = ClimaLand.Domains.global_domain(FT)
     coords = ClimaLand.Domains.coordinates(domain)
@@ -253,4 +308,113 @@ end
         @test p_soil_driver.drivers.θ == (zero_instance .+ FT(0.1))
         @test p_soil_driver.drivers.T_ground == (zero_instance .- 1)
     end
+end
+
+@testset "Screen-level reconstruction, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    sf_params = LP.surface_fluxes_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    κ = SFP.von_karman_const(sf_params)
+    g = LP.grav(earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    heat = SurfaceFluxes.UniversalFunctions.HeatTransport()
+    momentum = SurfaceFluxes.UniversalFunctions.MomentumTransport()
+    # The neutral heat profile carries the neutral turbulent Prandtl number
+    Pr_0 = SFP.Pr_0(sf_params)
+
+    # Neutral: logarithmic profiles
+    z0m, z0h, Δz_eff = FT(0.1), FT(0.01), FT(20)
+    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(0), z0h, heat, sf_params) ≈
+          Pr_0 * log(5 / z0h)
+    @test ClimaLand.profile_shape(
+        FT(5),
+        Δz_eff,
+        FT(0),
+        z0m,
+        momentum,
+        sf_params,
+    ) ≈ log(5 / z0m)
+    # Clamped to the forcing height and to the roughness length
+    @test ClimaLand.profile_shape(FT(50), Δz_eff, FT(0), z0h, heat, sf_params) ≈
+          Pr_0 * log(Δz_eff / z0h)
+    @test ClimaLand.profile_shape(FT(0), Δz_eff, FT(0), z0h, heat, sf_params) ==
+          0
+    # Stable conditions reduce the mixing: larger profile value
+    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(1), z0h, heat, sf_params) >
+          Pr_0 * log(5 / z0h)
+
+    T_sfc, T_air, q_sfc, q_air, ustar =
+        FT(300), FT(290), FT(0.02), FT(0.01), FT(0.3)
+    s = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        Δz_eff,
+        FT(0),
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    r = log((z0h + 2) / z0h) / log(Δz_eff / z0h)
+    @test s.T ≈
+          T_sfc + (T_air - T_sfc) * r + g / cp_d * (r * Δz_eff - (z0h + 2))
+    @test s.q ≈ q_sfc + (q_air - q_sfc) * r
+    @test s.u ≈ ustar / κ * log((z0m + 10) / z0m)
+    @test s.g_h ≈ κ * ustar / (Pr_0 * log(Δz_eff / z0h))
+    # With a displacement height, the screen level is that much higher above
+    # the surface, which only enters the adiabatic term
+    displ = FT(5)
+    s_d = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        Δz_eff,
+        displ,
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    @test s_d.q == s.q
+    @test s_d.T ≈ s.T + g / cp_d * (r - 1) * displ
+    # Forcing at or below the screen height: forcing values are returned
+    s_low = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        FT(1.5),
+        FT(0),
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    @test s_low.T ≈ T_air
+    @test s_low.q ≈ q_air
+    @test s_low.u ≈ ustar / κ * log(FT(1.5) / z0m)
+
+    # Weighted mean over surfaces: area fraction times conductance
+    s1 = (; T = FT(1), q = FT(1), u = FT(1), g_h = FT(2))
+    s2 = (; T = FT(3), q = FT(3), u = FT(3), g_h = FT(1))
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s1)) == 1
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s1), (FT(1), s2)) ≈
+          (2 * 1 + 1 * 3) / 3
+    @test ClimaLand.screen_level_mean(Val(:u), (FT(0.5), s1), (FT(1), s2)) ≈
+          (1 * 1 + 1 * 3) / 2
+    s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
 end

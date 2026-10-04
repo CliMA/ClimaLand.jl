@@ -1179,7 +1179,7 @@ function turbulent_fluxes!(
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     dest .= soil_turbulent_fluxes_at_a_point.(
-        momentum_fluxes, # return_extra_fluxes
+        soil_flux_inputs(momentum_fluxes),
         Tf_depressed_sfc,
         p.drivers.P,
         p.drivers.T,
@@ -1202,19 +1202,43 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, Tf_depressed, P, T, q, u, h,
-                                     T_sfc, args...)
+    soil_flux_inputs(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities of
+`ClimaLand.turbulent_fluxes_at_a_point` from which `soil_turbulent_fluxes`
+forms `p.soil.turbulent_fluxes`: the energy and vapor fluxes, the momentum and
+buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs), the
+effective surface humidity `q_sfc`, and the similarity scales `ustar`, `ζ`,
+`Δz_eff` of the solve.
+"""
+soil_flux_inputs(::Val{false}) =
+    Val((:lhf, :shf, :vapor_flux, :q_sfc, :ustar, :ζ, :Δz_eff))
+soil_flux_inputs(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+    :q_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+
+"""
+    soil_turbulent_fluxes_at_a_point(stored, Tf_depressed, P, T, q, u, h, T_sfc, args...)
 
 Return the soil turbulent fluxes at a point, computed by
-`ClimaLand.turbulent_fluxes_at_a_point(return_extra_fluxes, P, T, q, u, h, T_sfc, args...)`
+`ClimaLand.turbulent_fluxes_at_a_point(stored, P, T, q, u, h, T_sfc, args...)`
 and mapped by `soil_turbulent_fluxes` given the depressed freezing temperature
-`Tf_depressed` at the surface. The `return_extra_fluxes` argument indicates
-whether to return the momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux
-(`buoyancy_flux`), for which space is only allocated in the cache when running
-with a `CoupledAtmosphere`.
+`Tf_depressed` at the surface. `stored` is the `Val` of names of
+`soil_flux_inputs`; the momentum and buoyancy fluxes are among them only when
+running with a `CoupledAtmosphere`, which allocates space for them in the
+cache.
 """
 function soil_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val,
+    stored::Val,
     Tf_depressed,
     P,
     T,
@@ -1225,7 +1249,7 @@ function soil_turbulent_fluxes_at_a_point(
     args...,
 )
     fluxes = ClimaLand.turbulent_fluxes_at_a_point(
-        return_extra_fluxes,
+        stored,
         P,
         T,
         q,
@@ -1244,14 +1268,28 @@ Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
 `fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
 `T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
 depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
-and below it, the temperature derivatives are dropped, and `T_sfc` is appended
-after the momentum and buoyancy fluxes, if present.
+and below it, the temperature derivatives are dropped, and `T_sfc`, the
+effective surface humidity `q_sfc` of the solve (which includes the dry soil
+layer resistance, see `soil_evaporation_beta`), and the similarity scales
+`ustar`, `ζ`, `Δz_eff` of the solve are appended after the momentum and
+buoyancy fluxes, if present.
 """
 function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
     is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
     extra_fluxes = Base.structdiff(
         fluxes,
-        NamedTuple{(:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T)},
+        NamedTuple{(
+            :lhf,
+            :shf,
+            :vapor_flux,
+            :∂lhf∂T,
+            :∂shf∂T,
+            :T_sfc,
+            :q_sfc,
+            :ustar,
+            :ζ,
+            :Δz_eff,
+        )},
     )
     return (;
         lhf = fluxes.lhf,
@@ -1260,6 +1298,10 @@ function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
         vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
         extra_fluxes...,
         T_sfc,
+        q_sfc = fluxes.q_sfc,
+        ustar = fluxes.ustar,
+        ζ = fluxes.ζ,
+        Δz_eff = fluxes.Δz_eff,
     )
 end
 

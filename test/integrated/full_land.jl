@@ -953,4 +953,33 @@ end
         Array(parent(YL.canopy.energy.T))[:][no_lake_mask] .==
         Array(parent(YNL.canopy.energy.T))[:][no_lake_mask],
     )
+
+    # Screen-level diagnostics of the full land model are finite over land
+    # and lie between the surface and atmospheric values
+    (; u, p, t) = simulation_with_lake._integrator
+    model = land_with_lake
+    t2m = ClimaLand.Diagnostics.compute_t2m!(nothing, u, p, t, model)
+    q2m = ClimaLand.Diagnostics.compute_q2m!(nothing, u, p, t, model)
+    u10m = ClimaLand.Diagnostics.compute_u10m!(nothing, u, p, t, model)
+    T_sfc = (
+        Array(parent(p.soil.turbulent_fluxes.T_sfc))[:],
+        Array(parent(p.canopy.turbulent_fluxes.T_sfc))[:],
+        Array(parent(p.snow.turbulent_fluxes.T_sfc))[:],
+    )
+    T_air = Array(parent(p.drivers.T))[:]
+    T_lo = min.(T_sfc..., T_air)
+    T_hi = max.(T_sfc..., T_air)
+    t2m_land = Array(parent(t2m))[:][land_mask]
+    q2m_land = Array(parent(q2m))[:][land_mask]
+    u10m_land = Array(parent(u10m))[:][land_mask]
+    # The 2 m temperature may lie slightly outside the range of the surface
+    # and air temperatures because of the dry adiabatic correction over the
+    # forcing height, at most g Δz / cp ≈ 0.1 K for a 10 m forcing height
+    @test all(isfinite, t2m_land)
+    @test all(
+        T_lo[land_mask] .- FT(0.5) .<= t2m_land .<= T_hi[land_mask] .+ FT(0.5),
+    )
+    @test all(isfinite, q2m_land)
+    @test all(q2m_land .>= 0)
+    @test all(0 .< u10m_land)
 end

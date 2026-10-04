@@ -774,6 +774,40 @@ function define_diagnostics!(land_model, possible_diags)
             compute_wind_speed!(out, Y, p, t, land_model),
     )
 
+    ## Screen-level diagnostics ##
+    # 2 m air temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "t2m",
+        long_name = "2m Air Temperature",
+        standard_name = "air_temperature_2m",
+        units = "K",
+        comments = "Air temperature 2 m above the apparent sink for heat (displacement height plus roughness length) of each land surface, from the Monin-Obukhov profile of its flux solve, averaged over the surfaces (soil, snow, canopy) weighted by area fraction and heat conductance.",
+        compute! = (out, Y, p, t) -> compute_t2m!(out, Y, p, t, land_model),
+    )
+
+    # 2 m specific humidity
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "q2m",
+        long_name = "2m Specific Humidity",
+        standard_name = "specific_humidity_2m",
+        units = "kg kg^-1",
+        comments = "Specific humidity 2 m above the apparent sink for heat of each land surface, from the Monin-Obukhov profile of its flux solve, averaged over the surfaces weighted by area fraction and heat conductance.",
+        compute! = (out, Y, p, t) -> compute_q2m!(out, Y, p, t, land_model),
+    )
+
+    # 10 m wind speed
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "u10m",
+        long_name = "10m Wind Speed",
+        standard_name = "wind_speed_10m",
+        units = "m s^-1",
+        comments = "Wind speed 10 m above the apparent sink for momentum (displacement height plus roughness length) of each land surface, from the Monin-Obukhov profile of its flux solve (including gustiness), averaged over the surfaces weighted by area fraction and heat conductance.",
+        compute! = (out, Y, p, t) -> compute_u10m!(out, Y, p, t, land_model),
+    )
+
     ## Soil Module ##
     # Infiltration
     conditional_add_diagnostic_variable!(

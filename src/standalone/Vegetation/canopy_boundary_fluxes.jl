@@ -120,7 +120,8 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
+- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,
+  the canopy temperature and effective surface humidity of the flux solve, and its similarity scales
 - `p.canopy.hydraulics.fa[end]`: Transpiration
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
@@ -464,8 +465,19 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-            Tuple{FT, FT, FT, FT, FT},
+            (
+                :lhf,
+                :shf,
+                :vapor_flux,
+                :∂lhf∂T,
+                :∂shf∂T,
+                :T_sfc,
+                :q_sfc,
+                :ustar,
+                :ζ,
+                :Δz_eff,
+            ),
+            NTuple{10, FT},
         },
     )
 
@@ -504,7 +516,12 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
             :buoyancy_flux,
+            :T_sfc,
+            :q_sfc,
+            :ustar,
+            :ζ,
+            :Δz_eff,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        NTuple{13, FT},
     },
 )

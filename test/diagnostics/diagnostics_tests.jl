@@ -178,17 +178,17 @@ end
     FT = Float32
     default_params_filepath =
         joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-    toml_dict = LP.create_toml_dict(FT);
+    toml_dict = LP.create_toml_dict(FT)
 
     zmax = FT(0)
     zmin = FT(-1.0)
     longlat = FT.((-118.1, 34.1))
-    domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
-    surface_space = domain.space.surface;
+    domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat)
+    surface_space = domain.space.surface
 
-    start_date = DateTime(2008);
-    stop_date = start_date + Second(60 * 60 * 72);
-    dt = 1000.0;
+    start_date = DateTime(2008)
+    stop_date = start_date + Second(60 * 60 * 72)
+    dt = 1000.0
 
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -197,7 +197,7 @@ end
         toml_dict,
         FT;
         use_lowres_forcing = true,
-    );
+    )
 
     @testset "EnergyHydrology diagnostics" begin
         model =
@@ -311,6 +311,40 @@ end
         # Check that the SWC values have changed after the second computation
         @test simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1] !=
               simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[2]
+
+        # Screen-level diagnostics lie between the surface and forcing values
+        (; u, p, t) = simulation._integrator
+        t2m = ClimaLand.Diagnostics.compute_t2m!(nothing, u, p, t, model)
+        q2m = ClimaLand.Diagnostics.compute_q2m!(nothing, u, p, t, model)
+        u10m = ClimaLand.Diagnostics.compute_u10m!(nothing, u, p, t, model)
+        T_sfc = parent(p.soil.turbulent_fluxes.T_sfc)
+        T_air = parent(p.drivers.T)
+        q_sfc = parent(p.soil.turbulent_fluxes.q_sfc)
+        q_air = parent(p.drivers.q)
+        # The dry adiabatic change over the forcing height, in K
+        earth_param_set = model.parameters.earth_param_set
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
+        adiabatic =
+            LP.grav(earth_param_set) /
+            Thermodynamics.Parameters.cp_d(thermo_params) *
+            parent(p.soil.turbulent_fluxes.Δz_eff)
+        @test all(
+            min.(T_sfc, T_air) .- adiabatic .<=
+            parent(t2m) .<=
+            max.(T_sfc, T_air) .+ adiabatic,
+        )
+        @test all(min.(q_sfc, q_air) .<= parent(q2m) .<= max.(q_sfc, q_air))
+        @test all(0 .< parent(u10m))
+        # A standalone soil is a single surface: the diagnostic is the
+        # pointwise reconstruction
+        s = Base.materialize(ClimaLand.Diagnostics.screen_level(model, u, p))
+        @test parent(t2m) == parent(s.T)
+        @test parent(q2m) == parent(s.q)
+        @test parent(u10m) == parent(s.u)
+        # In place
+        t2m2 = copy(t2m)
+        ClimaLand.Diagnostics.compute_t2m!(t2m2, u, p, t, model)
+        @test parent(t2m2) == parent(t2m)
     end
 
     @testset "LandModel diagnostics" begin

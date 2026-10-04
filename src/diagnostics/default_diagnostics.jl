@@ -600,8 +600,18 @@ function get_possible_diagnostics(model::SoilCanopyModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics =
-        ["swa", "swu", "lwu", "infil", "soilrn", "soilshf", "soillhf"]
+    additional_diagnostics = [
+        "swa",
+        "swu",
+        "lwu",
+        "infil",
+        "soilrn",
+        "soilshf",
+        "soillhf",
+        "t2m",
+        "q2m",
+        "u10m",
+    ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -631,6 +641,9 @@ function get_possible_diagnostics(model::LandModel)
         "soilrn",
         "soilshf",
         "soillhf",
+        "t2m",
+        "q2m",
+        "u10m",
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
@@ -653,7 +666,7 @@ function get_short_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_short_diagnostics(model::SnowModel)
-    return get_possible_diagnostics(model)
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
 end
 function get_possible_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
     return ["lkie", "tlake", "qlake", "alake", "shflake", "lhflake", "rnlake"]
@@ -692,6 +705,9 @@ function get_short_diagnostics(model::LandModel)
         "ra",
         "tr",
         "et",
+        "t2m",
+        "q2m",
+        "u10m",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
