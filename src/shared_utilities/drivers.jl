@@ -400,9 +400,9 @@ including turbulent energy fluxes as well as the water vapor flux
 Positive fluxes indicate flow from the ground to the atmosphere.
 
 It solves for these given atmospheric conditions,
-model parameters, and the surface conditions. If the elements of `dest` have a
-field `T_sfc`, the surface temperature at which the fluxes are evaluated is
-stored in it (see `with_surface_temperature`).
+model parameters, and the surface conditions. The elements of `dest` select,
+by name, which of the quantities of `turbulent_fluxes_at_a_point` are stored
+(see `select_fluxes`).
 """
 function turbulent_fluxes!(
     dest,
@@ -423,52 +423,78 @@ function turbulent_fluxes!(
     update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
-    momentum_fluxes = Val(return_momentum_fluxes(atmos))
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
-    stores_T_sfc = Val(hasfield(eltype(dest), :T_sfc))
-    dest .= with_surface_temperature.(
-        stores_T_sfc,
-        turbulent_fluxes_at_a_point.(
-            momentum_fluxes, # return_extra_fluxes
-            p.drivers.P,
-            p.drivers.T,
-            p.drivers.q, # q_tot
-            p.drivers.u,
-            atmos.h,
-            T_sfc,
-            q_sfc,
-            roughness_model,
-            update_T_sfc,
-            update_q_sfc,
-            h_sfc,
-            displ,
-            update_∂T_sfc∂T,
-            update_∂q_sfc∂T,
-            gustiness,
-            earth_param_set,
-        ),
+    stored = Val(fieldnames(eltype(dest)))
+    dest .= turbulent_fluxes_at_a_point.(
+        stored,
+        p.drivers.P,
+        p.drivers.T,
+        p.drivers.q, # q_tot
+        p.drivers.u,
+        atmos.h,
         T_sfc,
+        q_sfc,
+        roughness_model,
+        update_T_sfc,
+        update_q_sfc,
+        h_sfc,
+        displ,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        gustiness,
+        earth_param_set,
     )
     return nothing
 end
 
 """
-    with_surface_temperature(stores_T_sfc, fluxes, T_sfc)
+    select_fluxes(::Val{names}, fluxes)
 
-Return the NamedTuple `fluxes`, followed by the surface temperature `T_sfc` at
-which they are evaluated if `stores_T_sfc` is `Val(true)`. Models whose surface
-temperature is solved for with their fluxes, such as the snow model, store it
-with them.
+Return the NamedTuple of the fields `names` of the NamedTuple `fluxes` returned
+by `turbulent_fluxes_from_output`. Each model stores the subset it needs in its
+cache: all store the energy and vapor fluxes and their temperature derivatives,
+and the soil, snow, and canopy also store the surface state and similarity
+scales of the flux solve for the screen-level diagnostics.
 """
-@inline with_surface_temperature(::Val{false}, fluxes, T_sfc) = fluxes
-@inline with_surface_temperature(::Val{true}, fluxes, T_sfc) =
-    (; fluxes..., T_sfc)
+@inline select_fluxes(::Val{names}, fluxes) where {names} =
+    NamedTuple{names}(fluxes)
+
+"""
+    flux_names(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities that
+`turbulent_fluxes_at_a_point` returns for `return_extra_fluxes`: the energy
+fluxes `lhf` and `shf`, the vapor flux `vapor_flux`, and the temperature
+derivatives `∂lhf∂T` and `∂shf∂T`, followed for `Val(true)` by the momentum
+fluxes `ρτxz` and `ρτyz` and the buoyancy flux `buoyancy_flux`.
+"""
+flux_names(::Val{false}) = Val((:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T))
+flux_names(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+))
+
+"""
+    flux_tuple_type(::Val{names}, ::Type{FT})
+
+Return the `NamedTuple` type with fields `names`, all of type `FT`; the
+element type of the cache variables holding the turbulent fluxes.
+"""
+flux_tuple_type(::Val{names}, ::Type{FT}) where {names, FT} =
+    NamedTuple{names, NTuple{length(names), FT}}
 """
     turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
                                 u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,
                                 roughness_model, update_T_sfc, update_q_vap_sfc, h_sfc,
                                 displ, update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness,
                                 earth_param_set)
+    turbulent_fluxes_at_a_point(stored::Val{names}, args...)
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`,
@@ -487,16 +513,30 @@ Computes turbulent surface fluxes at a point on a surface given
     specific.
 (5) the parameter set.
 
-This returns the NamedTuple `(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the
-energy fluxes, the liquid water volume flux, and the derivatives of the energy
-fluxes with respect to the component temperature. If `return_extra_fluxes` is
-`Val(true)`, it also returns the momentum flux components in the horizontal
-directions, `ρτxz` and `ρτyz`, and the buoyancy flux `buoyancy_flux`. Space for
-the extra fluxes is only allocated in the cache when running with a
-`CoupledAtmosphere`.
+With `return_extra_fluxes = Val(false)`, this returns the NamedTuple
+`(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the energy fluxes, the liquid
+water volume flux, and the derivatives of the energy fluxes with respect to
+the component temperature; with `Val(true)`, it also returns the momentum flux
+components in the horizontal directions, `ρτxz` and `ρτyz`, and the buoyancy
+flux `buoyancy_flux` (see `flux_names`). ClimaCoupler evaluates this method
+directly into its flux fields.
+
+With a `Val` of a tuple of names, it returns the fields `names` of the full
+NamedTuple of `turbulent_fluxes_from_output`, which also holds the surface
+temperature `T_sfc` and specific humidity `q_sfc` at which the fluxes were
+evaluated and the friction velocity `ustar`, stability parameter `ζ`, and
+effective height `Δz_eff` of the Monin-Obukhov profiles. `turbulent_fluxes!`
+passes the field names of its destination, so that each model stores the
+subset it needs; space for the extra fluxes is only allocated in the cache
+when running with a `CoupledAtmosphere`.
 """
+@inline turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Union{Val{true}, Val{false}},
+    args...,
+) = turbulent_fluxes_at_a_point(flux_names(return_extra_fluxes), args...)
+
 @inline function turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val,
+    stored::Val{names},
     P_atmos,
     T_atmos,
     q_tot_atmos,
@@ -513,7 +553,7 @@ the extra fluxes is only allocated in the cache when running with a
     update_∂q_sfc∂T::UDQ,
     gustiness,
     earth_param_set,
-) where {UT, UQ, UDT, UDQ}
+) where {names, UT, UQ, UDT, UDQ}
     output = surface_fluxes_at_a_point(
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -530,8 +570,10 @@ the extra fluxes is only allocated in the cache when running with a
         gustiness,
         earth_param_set,
     )
-    return turbulent_fluxes_from_output(
-        return_extra_fluxes,
+    # The momentum and buoyancy fluxes are cheap, so they are evaluated for
+    # every selection and kept only where named
+    fluxes = turbulent_fluxes_from_output(
+        Val(true),
         output,
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -541,8 +583,10 @@ the extra fluxes is only allocated in the cache when running with a
         T_atmos,
         q_tot_atmos,
         h_atmos - h_sfc,
+        displ,
         earth_param_set,
     )
+    return select_fluxes(stored, fluxes)
 end
 
 """
@@ -644,18 +688,22 @@ end
 """
     turbulent_fluxes_from_output(return_extra_fluxes, output, T_sfc_guess, q_vap_sfc_guess,
                                  update_∂T_sfc∂T, update_∂q_sfc∂T, P_atmos, T_atmos,
-                                 q_tot_atmos, Δz, earth_param_set)
+                                 q_tot_atmos, Δz, displ, earth_param_set)
 
 Return the NamedTuple of `turbulent_fluxes_at_a_point` from the SurfaceFluxes.jl
 `output` of `surface_fluxes_at_a_point`: the latent and sensible heat fluxes,
-the vapor flux in volume of liquid water, and the approximate derivatives of
+the vapor flux in volume of liquid water, the approximate derivatives of
 the heat fluxes with respect to the component temperature (evaluated with
 `update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the surface temperature and
-humidity `T_sfc_guess` and `q_vap_sfc_guess`), followed for
+humidity `T_sfc_guess` and `q_vap_sfc_guess`), the surface temperature `T_sfc`
+and specific humidity `q_sfc` at which the fluxes were evaluated, the friction
+velocity `ustar`, the stability parameter `ζ` and effective height `Δz_eff` of
+the Monin-Obukhov profiles (see `screen_level_values`), followed for
 `return_extra_fluxes = Val(true)` by the momentum fluxes and the buoyancy
-flux. The atmospheric state is given at height `Δz` above the surface. Models
-that solve for their surface temperature within the Monin-Obukhov iterations
-use it to obtain the fluxes from that solve.
+flux. The atmospheric state is given at height `Δz` above the surface, and the
+surface has displacement height `displ`. Models that solve for their surface
+temperature within the Monin-Obukhov iterations use it to obtain the fluxes
+from that solve.
 """
 @inline function turbulent_fluxes_from_output(
     return_extra_fluxes::Val,
@@ -668,6 +716,7 @@ use it to obtain the fluxes from that solve.
     T_atmos::FT,
     q_tot_atmos::FT,
     Δz::FT,
+    displ::FT,
     earth_param_set,
 ) where {FT, UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -704,12 +753,20 @@ use it to obtain the fluxes from that solve.
         )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    Δz_eff = Δz - displ
     fluxes = (;
         lhf = output.lhf,
         shf = output.shf,
         vapor_flux = output.evaporation / _ρ_liq, # volume of liquid water
         ∂lhf∂T,
         ∂shf∂T,
+        T_sfc = output.T_sfc,
+        q_sfc = output.q_vap_sfc,
+        ustar = u_star,
+        # Stability parameter at which the exchange coefficients were
+        # evaluated (capped in stable conditions); zero when neutral
+        ζ = Δz_eff / output.L_eff,
+        Δz_eff,
     )
     return with_extra_fluxes(
         return_extra_fluxes,

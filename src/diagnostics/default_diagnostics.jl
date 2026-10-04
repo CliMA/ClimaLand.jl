@@ -404,7 +404,10 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.AtmosDrivenFluxBC,
 )
-    append!(diagnostics, ["salb", "soilrn", "soilshf", "soillhf"])
+    append!(
+        diagnostics,
+        ["salb", "soilrn", "soilshf", "soillhf", "t2m", "q2m", "u10m"],
+    )
     return nothing
 end
 function add_diagnostics!(
@@ -533,6 +536,9 @@ function get_possible_diagnostics(model::CanopyModel)
         "lwd",
         "swd",
         "vpd",
+        "t2m",
+        "q2m",
+        "u10m",
     ]
 
     # Add conditional diagnostics based on atmosphere type
@@ -542,7 +548,7 @@ function get_possible_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
-    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb", "t2m", "q2m", "u10m"]
 end
 function get_possible_diagnostics(model::BucketModel)
     return [
@@ -649,7 +655,7 @@ function get_short_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_short_diagnostics(model::SnowModel)
-    return get_possible_diagnostics(model)
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
 end
 function get_possible_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
     return ["lkie", "tlake", "qlake", "alake", "shflake", "lhflake", "rnlake"]
@@ -688,6 +694,9 @@ function get_short_diagnostics(model::LandModel)
         "ra",
         "tr",
         "et",
+        "t2m",
+        "q2m",
+        "u10m",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

@@ -415,6 +415,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
         T_atmos,
         q_atmos,
         atmos_h - h_sfc,
+        displ,
         earth_param_set,
     )
     return soil_turbulent_fluxes(fluxes, output.T_sfc, Tf_depressed)

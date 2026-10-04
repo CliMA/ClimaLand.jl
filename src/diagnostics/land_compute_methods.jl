@@ -1208,3 +1208,159 @@ end
 @diagnostic_compute "lake_lhf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.lhf
 @diagnostic_compute "lake_shf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.shf
 @diagnostic_compute "lake_rn" Union{SlabLakeModel, LandModel} p.lake.R_n
+
+### Screen-level diagnostics: t2m, q2m, u10m ###
+
+"""
+    screen_level(model, Y, p)
+
+Return the lazy broadcast of `ClimaLand.screen_level_values` for the surface
+of a soil, snow, or canopy `model`: the air temperature and specific humidity
+2 m above its apparent sink for heat, the wind speed 10 m above its apparent
+sink for momentum, and its heat conductance, reconstructed from the stored
+Monin-Obukhov profiles of its flux solve.
+"""
+function screen_level(model::EnergyHydrology{FT}, Y, p) where {FT}
+    tf = p.soil.turbulent_fluxes
+    params = model.parameters
+    earth_param_set = params.earth_param_set
+    return @. lazy(
+        ClimaLand.screen_level_values(
+            tf.T_sfc,
+            tf.q_sfc,
+            tf.ustar,
+            tf.ζ,
+            tf.Δz_eff,
+            FT(0), # displacement height
+            params.z_0m,
+            params.z_0b,
+            p.drivers.T,
+            p.drivers.q,
+            FT(2),
+            FT(10),
+            earth_param_set,
+        ),
+    )
+end
+function screen_level(model::SnowModel{FT}, Y, p) where {FT}
+    tf = p.snow.turbulent_fluxes
+    params = model.parameters
+    earth_param_set = params.earth_param_set
+    return @. lazy(
+        ClimaLand.screen_level_values(
+            tf.T_sfc,
+            p.snow.q_sfc,
+            tf.ustar,
+            tf.ζ,
+            tf.Δz_eff,
+            FT(0), # displacement height
+            params.z_0m,
+            params.z_0b,
+            p.drivers.T,
+            p.drivers.q,
+            FT(2),
+            FT(10),
+            earth_param_set,
+        ),
+    )
+end
+function screen_level(model::CanopyModel{FT}, Y, p) where {FT}
+    tf = p.canopy.turbulent_fluxes
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    earth_param_set = ClimaLand.get_earth_param_set(model)
+    return @. lazy(
+        ClimaLand.screen_level_values(
+            tf.T_sfc,
+            tf.q_sfc,
+            tf.ustar,
+            tf.ζ,
+            tf.Δz_eff,
+            sfp.displ,
+            sfp.z_0m,
+            sfp.z_0b,
+            p.drivers.T,
+            p.drivers.q,
+            FT(2),
+            FT(10),
+            earth_param_set,
+        ),
+    )
+end
+
+"""
+    screen_level_pairs(land_model, Y, p)
+
+Return the tuple of `(area fraction, screen-level values)` pairs of the
+surfaces of `land_model` that exchange with the atmosphere, each as a lazy
+broadcast of a `Tuple`, for `ClimaLand.screen_level_mean`. The soil and
+snow of a `LandModel` are weighted by the bare soil and snow cover fractions,
+the canopy covers the whole area, and lakes are not included.
+"""
+screen_level_pairs(
+    model::Union{EnergyHydrology{FT}, SnowModel{FT}, CanopyModel{FT}},
+    Y,
+    p,
+) where {FT} = (weighted_screen_level(FT(1), screen_level(model, Y, p)),)
+screen_level_pairs(model::SoilCanopyModel{FT}, Y, p) where {FT} = (
+    weighted_screen_level(FT(1), screen_level(model.soil, Y, p)),
+    weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+)
+function screen_level_pairs(model::SoilSnowModel{FT}, Y, p) where {FT}
+    scf = p.snow.snow_cover_fraction
+    return (
+        weighted_screen_level(
+            @.(lazy(1 - scf)),
+            screen_level(model.soil, Y, p),
+        ),
+        weighted_screen_level(scf, screen_level(model.snow, Y, p)),
+    )
+end
+screen_level_pairs(model::LandModel{FT}, Y, p) where {FT} = (
+    weighted_screen_level(p.bare_soil_fraction, screen_level(model.soil, Y, p)),
+    weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+    weighted_screen_level(
+        p.snow.snow_cover_fraction,
+        screen_level(model.snow, Y, p),
+    ),
+)
+
+# Lazy broadcast of the pair (weight, screen-level values)
+weighted_screen_level(w, s) = @. lazy(tuple(w, s))
+
+"""
+    compute_screen_level!(out, Y, p, name::Val, land_model)
+
+Compute the screen-level diagnostic `name` (`Val(:T)`, `Val(:q)`, or
+`Val(:u)`) of `land_model` into `out`, allocating it if `out` is `nothing`:
+the mean over its surfaces of `screen_level_pairs`, weighted by area fraction
+and heat conductance (`ClimaLand.screen_level_mean`).
+"""
+function compute_screen_level!(out, Y, p, name::Val, land_model)
+    pairs = screen_level_pairs(land_model, Y, p)
+    if isnothing(out)
+        out = zeros(axes(p.drivers.T)) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out .= ClimaLand.screen_level_mean.(name, pairs...)
+        return out
+    else
+        out .= ClimaLand.screen_level_mean.(name, pairs...)
+    end
+end
+
+const ScreenLevelModels = Union{
+    EnergyHydrology,
+    SnowModel,
+    CanopyModel,
+    SoilCanopyModel,
+    SoilSnowModel,
+    LandModel,
+}
+@with_error function compute_t2m!(out, Y, p, t, land_model::ScreenLevelModels)
+    return compute_screen_level!(out, Y, p, Val(:T), land_model)
+end
+@with_error function compute_q2m!(out, Y, p, t, land_model::ScreenLevelModels)
+    return compute_screen_level!(out, Y, p, Val(:q), land_model)
+end
+@with_error function compute_u10m!(out, Y, p, t, land_model::ScreenLevelModels)
+    return compute_screen_level!(out, Y, p, Val(:u), land_model)
+end
