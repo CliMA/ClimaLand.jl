@@ -19,6 +19,8 @@ ClimaLand.turbulent_fluxes_at_a_point
 ClimaLand.turbulent_fluxes_from_output
 ClimaLand.select_fluxes
 ClimaLand.surface_flux_config
+ClimaLand.gustiness_model
+ClimaLand.gustiness_floor
 ClimaLand.screen_level_values
 ClimaLand.screen_level_mean
 ClimaLand.profile_shape

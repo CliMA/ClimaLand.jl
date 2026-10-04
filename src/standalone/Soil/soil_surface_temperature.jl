@@ -321,7 +321,7 @@ temperature with the turbulent fluxes at it.
 and `buoyancy_flux` before `T_sfc` if `return_extra_fluxes` is `Val(true)`: the
 latent and sensible heat fluxes [W/m²], the vapor flux [m/s of liquid water]
 from liquid water or from ice (sublimation at and below the freezing
-temperature), and the skin temperature [K] (see `soil_turbulent_fluxes`).
+temperature), and the skin temperature in K (see `soil_turbulent_fluxes`).
 
 Called from [`update_soil_surface_temperature!`](@ref).
 """
@@ -500,7 +500,8 @@ method is for soil exposed to the sky and uses the downwelling radiation in
 `p.drivers`, whether prescribed or supplied by a coupler, and
 `p.soil.sfc_scratch` is overwritten. The reference height `h_atmos`, the wind
 `u_atmos`, temperature `T_atmos`, and specific humidity `q_atmos` at it, and
-the gustiness model default to those of the atmospheric forcing; land models with a canopy pass the sub-canopy
+the gustiness model default to those of the atmospheric forcing (see
+`ClimaLand.gustiness_model`); land models with a canopy pass the sub-canopy
 reference height, attenuated wind, canopy-air temperature and humidity, and
 zero gustiness (see `Canopy.subcanopy_forcing`).
 
@@ -525,9 +526,9 @@ function update_soil_surface_temperature!(
     bc isa AtmosDrivenFluxBC || return nothing
     atmos = bc.atmos
     h_atmos = isnothing(h_atmos) ? atmos.h : h_atmos
-    gustiness =
-        isnothing(gustiness) ?
-        SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness) : gustiness
+    gustiness = ClimaLand.gustiness_model(
+        isnothing(gustiness) ? atmos.gustiness : gustiness,
+    )
     earth_param_set = model.parameters.earth_param_set
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)

@@ -139,6 +139,116 @@ end
     end
 end
 
+@testset "Gustiness models, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    sf_params = LP.surface_fluxes_parameters(earth_param_set)
+    β = SFP.gustiness_coeff(sf_params)
+    z_i = SFP.gustiness_zi(sf_params)
+
+    spec = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    @test spec isa SurfaceFluxes.AbstractGustinessSpec
+    # The gustiness is a function of the stability parameter and the state,
+    # so SurfaceFluxes uses its closed-form friction velocity
+    @test !SurfaceFluxes.depends_on_ustar(spec)
+    # Stable or neutral (non-positive buoyancy flux): only the floor applies
+    for B in (FT(0), FT(-0.01))
+        @test SurfaceFluxes.gustiness_value(spec, sf_params, B) == FT(1)
+    end
+    # Unstable: Deardorff value when it exceeds the floor
+    B = FT(0.02)
+    expected = β * cbrt(B * z_i)
+    @test expected > 1
+    @test SurfaceFluxes.gustiness_value(spec, sf_params, B) ≈ expected
+    # A floor above the convective value wins
+    @test SurfaceFluxes.gustiness_value(
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(10)),
+        sf_params,
+        B,
+    ) == FT(10)
+
+    # Conversions and floors
+    c = SurfaceFluxes.ConstantGustinessSpec(FT(2))
+    @test ClimaLand.gustiness_model(1, FT) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    @test ClimaLand.gustiness_model(FT(1)) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    @test ClimaLand.gustiness_model(spec, FT) === spec
+    @test ClimaLand.gustiness_model(spec) === spec
+    @test ClimaLand.gustiness_model(c) === c
+    @test ClimaLand.gustiness_floor(spec) == FT(1)
+    @test ClimaLand.gustiness_floor(c) == FT(2)
+    @test ClimaLand.gustiness_floor(FT(3)) == FT(3)
+    @test ClimaLand.gustiness_floor(SurfaceFluxes.DeardorffGustinessSpec()) == 0
+
+    # A flux solve with the model: in calm unstable conditions the effective
+    # wind speed is at least the floor, so the fluxes exceed those of a solve
+    # without gustiness; the solve is a function of its inputs alone
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    solve(gustiness) = ClimaLand.surface_fluxes_at_a_point(
+        FT(300), # T_sfc
+        FT(0.015), # q_sfc
+        nothing,
+        nothing,
+        FT(101325), # P_atmos
+        FT(290), # T_atmos
+        FT(0.005), # q_atmos
+        FT(0.1), # u_atmos
+        FT(10), # h_atmos
+        FT(0), # h_sfc
+        FT(0), # displ
+        roughness_model,
+        gustiness,
+        earth_param_set,
+    )
+    with_gust = solve(spec)
+    @test with_gust == solve(spec)
+    no_gust = solve(SurfaceFluxes.ConstantGustinessSpec(FT(0)))
+    floor_only = solve(SurfaceFluxes.ConstantGustinessSpec(FT(1)))
+    @test with_gust.shf > no_gust.shf > 0 # upward sensible heat flux
+    @test with_gust.shf >= floor_only.shf
+    @test with_gust.ustar >= floor_only.ustar
+    @test with_gust.ζ < 0 # unstable
+    @test isfinite(with_gust.lhf) && isfinite(with_gust.L_MO)
+    # Self-consistency: the effective wind speed of the solve, u* / sqrt(Cd),
+    # is the gustiness β w* of its own buoyancy flux (the mean wind is
+    # negligible here), and a solve with that constant gustiness agrees to
+    # within the tolerance of the stability solve
+    ΔU = with_gust.ustar / sqrt(with_gust.Cd)
+    B = -with_gust.ustar^3 / (SFP.von_karman_const(sf_params) * with_gust.L_MO)
+    @test B > 0
+    @test ΔU ≈ β * cbrt(B * z_i) rtol = sqrt(eps(FT))
+    @test ΔU > 1
+    same = solve(SurfaceFluxes.ConstantGustinessSpec(ΔU))
+    @test same.shf ≈ with_gust.shf rtol = 1e-3
+    @test same.ustar ≈ with_gust.ustar rtol = 1e-3
+
+    # Atmospheric drivers accept a number or a gustiness model
+    f = TimeVaryingInput((t) -> 10.0)
+    pa = ClimaLand.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1), toml_dict)
+    @test pa.gustiness == SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    pa2 = ClimaLand.PrescribedAtmosphere(
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        FT(1),
+        toml_dict;
+        gustiness = 2,
+    )
+    @test pa2.gustiness == SurfaceFluxes.ConstantGustinessSpec(FT(2))
+    # A CoupledAtmosphere keeps the number the coupler reads; the flux solve
+    # converts it to a constant gustiness
+    ca = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
+    @test ca.gustiness == FT(1)
+    @test ClimaLand.gustiness_floor(ca.gustiness) == FT(1)
+    @test ClimaLand.gustiness_model(ca.gustiness) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+end
+
 @testset "Turbulent flux selections, FT = $FT" begin
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)

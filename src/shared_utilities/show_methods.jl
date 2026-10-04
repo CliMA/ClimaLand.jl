@@ -408,14 +408,8 @@ function Base.show(io::IO, ::MIME"text/plain", atmos::PrescribedAtmosphere)
             "}",
         )
         println(io, "  start_date: ", atmos.start_date)
-        println(
-            io,
-            "  reference height: ",
-            atmos.h,
-            " m, gustiness: ",
-            atmos.gustiness,
-            " m/s",
-        )
+        println(io, "  reference height: ", atmos.h, " m")
+        println(io, "  gustiness: ", atmos.gustiness)
         driver_fields = (:liquid_precip, :snow_precip, :T, :u, :q, :P)
         kinds = unique(_driver_kind(getfield(atmos, f)) for f in driver_fields)
         if length(kinds) == 1

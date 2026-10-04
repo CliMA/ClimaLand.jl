@@ -622,7 +622,7 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
         sfp
     h_forcing = atmos.h
-    floor = atmos.gustiness
+    floor = ClimaLand.gustiness_floor(atmos.gustiness)
     height = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u

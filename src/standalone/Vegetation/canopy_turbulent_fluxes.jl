@@ -203,5 +203,16 @@ function ground_gustiness(
         SurfaceFluxes.ConstantGustinessSpec(ifelse(plants, zero(u_min), u_min)),
     )
 end
+function ground_gustiness(
+    gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec,
+    plants,
+)
+    u_min = gustiness.u_min
+    return @. lazy(
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(
+            ifelse(plants, zero(u_min), u_min),
+        ),
+    )
+end
 ground_gustiness(gustiness::SurfaceFluxes.AbstractGustinessSpec, plants) =
     gustiness
