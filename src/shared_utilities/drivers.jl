@@ -14,6 +14,7 @@ using DocStringExtensions
 using Insolation
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
+import SurfaceFluxes.UniversalFunctions as UF
 using StaticArrays
 using NVTX
 import ..Parameters as LP
@@ -83,6 +84,21 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
+    gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec)
+
+Return the minimum wind speed [m/s] of a gustiness model, which is folded into
+the wind above a canopy before the wind below it is computed
+(`Canopy.subcanopy_wind`): the value of a `ConstantGustinessSpec`, the floor
+of a `SurfaceFluxes.FlooredDeardorffGustinessSpec`, and zero otherwise.
+"""
+gustiness_floor(gustiness::SurfaceFluxes.ConstantGustinessSpec) =
+    gustiness.value
+gustiness_floor(gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec) =
+    gustiness.u_min
+gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec) = 0
+
+
+"""
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
@@ -94,6 +110,12 @@ The default CO2 concentration is a constant as a function of time, equal to
 
 Since not all models require co2 concentration, the default for that
 is `nothing`.
+
+The keyword `gustiness` is a SurfaceFluxes gustiness model, or a number,
+which is stored as a `SurfaceFluxes.ConstantGustinessSpec` with that constant
+minimum wind speed [m/s]; the default is a
+`SurfaceFluxes.FlooredDeardorffGustinessSpec` with a floor of 1 m/s, the
+larger of that floor and the Deardorff convective gustiness.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAtmosphere{
@@ -106,6 +128,7 @@ struct PrescribedAtmosphere{
     RA <: AbstractTimeVaryingInput,
     CA <: AbstractTimeVaryingInput,
     DT,
+    G,
     TP,
 } <: AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
@@ -126,8 +149,8 @@ struct PrescribedAtmosphere{
     start_date::DT
     "Reference height (m), relative to surface elevation"
     h::FT
-    "Minimum wind speed (gustiness; m/s)"
-    gustiness::FT
+    "Gustiness model of the effective wind speed (a `SurfaceFluxes.AbstractGustinessSpec`)"
+    gustiness::G
     "Thermodynamic parameters"
     thermo_params::TP
     function PrescribedAtmosphere(
@@ -140,13 +163,20 @@ struct PrescribedAtmosphere{
         start_date,
         h::FT,
         toml_dict::CP.ParamDict;
-        gustiness = FT(1),
+        gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
-        return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
+        gustiness isa Number &&
+            (gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(gustiness)))
+        return new{
+            typeof(h),
+            typeof.(args)...,
+            typeof(gustiness),
+            typeof(thermo_params),
+        }(
             args...,
             h,
             gustiness,
@@ -349,6 +379,11 @@ but it still acts as a flag that fluxes have been updated by the coupler
 and don't need to be recomputed.
 When constructed with a space, the struct contains the fields needed to compute
 surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
+
+The gustiness is a number, the constant minimum wind speed [m/s] that the
+coupler uses in its flux computation; land models driven by a
+`CoupledAtmosphere` inside ClimaLand use it as a
+`SurfaceFluxes.ConstantGustinessSpec` (see `gustiness_spec`).
 """
 struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <:
        AbstractAtmosphericDrivers{FT}
@@ -357,6 +392,18 @@ struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <:
     "Minimum wind speed (gustiness; m/s), which is always a spatial constant"
     gustiness::FT
 end
+
+"""
+    gustiness_spec(atmos::AbstractAtmosphericDrivers)
+
+Return the gustiness model of an atmospheric driver as a
+`SurfaceFluxes.AbstractGustinessSpec`: the `gustiness` field of a
+`PrescribedAtmosphere`, and a `SurfaceFluxes.ConstantGustinessSpec` with the
+constant minimum wind speed that a `CoupledAtmosphere` holds for the coupler.
+"""
+gustiness_spec(atmos::PrescribedAtmosphere) = atmos.gustiness
+gustiness_spec(atmos::CoupledAtmosphere) =
+    SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
 
 """
     compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
@@ -395,7 +442,7 @@ return_momentum_fluxes(atmos::CoupledAtmosphere) = true
                       u_atmos = p.drivers.u,
                       T_atmos = p.drivers.T,
                       q_atmos = p.drivers.q,
-                      gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
+                      gustiness = gustiness_spec(atmos),
                       )
 
 Computes the turbulent surface flux terms at the ground,
@@ -409,10 +456,12 @@ by name, which of the quantities of `turbulent_fluxes_at_a_point` are stored
 (see `select_fluxes`).
 
 The reference height `h_atmos`, the wind `u_atmos`, temperature `T_atmos`, and
-specific humidity `q_atmos` at it, and the gustiness model default to those of
-the atmospheric forcing. Integrated models pass the sub-canopy reference height,
-attenuated wind, canopy-air temperature and humidity, and zero gustiness for
-the surfaces beneath a canopy (see `Canopy.subcanopy_forcing`).
+specific humidity `q_atmos` at it, and the gustiness model (a
+`SurfaceFluxes.AbstractGustinessSpec`, or a field of them) default to those of
+the atmospheric forcing (`gustiness_spec`). Integrated models pass the
+sub-canopy reference height, attenuated wind, canopy-air temperature and
+humidity, and gustiness model for the surfaces beneath a canopy (see
+`Canopy.subcanopy_forcing`).
 """
 function turbulent_fluxes!(
     dest,
@@ -425,7 +474,7 @@ function turbulent_fluxes!(
     u_atmos = p.drivers.u,
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness),
+    gustiness = gustiness_spec(atmos),
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
@@ -1583,7 +1632,7 @@ end
                             toml_dict::CP.ParamDict,
                             FT;
                             use_lowres_forcing = false,
-                            gustiness=1,
+                            gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                             max_wind_speed = nothing,
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -1649,7 +1698,7 @@ function prescribed_forcing_era5(
     toml_dict::CP.ParamDict,
     FT;
     use_lowres_forcing = false,
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -1767,7 +1816,7 @@ function prescribed_forcing_era5(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 
@@ -1972,7 +2021,7 @@ end
                               surface_space,
                               toml_dict::CP.ParamDict,
                               FT;
-                              gustiness = 1,
+                              gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                               time_interpolation_method = LinearInterpolation(),
                               regridder_type = :InterpolationsRegridder,
@@ -2004,7 +2053,7 @@ function prescribed_forcing_crujra(
     surface_space,
     toml_dict::CP.ParamDict,
     FT;
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
@@ -2111,7 +2160,7 @@ function prescribed_forcing_crujra(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 

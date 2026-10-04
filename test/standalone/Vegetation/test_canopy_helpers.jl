@@ -153,8 +153,11 @@ for FT in (Float32, Float64)
         @test Base.materialize(ground_gustiness(c, true)) ==
               SurfaceFluxes.ConstantGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(c, false)) == c
-        @test Base.materialize(ground_gustiness(FT(2), false)) == c
         d = SurfaceFluxes.DeardorffGustinessSpec()
         @test ground_gustiness(d, true) === d
+        spec = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+        @test Base.materialize(ground_gustiness(spec, true)) ==
+              SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
+        @test Base.materialize(ground_gustiness(spec, false)) == spec
     end
 end

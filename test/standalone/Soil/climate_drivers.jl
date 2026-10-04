@@ -4,6 +4,7 @@ ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
 using Thermodynamics
+import SurfaceFluxes
 using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
@@ -74,7 +75,9 @@ for FT in (Float32, Float64)
             h_atmos,
             toml_dict,
         )
-        @test atmos.gustiness == FT(1)
+        @test atmos.gustiness ==
+              SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+        @test ClimaLand.gustiness_floor(atmos.gustiness) == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)

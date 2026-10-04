@@ -189,11 +189,9 @@ the model of the atmospheric forcing `gustiness` with its minimum wind speed
 set to zero, since that floor is folded into the sub-canopy wind
 ([`subcanopy_wind`](@ref)), so that only its convective part remains; where
 they are absent, the model of the forcing itself, so that bare ground is
-forced as a standalone surface. A number is a constant minimum wind speed.
-Models without a floor are returned as they are.
+forced as a standalone surface. Models without a floor are returned as they
+are.
 """
-ground_gustiness(gustiness::Number, plants) =
-    ground_gustiness(SurfaceFluxes.ConstantGustinessSpec(gustiness), plants)
 function ground_gustiness(
     gustiness::SurfaceFluxes.ConstantGustinessSpec,
     plants,
@@ -201,6 +199,17 @@ function ground_gustiness(
     u_min = gustiness.value
     return @. lazy(
         SurfaceFluxes.ConstantGustinessSpec(ifelse(plants, zero(u_min), u_min)),
+    )
+end
+function ground_gustiness(
+    gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec,
+    plants,
+)
+    u_min = gustiness.u_min
+    return @. lazy(
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(
+            ifelse(plants, zero(u_min), u_min),
+        ),
     )
 end
 ground_gustiness(gustiness::SurfaceFluxes.AbstractGustinessSpec, plants) =
