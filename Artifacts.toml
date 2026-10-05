@@ -1,3 +1,10 @@
+[modis_max_lai]
+git-tree-sha1 = "3977938f17914088ff69224a3c74e4526cc91bb1"
+
+    [[modis_max_lai.download]]
+    sha256 = "b128f8f5a6f7be5ef68ddfb6f03080dd2daf9f787ef2aaa265bca3c016f541d1"
+    url = "https://caltech.box.com/shared/static/iirh2rgwpgubelvt9gsunkd9artsjxt8.gz"
+    
 [rosetta_spunup_ic]
 git-tree-sha1 = "2ac7808da475dda482d5631003b2e0684a4ec15e"
 
