@@ -424,9 +424,11 @@ end
 """
     soil_surface_vapor_conductance!(g_soil_sfc, model::EnergyHydrology, Y, p)
 
-Compute the conductance [m/s] of the dry soil layer to water vapor at the soil
-surface into `g_soil_sfc` and return it. The liquid water content is
-extrapolated to the surface from the top two cells.
+Compute the conductance [m/s] to water vapor between the soil surface and the
+air above it into `g_soil_sfc` and return it: the resistance of the dry soil
+layer ([`soil_conductance`](@ref)) in series with that of the litter layer
+([`litter_resistance`](@ref)). The liquid water content is extrapolated to the
+surface from the top two cells.
 
 Called from [`update_soil_surface_temperature!`](@ref) and
 `get_update_surface_humidity_function(::EnergyHydrology)`.
@@ -438,8 +440,17 @@ function soil_surface_vapor_conductance!(
     p,
 )
     FT = eltype(Y)
-    (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
-        model.parameters
+    (;
+        ν,
+        θ_r,
+        d_ds,
+        evap_p,
+        evap_α,
+        d_litter,
+        ν_litter,
+        hydrology_cm,
+        earth_param_set,
+    ) = model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
     S_c_sfc = hydrology_cm_sfc.S_c
     ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
@@ -470,6 +481,8 @@ function soil_surface_vapor_conductance!(
         θ_r_sfc,
         θ_i_sfc,
     )
+    r_litter = litter_resistance(d_litter, ν_litter, _D_vapor)
+    @. g_soil_sfc = 1 / (1 / g_soil_sfc + r_litter)
     # Reusing g_soil_sfc for the intermediates keeps the kernel argument
     # count within the parameter memory limit of P100 GPUs
     return g_soil_sfc

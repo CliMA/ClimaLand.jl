@@ -855,6 +855,18 @@ type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"
 
+["litter_layer_thickness"]
+value = 0.0
+type = "float"
+description = "Thickness of the litter layer on the soil surface (m). Water vapor leaving the soil surface diffuses through the pore space of the litter, which adds the resistance of the layer to that of the dry soil layer; zero for no litter. Litter layers under forest canopies are 1-5 cm thick; 2 cm with porosity 0.8 gives about 1000 s/m, in the range measured by Schaap and Bouten (1997) and Ogée and Brunet (2002)."
+tag = "EnergyHydrologyParameters"
+
+["litter_porosity"]
+value = 0.8
+type = "float"
+description = "Porosity of the litter layer (unitless), which sets its Millington-Quirk tortuosity factor for vapor diffusion (Millington and Quirk, 1961)."
+tag = "EnergyHydrologyParameters"
+
 # Slab Lake Model
 ["slab_lake_depth"]
 value = 10

@@ -114,6 +114,7 @@ ClimaLand.Soil.update_soil_q_vap_sfc_scheme
 ClimaLand.Soil.solve_soil_surface_temperature_at_a_point
 ClimaLand.Soil.soil_surface_vapor_conductance!
 ClimaLand.Soil.soil_conductance
+ClimaLand.Soil.litter_resistance
 ClimaLand.Soil.soil_tortuosity
 ClimaLand.Soil.dry_soil_layer_thickness
 ```

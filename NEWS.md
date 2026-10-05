@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
+  the soil surface diffuses through the pore space of a dry litter layer of
+  thickness `litter_layer_thickness` and porosity `litter_porosity`
+  (`Soil.litter_resistance`, Millington-Quirk tortuosity), in series with the
+  resistance of the dry soil layer. The default thickness is zero, which leaves
+  all results unchanged. With 2 cm of litter (about 1000 s/m, as measured under
+  forest canopies by Schaap and Bouten, 1997, and Ogée and Brunet, 2002) the
+  evaporation from the floor of closed forests at FLUXNET sites falls from
+  35–75 % of the evapotranspiration, where the wet mineral soil evaporated like
+  a free water surface, to 5–15 %, as observed.
 - ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
   at the water content of the permanent wilting point (ψ = -150 m). At sites
   where the observed water content is below the residual water content of the

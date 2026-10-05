@@ -73,6 +73,10 @@ Base.@kwdef struct EnergyHydrologyParameters{
     evap_p::FT
     "Multiplicative scalar used as fitting parameter in critical soil water content for evaporation (unitless)"
     evap_α::FT
+    "Thickness of the litter layer on the soil surface (m); zero for no litter"
+    d_litter::FT
+    "Porosity of the litter layer (unitless)"
+    ν_litter::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
@@ -125,6 +129,8 @@ function EnergyHydrologyParameters(
     d_ds = toml_dict["maximum_dry_soil_layer_depth"],
     evap_p = toml_dict["evaporation_exponent"],
     evap_α = toml_dict["evaporation_scalar"],
+    d_litter = toml_dict["litter_layer_thickness"],
+    ν_litter = toml_dict["litter_porosity"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -202,6 +208,8 @@ function EnergyHydrologyParameters(
         d_ds,
         evap_p,
         evap_α,
+        d_litter,
+        ν_litter,
         parameters...,
     )
 end
@@ -1420,6 +1428,30 @@ function soil_conductance(
     τ_a::FT = soil_tortuosity(ν, θ_r, θ_i)
     r_soil = dsl / (_D_vapor * τ_a) # [s/m]
     return 1 / max(r_soil, eps(FT)) # [m/s]
+end
+
+"""
+    litter_resistance(d_litter::FT, ν_litter::FT, _D_vapor::FT) where {FT}
+
+Return the resistance [s/m] of a litter layer of thickness `d_litter` [m] and
+porosity `ν_litter` to the diffusion of water vapor from the soil surface
+below it to the air above it, `d_litter / (D_vapor τ)`, with the diffusivity
+of vapor in air `_D_vapor` [m²/s] and the Millington-Quirk tortuosity factor
+`τ = ν_litter^(4/3)` of a dry porous layer (Millington and Quirk, 1961,
+Trans. Faraday Soc., 57, 1200–1207; Moldrup et al., 2000, Soil Sci. Soc. Am.
+J., 64, 1588–1594). The litter is taken to be dry and without capillary
+contact with the mineral soil, so that water leaves the soil surface only as
+vapor; for 2 cm of litter with porosity 0.8 the resistance is about
+1000 s/m, in the range measured under forest canopies (Schaap and Bouten,
+1997, Water Resour. Res., 33, 1481–1488; Ogée and Brunet, 2002, J. Hydrol.,
+255, 212–233). Zero thickness returns zero resistance.
+
+Called from [`soil_surface_vapor_conductance!`](@ref), where the resistance
+is added in series to that of the dry soil layer.
+"""
+function litter_resistance(d_litter::FT, ν_litter::FT, _D_vapor::FT) where {FT}
+    τ = ν_litter^(FT(4) / FT(3))
+    return d_litter / (_D_vapor * τ)
 end
 
 """
