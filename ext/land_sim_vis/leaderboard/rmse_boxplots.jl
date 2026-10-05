@@ -139,7 +139,8 @@ const _CARBON_PANELS = (
 Compute the global, annual-mean RMSE of ClimaLand `short_name` against the
 benchmark indicated by `data_source` (`"ILAMB"` or `"ERA5"`). The pipeline
 mirrors `compute_seasonal_leaderboard`: spinup removed, windowed to overlap,
-resampled, time-averaged, then `ClimaAnalysis.global_rmse` with the same mask.
+resampled, masked to the land intersection, time-averaged, then
+`ClimaAnalysis.global_rmse`.
 
 Returns `NaN` if the variable is not in the simulation directory or in the
 benchmark.
@@ -153,7 +154,6 @@ function _annual_global_rmse(
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     data_loader =
         uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
-    mask_dict = get_mask_dict(data_loader)
     available = ClimaAnalysis.available_vars(
         ClimaAnalysis.SimDir(diagnostics_folder_path),
     )
@@ -183,12 +183,12 @@ function _annual_global_rmse(
         ClimaAnalysis.window(obs_var, "time", left = min_time, right = max_time)
 
     obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
-    obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
+    obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var; nan_threshold = 0.5)
 
-    mask_fn = mask_dict[short_name](sim_var, obs_var)
-    sim_avg = ClimaAnalysis.average_time(sim_var)
-    obs_avg = ClimaAnalysis.average_time(obs_var)
-    return ClimaAnalysis.global_rmse(sim_avg, obs_avg; mask = mask_fn)
+    mask_fn = _land_intersection_mask(sim_var, obs_var)
+    sim_avg = ClimaAnalysis.average_time(mask_fn(sim_var))
+    obs_avg = ClimaAnalysis.average_time(mask_fn(obs_var))
+    return ClimaAnalysis.global_rmse(sim_avg, obs_avg)
 end
 
 # Box-and-whisker statistics with Tukey-style 1.5*IQR fences clipped to data
