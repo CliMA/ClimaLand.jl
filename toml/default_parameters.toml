@@ -33,7 +33,7 @@ tag = "TOPMODELRunoff"
 # Big leaf energy parameters
 
 ["ac_canopy"]
-value = 2.5e3
+value = 2.5e5
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"
@@ -281,25 +281,25 @@ tag = "SturmSnowConductivityModel"
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
-value = 0.08
+value = 0.01
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_0"]
-value = 1.77
+value = 0.6
 type = "float"
 description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_min"]
-value = 1.0
+value = 0.01
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["z0"]
-value = 0.106
+value = 0.206
 type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"

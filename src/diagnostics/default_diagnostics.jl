@@ -474,6 +474,9 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "precip",
         "tair",
         "sdr",
+        "soilshf",
+        "soillhf",
+        "soilrn",
     ]
 
     # Add diagnostics based on the top boundary condition type and runoff model

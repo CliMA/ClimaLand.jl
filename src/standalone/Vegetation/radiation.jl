@@ -554,8 +554,8 @@ function canopy_sw_rt_beer_lambert(
     LAI::FT,
     α_soil::FT,
 ) where {FT}
-    K = extinction_coeff(G_Function, cosθs)
-    transmitted_fraction = exp(-K * LAI * Ω)
+    K = extinction_coeff(G_Function, cosθs) * Ω
+    transmitted_fraction = exp(-K * LAI)
     absorbed_downwards_pass = (1 - transmitted_fraction) * (1 - α_leaf)
     reflected_downwards_pass = α_leaf * (1 - transmitted_fraction)
     # soil absorbs (1-α_soil)*transmitted_fraction
