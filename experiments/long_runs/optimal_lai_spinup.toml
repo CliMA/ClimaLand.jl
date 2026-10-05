@@ -1,0 +1,5 @@
+# Parameters of the optimal-LAI spin-up (`optimal_lai_spinup.jl`) that differ from the
+# defaults: a 1-year memory of the annual totals, so they converge within the spin-up.
+["optimal_lai_tau_long_term"]
+value = 3.1536e7
+type = "float"

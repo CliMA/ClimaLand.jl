@@ -109,6 +109,20 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
 
+      # Spin-up of the optimal-LAI model (6 years with a 1-year memory of its
+      # annual totals), whose final state is to start the optimal-LAI long runs.
+      - label: ":seedling: Optimal LAI spin-up, 6 years"
+        key: "optimal_lai_spinup"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/optimal_lai_spinup.jl
+        artifact_paths:
+          - "optimal_lai_spinup_gpu/optimal_lai_state.nc"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 5:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null
     steps:

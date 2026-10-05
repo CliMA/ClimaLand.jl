@@ -34,8 +34,9 @@ main
   `FlagshipCarbonMetrics`. Static
   observations are compared with every simulated month. `make_leaderboard_plots` takes a
   `spin_up_months` keyword; the optimal-LAI long run runs for 3 years, compares the
-  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`) to start later
-  runs from.
+  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`). Alongside it,
+  `optimal_lai_spinup.jl` runs six years with a 1-year memory of the annual totals,
+  ending when the long runs start, and saves its final state to start them from.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
   with several components per point (such as the P-model acclimated capacities), which
