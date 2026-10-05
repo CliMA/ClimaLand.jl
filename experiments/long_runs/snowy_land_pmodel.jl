@@ -162,6 +162,15 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
+# The final optimal-LAI state, to start later runs from it
+if PROGNOSTIC_LAI
+    include("optimal_lai_state.jl")
+    write_optimal_lai_state(
+        joinpath(root_path, "optimal_lai_state.nc"),
+        simulation,
+    )
+end
+
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"]

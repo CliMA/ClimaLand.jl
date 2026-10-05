@@ -33,8 +33,9 @@ main
   CLM surface data are left out. The optimal-LAI long run plots it, and LAI moves out of
   `FlagshipCarbonMetrics`. Static
   observations are compared with every simulated month. `make_leaderboard_plots` takes a
-  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years and compares the
-  last.
+  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years, compares the
+  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`) to start later
+  runs from.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
   with several components per point (such as the P-model acclimated capacities), which

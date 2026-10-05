@@ -101,6 +101,7 @@ steps:
         artifact_paths:
           - "snowy_land_pmodel_opt_lai_longrun_gpu/*png"
           - "snowy_land_pmodel_opt_lai_longrun_gpu/*pdf"
+          - "snowy_land_pmodel_opt_lai_longrun_gpu/optimal_lai_state.nc"
         agents:
           slurm_gpus: 1
           slurm_time: 3:00:00
