@@ -290,6 +290,21 @@ clm_tree_share_path() = joinpath(
     "clm_tree_share.nc",
 )
 
+"""
+    clm_crop_fraction_path()
+
+Return the path to the fraction of the land in the crop land unit of the CLM5 surface
+data for the year 2000 (0.9°×1.25°), NaN over ocean. This is a copy in the repository
+until it becomes a ClimaArtifacts artifact; see
+`artifacts/clm_crop_fraction/create_clm_crop_fraction.jl`.
+"""
+clm_crop_fraction_path() = joinpath(
+    pkgdir(@__MODULE__),
+    "artifacts",
+    "clm_crop_fraction",
+    "clm_crop_fraction.nc",
+)
+
 
 """
     clm_data__folder_path(; context, lowres = false)

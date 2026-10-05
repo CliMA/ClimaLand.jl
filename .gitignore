@@ -10,6 +10,7 @@ experiments/integrated/fluxnet/US-*/out/*
 *.nc
 # Temporary data file until it becomes an artifact
 !artifacts/clm_tree_share/*.nc
+!artifacts/clm_crop_fraction/*.nc
 *.png
 # Precomputed tutorial figure committed intentionally (expensive to build on the fly)
 !docs/src/tutorials/calibration/perfect_model_ces_predictive_offline.png

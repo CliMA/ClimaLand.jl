@@ -650,7 +650,9 @@ end
 
 Loads the observations of the vegetation structure for the leaderboard: the
 MODIS `lai` target, and the C3 fraction `fc3` and tree share `ftr` of the CLM
-surface data, static maps.
+surface data, static maps. They cover natural vegetation only: where cropland
+exceeds `CROPLAND_THRESHOLD` of the land in the CLM surface data, the observations
+are `NaN`, which leaves those cells out of the maps and metrics.
 """
 struct FlagshipVegetationMetricsDataLoader <: AbstractDataLoader
     """Preprocessed `OutputVar`s, keyed by model short name."""
@@ -665,13 +667,15 @@ end
 
 Construct a data loader for MODIS LAI (`get_modis_lai_obs_var`), the CLM C3
 fraction (`get_clm_c3_fraction_obs_var`) and the CLM tree share
-(`get_clm_tree_share_obs_var`).
+(`get_clm_tree_share_obs_var`), with cropland masked (`mask_cropland`).
 """
 function FlagshipVegetationMetricsDataLoader()
+    crop_fraction = get_clm_crop_fraction_var()
+    natural(obs_var) = mask_cropland(obs_var, crop_fraction)
     obs_var_dict = Dict{String, Any}(
-        "lai" => get_modis_lai_obs_var(),
-        "fc3" => get_clm_c3_fraction_obs_var(),
-        "ftr" => get_clm_tree_share_obs_var(),
+        "lai" => natural(get_modis_lai_obs_var()),
+        "fc3" => natural(get_clm_c3_fraction_obs_var()),
+        "ftr" => natural(get_clm_tree_share_obs_var()),
     )
     return FlagshipVegetationMetricsDataLoader(
         obs_var_dict,
@@ -696,6 +700,55 @@ end
 
 sim_only_vars(loader::FlagshipVegetationMetricsDataLoader) =
     setdiff(loader.available_vars, keys(loader.obs_var_dict))
+
+# Share of the land in crops above which a cell is left out of the vegetation
+# leaderboard, as the optimal-LAI model represents natural vegetation.
+const CROPLAND_THRESHOLD = 0.3
+
+"""
+    get_clm_crop_fraction_var()
+
+The fraction of the land in the crop land unit of the CLM5 surface data for the year
+2000 (`PCT_CROP` on its 0.9°×1.25° grid; see
+`artifacts/clm_crop_fraction/create_clm_crop_fraction.jl`) as a static `OutputVar`,
+NaN over ocean. Latitude is sorted ascending and longitude shifted to [-180, 180].
+"""
+function get_clm_crop_fraction_var()
+    path = ClimaLand.Artifacts.clm_crop_fraction_path()
+    return _preprocess_var(ClimaAnalysis.OutputVar(path, "crop_fraction"))
+end
+
+"""
+    mask_cropland(obs_var, crop_fraction; threshold = CROPLAND_THRESHOLD)
+
+Return `obs_var` with `NaN` where `crop_fraction`, resampled onto its longitudes and
+latitudes, exceeds `threshold`, at every time if `obs_var` has a time dimension.
+"""
+function mask_cropland(obs_var, crop_fraction; threshold = CROPLAND_THRESHOLD)
+    has_time = ClimaAnalysis.has_time(obs_var)
+    lonlat =
+        has_time ?
+        ClimaAnalysis.slice(
+            obs_var,
+            time = first(ClimaAnalysis.times(obs_var)),
+        ) : obs_var
+    crop =
+        ClimaAnalysis.resampled_as(crop_fraction, lonlat; nan_threshold = 0.5)
+    cropland = crop.data .> threshold
+    if has_time
+        time_dim = findfirst(
+            ==(ClimaAnalysis.time_name(obs_var)),
+            collect(keys(obs_var.dims)),
+        )
+        shape = collect(size(cropland))
+        insert!(shape, time_dim, 1)
+        cropland = reshape(cropland, shape...)
+    end
+    return ClimaAnalysis.remake(
+        obs_var;
+        data = ifelse.(cropland, eltype(obs_var.data)(NaN), obs_var.data),
+    )
+end
 
 """
     get_clm_c3_fraction_obs_var()
