@@ -478,7 +478,7 @@ end
     ) where {FT}
 
 Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
-`A0_annual`, `precip_annual`, `PET_annual`, `VPDA0_annual`, `growing_days`,
+`A0_annual`, `precip_annual`, `PET_annual`, `VPDgs_annual`, `growing_days`,
 `A0c3_annual`, `A0c4_annual`, `GPPc3_annual`) from the netCDF file at `ic_path`,
 which must contain `lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0`
 on a (lon, lat) grid.
@@ -488,7 +488,7 @@ spin-up. The annual totals start at their climatological values, which are their
 steady state whatever `tau_long_term`; `A0_daily` starts at the daily share of
 `A0_annual`.
 
-`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
+`PET_annual`, `VPDgs_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
 and `GSL` start at the artifact values they replace, then relax to the simulated
 climate over `tau_long_term`. Since `f0(AI)` peaks at `f0_max`, the `f0` seed uses
 the arid branch of the inverse, and a cell whose artifact `f0` exceeds the peak
@@ -538,10 +538,12 @@ function set_canopy_component_initial_conditions!(
         f0_max,
     )
     Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
-    # vpd_gs is recovered as VPDA0_annual / A0_annual.
-    Y.canopy.biomass.VPDA0_annual .=
-        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.A0_annual
     Y.canopy.biomass.growing_days .= nan_to_zero.(ic.GSL)
+    # vpd_gs is recovered as VPDgs_annual / (growing_days in s).
+    seconds_per_day = FT(86400)
+    Y.canopy.biomass.VPDgs_annual .=
+        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.growing_days .*
+        seconds_per_day
     Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
     k = model.parameters.k
     @. Y.canopy.biomass.GPPc3_annual =

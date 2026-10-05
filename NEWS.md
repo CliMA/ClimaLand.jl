@@ -2,13 +2,27 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- ![][badge-🔥behavioralΔ] The C3/C4 competition of `ZhouOptimalLAIModel` compares
-  potential GPP computed with its own P-model unit cost ratios (`optimal_lai_c3c4_β_c3`,
-  `optimal_lai_c3c4_β_c4`: the pyrealm defaults it was fitted with) rather than the
-  calibrated ones used for GPP, which favoured C4 in tropical forests. The realized C3
-  GPP from which it estimates tree cover includes the soil-moisture stress `βm`, as
-  the GPP the tree-cover relation was fitted to does, so that water-limited savannas
-  are not taken for forest.
+- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its potential GPP and ci/ca
+  ratio, and the per-pathway potential GPP of the C3/C4 competition, with its own P-model
+  unit cost ratios (`optimal_lai_β_c3`, `optimal_lai_β_c4`: the pyrealm defaults Zhou et
+  al. (2025) and the competition were fitted with) rather than the calibrated ones used
+  for GPP, which favoured C4 in tropical forests. It also follows Zhou et al. (2025) for
+  the growing-season VPD, now the mean VPD while the air is above freezing rather than an
+  A0-weighted mean, and for the PET of the aridity index behind `f0`, now the
+  Priestley-Taylor PET of SPLASH rather than FAO-56. The unit cost of leaves `z` is
+  averaged between trees (`optimal_lai_z_tree`, Zhou's 12.227) and grasses
+  (`optimal_lai_z_grass`, 100) with a prescribed tree share, by default that of the
+  natural vegetation in the CLM surface data. At 35 sites this halves the RMSE of annual
+  LAI against MODIS, raising tropical forests and lowering savannas and grasslands. The
+  realized C3 GPP from which the competition estimates tree cover includes the
+  soil-moisture stress `βm`, as the GPP the tree-cover relation was fitted to does, so
+  that water-limited savannas are not taken for forest.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
+  `optimal_lai_z_grass`, `optimal_lai_c3c4_β_c3`/`_c4` are renamed `optimal_lai_β_c3`/`_c4`,
+  the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is renamed `VPDgs_annual`,
+  `potential_evaporation` drops its humidity, wind and height arguments, and
+  `ZhouOptimalLAIModel{FT}(parameters; ...)` requires a `tree_share`.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] A `FlagshipVegetationMetrics` leaderboard source compares LAI with
   MODIS, and the C3 fraction and the tree share with static maps of the CLM surface data;

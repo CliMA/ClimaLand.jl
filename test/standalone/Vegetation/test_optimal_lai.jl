@@ -17,15 +17,18 @@ using ClimaCore
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
 
             @test params.k isa FT
-            @test params.z isa FT
+            @test params.z_tree isa FT
+            @test params.z_grass isa FT
             @test params.sigma isa FT
             @test params.alpha isa FT
             @test params.tau_long_term isa FT
 
-            # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI)
+            # Check expected values from default_parameters.toml: the leaf cost of
+            # trees is that of Zhou et al. (2025); the others are calibrated against
+            # MODIS LAI
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(29.2)
+            @test params.z_tree ≈ FT(12.227)
+            @test params.z_grass ≈ FT(100)
             @test params.sigma ≈ FT(1.01)
             @test params.alpha ≈ FT(0.202)  # ~15 days of memory
             @test params.f0_max ≈ FT(0.65)
@@ -39,9 +42,9 @@ using ClimaCore
             @test params.tc_c ≈ FT(-7.72)
             @test params.tc_gpp_ref ≈ FT(2.8)
 
-            # The competition's own P-model unit cost ratios (pyrealm defaults)
-            @test params.c3c4_β_c3 ≈ FT(146)
-            @test params.c3c4_β_c4 ≈ FT(146 / 9) rtol = 1e-4
+            # The model's own P-model unit cost ratios (pyrealm defaults)
+            @test params.β_c3 ≈ FT(146)
+            @test params.β_c4 ≈ FT(146 / 9) rtol = 1e-4
             pmodel = Canopy.PModel{FT}(
                 ClimaLand.Domains.Point(;
                     z_sfc = FT(0),
@@ -49,13 +52,24 @@ using ClimaCore
                 ),
                 toml_dict,
             )
-            competition =
-                Canopy.competition_pmodel_parameters(pmodel.parameters, params)
-            @test competition.β_c3 == params.c3c4_β_c3
-            @test competition.β_c4 == params.c3c4_β_c4
-            @test competition.cstar == pmodel.parameters.cstar
+            lai_pmodel =
+                Canopy.optimal_lai_pmodel_parameters(pmodel.parameters, params)
+            @test lai_pmodel.β_c3 == params.β_c3
+            @test lai_pmodel.β_c4 == params.β_c4
+            @test lai_pmodel.cstar == pmodel.parameters.cstar
 
             @test eltype(params) == FT
+        end
+
+        @testset "leaf_cost for FT = $FT" begin
+            z_tree, z_grass = FT(12), FT(100)
+            @test Canopy.leaf_cost(FT(1), z_tree, z_grass) ≈ z_tree
+            @test Canopy.leaf_cost(FT(0), z_tree, z_grass) ≈ z_grass
+            # geometric mean of the two costs at an even share
+            @test Canopy.leaf_cost(FT(0.5), z_tree, z_grass) ≈
+                  sqrt(z_tree * z_grass)
+            @test Canopy.leaf_cost(FT(0.8), z_tree, z_grass) <
+                  Canopy.leaf_cost(FT(0.2), z_tree, z_grass)
         end
 
         @testset "ZhouOptimalLAIModel construction for FT = $FT" begin
@@ -66,12 +80,14 @@ using ClimaCore
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
                 height = FT(10.0),
+                tree_share = FT(0.7),
             )
 
             @test model.parameters === params
             @test eltype(model) == FT
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
+            @test model.tree_share == FT(0.7)
 
             # Cache variables: the potential GPP and χ, the steady-state LAI target,
             # and the growing-season inputs derived from the totals in Y.
@@ -95,7 +111,7 @@ using ClimaCore
                 :A0_annual,
                 :precip_annual,
                 :PET_annual,
-                :VPDA0_annual,
+                :VPDgs_annual,
                 :growing_days,
                 :A0c3_annual,
                 :A0c4_annual,
@@ -390,54 +406,37 @@ using ClimaCore
             λv = LP.LH_v0(earth_param_set)
             ϵ = FT(0.98)
             P = FT(101325)
-            # Daily-mean forcing for a temperate summer, the averaging FAO-56 ET0 is
-            # defined at.
-            pet(; SW = 220, LW = 330, T = 293.15, q = 0.008, u = 2, h = 2) =
+            pet(; SW = 220, LW = 330, T = 293.15) =
                 Canopy.potential_evaporation(
                     FT(SW),
                     FT(LW),
                     FT(T),
                     P,
-                    FT(q),
-                    FT(u),
-                    FT(h),
                     ϵ,
                     σ,
                     M_w,
                     thermo_params,
                 )
-
             mm_per_day(x) = x * M_w * FT(86400)
+            Rn_over_λ(; SW = 220, LW = 330, T = 293.15) =
+                ((1 - FT(0.17)) * FT(SW) + ϵ * (FT(LW) - σ * FT(T)^4)) /
+                (λv * M_w)
 
             @test pet() > FT(0)
             @test isfinite(pet())
-            # Reference ET0 in a temperate summer is a few mm/day.
+            # Daily-mean forcing of a temperate summer gives a few mm/day.
             @test FT(1) < mm_per_day(pet()) < FT(8)
 
-            # Drier air raises the aerodynamic demand.
-            @test pet(q = 0.002) > pet(q = 0.012)
+            # Priestley-Taylor: 1.26 Δ/(Δ+γ) of the net radiation, so above the
+            # equilibrium evaporation Δ/(Δ+γ)·Rn but below 1.26·Rn ...
+            @test pet() < FT(1.26) * Rn_over_λ()
+            @test pet() > FT(0.5) * Rn_over_λ()
+            # ... and a larger fraction of Rn in the warm, where Δ/(Δ+γ) is larger.
+            @test pet(T = 278.15) / Rn_over_λ(T = 278.15) <
+                  pet(T = 303.15) / Rn_over_λ(T = 303.15)
 
-            # Wind raises ET0 in dry air and lowers it near saturation, where it
-            # ventilates the surface toward air temperature.
-            @test pet(q = 0.002, u = 6) > pet(q = 0.002, u = 1)
-            @test pet(q = 0.014, u = 6) < pet(q = 0.014, u = 1)
-
-            # At night the radiative term goes negative while the aerodynamic term
-            # does not; ET0 is clipped at zero rather than Rn.
-            @test pet(SW = 0, LW = 50) == FT(0)
-
-            # In still air ET0 tends to the radiative limit Delta/(Delta+gamma)*Rn,
-            # below Rn and a smaller fraction of it in the cold.
-            still(T) = pet(T = T, u = 0)
-            Rn_over_λ(T) =
-                ((1 - FT(0.23)) * FT(220) + ϵ * (FT(330) - σ * T^4)) /
-                (λv * M_w)
-            @test still(FT(278.15)) < Rn_over_λ(FT(278.15))
-            @test still(FT(278.15)) / Rn_over_λ(FT(278.15)) <
-                  still(FT(303.15)) / Rn_over_λ(FT(303.15))
-
-            # A higher measurement height maps to a lower equivalent 2 m wind.
-            @test pet(q = 0.002, h = 10) < pet(q = 0.002, h = 2)
+            # Negative (night-time) net radiation does not count.
+            @test pet(SW = 0, LW = 250) == FT(0)
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
@@ -576,7 +575,8 @@ using ClimaCore
             f0_max = model.parameters.f0_max
             @test Canopy.f0_from_aridity(PET_annual, precip_annual, f0_max) ≈
                   scalar(ic.f0) rtol = 1e-5
-            @test scalar(Y.canopy.biomass.VPDA0_annual) / A0_annual ≈
+            @test scalar(Y.canopy.biomass.VPDgs_annual) /
+                  (scalar(Y.canopy.biomass.growing_days) * FT(86400)) ≈
                   scalar(ic.vpd_gs) rtol = 1e-5
             @test scalar(Y.canopy.biomass.growing_days) ≈ scalar(ic.GSL)
             @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual

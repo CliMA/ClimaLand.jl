@@ -733,12 +733,7 @@ share of productivity is compared with. Latitude is sorted ascending and longitu
 shifted to [-180, 180].
 """
 function get_clm_tree_share_obs_var()
-    path = joinpath(
-        pkgdir(ClimaLand),
-        "artifacts",
-        "clm_tree_share",
-        "clm_tree_share.nc",
-    )
+    path = ClimaLand.Artifacts.clm_tree_share_path()
     obs_var = _preprocess_var(ClimaAnalysis.OutputVar(path, "tree_share"))
     obs_var.attributes["short_name"] = "ftr"
     obs_var.attributes["units"] = "fraction"

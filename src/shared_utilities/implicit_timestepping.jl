@@ -89,7 +89,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(canopy.biomass.A0_annual),
         @name(canopy.biomass.precip_annual),
         @name(canopy.biomass.PET_annual),
-        @name(canopy.biomass.VPDA0_annual),
+        @name(canopy.biomass.VPDgs_annual),
         @name(canopy.biomass.growing_days),
         @name(canopy.biomass.A0c3_annual),
         @name(canopy.biomass.A0c4_annual),

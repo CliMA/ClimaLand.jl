@@ -106,10 +106,16 @@ type = "float"
 description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
-["optimal_lai_z"]
+["optimal_lai_z_tree"]
 value = 12.227
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+description = "Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z_grass"]
+value = 12.227
+type = "float"
+description = "Unit cost of grass leaves (mol m^-2 yr^-1); the tree cost, the single leaf cost of Zhou et al. (2025)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]

@@ -58,7 +58,7 @@ where:
 - $P_{annual}$ is the annual total precipitation (mol H₂O m⁻² yr⁻¹). Conversion: 1 mm precipitation ≈ 55.5 mol H₂O m⁻²
 - $D_{growing}$ is the mean vapor pressure deficit during the growing season (Pa), where growing season is defined as days with T > 0°C
 - $k$ is the light extinction coefficient (dimensionless)
-- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹)
+- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹): the costs of tree and grass leaves averaged geometrically with the tree share $t$ of the vegetation, $z = z_{tree}^{t} z_{grass}^{1-t}$. Grasses have the higher cost, as $z$ includes the below-ground allocation that supplies the leaves. The tree share is prescribed, by default from the natural vegetation of the CLM surface data
 - $c_a$ is the ambient CO₂ partial pressure (Pa). Conversion: 400 ppm at 101325 Pa ≈ 40 Pa
 - $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), from stomatal optimization
 - $f_0$ is the fraction of annual precipitation available to plants (dimensionless). It varies with the aridity index $AI$ as $f_0 = f_{0,max} \exp(-0.604 \ln^2(AI/1.9))$, peaking at $f_{0,max}$ at the energy–water transition
@@ -101,7 +101,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 1. **Water limitation enters once**: The potential GPP $A_0$ carries no soil moisture stress, so water availability acts only through the $f_0 P / A_0$ term of LAI$_{max}$ rather than being counted twice.
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
-4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length is a trailing-year count of days above freezing, the growing-season VPD is an $A_0$-weighted mean, and $f_0$ follows the aridity index $AI = PET/P$ with $PET$ the FAO-56 Penman-Monteith reference evapotranspiration, the definition the $f_0(AI)$ relation was fitted with. Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
+4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length is a trailing-year count of days above freezing, the growing-season VPD is the mean VPD while the air is above freezing, and $f_0$ follows the aridity index $AI = PET/P$ with $PET$ the Priestley-Taylor potential evapotranspiration of SPLASH (Davis et al. 2017), as in Zhou et al. (2025). Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
 5. **Continuous update**: LAI and the trailing climate totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters
@@ -109,7 +109,8 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | Light extinction coefficient | $k$ | - | 0.5 | Controls light attenuation through canopy |
-| Leaf construction cost | $z$ | mol CO₂ m⁻² yr⁻¹ | 12.227 | Unit cost of building and maintaining leaves |
+| Tree leaf cost | $z_{tree}$ | mol CO₂ m⁻² yr⁻¹ | 12.227 | Unit cost of building and maintaining tree leaves |
+| Grass leaf cost | $z_{grass}$ | mol CO₂ m⁻² yr⁻¹ | 100 | Unit cost of building and maintaining grass leaves |
 | LAI dynamics parameter | $\sigma$ | - | 1.1 | Departure from square-wave dynamics |
 | Smoothing factor | $\alpha$ | - | 0.067 | Controls LAI response time (~15 days) |
 | Peak precipitation fraction | $f_{0,max}$ | - | 0.65 | Fraction of precipitation used by plants at the energy–water transition |
@@ -120,9 +121,10 @@ through a logistic, then penalised by the C3 tree cover $tc(g) = a g^b + c$ esti
 the annual C3 GPP $g$, so C4 is suppressed where C3 trees would shade it. With this
 biomass model, the C3 fraction used by photosynthesis comes from the competition rather
 than from the photosynthesis model's static map, so it requires the P-model. The
-per-pathway potential GPP the competition compares is computed with its own P-model unit
-cost ratios, the pyrealm defaults, so that recalibrating the P-model's β for GPP does not
-shift the C3/C4 balance.
+model computes its potential GPP and χ, and the per-pathway potential GPP the competition
+compares, with its own P-model unit cost ratios, the pyrealm defaults with which Zhou et
+al. (2025) and the competition were fitted, so that recalibrating the P-model's β for GPP
+does not shift LAI or the C3/C4 balance.
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
@@ -132,14 +134,14 @@ shift the C3/C4 balance.
 | Tree-cover exponent | $b$ | - | 1.41 | Exponent of the tree-cover relation |
 | Tree-cover offset | $c$ | - | -7.72 | Offset, so tree cover vanishes below a threshold GPP |
 | Tree-cover reference GPP | $g_{ref}$ | kg C m⁻² yr⁻¹ | 2.8 | Normalizes the tree-cover relation to a proportion in [0, 1] |
-| Unit cost ratio, C3 / C4 | $\beta_{C3}$, $\beta_{C4}$ | - | 146, 16.2 | P-model β of the competition's potential GPP |
+| Unit cost ratio, C3 / C4 | $\beta_{C3}$, $\beta_{C4}$ | - | 146, 16.2 | P-model β of the model's potential GPP |
 
 ## Drivers
 
 | Driver | Symbol | Unit | Description |
 | :--- | :---: | :---: | :--- |
-| Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1 with actual β |
-| Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of daily $A_0$ with actual β |
+| Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1, without soil-moisture stress |
+| Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of $A_0$ |
 | Annual precipitation | $P_{annual}$ | mol H₂O m⁻² yr⁻¹ | Total yearly precipitation (1 mm ≈ 55.5 mol m⁻²) |
 | Growing season VPD | $D_{growing}$ | Pa | Mean VPD during growing season (T > 0°C) |
 | Growing season length | GSL | days | Length of continuous period with T > 0°C |
@@ -159,13 +161,13 @@ The optimal LAI model is implemented as a `ZhouOptimalLAIModel`, a subtype of `A
 
 ### Potential GPP Calculation
 
-The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1 and actual β (soil moisture stress):
+The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1, the model's own unit cost ratios β, and no soil-moisture stress:
 
 ```math
 A_0 = \text{PPFD} \times \text{LUE}
 ```
 
-This differs from Zhou et al. (2025) who use β = 1 for potential GPP. Our implementation uses actual β to allow vegetation structure (LAI$_{max}$) to respond to water availability on annual timescales.
+This differs from the global analysis of Zhou et al. (2025), whose $A_0$ includes the soil-moisture penalty of Stocker et al. (2020). Here water availability enters only through the $f_0 P / A_0$ term of LAI$_{max}$: a stressed $A_0$ would lower $A_0$ in dry regions and so loosen that limit.
 
 ### Daily and Annual A₀ Accumulation
 

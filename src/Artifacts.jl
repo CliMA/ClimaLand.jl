@@ -275,6 +275,21 @@ function optimal_lai_initial_conditions_path(; context = nothing)
     return joinpath(dir, "optimal_lai_inputs.nc")
 end
 
+"""
+    clm_tree_share_path()
+
+Return the path to the tree share of the natural vegetation in the CLM5 surface data
+for the year 2000 (0.9°×1.25°), NaN where there is no vegetation. This is a copy in
+the repository until it becomes a ClimaArtifacts artifact; see
+`artifacts/clm_tree_share/create_clm_tree_share.jl`.
+"""
+clm_tree_share_path() = joinpath(
+    pkgdir(@__MODULE__),
+    "artifacts",
+    "clm_tree_share",
+    "clm_tree_share.nc",
+)
+
 
 """
     clm_data__folder_path(; context, lowres = false)
