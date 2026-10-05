@@ -468,19 +468,20 @@ function optimal_lai_pmodel_parameters(
 end
 
 """
-    canopy_composition_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
+    canopy_composition_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, GSL, Mc, parameters)
 
 Partition of the canopy into C3 trees, C3 grasses and C4 grasses from the C3/C4
 competition of Lavergne et al. (2022), as implemented in pyrealm, on the trailing
 per-pathway potential GPP `A0c3_annual`/`A0c4_annual` and the trailing realized C3
 GPP `GPPc3_annual` (the potential scaled by fAPAR and soil-moisture stress; all
-mol CO2 m^-2 yr^-1); `Mc` is the molar mass of carbon (kg mol^-1). Returns a `NamedTuple`
-`(; tree, c3_grass, c4_grass)` summing to one.
+mol CO2 m^-2 yr^-1), with `GSL` the growing-season length (days); `Mc` is the molar mass
+of carbon (kg mol^-1). Returns a `NamedTuple` `(; tree, c3_grass, c4_grass)` summing to
+one.
 
 The fractions are shares of productivity, not of ground area: the proportional C4 GPP
 advantage `(A0c4 − A0c3)/A0c3` goes through a logistic to an expected C4 share of
-the open canopy, and the tree share is the C3 tree cover estimated from the annual
-realized C3 GPP, normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses
+the open canopy, and the tree share is the C3 tree cover estimated from the realized C3
+GPP (`tree_share_from_gpp`), normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses
 are shaded out under trees, so the C4 and C3 grass shares are the open-canopy split
 scaled by `1 − tree`.
 """
@@ -488,6 +489,7 @@ function canopy_composition_from_competition(
     A0c3_annual::FT,
     A0c4_annual::FT,
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
@@ -497,14 +499,14 @@ function canopy_composition_from_competition(
     # pyrealm scales the advantage by exp(1/(1+TC)) with TC the observed tree
     # cover; with no such input, TC = 0 leaves the divisor ℯ.
     open_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
-    tree = tree_share_from_gpp(GPPc3_annual, Mc, parameters)
+    tree = tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
     c4_grass = open_c4 * (1 - tree)
     c3_grass = (1 - open_c4) * (1 - tree)
     return (; tree, c3_grass, c4_grass)
 end
 
 """
-    c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, GSL, Mc, parameters)
 
 C3 fraction of the canopy, `1 − c4_grass` of
 `canopy_composition_from_competition` (trees are all C3).
@@ -513,6 +515,7 @@ function c3_fraction_from_competition(
     A0c3_annual::FT,
     A0c4_annual::FT,
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
@@ -520,6 +523,7 @@ function c3_fraction_from_competition(
         A0c3_annual,
         A0c4_annual,
         GPPc3_annual,
+        GSL,
         Mc,
         parameters,
     )
@@ -527,21 +531,27 @@ function c3_fraction_from_competition(
 end
 
 """
-    tree_share_from_gpp(GPPc3_annual, Mc, parameters)
+    tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
 
 C3 tree share of the canopy in `canopy_composition_from_competition`: the Lavergne
-et al. (2022) tree cover `tc(g) = a·g^b + c` at the annual realized C3 GPP
-`GPPc3_annual` (mol CO2 m^-2 yr^-1, converted with the molar mass of carbon `Mc`),
-relative to the cover at canopy closure `tc_gpp_ref`, clamped to [0, 1].
+et al. (2022) tree cover `tc(g) = a·g^b + c`, relative to the cover at canopy closure
+`tc_gpp_ref` and clamped to [0, 1], at the realized C3 GPP `GPPc3_annual`
+(mol CO2 m^-2 yr^-1, converted with the molar mass of carbon `Mc`) scaled to a year-long
+growing season, `g = GPPc3_annual·365/GSL` with `GSL` in days.
+
+The relation was fitted where the growing season lasts all year; scaling by the season
+length lets boreal forests, whose annual GPP is low only because their season is
+short, keep the tree cover of their productivity during it.
 """
 function tree_share_from_gpp(
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
     (; tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
     # The tree-cover relation is fitted to annual realized GPP in kg C m^-2 yr^-1.
-    gppc3 = max(GPPc3_annual, FT(0)) * Mc
+    gppc3 = max(GPPc3_annual, FT(0)) * Mc * 365 / max(GSL, one(FT))
     tc(g) = tc_a * g^tc_b + tc_c
     return clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
 end

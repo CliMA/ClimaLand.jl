@@ -555,6 +555,7 @@ function set_canopy_component_initial_conditions!(
                 fractional_c3,
                 ClimaLand.Canopy.tree_share_from_gpp(
                     Y.canopy.biomass.GPPc3_annual,
+                    Y.canopy.biomass.growing_days,
                     Mc,
                     parameters,
                 ),

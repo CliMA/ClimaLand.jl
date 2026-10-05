@@ -16,13 +16,16 @@ main
   LAI against MODIS, raising tropical forests and lowering savannas and grasslands. The
   realized C3 GPP from which the competition estimates tree cover includes the
   soil-moisture stress `βm`, as the GPP the tree-cover relation was fitted to does, so
-  that water-limited savannas are not taken for forest.
+  that water-limited savannas are not taken for forest, and is scaled to a year-long
+  growing season, so that boreal forests, whose annual GPP is low because their season
+  is short, are taken for forest.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
   `optimal_lai_z_grass`, `optimal_lai_c3c4_β_c3`/`_c4` are renamed `optimal_lai_β_c3`/`_c4`,
   the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is renamed `VPDgs_annual`,
   `potential_evaporation` drops its humidity, wind and height arguments, and
-  `ZhouOptimalLAIModel{FT}(parameters; ...)` requires a `tree_share`.
+  `ZhouOptimalLAIModel{FT}(parameters; ...)` requires a `tree_share`; the competition
+  functions take the growing-season length.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] A `FlagshipVegetationMetrics` leaderboard source compares LAI with
   MODIS, and the C3 fraction and the tree share with static maps of the CLM surface data,

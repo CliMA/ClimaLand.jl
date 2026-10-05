@@ -266,6 +266,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 )
@@ -295,6 +296,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 )
@@ -313,6 +315,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 ) ≈ c.tree + c.c3_grass
@@ -330,6 +333,12 @@ using ClimaCore
             # a sparser canopy lowers the tree share
             @test g(FT(150), FT(150), FT(0.4)).tree <
                   g(FT(150), FT(150), FT(0.9)).tree
+            # the same annual GPP over a shorter season, as in boreal forests,
+            # supports more trees
+            gppc3 = FT(70)  # ≈ 0.84 kg C m^-2 yr^-1
+            @test Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params) <
+                  FT(0.1) <
+                  Canopy.tree_share_from_gpp(gppc3, FT(150), Mc, params)
         end
 
         @testset "c4_advantage_for_c3_fraction for FT = $FT" begin
@@ -342,12 +351,13 @@ using ClimaCore
                 (FT(40), FT(0.3), FT(0.5)),
             )
                 gppc3 = a3 * fapar
-                tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+                tree = Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params)
                 adv = Canopy.c4_advantage_for_c3_fraction(fc3, tree, params)
                 @test Canopy.c3_fraction_from_competition(
                     a3,
                     a3 * (1 + adv),
                     gppc3,
+                    FT(365),
                     Mc,
                     params,
                 ) ≈ fc3 rtol = 1e-3
@@ -360,13 +370,14 @@ using ClimaCore
                       FT(100),
                       FT(0),
                       FT(0),
+                      FT(365),
                       Mc,
                       params,
                   ) <
                   FT(1)
             # More C4 than the open canopy allows saturates at the open canopy.
             gppc3 = FT(150) * FT(0.9)
-            tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+            tree = Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params)
             @test FT(0) < tree < FT(1)
             adv = Canopy.c4_advantage_for_c3_fraction(FT(0), tree, params)
             @test isfinite(adv)
@@ -374,6 +385,7 @@ using ClimaCore
                 FT(150),
                 FT(150) * (1 + adv),
                 gppc3,
+                FT(365),
                 Mc,
                 params,
             ) ≈ tree atol = 1e-3
@@ -542,6 +554,7 @@ using ClimaCore
             k = model.parameters.k
             tree = Canopy.tree_share_from_gpp(
                 scalar(ic.A0_annual) * (1 - exp(-k * scalar(max_lai_field))),
+                scalar(ic.GSL),
                 Mc,
                 model.parameters,
             )
@@ -591,6 +604,7 @@ using ClimaCore
                 scalar(Y.canopy.biomass.A0c3_annual),
                 scalar(Y.canopy.biomass.A0c4_annual),
                 GPPc3_annual,
+                scalar(Y.canopy.biomass.growing_days),
                 Mc,
                 model.parameters,
             ) ≈ fractional_c3 rtol = 1e-3

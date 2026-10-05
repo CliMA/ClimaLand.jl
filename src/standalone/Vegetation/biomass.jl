@@ -641,6 +641,7 @@ function update_biomass!(
         Y.canopy.biomass.A0c3_annual,
         Y.canopy.biomass.A0c4_annual,
         Y.canopy.biomass.GPPc3_annual,
+        Y.canopy.biomass.growing_days,
         canopy.photosynthesis.constants.Mc,
         parameters,
     )
