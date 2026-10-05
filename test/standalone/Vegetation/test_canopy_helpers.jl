@@ -161,4 +161,33 @@ for FT in (Float32, Float64)
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(spec, false)) == spec
     end
+
+    @testset "Canopy fraction exposed above snow, FT = $FT" begin
+        h = FT(0.5)
+        # No snow: the whole canopy is exposed
+        @test Canopy.exposed_canopy_fraction(FT(0), FT(0), h) == FT(1)
+        @test Canopy.exposed_canopy_fraction(FT(0), FT(1), h) == FT(1)
+        # Snow depth below the canopy height under full cover
+        @test Canopy.exposed_canopy_fraction(FT(0.1), FT(1), h) ≈ FT(0.8)
+        # Snow at least as deep as the canopy is tall: nothing exposed
+        @test Canopy.exposed_canopy_fraction(h, FT(1), h) == FT(0)
+        @test Canopy.exposed_canopy_fraction(FT(2) * h, FT(1), h) == FT(0)
+        # Partial cover: local depth is z_snow / scf over the covered part,
+        # and the bare part exposes the whole canopy
+        scf = FT(0.5)
+        @test Canopy.exposed_canopy_fraction(FT(0.1), scf, h) ≈
+              (1 - scf) + scf * (1 - FT(0.1) / (scf * h))
+        @test Canopy.exposed_canopy_fraction(FT(10), scf, h) ≈ 1 - scf
+        # Monotone in snow depth and cover
+        @test Canopy.exposed_canopy_fraction(FT(0.2), FT(1), h) <
+              Canopy.exposed_canopy_fraction(FT(0.1), FT(1), h)
+        @test Canopy.exposed_canopy_fraction(FT(10), FT(0.8), h) <
+              Canopy.exposed_canopy_fraction(FT(10), FT(0.5), h)
+        # A tall canopy is barely affected by a shallow snowpack
+        @test Canopy.exposed_canopy_fraction(FT(0.2), FT(1), FT(20)) ≈ FT(0.99)
+        # Cover fractions outside [0, 1] are clamped
+        @test Canopy.exposed_canopy_fraction(FT(1), FT(1.5), h) == FT(0)
+        @test Canopy.exposed_canopy_fraction(FT(1), FT(-0.5), h) == FT(1)
+        @test typeof(Canopy.exposed_canopy_fraction(FT(0.1), scf, h)) == FT
+    end
 end

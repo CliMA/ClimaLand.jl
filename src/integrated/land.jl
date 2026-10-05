@@ -1125,6 +1125,32 @@ bare_soil_fraction(p, snow, lake::Nothing) =
     @. lazy(1 - p.snow.snow_cover_fraction)
 
 """
+    Canopy.mask_biomass!(
+        p,
+        prognostic_land_components::Union{
+            Val{(:canopy, :snow, :soil, :soilco2)},
+            Val{(:canopy, :snow, :soil)},},
+        canopy,
+    )
+
+Reduces the leaf and stem area indices to the part of the canopy above the
+snow surface (`Canopy.bury_biomass_in_snow!`), using the snow depth and snow
+cover fraction of the snow model and the canopy height. Called at the end of
+`Canopy.update_biomass!`; the snow cache is updated before the canopy cache in
+`make_update_aux(::LandModel)`.
+"""
+function Canopy.mask_biomass!(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
+    canopy,
+)
+    Canopy.bury_biomass_in_snow!(p, canopy.biomass.height)
+end
+
+"""
     update_lake_sediment_heat_flux!(p, lake::Nothing, soil)
 
 Compute the sediment heat flux between the lake and the top soil layer.

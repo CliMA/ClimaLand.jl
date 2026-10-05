@@ -307,9 +307,9 @@ end
         FT;
         nelements = nelements,
         mask_threshold = FT(0.99),
-    );
-    surface_space = domain.space.surface;
-    start_date = DateTime(2008);
+    )
+    surface_space = domain.space.surface
+    start_date = DateTime(2008)
     stop_date = start_date + Second(Δt)
     forcing = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -324,7 +324,7 @@ end
         domain.space.surface,
         start_date,
         stop_date,
-    );
+    )
 
     land = LandModel{FT}(
         forcing,
@@ -333,7 +333,7 @@ end
         domain,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-    );
+    )
 
     @test domain == ClimaLand.get_domain(land)
     @test ClimaComms.context(land) == ClimaComms.context()
@@ -533,6 +533,66 @@ end
             vec(Array(parent(total_energy)))[oceans] .≈
             vec(Array(parent(expected)))[oceans],
         )
+    end
+
+    @testset "Canopy area indices buried by snow" begin
+        Y, p, cds = initialize(land)
+        Y.soil.ϑ_l .= land.soil.parameters.ν ./ 2
+        Y.soil.θ_i .= 0
+        Y.soil.ρe_int .= 0
+        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(280)
+        t0 = 0.0
+        set_initial_cache! = make_set_initial_cache(land)
+        # Without snow the indices are those of the biomass model
+        Y.snow.S .= 0
+        Y.snow.S_l .= 0
+        Y.snow.U .= 0
+        set_initial_cache!(p, Y, t0)
+        LAI0 = copy(p.canopy.biomass.area_index.leaf)
+        SAI0 = copy(p.canopy.biomass.area_index.stem)
+        @test all(parent(p.snow.z_snow) .== 0)
+        @test all(parent(LAI0) .>= 0)
+        # With a deep snowpack the indices are scaled by the exposed fraction
+        S0 = FT(1)
+        Y.snow.S .= S0
+        Y.snow.S_l .= 0
+        Y.snow.U .= Snow.energy_from_T_and_swe(
+            S0,
+            FT(260),
+            land.snow.parameters.ΔS,
+            land.snow.parameters.earth_param_set,
+        )
+        set_initial_cache!(p, Y, t0)
+        h = land.canopy.biomass.height
+        f_exp = ClimaCore.Fields.zeros(domain.space.surface)
+        @. f_exp = Canopy.exposed_canopy_fraction(
+            p.snow.z_snow,
+            p.snow.snow_cover_fraction,
+            h,
+        )
+        LAI = p.canopy.biomass.area_index.leaf
+        SAI = p.canopy.biomass.area_index.stem
+        continents = Array(parent(domain.space.surface.grid.mask.is_active))[:]
+        @test all(vec(Array(parent(p.snow.z_snow)))[continents] .> 0)
+        @test all(0 .<= parent(f_exp) .<= 1)
+        @test any(parent(f_exp) .< 1)
+        @test all(parent(LAI) .<= parent(LAI0))
+        @test all(parent(SAI) .≈ parent(SAI0) .* parent(f_exp))
+        @test all(
+            parent(LAI) .≈
+            Canopy.clip.(parent(LAI0) .* parent(f_exp), FT(0.05)),
+        )
+        # Fully buried where the snow is deeper than the canopy is tall
+        buried =
+            (parent(p.snow.z_snow) .>= parent(h .+ 0 .* LAI)) .&
+            (parent(p.snow.snow_cover_fraction) .== 1)
+        @test any(buried)
+        @test all(parent(LAI)[buried] .== 0)
+        @test all(parent(SAI)[buried] .== 0)
+        # Unaffected where the canopy is much taller than the snow is deep
+        tall = parent(h .+ 0 .* LAI) .> 50 .* parent(p.snow.z_snow)
+        @test all(parent(LAI)[tall] .>= FT(0.98) .* parent(LAI0)[tall])
     end
 
     @testset "Column integral mask awareness" begin

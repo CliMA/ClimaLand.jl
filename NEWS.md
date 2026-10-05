@@ -8,6 +8,20 @@ main
   soil parameters (US-SRG), the soil started outside the domain of the
   retention curve, where the pressure head is unbounded and its derivative
   vanishes, and the first rain produced an unbounded flux and NaNs.
+
+- ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
+  and stem area indices in the cache are reduced to the part of the canopy
+  above the snow surface (`Canopy.exposed_canopy_fraction`,
+  `Canopy.bury_biomass_in_snow!`), with the snow depth and snow cover fraction
+  of the snow model and the canopy height. Over the snow-covered part of the
+  ground the local snow depth is the mean depth divided by the cover
+  fraction; plant area is taken as uniform in height. Short vegetation under a
+  snowpack deeper than its height therefore no longer intercepts radiation or
+  exchanges heat and water vapor, and the land surface takes the albedo of the
+  snow, as observed over snow-covered grassland and cropland while forests
+  stay dark (Betts and Ball, 1997). Forests with heights of tens of meters are
+  almost unaffected. `Canopy.mask_biomass!` now receives the canopy model as a
+  third argument.
 - ![][badge-✨feature] Add the screen-level diagnostics `t2m`, `q2m`, and `u10m` (air
   temperature and specific humidity 2 m above the apparent sink for heat, and
   wind speed 10 m above the apparent sink for momentum) for the soil, snow,
