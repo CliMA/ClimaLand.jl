@@ -75,6 +75,30 @@ function update_snow_cover_fraction!(
 end
 
 """
+    update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
+
+Returns the snow cover fraction from ground-area snow depth `z`, from
+Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
+snow cover fraction in GCMs." Advances in Atmospheric Sciences
+21 (2004): 529-535.
+"""
+function update_snow_cover_fraction!(
+    p,
+    m::TopoSnowCoverFractionModel,
+    Y,
+    t,
+    earth_param_set,
+    prognostic_land_components,
+)
+    scf = p.snow.snow_cover_fraction
+    z = p.snow.z_snow #ground-area snow depth in this case
+    FT = eltype(z)
+#    σ = z*
+    @. scf = tanh(z/(m.z0*m.μ^m.μ_exp*exp(-m.ξ^m.ξ_exp)))
+    maximum_snow_cover_fraction!(p, Val(prognostic_land_components))
+end
+
+"""
     maximum_snow_cover_fraction!(p, prognostic_land_components)
 
 Default method that clips `p.snow.snow_cover_fraction` against any
