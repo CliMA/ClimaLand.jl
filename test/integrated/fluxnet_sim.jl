@@ -356,3 +356,61 @@ end
     @test FluxnetSimulations.get_sensor_depths(FT, Val(:US_MOz)) ==
           (; tsoil = nothing, swc = nothing)
 end
+
+@testset "FLUXNET2015 metadata" begin
+    metadata_path = joinpath(mktempdir(), "metadata_DD_clean.csv")
+    write(
+        metadata_path,
+        """
+        site_id,latitude,longitude,utc_offset,annual_temp,annual_precip,canopy_height,atmospheric_sensor_heights,swc_depths,ts_depths
+        BE-Vie,50.3049,5.9981,1.0,7.8,1062.0,30.0,40.0;52.0,NaN,NaN
+        AU-ASM,-22.283,133.249,9.5,,,6.5,11.6,NaN,NaN
+        XX-Nah,10.0,20.0,-3.0,,,,,NaN,NaN
+        XX-Nol,,20.0,-3.0,,,,11.0,NaN,NaN
+        """,
+    )
+    kw = (; fluxnet2015_metadata_path = metadata_path)
+
+    info = FluxnetSimulations.get_site_info("BE-Vie"; kw...)
+    @test info.time_offset === 1
+    @test info.atmospheric_sensor_height == [40.0, 52.0]
+
+    (; time_offset, lat, long) =
+        FluxnetSimulations.get_location(FT, Val(:BE_Vie); kw...)
+    @test (time_offset, lat, long) == (1, FT(50.3049), FT(5.9981))
+    @test FluxnetSimulations.get_fluxtower_height(FT, Val(:BE_Vie); kw...) ==
+          (; atmos_h = FT(52))
+    @test FluxnetSimulations.get_location(FT, Val(:AU_ASM); kw...).time_offset ==
+          9.5
+    @test FluxnetSimulations.get_fluxtower_height(FT, Val(:AU_ASM); kw...) ==
+          (; atmos_h = FT(11.6))
+    @test FluxnetSimulations.get_canopy_height("BE-Vie"; kw...) == 30.0
+    @test_throws ErrorException FluxnetSimulations.get_fluxtower_height(
+        FT,
+        Val(:XX_Nah);
+        kw...,
+    )
+    @test_throws ErrorException FluxnetSimulations.get_location(
+        FT,
+        Val(:XX_Nol);
+        kw...,
+    )
+    @test_throws ErrorException FluxnetSimulations.get_site_info(
+        "XX-Abc";
+        kw...,
+    )
+
+    # A site with a hardcoded configuration does not read the metadata
+    @test FluxnetSimulations.get_location(FT, Val(:US_MOz)).time_offset == -6
+end
+
+@testset "get_data_dates with required_columns" begin
+    (start_date, stop_date) = FluxnetSimulations.get_data_dates(
+        "US-MOz",
+        -6;
+        duration = Day(1),
+        required_columns = FluxnetSimulations.FLUXNET_FORCING_COLUMNS,
+    )
+    @test stop_date - start_date == Day(1)
+    @test start_date >= first(FluxnetSimulations.get_data_dates("US-MOz", -6))
+end

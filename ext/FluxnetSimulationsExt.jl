@@ -18,10 +18,14 @@ export prescribed_forcing_fluxnet,
     get_data_dt,
     replace_hyphen,
     get_parameters,
-    get_domain_info
+    get_domain_info,
+    get_site_info,
+    get_canopy_height
 
 # Include site-specific configurations, as well as the default generic site.
 include("fluxnet_simulations/generic_site.jl")
+# `get_location`/`get_fluxtower_height` for sites without a configuration below.
+include("fluxnet_simulations/get_fluxnet_metadata.jl")
 include("fluxnet_simulations/US-MOz.jl")
 include("fluxnet_simulations/US-Ha1.jl")
 include("fluxnet_simulations/US-NR1.jl")
