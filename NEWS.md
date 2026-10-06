@@ -53,6 +53,14 @@ main
 - ![][badge-🔥behavioralΔ] The leaderboards and the calibration observations use
   NaN-aware resampling, so cells next to the ocean in the observations are no
   longer dropped. PR [#1891](https://github.com/CliMA/ClimaLand.jl/pull/1891)
+- ![][badge-✨feature] `FluxnetSimulations.get_location` and `get_fluxtower_height` now
+  work at any FLUXNET2015 site, reading the site metadata of the `fluxnet2015` artifact
+  (not downloadable; see ClimaArtifacts), so the default `LandModel` can be run at any
+  site (`experiments/integrated/generic_site/run_generic_site.jl`). Adds
+  `get_site_info` and `get_canopy_height` metadata helpers, a
+  `required_columns` keyword to `get_data_dates` that trims leading and trailing
+  missing forcing, and ecosystem respiration (`er`) to the fluxnet comparison data.
+  PR [#1896](https://github.com/CliMA/ClimaLand.jl/pull/1896)
 
 1.12.3
 ----

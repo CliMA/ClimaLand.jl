@@ -89,6 +89,12 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
+      # BE-Vie is not in `fluxnet_sites`, so this exercises the `fluxnet2015`
+      # metadata and data paths.
+      - label: "generic_site BE-Vie run"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/run_generic_site.jl BE-Vie"
+        artifact_paths: "experiments/integrated/generic_site/out/BE-Vie/*png"
+
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*png"
