@@ -59,11 +59,17 @@ const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 # `PROGNOSTIC_LAI=""` as an environment variable on Buildkite. The default
 # (unset) prescribes MODIS LAI.
 const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
+# With prognostic LAI, the tree share behind the leaf cost is prescribed from the CLM
+# map by default; set `PROGNOSTIC_TREE_SHARE=""` to compute it from the simulated
+# climate instead (`ClimaLand.Canopy.PrognosticTreeShare`).
+const PROGNOSTIC_TREE_SHARE =
+    haskey(ENV, "PROGNOSTIC_TREE_SHARE") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
+lai_suffix =
+    PROGNOSTIC_LAI ? (PROGNOSTIC_TREE_SHARE ? "_opt_lai_tree" : "_opt_lai") : ""
 root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
@@ -77,6 +83,7 @@ function setup_model(
     domain,
     toml_dict;
     prognostic_lai = false,
+    prognostic_tree_share = false,
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -92,7 +99,50 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    if prognostic_lai
+    if prognostic_lai && prognostic_tree_share
+        soil = ClimaLand.Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+        surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            surface_domain,
+            (;
+                atmos,
+                radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            toml_dict;
+            prognostic_land_components,
+            soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{
+                FT,
+            }(
+                domain,
+                toml_dict;
+                soil_params = (;
+                    ν = soil.parameters.ν,
+                    θ_r = soil.parameters.θ_r,
+                ),
+            ),
+            biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                surface_domain,
+                toml_dict;
+                tree_share = ClimaLand.Canopy.PrognosticTreeShare(),
+            ),
+        )
+        land = LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            soil,
+            canopy,
+        )
+    elseif prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.
         land = LandModel{FT}(
@@ -151,6 +201,7 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
+    prognostic_tree_share = PROGNOSTIC_TREE_SHARE,
 )
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

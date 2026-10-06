@@ -109,19 +109,20 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
 
-      # Spin-up of the optimal-LAI model (6 years with a 1-year memory of its
-      # annual totals), whose final state is to start the optimal-LAI long runs.
-      - label: ":seedling: Optimal LAI spin-up, 6 years"
-        key: "optimal_lai_spinup"
+      - label: ":seedling: Snowy Land + P Model (Optimal LAI, climate tree share)"
+        key: "snowy_land_pmodel_opt_lai_tree_run"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/optimal_lai_spinup.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
-          - "optimal_lai_spinup_gpu/optimal_lai_state.nc"
+          - "snowy_land_pmodel_opt_lai_tree_longrun_gpu/*png"
+          - "snowy_land_pmodel_opt_lai_tree_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 5:00:00
+          slurm_time: 3:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
+          PROGNOSTIC_LAI: ""
+          PROGNOSTIC_TREE_SHARE: ""
 
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null

@@ -475,6 +475,7 @@ end
         max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
         fractional_c3 = ClimaLand.Canopy.static_fractional_c3(canopy.photosynthesis),
         Mc = canopy.photosynthesis.constants.Mc,
+        state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
     ) where {FT}
 
 Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
@@ -509,6 +510,15 @@ competition (`c4_advantage_for_c3_fraction`): given that tree share, it is the C
 potential GPP at which the competition returns the static C3 map `fractional_c3` (the
 photosynthesis model's; `Mc` is the molar mass of carbon). Where the map is pure C3 the
 seed is `A0c4_annual = 0`, which leaves a small C4 grass share in the open canopy.
+
+These climatological seeds are then replaced, where it has data, by the state at
+`state_path` (unless it is `nothing`): the final state of a spin-up of the model
+(`experiments/long_runs/optimal_lai_spinup.jl`), on a (lon, lat) grid. In particular,
+it replaces the `PET_annual` seed, which is far too high where the climate is humid.
+
+With `PrognosticTreeShare()`, the 30-day totals start at the 30-day share of the annual
+ones, and the yearly counts of dry days, degree-days and days above freezing at zero:
+they average their history until it reaches `tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -523,6 +533,7 @@ function set_canopy_component_initial_conditions!(
         canopy.photosynthesis,
     ),
     Mc = canopy.photosynthesis.constants.Mc,
+    state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
 ) where {FT}
     ic = optimal_lai_initial_conditions(axes(Y.canopy.biomass.LAI), ic_path)
     nan_to_zero(x) = ifelse(isnan(x), zero(x), x)
@@ -562,8 +573,54 @@ function set_canopy_component_initial_conditions!(
                 parameters,
             )
         )
+
+    if !isnothing(state_path)
+        surface_space = axes(Y.canopy.biomass.LAI)
+        regridder_kwargs = (;
+            extrapolation_bc = (
+                Interpolations.Periodic(),
+                Interpolations.Flat(),
+            ),
+            interpolation_method = Interpolations.Constant(),
+        )
+        for name in OPTIMAL_LAI_STATE_NAMES
+            state = SpaceVaryingInput(
+                state_path,
+                String(name),
+                surface_space;
+                regridder_type = :InterpolationsRegridder,
+                regridder_kwargs,
+            )
+            field = getproperty(Y.canopy.biomass, name)
+            @. field = ifelse(isnan(state), field, state)
+        end
+    end
+
+    if model.tree_share isa ClimaLand.Canopy.PrognosticTreeShare
+        Y.canopy.biomass.precip_30d .=
+            Y.canopy.biomass.precip_annual .* FT(30 / 365)
+        Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
+        Y.canopy.biomass.dry_days .= 0
+        Y.canopy.biomass.degree_days .= 0
+        Y.canopy.biomass.warm_days .= 0
+        Y.canopy.biomass.age .= 0
+    end
     return nothing
 end
+
+# The optimal-LAI state read from the spin-up file in its initial conditions
+const OPTIMAL_LAI_STATE_NAMES = (
+    :A0_daily,
+    :A0_annual,
+    :precip_annual,
+    :PET_annual,
+    :VPDgs_annual,
+    :growing_days,
+    :A0c3_annual,
+    :A0c4_annual,
+    :GPPc3_annual,
+    :LAI,
+)
 
 """
     set_canopy_component_initial_conditions!(

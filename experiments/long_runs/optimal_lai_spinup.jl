@@ -5,7 +5,9 @@
 # years of ERA5 (March 2002 to March 2008) with a 1-year memory of the annual totals,
 # so that their initial error (from the climatology of the `optimal_lai_inputs`
 # artifact, e.g. the potential evaporation of humid regions) decays by e^-6. Its final
-# state is written to `optimal_lai_spinup_<device>/optimal_lai_state.nc`.
+# state is written to `optimal_lai_spinup_<device>/optimal_lai_state.nc`, the state
+# the long runs start from (`ClimaLand.Artifacts.optimal_lai_state_path`). It takes
+# about two hours on a GPU; run it again when the model changes enough to matter.
 
 import ClimaComms
 ClimaComms.@import_required_backends

@@ -190,6 +190,30 @@ type = "float"
 description = "Unit cost ratio β of C4 plants (dimensionless) of the optimal-LAI model: the pyrealm default, 146/9, independent of pmodel_β_c4 used for GPP."
 tag = "OptimalLAIModel"
 
+["optimal_lai_tree_b0"]
+value = -1.63
+type = "float"
+description = "Intercept of the logistic of the climate tree share of the optimal-LAI model (dimensionless), fitted to the natural-vegetation tree share of the CLM5 surface data."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_lai"]
+value = 0.228
+type = "float"
+description = "Coefficient of the LAI_max of a tree canopy in the logistic of the climate tree share (m^-2 m^2)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_dry"]
+value = -0.255
+type = "float"
+description = "Coefficient of the number of dry months (30-day precipitation below half the potential evaporation) in the logistic of the climate tree share (month^-1)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_temp"]
+value = 0.0682
+type = "float"
+description = "Coefficient of the growing-season (above 0 °C) mean air temperature in the logistic of the climate tree share (°C^-1)."
+tag = "OptimalLAIModel"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]

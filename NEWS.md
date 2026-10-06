@@ -20,6 +20,19 @@ main
   growing season, so that boreal forests, whose annual GPP is low because their season
   is short, are taken for forest.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] `ZhouOptimalLAIModel` can compute its tree share from the simulated
+  climate (`tree_share = PrognosticTreeShare()`) rather than from a map: a logistic of the
+  LAI_max of a tree canopy, the number of dry months and the growing-season temperature
+  (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`, `_b_temp`, fitted to the CLM tree share),
+  which also sets the tree share of the C3/C4 competition. The optimal-LAI long run
+  compares it with the CLM map in a second step (`PROGNOSTIC_TREE_SHARE`).
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
+  final state of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from
+  `experiments/long_runs/optimal_lai_spinup.jl`) where it has data, and from the
+  climatology of the `optimal_lai_inputs` artifact elsewhere. This removes the transient
+  of the potential evaporation, whose seed was far too high where the climate is humid.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
   `optimal_lai_z_grass`, `optimal_lai_c3c4_β_c3`/`_c4` are renamed `optimal_lai_β_c3`/`_c4`,
   the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is renamed `VPDgs_annual`,
@@ -29,12 +42,12 @@ main
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] A `FlagshipVegetationMetrics` leaderboard source compares LAI with
   MODIS, and the C3 fraction and the tree share with static maps of the CLM surface data,
-  over natural vegetation: cells where cropland covers more than 30% of the land in the
+  over natural vegetation: cells where cropland covers more than 50% of the land in the
   CLM surface data are left out. The optimal-LAI long run plots it, and LAI moves out of
   `FlagshipCarbonMetrics`. Static
   observations are compared with every simulated month. `make_leaderboard_plots` takes a
   `spin_up_months` keyword; the optimal-LAI long run runs for 3 years, compares the
-  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`). Alongside it,
+  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`).
   `optimal_lai_spinup.jl` runs six years with a 1-year memory of the annual totals,
   ending when the long runs start, and saves its final state to start them from.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)

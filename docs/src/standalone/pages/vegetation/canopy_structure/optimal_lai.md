@@ -58,7 +58,7 @@ where:
 - $P_{annual}$ is the annual total precipitation (mol H₂O m⁻² yr⁻¹). Conversion: 1 mm precipitation ≈ 55.5 mol H₂O m⁻²
 - $D_{growing}$ is the mean vapor pressure deficit during the growing season (Pa), where growing season is defined as days with T > 0°C
 - $k$ is the light extinction coefficient (dimensionless)
-- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹): the costs of tree and grass leaves averaged geometrically with the tree share $t$ of the vegetation, $z = z_{tree}^{t} z_{grass}^{1-t}$. Grasses have the higher cost, as $z$ includes the below-ground allocation that supplies the leaves. The tree share is prescribed, by default from the natural vegetation of the CLM surface data
+- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹): the costs of tree and grass leaves averaged geometrically with the tree share $t$ of the vegetation, $z = z_{tree}^{t} z_{grass}^{1-t}$. Grasses have the higher cost, as $z$ includes the below-ground allocation that supplies the leaves. The tree share is prescribed, by default from the natural vegetation of the CLM surface data, or computed from the simulated climate (`PrognosticTreeShare()`, see below)
 - $c_a$ is the ambient CO₂ partial pressure (Pa). Conversion: 400 ppm at 101325 Pa ≈ 40 Pa
 - $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), from stomatal optimization
 - $f_0$ is the fraction of annual precipitation available to plants (dimensionless). It varies with the aridity index $AI$ as $f_0 = f_{0,max} \exp(-0.604 \ln^2(AI/1.9))$, peaking at $f_{0,max}$ at the energy–water transition
@@ -101,7 +101,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 1. **Water limitation enters once**: The potential GPP $A_0$ carries no soil moisture stress, so water availability acts only through the $f_0 P / A_0$ term of LAI$_{max}$ rather than being counted twice.
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
-4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length is a trailing-year count of days above freezing, the growing-season VPD is the mean VPD while the air is above freezing, and $f_0$ follows the aridity index $AI = PET/P$ with $PET$ the Priestley-Taylor potential evapotranspiration of SPLASH (Davis et al. 2017), as in Zhou et al. (2025). Each is carried by a time-integrated variable in the prognostic state, seeded from a climatology.
+4. **Growing season inputs are diagnosed from the simulated climate**: the growing season length is a trailing-year count of days above freezing, the growing-season VPD is the mean VPD while the air is above freezing, and $f_0$ follows the aridity index $AI = PET/P$ with $PET$ the Priestley-Taylor potential evapotranspiration of SPLASH (Davis et al. 2017), as in Zhou et al. (2025). Each is carried by a time-integrated variable in the prognostic state, seeded from the final state of a spin-up of the model (`experiments/long_runs/optimal_lai_spinup.jl`) or, where it has no data, from a climatology.
 5. **Continuous update**: LAI and the trailing climate totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters
@@ -137,6 +137,36 @@ does not shift LAI or the C3/C4 balance.
 | Tree-cover offset | $c$ | - | -7.72 | Offset, so tree cover vanishes below a threshold GPP |
 | Tree-cover reference GPP | $g_{ref}$ | kg C m⁻² yr⁻¹ | 2.8 | Normalizes the tree-cover relation to a proportion in [0, 1] |
 | Unit cost ratio, C3 / C4 | $\beta_{C3}$, $\beta_{C4}$ | - | 146, 16.2 | P-model β of the model's potential GPP |
+
+## Climate Tree Share
+
+With `tree_share = PrognosticTreeShare()`, the tree share $t$ behind the leaf cost $z$ is
+computed from the simulated climate rather than prescribed by a map, so it can change with
+the climate:
+
+```math
+t = \frac{1}{1 + \exp[-(b_0 + b_L L_{tree} + b_d n_{dry} + b_T T_{growing})]}
+```
+
+where $L_{tree}$ is the LAI$_{max}$ a C3 tree canopy would reach (at $z_{tree}$, with the
+χ of the growing-season temperature and VPD), $n_{dry}$ is the number of dry months in the
+year (days when the precipitation of the last 30 days is below half its potential
+evaporation, in months), and $T_{growing}$ is the mean air temperature while above
+freezing (°C). Trees need water through the dry season and enough productivity to pay for
+their canopy; grasses take over where the dry season is long. The coefficients were
+fitted to the tree share of the natural vegetation in the CLM5 surface data, from the
+climate of an offline version of the model on a global 8° grid (2008 ERA5). Nothing in $t$
+depends on the simulated LAI, so there is no feedback through the leaf cost. In this mode,
+$t$ is also the tree share of the C3/C4 competition. The dry days and the temperature are
+summed by time-integrated variables, whose memory grows from a day at the start of a
+simulation to $\tau_{long}$, so that they are averages of their whole history until then.
+
+| Parameter | Symbol | Unit | Typical Value | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| Intercept | $b_0$ | - | -1.63 | Logistic intercept |
+| Tree LAI coefficient | $b_L$ | m⁻² m² | 0.228 | Effect of the LAI$_{max}$ of a tree canopy |
+| Dry-month coefficient | $b_d$ | month⁻¹ | -0.255 | Effect of the number of dry months |
+| Temperature coefficient | $b_T$ | °C⁻¹ | 0.0682 | Effect of the growing-season temperature |
 
 ## Drivers
 

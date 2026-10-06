@@ -703,7 +703,7 @@ sim_only_vars(loader::FlagshipVegetationMetricsDataLoader) =
 
 # Share of the land in crops above which a cell is left out of the vegetation
 # leaderboard, as the optimal-LAI model represents natural vegetation.
-const CROPLAND_THRESHOLD = 0.3
+const CROPLAND_THRESHOLD = 0.5
 
 """
     get_clm_crop_fraction_var()

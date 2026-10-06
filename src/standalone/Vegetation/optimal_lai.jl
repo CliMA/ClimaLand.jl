@@ -59,6 +59,15 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     β_c3::FT
     """The same unit cost ratio for C4 plants (dimensionless)."""
     β_c4::FT
+    """Intercept of the logistic of the climate tree share (dimensionless); see
+    `climate_tree_share`."""
+    tree_b0::FT
+    """Coefficient of the LAI_max of a tree canopy in that logistic (m^-2 m^2)."""
+    tree_b_lai::FT
+    """Coefficient of the number of dry months in that logistic (month^-1)."""
+    tree_b_dry::FT
+    """Coefficient of the growing-season air temperature in that logistic (°C^-1)."""
+    tree_b_temp::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -88,8 +97,20 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
         β_c3 = FT(toml_dict["optimal_lai_β_c3"]),
         β_c4 = FT(toml_dict["optimal_lai_β_c4"]),
+        tree_b0 = FT(toml_dict["optimal_lai_tree_b0"]),
+        tree_b_lai = FT(toml_dict["optimal_lai_tree_b_lai"]),
+        tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
+        tree_b_temp = FT(toml_dict["optimal_lai_tree_b_temp"]),
     )
 end
+
+"""
+    PrognosticTreeShare()
+
+Tree share of `ZhouOptimalLAIModel` computed from the simulated climate
+(`climate_tree_share`) rather than prescribed by a map.
+"""
+struct PrognosticTreeShare end
 
 """
     leaf_cost(tree_share, z_tree, z_grass)
@@ -100,6 +121,65 @@ grass costs averaged geometrically.
 """
 leaf_cost(tree_share, z_tree, z_grass) =
     exp(tree_share * log(z_tree) + (1 - tree_share) * log(z_grass))
+
+"""
+    climate_tree_share(L_tree, dry_months, T_growing, parameters)
+
+Share of trees in the vegetation from the climate: a logistic of the LAI_max a tree
+canopy would reach (`L_tree`, m^2 m^-2), the number of dry months in the year
+(`dry_months`, months whose trailing precipitation is below half the potential
+evaporation) and the mean air temperature of the growing season (`T_growing`, °C),
+with coefficients fitted to the tree share of the natural vegetation in the CLM5
+surface data. Trees need water through the dry season and enough productivity to
+pay for their canopy; grasses take over where the dry season is long.
+"""
+function climate_tree_share(
+    L_tree::FT,
+    dry_months::FT,
+    T_growing::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    (; tree_b0, tree_b_lai, tree_b_dry, tree_b_temp) = parameters
+    x =
+        tree_b0 +
+        tree_b_lai * L_tree +
+        tree_b_dry * dry_months +
+        tree_b_temp * T_growing
+    return 1 / (1 + exp(-x))
+end
+
+"""
+    c3_optimal_chi(T, P_air, ca, vpd, pmodel_parameters, constants)
+
+Optimal ratio of intercellular to ambient CO2 of C3 plants in the P-model at air
+temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing ratio `ca` (mol mol^-1)
+and vapour pressure deficit `vpd` (Pa).
+"""
+function c3_optimal_chi(
+    T::FT,
+    P_air::FT,
+    ca::FT,
+    vpd::FT,
+    pmodel_parameters,
+    constants,
+) where {FT}
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi) = constants
+    (; vpd_ratio_min, Γ_ratio_max) = constants
+    ca_pp = ca * P_air
+    Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T, To)
+    Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+    ξ = sqrt(pmodel_parameters.β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(
+        ξ,
+        ca_pp,
+        Γstar,
+        vpd,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    return ci / ca_pp
+end
 
 """
     compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
@@ -493,17 +573,45 @@ function canopy_composition_from_competition(
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
+    tree = tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
+    return canopy_composition(
+        tree,
+        open_canopy_c4_share(A0c3_annual, A0c4_annual, parameters),
+    )
+end
+
+"""
+    open_canopy_c4_share(A0c3_annual, A0c4_annual, parameters)
+
+Expected C4 share of the open (non-tree) canopy in the C3/C4 competition of Lavergne
+et al. (2022): a logistic of the proportional C4 advantage in potential GPP,
+`(A0c4 − A0c3)/A0c3`.
+"""
+function open_canopy_c4_share(
+    A0c3_annual::FT,
+    A0c4_annual::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
     (; c3c4_k, c3c4_q) = parameters
     a0c3 = max(A0c3_annual, eps(FT))
     adv = (A0c4_annual - a0c3) / a0c3
     # pyrealm scales the advantage by exp(1/(1+TC)) with TC the observed tree
     # cover; with no such input, TC = 0 leaves the divisor ℯ.
-    open_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
-    tree = tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
-    c4_grass = open_c4 * (1 - tree)
-    c3_grass = (1 - open_c4) * (1 - tree)
-    return (; tree, c3_grass, c4_grass)
+    return 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
 end
+
+"""
+    canopy_composition(tree, open_c4)
+
+Shares of C3 trees, C3 grasses and C4 grasses, `(; tree, c3_grass, c4_grass)`, from the
+tree share `tree` and the C4 share of the open canopy `open_c4`: C4 grasses are shaded
+out under trees.
+"""
+canopy_composition(tree, open_c4) = (;
+    tree,
+    c3_grass = (1 - open_c4) * (1 - tree),
+    c4_grass = open_c4 * (1 - tree),
+)
 
 """
     c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, GSL, Mc, parameters)

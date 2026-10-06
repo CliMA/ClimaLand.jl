@@ -291,6 +291,21 @@ clm_tree_share_path() = joinpath(
 )
 
 """
+    optimal_lai_state_path()
+
+Return the path to the state of `ZhouOptimalLAIModel` on March 1 2008, the final state
+of its spin-up (`experiments/long_runs/optimal_lai_spinup.jl`, run in Buildkite build
+5071 of `climaland-long-runs`), on a 1° grid, NaN over ocean. This is a copy in the
+repository until it becomes a ClimaArtifacts artifact.
+"""
+optimal_lai_state_path() = joinpath(
+    pkgdir(@__MODULE__),
+    "artifacts",
+    "optimal_lai_state",
+    "optimal_lai_state.nc",
+)
+
+"""
     clm_crop_fraction_path()
 
 Return the path to the fraction of the land in the crop land unit of the CLM5 surface
