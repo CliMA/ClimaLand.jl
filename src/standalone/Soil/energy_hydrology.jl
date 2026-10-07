@@ -223,7 +223,7 @@ details.
 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
+mutable struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     "The parameter sets"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
