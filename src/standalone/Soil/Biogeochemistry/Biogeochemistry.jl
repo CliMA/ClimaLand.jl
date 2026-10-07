@@ -162,8 +162,8 @@ A model for simulating the production and transport of CO₂ and O₂ in the soi
 source and diffusion terms.
 $(DocStringExtensions.FIELDS)
 """
-struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
-       AbstractSoilBiogeochemistryModel{FT}
+mutable struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
+               AbstractSoilBiogeochemistryModel{FT}
     "the parameter set"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
