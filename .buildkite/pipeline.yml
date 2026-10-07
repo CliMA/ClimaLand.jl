@@ -149,6 +149,28 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/integrated_timestep_test.jl"
         artifact_paths: "experiments/integrated/performance/integrated_timestep_test/output_active/*"
 
+  - group: "FLUXNET2015 RMSE vs ILAMB land-hist"
+    steps:
+      - label: "FLUXNET2015 sites"
+        key: "fluxnet_ilamb_rmse_sites"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_sites.jl"
+        parallelism: 24
+        timeout_in_minutes: 240
+        artifact_paths: "experiments/integrated/generic_site/out/ilamb_rmse/sites/*"
+        agents:
+          slurm_time: "04:00:00"
+
+      - label: "FLUXNET2015 RMSE boxplot"
+        depends_on: "fluxnet_ilamb_rmse_sites"
+        allow_dependency_failure: true
+        command:
+          - buildkite-agent artifact download "experiments/integrated/generic_site/out/ilamb_rmse/sites/*" .
+          - julia --color=yes --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_plot.jl
+        timeout_in_minutes: 30
+        artifact_paths: "experiments/integrated/generic_site/out/ilamb_rmse/*"
+        agents:
+          slurm_time: "00:30:00"
+
   - group: "Experiments on GPU"
     steps:
 

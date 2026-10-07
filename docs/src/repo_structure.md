@@ -64,6 +64,10 @@ fluxtower site
 - US-MOz_simulation.jl: Contains simulation variables for running Clima Land on the US-MOz
 fluxtower site
 
+`/experiments/integrated/generic_site/` runs the default `LandModel` at any FLUXNET2015 site
+(`run_generic_site.jl`) and scores it against the ILAMB land-hist models at the FLUXNET2015
+sites (`fluxnet_ilamb_rmse_sites.jl`, `fluxnet_ilamb_rmse_plot.jl`); see its `README.md`.
+
 The `experiments` folder also contains a `benchmarks` folder and a `long_runs` folder. These contain experiments that are run as part of CI on the Caltech cluster. `benchmarks` is ran to ensure the model runs in a similar amount of time after changes are made. `long_runs` create
 outputs that can be checked for validity.
 
