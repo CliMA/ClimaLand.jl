@@ -49,6 +49,9 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Stability cap tests" begin
         include("shared_utilities/stability_cap.jl")
     end
+    @safetestset "State correction tests" begin
+        include("shared_utilities/state_corrections.jl")
+    end
 
     # Standalone Bucket model tests
     @safetestset "Bucket albedo types tests" begin

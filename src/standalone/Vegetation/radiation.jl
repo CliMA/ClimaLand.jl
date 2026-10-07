@@ -143,15 +143,62 @@ end
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
-struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}} <:
+"""
+    TwoStreamModel{FT, TSP, C} <: AbstractRadiationModel{FT}
+
+The two-stream canopy radiative transfer model with parameters `parameters`
+and an optional multiplicative correction `clumping_correction` of the
+clumping index, a [`LogLinearFactor`](@ref) of the canopy correction features
+([`canopy_correction_features`](@ref)) or `nothing`. The corrected clumping
+index `min(1, Ω f)` changes how much radiation reaches the ground through the
+same two-stream solution, so the canopy–ground partition of the absorbed
+radiation stays consistent and conservative.
+"""
+struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}, C} <:
        AbstractRadiationModel{FT}
     parameters::TSP
+    clumping_correction::C
 end
 
 function TwoStreamModel{FT}(
-    parameters::TwoStreamParameters{FT},
+    parameters::TwoStreamParameters{FT};
+    clumping_correction = nothing,
 ) where {FT <: AbstractFloat}
-    return TwoStreamModel{eltype(parameters), typeof(parameters)}(parameters)
+    return TwoStreamModel{
+        eltype(parameters),
+        typeof(parameters),
+        typeof(clumping_correction),
+    }(
+        parameters,
+        clumping_correction,
+    )
+end
+
+"""
+    effective_clumping_index(Ω, ::Nothing, p, canopy)
+    effective_clumping_index(Ω, f::LogLinearFactor, p, canopy)
+
+The clumping index used in the shortwave radiative transfer: `Ω` itself, or
+`min(1, Ω f(x))` with the correction factor `f` of the canopy correction
+features `x`.
+"""
+effective_clumping_index(Ω, ::Nothing, p, canopy) = Ω
+function effective_clumping_index(Ω, f::LogLinearFactor, p, canopy)
+    x = canopy_correction_features(p, canopy)
+    return @. lazy(
+        min(
+            1,
+            Ω * f(
+                x.LAI,
+                x.cosθs,
+                x.VPD,
+                x.snow_cover_fraction,
+                x.θ_top,
+                x.βm,
+                x.log_height,
+            ),
+        ),
+    )
 end
 
 """
@@ -529,6 +576,7 @@ end
         SAI,
         α_soil_PAR,
         α_soil_NIR,
+        canopy,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
@@ -548,6 +596,7 @@ function compute_fractional_absorbances!(
     SAI,
     α_soil_PAR,
     α_soil_NIR,
+    canopy,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
@@ -578,6 +627,7 @@ end
         SAI,
         α_soil_PAR,
         α_soil_NIR,
+        canopy,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
@@ -600,15 +650,17 @@ function compute_fractional_absorbances!(
     SAI,
     α_soil_PAR,
     α_soil_NIR,
+    canopy,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
     frac_diff = p.drivers.frac_diff
+    Ω = effective_clumping_index(RTP.Ω, RT.clumping_correction, p, canopy)
     # Leaves and stems are treated as randomly mixed canopy elements with
     # plant-area-weighted optical properties (Sellers et al., 1996)
     @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
         RTP.G_Function,
-        RTP.Ω,
+        Ω,
         RTP.n_layers,
         plant_area_weighted(RTP.α_PAR_leaf, RTP.α_PAR_stem, LAI, SAI),
         plant_area_weighted(RTP.τ_PAR_leaf, RTP.τ_PAR_stem, LAI, SAI),
@@ -619,7 +671,7 @@ function compute_fractional_absorbances!(
     )
     @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
         RTP.G_Function,
-        RTP.Ω,
+        Ω,
         RTP.n_layers,
         plant_area_weighted(RTP.α_NIR_leaf, RTP.α_NIR_stem, LAI, SAI),
         plant_area_weighted(RTP.τ_NIR_leaf, RTP.τ_NIR_stem, LAI, SAI),
@@ -958,6 +1010,7 @@ function update_radiative_transfer!(
             p,
             t,
         ),
+        canopy,
     )
 end
 

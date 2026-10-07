@@ -2,6 +2,35 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add bounded, state-dependent multiplicative corrections
+  that carry empirical (e.g. flux-tower regression) error corrections into the
+  flux solves without changing the model structure: `LogLinearFactor`,
+  `f = exp(clamp(b + Σ wᵢ (xᵢ - μᵢ)/σᵢ, -L, L))`, applied to the canopy
+  conductance (`Canopy.CorrectedConductance`, wrapping any stomatal
+  conductance model), to the clumping index of the two-stream scheme
+  (`TwoStreamModel(…; clumping_correction)`, `Ω → min(1, Ω f)`), and to the
+  soil albedo (`CLMTwoBandSoilAlbedo(…; correction)`). The canopy factors are
+  functions of the model state only (leaf area index, cosine of the solar
+  zenith angle, vapor pressure deficit, snow cover fraction, top-layer soil
+  water content, moisture stress factor, and log canopy height), the soil
+  factor of the zenith angle and the surface water content; energy and water
+  remain conserved and the solves restart-reproducible. All defaults are
+  `nothing` (no correction), leaving every result unchanged. Trained on the
+  residuals of 24 FLUXNET sites with GPP and LAI prescribed (year 2 of 730-day
+  runs; finite-difference sensitivities from runs with the conductance x1.5),
+  a conductance factor of cos θs, VPD, βm and log canopy height
+  (f ≈ 1.3 for short canopies at low VPD, ≈ 0.85 for tall canopies at 2 kPa)
+  reduces the leave-one-site-out evaporative-fraction bias from 0.072 to 0.052
+  and the RMSE from 0.187 to 0.170 (linearised), and online, in the full
+  model, the EF bias from 0.072 to 0.057 and the RMSE from 0.188 to 0.175
+  (22 of 24 sites), the sensible heat flux RMSE from 46.7 to 45.3 W/m² (21 of
+  24) and the latent heat flux RMSE from 37.0 to 36.1 W/m² (19 of 24), with
+  SWup, LWup and Rn unchanged. Factors of the state variables alone, without
+  the canopy height, have no out-of-sample skill, nor do the clumping and
+  soil-albedo channels: the daily-mean ground heat flux is nearly unbiased
+  (the daytime excess against plate measurements at 5–8 cm is a storage-phase
+  difference) and the soil-albedo residuals differ in sign between
+  neighbouring semi-arid sites.
 - ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
   the soil surface diffuses through the pore space of a dry litter layer of
   thickness `litter_layer_thickness` and porosity `litter_porosity`

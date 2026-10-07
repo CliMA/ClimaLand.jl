@@ -486,6 +486,7 @@ end
         ϵ_canopy = toml_dict["canopy_emissivity"],
         K_lw = toml_dict["canopy_K_lw"],
         n_layers::Int = 20,
+        clumping_correction = nothing,
     )
 
 Creates a Two Stream model for canopy radiative transfer on the provided domain.
@@ -502,6 +503,8 @@ as constants; these can be passed in as Floats by kwarg.
 Otherwise the default values from ClimaParams.jl are used.
 
 The number of layers in the canopy is set by `n_layers`, which defaults to 20.
+An optional `clumping_correction` ([`LogLinearFactor`](@ref)) scales the
+clumping index as a function of the canopy state.
 """
 function TwoStreamModel{FT}(
     domain,
@@ -512,6 +515,7 @@ function TwoStreamModel{FT}(
     ϵ_canopy::FT = toml_dict["canopy_emissivity"],
     K_lw = toml_dict["canopy_K_lw"],
     n_layers::Int = 20,
+    clumping_correction = nothing,
 ) where {FT <: AbstractFloat}
     parameters = TwoStreamParameters(
         toml_dict;
@@ -520,7 +524,7 @@ function TwoStreamModel{FT}(
         K_lw,
         n_layers,
     )
-    return TwoStreamModel{FT, typeof(parameters)}(parameters)
+    return TwoStreamModel{FT}(parameters; clumping_correction)
 end
 
 """
