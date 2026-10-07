@@ -46,6 +46,11 @@ main
   global bias from −0.21 to −0.01, and the JJA LAI north of 30°N rises from 1.21 to 1.55
   (MODIS 1.68).
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] A calibration configuration (`experiments/calibration/configs/lai_and_trees.jl`)
+  calibrates the optimal-LAI model against MODIS LAI and the CLM tree share (`ftr`, a new
+  calibration target), over natural vegetation as in the vegetation leaderboard;
+  `CalibrateConfig` takes `prognostic_lai`.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
   final state of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from
   `experiments/long_runs/optimal_lai_spinup.jl`) where it has data, and from the

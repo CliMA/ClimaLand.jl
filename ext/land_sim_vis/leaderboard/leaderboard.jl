@@ -377,28 +377,9 @@ Return `obs_var` if it has a time dimension. Otherwise `obs_var` is a static map
 which is resampled onto the grid of `sim_var` and repeated at each of its times,
 so that every simulated month is compared with it.
 """
-function _repeat_static_obs(obs_var, sim_var)
-    ClimaAnalysis.has_time(obs_var) && return obs_var
-    sim_times = ClimaAnalysis.times(sim_var)
-    lonlat = ClimaAnalysis.resampled_as(
-        obs_var,
-        ClimaAnalysis.slice(sim_var, time = first(sim_times));
-        nan_threshold = 0.5,
-    )
-    time_dim = findfirst(
-        ==(ClimaAnalysis.time_name(sim_var)),
-        collect(keys(sim_var.dims)),
-    )
-    shape = collect(size(lonlat.data))
-    insert!(shape, time_dim, 1)
-    counts = ntuple(i -> i == time_dim ? length(sim_times) : 1, length(shape))
-    data = repeat(reshape(lonlat.data, shape...), counts...)
-    return ClimaAnalysis.remake(
-        sim_var;
-        data,
-        attributes = merge(sim_var.attributes, obs_var.attributes),
-    )
-end
+_repeat_static_obs(obs_var, sim_var) =
+    ClimaAnalysis.has_time(obs_var) ? obs_var :
+    repeat_over_times(obs_var, sim_var)
 
 """
     _get_data_loader(data_source)

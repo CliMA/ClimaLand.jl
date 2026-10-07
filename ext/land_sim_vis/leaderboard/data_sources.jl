@@ -883,16 +883,48 @@ function get_modis_lai_obs_var(; years = 2000:2020)
 end
 
 """
+    repeat_over_times(static_var, template_var)
+
+Return the static (lon-lat) `static_var` resampled onto the longitudes and latitudes
+of `template_var` and repeated at each of its times, keeping the attributes of
+`static_var`.
+"""
+function repeat_over_times(static_var, template_var)
+    times = ClimaAnalysis.times(template_var)
+    lonlat = ClimaAnalysis.resampled_as(
+        static_var,
+        ClimaAnalysis.slice(template_var, time = first(times));
+        nan_threshold = 0.5,
+    )
+    time_dim = findfirst(
+        ==(ClimaAnalysis.time_name(template_var)),
+        collect(keys(template_var.dims)),
+    )
+    shape = collect(size(lonlat.data))
+    insert!(shape, time_dim, 1)
+    counts = ntuple(i -> i == time_dim ? length(times) : 1, length(shape))
+    data = repeat(reshape(lonlat.data, shape...), counts...)
+    return ClimaAnalysis.remake(
+        template_var;
+        data,
+        attributes = merge(template_var.attributes, static_var.attributes),
+    )
+end
+
+"""
     get_calibration_obs_var_dict(; short_names = nothing)
 
 Return a dictionary mapping short names to `OutputVar` containing preprocessed
 observational data for calibration. This combines ERA5 energy flux variables
 (`lhf`, `shf`, `lwu`, `swu`), ILAMB variables (`gpp`, `er`, `nee`), the
 inversion-derived carbon targets (`inv_nee`, `sif_gpp`, `res_er`, `inv_hr`)
-from the `inversion_nee` artifact, and the MODIS `lai` target.
+from the `inversion_nee` artifact, and the optimal-LAI targets: MODIS `lai` and
+the CLM tree share `ftr`, a static map repeated at every MODIS month. Like the
+vegetation leaderboard, the optimal-LAI targets cover natural vegetation only
+(`mask_cropland`).
 
 If `short_names` is provided, only the requested variables are returned (and
-the MODIS LAI file load is skipped unless `lai` is requested).
+the MODIS LAI file load is skipped unless `lai` or `ftr` is requested).
 """
 function get_calibration_obs_var_dict(; short_names = nothing)
     obs_var_dict = Dict{String, Any}()
@@ -914,10 +946,20 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     # Hashimoto Rh), keyed by inv_nee/sif_gpp/res_er/inv_hr.
     merge!(obs_var_dict, get_inversion_obs_var_dict())
 
-    # MODIS LAI target for optimal-LAI calibration. Loading the 21 per-year
-    # files is comparatively expensive, so only build it when requested.
-    if isnothing(short_names) || "lai" in short_names
-        obs_var_dict["lai"] = get_modis_lai_obs_var()
+    # Optimal-LAI targets. Loading the 21 per-year MODIS files is comparatively
+    # expensive, so only build them when requested.
+    requested(name) = isnothing(short_names) || name in short_names
+    if requested("lai") || requested("ftr")
+        lai = get_modis_lai_obs_var()
+        crop_fraction = get_clm_crop_fraction_var()
+        requested("lai") &&
+            (obs_var_dict["lai"] = mask_cropland(lai, crop_fraction))
+        requested("ftr") && (
+            obs_var_dict["ftr"] = mask_cropland(
+                repeat_over_times(get_clm_tree_share_obs_var(), lai),
+                crop_fraction,
+            )
+        )
     end
 
     if !isnothing(short_names)
