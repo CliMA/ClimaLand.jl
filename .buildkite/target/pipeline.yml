@@ -22,7 +22,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"ClimaCore\", rev=\"tr/broadcast-compile-time\")); Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
     agents:
       slurm_gpus: 1
