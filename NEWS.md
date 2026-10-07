@@ -18,6 +18,22 @@ main
   soil parameters (US-SRG), the soil started outside the domain of the
   retention curve, where the pressure head is unbounded and its derivative
   vanishes, and the first rain produced an unbounded flux and NaNs.
+- ![][badge-🔥behavioralΔ] Initialize the soil of FLUXNET simulations with depth-dependent
+  profiles instead of a uniform column. The water content relaxes from the
+  shallow observation at the start date to the record mean of the deepest soil
+  moisture sensor with a 0.5 m e-folding depth, and the temperature from the
+  shallow observation to the record mean with the 2 m annual damping depth. At
+  sites without any soil moisture record, which previously started at 95 % of
+  saturation throughout, the deep water content is estimated from the aridity
+  `P/PET` of the record between the wilting point and field capacity
+  (`climatological_soil_moisture`). The site soil column has a zero-flux bottom
+  and loses water almost only by evapotranspiration, so a uniform wet initial
+  column kept semi-arid sites (e.g. US-Seg, US-Ton) wet for years, with
+  evaporation, ground heat flux, and soil thermal inertia far above the
+  observations. At the four semi-arid sites without soil moisture data
+  (US-Seg, US-Ses, US-Wjs, US-Vcp) the first-year bias of the latent heat
+  flux falls from +11 to +18 W/m² to -1 to +10 W/m²; at sites with soil
+  moisture data the changes are within a few W/m².
 
 - ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
   and stem area indices in the cache are reduced to the part of the canopy
