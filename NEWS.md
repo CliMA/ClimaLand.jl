@@ -22,10 +22,23 @@ main
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] `ZhouOptimalLAIModel` can compute its tree share from the simulated
   climate (`tree_share = PrognosticTreeShare()`) rather than from a map: a logistic of the
-  LAI_max of a tree canopy, the number of dry months and the growing-season temperature
-  (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`, `_b_temp`, fitted to the CLM tree share),
+  LAI_max of a tree canopy, the number of dry months of the growing season and the
+  growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`, `_b_temp`),
   which also sets the tree share of the C3/C4 competition. The optimal-LAI long run
   compares it with the CLM map in a second step (`PROGNOSTIC_TREE_SHARE`).
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The water limit of `ZhouOptimalLAIModel` uses the VPD of the
+  moist growing season (above freezing, and the 30-day precipitation at least half the
+  PET) rather than of the whole season above freezing, whose dry-season VPD made the
+  limit too tight in the seasonally dry tropics. Trees keep half of their LAI_max
+  through the unfavourable season (`optimal_lai_tree_retention`), the evergreen and
+  semi-evergreen part of their canopy, so winter LAI north of 30°N is no longer zero.
+  The leaf costs (`optimal_lai_z_tree` 8.94, `optimal_lai_z_grass` 127), `optimal_lai_sigma`
+  (1.08) and the climate tree share are calibrated against MODIS LAI and the CLM tree
+  share in an offline emulator of the model. Seven time-integrated variables carry the
+  30-day precipitation and PET, the moist season and the days and degree-days above
+  freezing. In the emulator, with the climate tree share, the annual-mean LAI RMSE falls
+  from 0.82 to 0.75 and the global bias from −0.21 to −0.02.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
   final state of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from

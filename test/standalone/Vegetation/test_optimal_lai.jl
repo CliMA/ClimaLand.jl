@@ -24,13 +24,12 @@ import NCDatasets
             @test params.alpha isa FT
             @test params.tau_long_term isa FT
 
-            # Check expected values from default_parameters.toml: the leaf cost of
-            # trees is that of Zhou et al. (2025); the others are calibrated against
+            # Check expected values from default_parameters.toml, calibrated against
             # MODIS LAI
             @test params.k ≈ FT(0.5)
-            @test params.z_tree ≈ FT(12.227)
-            @test params.z_grass ≈ FT(100)
-            @test params.sigma ≈ FT(1.01)
+            @test params.z_tree ≈ FT(8.94)
+            @test params.z_grass ≈ FT(127)
+            @test params.sigma ≈ FT(1.08)
             @test params.alpha ≈ FT(0.202)  # ~15 days of memory
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
@@ -59,11 +58,12 @@ import NCDatasets
             @test lai_pmodel.β_c4 == params.β_c4
             @test lai_pmodel.cstar == pmodel.parameters.cstar
 
-            # logistic of the climate tree share, fitted to the CLM tree share
-            @test params.tree_b0 ≈ FT(-1.63)
-            @test params.tree_b_lai ≈ FT(0.228)
-            @test params.tree_b_dry ≈ FT(-0.255)
-            @test params.tree_b_temp ≈ FT(0.0682)
+            # logistic of the climate tree share, and the canopy trees retain
+            @test params.tree_b0 ≈ FT(-0.564)
+            @test params.tree_b_lai ≈ FT(0.0464)
+            @test params.tree_b_dry ≈ FT(-0.364)
+            @test params.tree_b_temp ≈ FT(0.0621)
+            @test params.tree_retention ≈ FT(0.5)
 
             @test eltype(params) == FT
         end
@@ -85,7 +85,7 @@ import NCDatasets
                   1 / (1 + exp(-params.tree_b0))
         end
 
-        @testset "c3_optimal_chi for FT = $FT" begin
+        @testset "optimal_chi for FT = $FT" begin
             pmodel = Canopy.PModel{FT}(
                 ClimaLand.Domains.Point(;
                     z_sfc = FT(0),
@@ -96,20 +96,39 @@ import NCDatasets
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
             lai_pmodel =
                 Canopy.optimal_lai_pmodel_parameters(pmodel.parameters, params)
-            χ(T, vpd, p = lai_pmodel) = Canopy.c3_optimal_chi(
+            χ(T, vpd, β = lai_pmodel.β_c3) = Canopy.optimal_chi(
                 FT(T),
                 FT(101325),
                 FT(4.2e-4),
                 FT(vpd),
-                p,
+                β,
                 pmodel.constants,
             )
             @test χ(298, 1000) isa FT
             @test FT(0) < χ(298, 1000) < FT(1)
             # stomata close as the air dries
             @test χ(298, 2000) < χ(298, 1000) < χ(298, 500)
-            # a larger cost ratio β keeps the stomata more open
-            @test χ(298, 1000, lai_pmodel) > χ(298, 1000, pmodel.parameters)
+            # a larger cost ratio β keeps the stomata more open; C4 plants are
+            # more conservative
+            @test χ(298, 1000) > χ(298, 1000, pmodel.parameters.β_c3)
+            @test χ(298, 1000, lai_pmodel.β_c4) < χ(298, 1000)
+        end
+
+        @testset "moist_season_vpd for FT = $FT" begin
+            day = FT(86400)
+            vpd(moist_days) = Canopy.moist_season_vpd(
+                FT(500) * moist_days * day,
+                FT(moist_days),
+                FT(2000) * 300 * day,
+                FT(300),
+                day,
+            )
+            # the VPD of the moist season, once it lasts a month
+            @test vpd(200) ≈ 500
+            @test vpd(30) ≈ 500
+            # without a moist season, that of the whole growing season
+            @test vpd(0) ≈ 2000
+            @test vpd(0) > vpd(15) > vpd(30)
         end
 
         @testset "growing_running_sum_tendency for FT = $FT" begin
@@ -190,6 +209,13 @@ import NCDatasets
                 :A0c4_annual,
                 :GPPc3_annual,
                 :LAI,
+                :precip_30d,
+                :PET_30d,
+                :VPD_moist_annual,
+                :moist_days,
+                :degree_days,
+                :warm_days,
+                :age,
             )
             @test Canopy.prognostic_vars(model) == optlai_prog
             @test Canopy.prognostic_types(model) ==
@@ -197,7 +223,7 @@ import NCDatasets
             @test Canopy.prognostic_domain_names(model) ==
                   ntuple(_ -> :surface, length(optlai_prog))
 
-            # A prognostic tree share adds the totals of its climate
+            # A prognostic tree share uses the same climate totals
             prognostic_tree = Canopy.ZhouOptimalLAIModel{FT}(
                 params;
                 SAI = FT(0.0),
@@ -206,15 +232,7 @@ import NCDatasets
                 height = FT(10.0),
                 tree_share = Canopy.PrognosticTreeShare(),
             )
-            @test Canopy.prognostic_vars(prognostic_tree) == (
-                optlai_prog...,
-                :precip_30d,
-                :PET_30d,
-                :dry_days,
-                :degree_days,
-                :warm_days,
-                :age,
-            )
+            @test Canopy.prognostic_vars(prognostic_tree) == optlai_prog
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -817,15 +835,21 @@ import NCDatasets
                     @test scalar(Y.canopy.biomass.PET_annual) <
                           scalar(Y_climatology.canopy.biomass.PET_annual)
                 end
-                # the totals of the climate tree share start from the annual ones
+                # the 30-day totals start from the annual ones, the yearly sums of
+                # the moist and warm seasons from zero
                 @test scalar(Y.canopy.biomass.precip_30d) ≈
                       scalar(Y.canopy.biomass.precip_annual) * 30 / 365
                 @test scalar(Y.canopy.biomass.PET_30d) ≈
                       scalar(Y.canopy.biomass.PET_annual) * 30 / 365
-                @test scalar(Y.canopy.biomass.dry_days) == 0
-                @test scalar(Y.canopy.biomass.degree_days) == 0
-                @test scalar(Y.canopy.biomass.warm_days) == 0
-                @test scalar(Y.canopy.biomass.age) == 0
+                for name in (
+                    :VPD_moist_annual,
+                    :moist_days,
+                    :degree_days,
+                    :warm_days,
+                    :age,
+                )
+                    @test scalar(getproperty(Y.canopy.biomass, name)) == 0
+                end
             end
         end
     end

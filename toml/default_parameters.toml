@@ -107,19 +107,19 @@ description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z_tree"]
-value = 12.227
+value = 8.94
 type = "float"
-description = "Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1): the leaf cost z fitted by Zhou et al. (2025). The cost of a canopy is the tree and grass costs averaged geometrically, weighted by its tree share."
+description = "Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1), calibrated with the climate tree share against MODIS LAI in an offline emulator of the model (Zhou et al. 2025 fitted a single z of 12.227). The cost of a canopy is the tree and grass costs averaged geometrically, weighted by its tree share."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z_grass"]
-value = 100.0
+value = 127.0
 type = "float"
-description = "Unit cost of grass leaves (mol m^-2 yr^-1), above that of trees as z includes the below-ground allocation that supplies the leaves. Fitted against MODIS LAI at 35 sites."
+description = "Unit cost of grass leaves (mol m^-2 yr^-1), above that of trees as z includes the below-ground allocation that supplies the leaves. Calibrated with the climate tree share against MODIS LAI in an offline emulator of the model."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 1.01
+value = 1.08
 type = "float"
 description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
@@ -191,27 +191,33 @@ description = "Unit cost ratio β of C4 plants (dimensionless) of the optimal-LA
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tree_b0"]
-value = -1.63
+value = -0.564
 type = "float"
-description = "Intercept of the logistic of the climate tree share of the optimal-LAI model (dimensionless), fitted to the natural-vegetation tree share of the CLM5 surface data."
+description = "Intercept of the logistic of the climate tree share of the optimal-LAI model (dimensionless), calibrated jointly against MODIS LAI and the natural-vegetation tree share of the CLM5 surface data."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tree_b_lai"]
-value = 0.228
+value = 0.0464
 type = "float"
 description = "Coefficient of the LAI_max of a tree canopy in the logistic of the climate tree share (m^-2 m^2)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tree_b_dry"]
-value = -0.255
+value = -0.364
 type = "float"
-description = "Coefficient of the number of dry months (30-day precipitation below half the potential evaporation) in the logistic of the climate tree share (month^-1)."
+description = "Coefficient of the number of dry months of the growing season (above 0 °C, with the 30-day precipitation below half the potential evaporation) in the logistic of the climate tree share (month^-1)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tree_b_temp"]
-value = 0.0682
+value = 0.0621
 type = "float"
 description = "Coefficient of the growing-season (above 0 °C) mean air temperature in the logistic of the climate tree share (°C^-1)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_retention"]
+value = 0.5
+type = "float"
+description = "Fraction of their LAI_max that trees keep through the unfavourable season (dimensionless): the evergreen and semi-evergreen part of their canopy in the optimal-LAI model."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters

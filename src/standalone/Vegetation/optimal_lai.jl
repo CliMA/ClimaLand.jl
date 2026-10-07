@@ -68,6 +68,9 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     tree_b_dry::FT
     """Coefficient of the growing-season air temperature in that logistic (°C^-1)."""
     tree_b_temp::FT
+    """Fraction of their LAI_max that trees keep through the unfavourable season
+    (dimensionless): the evergreen and semi-evergreen part of their canopy."""
+    tree_retention::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -101,6 +104,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tree_b_lai = FT(toml_dict["optimal_lai_tree_b_lai"]),
         tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
         tree_b_temp = FT(toml_dict["optimal_lai_tree_b_temp"]),
+        tree_retention = FT(toml_dict["optimal_lai_tree_retention"]),
     )
 end
 
@@ -126,8 +130,8 @@ leaf_cost(tree_share, z_tree, z_grass) =
     climate_tree_share(L_tree, dry_months, T_growing, parameters)
 
 Share of trees in the vegetation from the climate: a logistic of the LAI_max a tree
-canopy would reach (`L_tree`, m^2 m^-2), the number of dry months in the year
-(`dry_months`, months whose trailing precipitation is below half the potential
+canopy would reach (`L_tree`, m^2 m^-2), the number of dry months of the growing season
+(`dry_months`, warm months whose trailing precipitation is below half the potential
 evaporation) and the mean air temperature of the growing season (`T_growing`, °C),
 with coefficients fitted to the tree share of the natural vegetation in the CLM5
 surface data. Trees need water through the dry season and enough productivity to
@@ -149,18 +153,18 @@ function climate_tree_share(
 end
 
 """
-    c3_optimal_chi(T, P_air, ca, vpd, pmodel_parameters, constants)
+    optimal_chi(T, P_air, ca, vpd, β, constants)
 
-Optimal ratio of intercellular to ambient CO2 of C3 plants in the P-model at air
-temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing ratio `ca` (mol mol^-1)
-and vapour pressure deficit `vpd` (Pa).
+Optimal ratio of intercellular to ambient CO2 in the P-model with unit cost ratio `β`
+(the C3 or C4 one) at air temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing
+ratio `ca` (mol mol^-1) and vapour pressure deficit `vpd` (Pa).
 """
-function c3_optimal_chi(
+function optimal_chi(
     T::FT,
     P_air::FT,
     ca::FT,
     vpd::FT,
-    pmodel_parameters,
+    β::FT,
     constants,
 ) where {FT}
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi) = constants
@@ -169,7 +173,7 @@ function c3_optimal_chi(
     Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T, To)
     Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ = sqrt(pmodel_parameters.β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
     ci = intercellular_co2_pmodel(
         ξ,
         ca_pp,

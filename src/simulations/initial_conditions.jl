@@ -516,9 +516,9 @@ These climatological seeds are then replaced, where it has data, by the state at
 (`experiments/long_runs/optimal_lai_spinup.jl`), on a (lon, lat) grid. In particular,
 it replaces the `PET_annual` seed, which is far too high where the climate is humid.
 
-With `PrognosticTreeShare()`, the 30-day totals start at the 30-day share of the annual
-ones, and the yearly counts of dry days, degree-days and days above freezing at zero:
-they average their history until it reaches `tau_long_term`.
+The 30-day totals start at the 30-day share of the annual ones, and the yearly sums of
+the moist growing season and of the days and degree-days above freezing at zero: they
+average their history until it reaches `tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -596,14 +596,11 @@ function set_canopy_component_initial_conditions!(
         end
     end
 
-    if model.tree_share isa ClimaLand.Canopy.PrognosticTreeShare
-        Y.canopy.biomass.precip_30d .=
-            Y.canopy.biomass.precip_annual .* FT(30 / 365)
-        Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
-        Y.canopy.biomass.dry_days .= 0
-        Y.canopy.biomass.degree_days .= 0
-        Y.canopy.biomass.warm_days .= 0
-        Y.canopy.biomass.age .= 0
+    Y.canopy.biomass.precip_30d .=
+        Y.canopy.biomass.precip_annual .* FT(30 / 365)
+    Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
+    for name in (:VPD_moist_annual, :moist_days, :degree_days, :warm_days, :age)
+        getproperty(Y.canopy.biomass, name) .= 0
     end
     return nothing
 end
