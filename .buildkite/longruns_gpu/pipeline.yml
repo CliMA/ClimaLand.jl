@@ -109,20 +109,20 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
 
-      - label: ":seedling: Snowy Land + P Model (Optimal LAI, climate tree share)"
-        key: "snowy_land_pmodel_opt_lai_tree_run"
+      - label: ":seedling: Snowy Land + P Model (Optimal LAI, CLM tree share)"
+        key: "snowy_land_pmodel_opt_lai_clm_tree_run"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
-          - "snowy_land_pmodel_opt_lai_tree_longrun_gpu/*png"
-          - "snowy_land_pmodel_opt_lai_tree_longrun_gpu/*pdf"
+          - "snowy_land_pmodel_opt_lai_clm_tree_longrun_gpu/*png"
+          - "snowy_land_pmodel_opt_lai_clm_tree_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 3:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
-          PROGNOSTIC_TREE_SHARE: ""
+          CLM_TREE_SHARE: ""
 
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null

@@ -71,6 +71,11 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Fraction of their LAI_max that trees keep through the unfavourable season
     (dimensionless): the evergreen and semi-evergreen part of their canopy."""
     tree_retention::FT
+    """Share of the leaf cost that is maintenance, which accrues while the air is above
+    freezing and with its temperature (dimensionless); see `leaf_cost_scale`."""
+    maintenance_share::FT
+    """Temperature sensitivity of that maintenance (dimensionless Q10)."""
+    maintenance_q10::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -105,6 +110,8 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
         tree_b_temp = FT(toml_dict["optimal_lai_tree_b_temp"]),
         tree_retention = FT(toml_dict["optimal_lai_tree_retention"]),
+        maintenance_share = FT(toml_dict["optimal_lai_maintenance_share"]),
+        maintenance_q10 = FT(toml_dict["optimal_lai_maintenance_q10"]),
     )
 end
 
@@ -125,6 +132,26 @@ grass costs averaged geometrically.
 """
 leaf_cost(tree_share, z_tree, z_grass) =
     exp(tree_share * log(z_tree) + (1 - tree_share) * log(z_grass))
+
+"""
+    maintenance_rate(T, T_freeze, q10)
+
+Relative rate of leaf maintenance at air temperature `T` (K): `q10^((T - T_freeze - 25)/10)`
+above freezing (1 at 25 °C), zero below.
+"""
+maintenance_rate(T, T_freeze, q10) =
+    ifelse(T > T_freeze, q10^((T - T_freeze - 25) / 10), zero(T))
+
+"""
+    leaf_cost_scale(maintenance_days, maintenance_share)
+
+Scale of the leaf cost `z` with the season: its construction share is fixed, and its
+maintenance share `maintenance_share` scales with the yearly maintenance load, the
+days above freezing weighted by `maintenance_rate` (`maintenance_days`, 365 for a
+year-round 25 °C season). Leaves of short, cold seasons are cheaper to hold.
+"""
+leaf_cost_scale(maintenance_days, maintenance_share) =
+    1 - maintenance_share + maintenance_share * maintenance_days / 365
 
 """
     climate_tree_share(L_tree, dry_months, T_growing, parameters)

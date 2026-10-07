@@ -17,12 +17,14 @@ const OPTIMAL_LAI_STATE_UNITS = Dict(
     :A0c4_annual => "mol CO2 m^-2 yr^-1",
     :GPPc3_annual => "mol CO2 m^-2 yr^-1",
     :LAI => "m^2 m^-2",
-    :precip_30d => "mol H2O m^-2 (30 days)^-1",
+    :snow_store => "mol H2O m^-2",
+    :water_30d => "mol H2O m^-2 (30 days)^-1",
     :PET_30d => "mol H2O m^-2 (30 days)^-1",
     :VPD_moist_annual => "Pa s",
     :moist_days => "days",
     :degree_days => "K days",
     :warm_days => "days",
+    :maintenance_days => "days",
     :age => "s",
 )
 

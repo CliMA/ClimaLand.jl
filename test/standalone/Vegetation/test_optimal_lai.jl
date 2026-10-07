@@ -27,9 +27,9 @@ import NCDatasets
             # Check expected values from default_parameters.toml, calibrated against
             # MODIS LAI
             @test params.k ≈ FT(0.5)
-            @test params.z_tree ≈ FT(8.94)
-            @test params.z_grass ≈ FT(127)
-            @test params.sigma ≈ FT(1.08)
+            @test params.z_tree ≈ FT(9.92)
+            @test params.z_grass ≈ FT(154)
+            @test params.sigma ≈ FT(1.09)
             @test params.alpha ≈ FT(0.202)  # ~15 days of memory
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
@@ -59,11 +59,14 @@ import NCDatasets
             @test lai_pmodel.cstar == pmodel.parameters.cstar
 
             # logistic of the climate tree share, and the canopy trees retain
-            @test params.tree_b0 ≈ FT(-0.564)
-            @test params.tree_b_lai ≈ FT(0.0464)
-            @test params.tree_b_dry ≈ FT(-0.364)
-            @test params.tree_b_temp ≈ FT(0.0621)
+            @test params.tree_b0 ≈ FT(-1.07)
+            @test params.tree_b_lai ≈ FT(0.0254)
+            @test params.tree_b_dry ≈ FT(-0.372)
+            @test params.tree_b_temp ≈ FT(0.0917)
             @test params.tree_retention ≈ FT(0.5)
+            # season-scaled leaf cost
+            @test params.maintenance_share ≈ FT(0.43)
+            @test params.maintenance_q10 ≈ FT(2)
 
             @test eltype(params) == FT
         end
@@ -153,6 +156,21 @@ import NCDatasets
             ) ≈ ClimaLand.apply_time_reduction(f, FT(100), reduction)
         end
 
+        @testset "maintenance_rate and leaf_cost_scale for FT = $FT" begin
+            T_freeze = FT(273.15)
+            @test Canopy.maintenance_rate(T_freeze + 25, T_freeze, FT(2)) ≈ 1
+            @test Canopy.maintenance_rate(T_freeze + 15, T_freeze, FT(2)) ≈
+                  FT(0.5)
+            @test Canopy.maintenance_rate(T_freeze - 5, T_freeze, FT(2)) == 0
+            # a year-round 25 °C season keeps the full cost; shorter and colder
+            # seasons are cheaper, down to the construction share
+            m = FT(0.43)
+            @test Canopy.leaf_cost_scale(FT(365), m) ≈ 1
+            @test Canopy.leaf_cost_scale(FT(0), m) ≈ 1 - m
+            @test Canopy.leaf_cost_scale(FT(50), m) <
+                  Canopy.leaf_cost_scale(FT(200), m)
+        end
+
         @testset "leaf_cost for FT = $FT" begin
             z_tree, z_grass = FT(12), FT(100)
             @test Canopy.leaf_cost(FT(1), z_tree, z_grass) ≈ z_tree
@@ -209,12 +227,14 @@ import NCDatasets
                 :A0c4_annual,
                 :GPPc3_annual,
                 :LAI,
-                :precip_30d,
+                :snow_store,
+                :water_30d,
                 :PET_30d,
                 :VPD_moist_annual,
                 :moist_days,
                 :degree_days,
                 :warm_days,
+                :maintenance_days,
                 :age,
             )
             @test Canopy.prognostic_vars(model) == optlai_prog
@@ -837,15 +857,17 @@ import NCDatasets
                 end
                 # the 30-day totals start from the annual ones, the yearly sums of
                 # the moist and warm seasons from zero
-                @test scalar(Y.canopy.biomass.precip_30d) ≈
+                @test scalar(Y.canopy.biomass.water_30d) ≈
                       scalar(Y.canopy.biomass.precip_annual) * 30 / 365
                 @test scalar(Y.canopy.biomass.PET_30d) ≈
                       scalar(Y.canopy.biomass.PET_annual) * 30 / 365
                 for name in (
+                    :snow_store,
                     :VPD_moist_annual,
                     :moist_days,
                     :degree_days,
                     :warm_days,
+                    :maintenance_days,
                     :age,
                 )
                     @test scalar(getproperty(Y.canopy.biomass, name)) == 0

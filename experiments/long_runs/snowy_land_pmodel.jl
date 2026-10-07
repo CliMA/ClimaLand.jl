@@ -59,17 +59,16 @@ const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 # `PROGNOSTIC_LAI=""` as an environment variable on Buildkite. The default
 # (unset) prescribes MODIS LAI.
 const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
-# With prognostic LAI, the tree share behind the leaf cost is prescribed from the CLM
-# map by default; set `PROGNOSTIC_TREE_SHARE=""` to compute it from the simulated
-# climate instead (`ClimaLand.Canopy.PrognosticTreeShare`).
-const PROGNOSTIC_TREE_SHARE =
-    haskey(ENV, "PROGNOSTIC_TREE_SHARE") ? true : false
+# With prognostic LAI, the tree share behind the leaf cost is computed from the
+# simulated climate by default; set `CLM_TREE_SHARE=""` to prescribe it from the
+# natural vegetation of the CLM surface data instead.
+const CLM_TREE_SHARE = haskey(ENV, "CLM_TREE_SHARE") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix =
-    PROGNOSTIC_LAI ? (PROGNOSTIC_TREE_SHARE ? "_opt_lai_tree" : "_opt_lai") : ""
+    PROGNOSTIC_LAI ? (CLM_TREE_SHARE ? "_opt_lai_clm_tree" : "_opt_lai") : ""
 root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
@@ -83,7 +82,7 @@ function setup_model(
     domain,
     toml_dict;
     prognostic_lai = false,
-    prognostic_tree_share = false,
+    use_clm_tree_share = false,
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -99,7 +98,7 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    if prognostic_lai && prognostic_tree_share
+    if prognostic_lai && use_clm_tree_share
         soil = ClimaLand.Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -130,7 +129,9 @@ function setup_model(
             biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
                 surface_domain,
                 toml_dict;
-                tree_share = ClimaLand.Canopy.PrognosticTreeShare(),
+                tree_share = ClimaLand.Canopy.clm_tree_share(
+                    surface_domain.space.surface,
+                ),
             ),
         )
         land = LandModel{FT}(
@@ -201,7 +202,7 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
-    prognostic_tree_share = PROGNOSTIC_TREE_SHARE,
+    use_clm_tree_share = CLM_TREE_SHARE,
 )
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

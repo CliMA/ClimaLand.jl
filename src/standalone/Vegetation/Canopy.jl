@@ -416,7 +416,7 @@ end
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = toml_dict["canopy_height"],
-        tree_share = clm_tree_share(domain.space.surface),
+        tree_share = PrognosticTreeShare(),
     ) where {FT <: AbstractFloat}
 
 Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the provided domain,
@@ -436,7 +436,9 @@ mirrored into `p.canopy.biomass.area_index.leaf`.
 - `rooting_depth`: Rooting depth (m), default from CLM data
 - `height`: Canopy height (m), default the constant `canopy_height` from `toml_dict`
 - `tree_share`: Tree share of the vegetation (dimensionless), which sets the unit cost of
-  leaves; default the tree share of the natural vegetation in the CLM surface data
+  leaves; by default computed from the simulated climate (`PrognosticTreeShare()`), or
+  prescribed, e.g. from the natural vegetation of the CLM surface data
+  (`clm_tree_share(domain.space.surface)`)
 
 # Example
 ```julia
@@ -460,7 +462,7 @@ function ZhouOptimalLAIModel{FT}(
     # vanish, so once the prognostic LAI greens up the transpiration/root fluxes
     # drive ϑ_l (and the coupled canopy/soil state) to NaN.
     height = toml_dict["canopy_height"],
-    tree_share = clm_tree_share(domain.space.surface),
+    tree_share = PrognosticTreeShare(),
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
     return ZhouOptimalLAIModel{FT}(

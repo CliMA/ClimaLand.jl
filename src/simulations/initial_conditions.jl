@@ -516,9 +516,10 @@ These climatological seeds are then replaced, where it has data, by the state at
 (`experiments/long_runs/optimal_lai_spinup.jl`), on a (lon, lat) grid. In particular,
 it replaces the `PET_annual` seed, which is far too high where the climate is humid.
 
-The 30-day totals start at the 30-day share of the annual ones, and the yearly sums of
-the moist growing season and of the days and degree-days above freezing at zero: they
-average their history until it reaches `tau_long_term`.
+The 30-day totals start at the 30-day share of the annual ones, the snow store empty,
+and the yearly sums of the moist growing season and of the days, degree-days and
+maintenance load above freezing at zero: they average their history until it reaches
+`tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -596,10 +597,17 @@ function set_canopy_component_initial_conditions!(
         end
     end
 
-    Y.canopy.biomass.precip_30d .=
-        Y.canopy.biomass.precip_annual .* FT(30 / 365)
+    Y.canopy.biomass.water_30d .= Y.canopy.biomass.precip_annual .* FT(30 / 365)
     Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
-    for name in (:VPD_moist_annual, :moist_days, :degree_days, :warm_days, :age)
+    for name in (
+        :snow_store,
+        :VPD_moist_annual,
+        :moist_days,
+        :degree_days,
+        :warm_days,
+        :maintenance_days,
+        :age,
+    )
         getproperty(Y.canopy.biomass, name) .= 0
     end
     return nothing

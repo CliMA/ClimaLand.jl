@@ -20,25 +20,31 @@ main
   growing season, so that boreal forests, whose annual GPP is low because their season
   is short, are taken for forest.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
-- ![][badge-✨feature] `ZhouOptimalLAIModel` can compute its tree share from the simulated
-  climate (`tree_share = PrognosticTreeShare()`) rather than from a map: a logistic of the
-  LAI_max of a tree canopy, the number of dry months of the growing season and the
-  growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`, `_b_temp`),
-  which also sets the tree share of the C3/C4 competition. The optimal-LAI long run
-  compares it with the CLM map in a second step (`PROGNOSTIC_TREE_SHARE`).
+- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its tree share from the simulated
+  climate by default (`tree_share = PrognosticTreeShare()`) rather than from a map: a
+  logistic of the LAI_max of a tree canopy, the number of dry months of the growing
+  season and the growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`,
+  `_b_temp`), which also sets the tree share of the C3/C4 competition. The tree share of
+  the natural vegetation in the CLM surface data remains an option
+  (`tree_share = clm_tree_share(surface_space)`), which the optimal-LAI long run
+  compares in a second step (`CLM_TREE_SHARE`).
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The water limit of `ZhouOptimalLAIModel` uses the VPD of the
-  moist growing season (above freezing, and the 30-day precipitation at least half the
-  PET) rather than of the whole season above freezing, whose dry-season VPD made the
-  limit too tight in the seasonally dry tropics. Trees keep half of their LAI_max
-  through the unfavourable season (`optimal_lai_tree_retention`), the evergreen and
-  semi-evergreen part of their canopy, so winter LAI north of 30°N is no longer zero.
-  The leaf costs (`optimal_lai_z_tree` 8.94, `optimal_lai_z_grass` 127), `optimal_lai_sigma`
-  (1.08) and the climate tree share are calibrated against MODIS LAI and the CLM tree
-  share in an offline emulator of the model. Seven time-integrated variables carry the
-  30-day precipitation and PET, the moist season and the days and degree-days above
-  freezing. In the emulator, with the climate tree share, the annual-mean LAI RMSE falls
-  from 0.82 to 0.75 and the global bias from −0.21 to −0.02.
+  moist growing season (above freezing, and the 30-day water input of rain and snowmelt at
+  least half the PET) rather than of the whole season above freezing, whose dry-season
+  VPD made the limit too tight in the seasonally dry tropics; snowmelt comes from a
+  degree-day snow store. Trees keep half of their LAI_max through the unfavourable season
+  (`optimal_lai_tree_retention`), the evergreen and semi-evergreen part of their canopy,
+  so winter LAI north of 30°N is no longer zero. The maintenance share of the leaf cost
+  (`optimal_lai_maintenance_share`, with `optimal_lai_maintenance_q10`) scales with the
+  days and temperature above freezing, so leaves of short, cold seasons are cheaper,
+  which raises the boreal summer LAI. The leaf costs (`optimal_lai_z_tree` 9.92,
+  `optimal_lai_z_grass` 154), `optimal_lai_sigma` (1.09) and the climate tree share are
+  calibrated against MODIS LAI and the CLM tree share in an offline emulator of the model
+  (`experiments/calibration/optimal_lai_emulator`). Nine time-integrated variables carry
+  this climate. In the emulator, the annual-mean LAI RMSE falls from 0.82 to 0.73, the
+  global bias from −0.21 to −0.01, and the JJA LAI north of 30°N rises from 1.21 to 1.55
+  (MODIS 1.68).
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
   final state of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from

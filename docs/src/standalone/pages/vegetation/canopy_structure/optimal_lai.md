@@ -56,9 +56,9 @@ The seasonal maximum LAI (LAI$_{max}$) is determined by the minimum of energy-li
 where:
 - $A_{0,annual}$ is the annual total potential GPP (mol CO₂ m⁻² yr⁻¹) — the integrated daily $A_0$ over the year
 - $P_{annual}$ is the annual total precipitation (mol H₂O m⁻² yr⁻¹). Conversion: 1 mm precipitation ≈ 55.5 mol H₂O m⁻²
-- $D_{growing}$ is the mean vapor pressure deficit during the moist growing season (Pa): while the air is above 0 °C and the precipitation of the last 30 days is at least half its potential evaporation. Zhou et al. (2025) define the growing season by temperature alone; where it has a long dry season (seasonally dry tropics), the vegetation transpires mostly in the wet season, and the VPD of the dry season made the water limit too tight. Where the moist season is shorter than a month (deserts), $D_{growing}$ blends into the VPD of the whole season above freezing
+- $D_{growing}$ is the mean vapor pressure deficit during the moist growing season (Pa): while the air is above 0 °C and the water input of the last 30 days (rain, and the melt of a degree-day snow store fed by the precipitation that falls below freezing) is at least half its potential evaporation. Zhou et al. (2025) define the growing season by temperature alone; where it has a long dry season (seasonally dry tropics), the vegetation transpires mostly in the wet season, and the VPD of the dry season made the water limit too tight. Where the moist season is shorter than a month (deserts), $D_{growing}$ blends into the VPD of the whole season above freezing
 - $k$ is the light extinction coefficient (dimensionless)
-- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹): the costs of tree and grass leaves averaged geometrically with the tree share $t$ of the vegetation, $z = z_{tree}^{t} z_{grass}^{1-t}$. Grasses have the higher cost, as $z$ includes the below-ground allocation that supplies the leaves. The tree share is prescribed, by default from the natural vegetation of the CLM surface data, or computed from the simulated climate (`PrognosticTreeShare()`, see below)
+- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹): the costs of tree and grass leaves averaged geometrically with the tree share $t$ of the vegetation, $z = z_{tree}^{t} z_{grass}^{1-t} \, [1 - m + m M/365]$. Its maintenance share $m$ accrues only while the air is above freezing, faster when warm: $M$ is the yearly maintenance load, the days above freezing weighted by $Q_{10}^{(T - 25\,°C)/10}$ (365 for a year-round 25 °C season), so leaves of short, cold seasons are cheaper. Grasses have the higher cost, as $z$ includes the below-ground allocation that supplies the leaves. The tree share is computed from the simulated climate by default (`PrognosticTreeShare()`, see below), or prescribed, e.g. from the natural vegetation of the CLM surface data (`clm_tree_share`)
 - $c_a$ is the ambient CO₂ partial pressure (Pa). Conversion: 400 ppm at 101325 Pa ≈ 40 Pa
 - $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), from stomatal optimization
 - $f_0$ is the fraction of annual precipitation available to plants (dimensionless). It varies with the aridity index $AI$ as $f_0 = f_{0,max} \exp(-0.604 \ln^2(AI/1.9))$, peaking at $f_{0,max}$ at the energy–water transition
@@ -117,9 +117,11 @@ with LAI$_{max}$ evaluated with the χ of the growing-season temperature and VPD
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | Light extinction coefficient | $k$ | - | 0.5 | Controls light attenuation through canopy |
-| Tree leaf cost | $z_{tree}$ | mol CO₂ m⁻² yr⁻¹ | 8.94 | Unit cost of building and maintaining tree leaves |
-| Grass leaf cost | $z_{grass}$ | mol CO₂ m⁻² yr⁻¹ | 127 | Unit cost of building and maintaining grass leaves |
-| LAI dynamics parameter | $\sigma$ | - | 1.08 | Departure from square-wave dynamics |
+| Tree leaf cost | $z_{tree}$ | mol CO₂ m⁻² yr⁻¹ | 9.92 | Unit cost of building and maintaining tree leaves (year-round 25 °C season) |
+| Grass leaf cost | $z_{grass}$ | mol CO₂ m⁻² yr⁻¹ | 154 | Unit cost of building and maintaining grass leaves (year-round 25 °C season) |
+| Maintenance share | $m$ | - | 0.43 | Share of the leaf cost that scales with the season |
+| Maintenance $Q_{10}$ | $Q_{10}$ | - | 2 | Temperature sensitivity of leaf maintenance |
+| LAI dynamics parameter | $\sigma$ | - | 1.09 | Departure from square-wave dynamics |
 | Tree leaf retention | $r$ | - | 0.5 | Fraction of LAI$_{max}$ trees keep through the unfavourable season |
 | Smoothing factor | $\alpha$ | - | 0.067 | Controls LAI response time (~15 days) |
 | Peak precipitation fraction | $f_{0,max}$ | - | 0.65 | Fraction of precipitation used by plants at the energy–water transition |
@@ -149,9 +151,9 @@ does not shift LAI or the C3/C4 balance.
 
 ## Climate Tree Share
 
-With `tree_share = PrognosticTreeShare()`, the tree share $t$ behind the leaf cost $z$ is
-computed from the simulated climate rather than prescribed by a map, so it can change with
-the climate:
+By default (`tree_share = PrognosticTreeShare()`), the tree share $t$ behind the leaf cost
+$z$ is computed from the simulated climate rather than prescribed by a map, so it can change
+with the climate:
 
 ```math
 t = \frac{1}{1 + \exp[-(b_0 + b_L L_{tree} + b_d n_{dry} + b_T T_{growing})]}
@@ -159,11 +161,11 @@ t = \frac{1}{1 + \exp[-(b_0 + b_L L_{tree} + b_d n_{dry} + b_T T_{growing})]}
 
 where $L_{tree}$ is the LAI$_{max}$ a C3 tree canopy would reach (at $z_{tree}$, with the
 χ of the growing-season temperature and VPD), $n_{dry}$ is the number of dry months of the
-growing season (days above 0 °C when the precipitation of the last 30 days is below half
-its potential evaporation, in months), and $T_{growing}$ is the mean air temperature while
+growing season (days above 0 °C when the water input of the last 30 days, rain and
+snowmelt, is below half its potential evaporation, in months), and $T_{growing}$ is the mean air temperature while
 above freezing (°C). Trees need water through the dry season and enough productivity to pay for
 their canopy; grasses take over where the dry season is long. The coefficients, with the
-leaf costs, σ and the tree leaf retention, were calibrated in an offline emulator of the
+leaf costs, their maintenance share, σ and the tree leaf retention, were calibrated in an offline emulator of the
 model (226 natural-vegetation points of a global 8° grid, 2008 ERA5) against MODIS LAI and
 the tree share of the natural vegetation in the CLM5 surface data. Nothing in $t$
 depends on the simulated LAI, so there is no feedback through the leaf cost. In this mode,
@@ -174,10 +176,10 @@ that they are averages of their whole history until then.
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
-| Intercept | $b_0$ | - | -0.564 | Logistic intercept |
-| Tree LAI coefficient | $b_L$ | m⁻² m² | 0.0464 | Effect of the LAI$_{max}$ of a tree canopy |
-| Dry-month coefficient | $b_d$ | month⁻¹ | -0.364 | Effect of the number of dry months of the growing season |
-| Temperature coefficient | $b_T$ | °C⁻¹ | 0.0621 | Effect of the growing-season temperature |
+| Intercept | $b_0$ | - | -1.07 | Logistic intercept |
+| Tree LAI coefficient | $b_L$ | m⁻² m² | 0.0254 | Effect of the LAI$_{max}$ of a tree canopy |
+| Dry-month coefficient | $b_d$ | month⁻¹ | -0.372 | Effect of the number of dry months of the growing season |
+| Temperature coefficient | $b_T$ | °C⁻¹ | 0.0917 | Effect of the growing-season temperature |
 
 ## Drivers
 
@@ -186,7 +188,7 @@ that they are averages of their whole history until then.
 | Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1, without soil-moisture stress |
 | Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of $A_0$ |
 | Annual precipitation | $P_{annual}$ | mol H₂O m⁻² yr⁻¹ | Total yearly precipitation (1 mm ≈ 55.5 mol m⁻²) |
-| Growing season VPD | $D_{growing}$ | Pa | Mean VPD during the moist growing season (T > 0°C, 30-day P ≥ PET/2) |
+| Growing season VPD | $D_{growing}$ | Pa | Mean VPD during the moist growing season (T > 0°C, 30-day rain and snowmelt ≥ PET/2) |
 | Growing season length | GSL | days | Length of continuous period with T > 0°C |
 | CO₂ partial pressure | $c_a$ | Pa | Ambient CO₂ (400 ppm ≈ 40 Pa at sea level) |
 
