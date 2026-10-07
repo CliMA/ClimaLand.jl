@@ -6,8 +6,8 @@
 # land/sea mask are not yet supported by ClimaCore.
 
 # Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
-# Soil depth: 50 m
+# Number of spatial elements: 180 x 360 in horizontal, 15 in vertical
+# Soil depth: 15 m
 # Simulation duration: 2-20 years, based on LONGER_RUN setting
 # Timestep: 900 s
 # Timestepper: ARS111

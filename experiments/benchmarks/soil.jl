@@ -1,6 +1,6 @@
 # Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
-# Soil depth: 50 m
+# Number of spatial elements: 101 x 101 in horizontal, 15 in vertical
+# Soil depth: 15 m
 # Simulation duration: 6 hours
 # Timestep: 900 s
 # Timestepper: ARS111
@@ -31,9 +31,9 @@ const FT = Float64;
 
 ######################################################################
 # This result is from a benchmark run on an A100 on the clima cluster
-const PREVIOUS_GPU_TIME_S = 0.0794
+const PREVIOUS_GPU_TIME_S = 0.12
 ## This result is from a benchmark run with a single process on the clima cluster
-const PREVIOUS_CPU_TIME_S = 1.12
+const PREVIOUS_CPU_TIME_S = 1.3
 ######################################################################
 
 context = ClimaComms.context()
@@ -62,11 +62,18 @@ function setup_soil()
         context,
     )
     model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict;)
+    # The 1° IC is inconsistent with the soil parameters off the 1° grid
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+        ClimaLand.Artifacts.rosetta_spunup_ic_path(; context),
+        model;
+        enforce_constraints = true,
+    )
     simulation = LandSimulation(
         start_date,
         stop_date,
         Δt,
         model;
+        set_ic!,
         user_callbacks = (),
         diagnostics = [],
     )
