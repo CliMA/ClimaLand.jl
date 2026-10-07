@@ -69,11 +69,43 @@ function ClimaCalibrate.observation_map(
         end
     end
 
+    # A member that dies late writes valid but truncated NetCDF files, so its
+    # column is left partly filled without an error above: mark it failed.
+    for m in 1:ensemble_size
+        missing_names = EnsembleBuilder.missing_short_names(g_ens_builder, m)
+        if !isempty(missing_names)
+            @error "Member $m produced incomplete data for $(join(sort!(collect(missing_names)), ", ")), filling observation map entry with NaNs"
+            EnsembleBuilder.fill_g_ens_col!(g_ens_builder, m, NaN)
+        end
+    end
+
     if EnsembleBuilder.is_complete(g_ens_builder)
-        return EnsembleBuilder.get_g_ensemble(g_ens_builder)
+        g_ensemble = EnsembleBuilder.get_g_ensemble(g_ens_builder)
+        fill_structural_nans!(g_ensemble, EKP.get_obs(ekp))
+        return g_ensemble
     else
         @error "G ensemble matrix is not completed. You may find it useful to call `EnsembleBuilder.missing_short_names(g_ens_builder, 1) or display g_ens_builder in the REPL"
     end
+end
+
+"""
+    fill_structural_nans!(g_ensemble, obs; max_fraction = 0.05)
+
+Set the rows of `g_ensemble` that are NaN for every member to the observations
+`obs`, so that they do not contribute to the misfit. Such rows are cells where the
+simulation output is NaN whatever the parameters (e.g. coastal cells that the
+interpolated diagnostics leave NaN but the observation mask keeps); left NaN, they
+would make every member fail. Rows that are NaN only for some members are left to
+EKP's failure handling, and nothing is done if more than `max_fraction` of the rows
+are NaN for every member, as when the whole ensemble failed.
+"""
+function fill_structural_nans!(g_ensemble, obs; max_fraction = 0.05)
+    rows = findall(r -> all(isnan, view(g_ensemble, r, :)), axes(g_ensemble, 1))
+    (isempty(rows) || length(rows) > max_fraction * size(g_ensemble, 1)) &&
+        return g_ensemble
+    @warn "$(length(rows)) of $(size(g_ensemble, 1)) observations are NaN in every member; setting them to the observed values"
+    g_ensemble[rows, :] .= obs[rows]
+    return g_ensemble
 end
 
 """
@@ -94,7 +126,7 @@ function process_member_data!(
     short_names,
 )
     @info "Short names: $short_names"
-    calibration_obs_vars = ext.get_calibration_obs_var_dict()
+    calibration_obs_vars = ext.get_calibration_obs_var_dict(; short_names)
     for short_name in short_names
         short_name in keys(calibration_obs_vars) || error(
             "Variable $short_name does not appear in the observation dataset. Add the variable to get_calibration_obs_var_dict in data_sources.jl",
@@ -168,7 +200,7 @@ Analyze an iteration by plotting the bias plots, constrained parameters over
 iterations, and errors over iterations and time.
 """
 function ClimaCalibrate.analyze_iteration(
-    ::LandModelInterface,
+    model_interface::LandModelInterface,
     ekp,
     g_ensemble,
     prior,
@@ -209,6 +241,22 @@ function ClimaCalibrate.analyze_iteration(
         diagnostics_folder_path,
         "ILAMB",
     )
+    (; prognostic_lai, spinup) = model_interface.config
+    if prognostic_lai
+        spin_up_months = Dates.value(Dates.Month(spinup))
+        ext.compute_monthly_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "FlagshipVegetationMetrics";
+            spin_up_months,
+        )
+        ext.compute_seasonal_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "FlagshipVegetationMetrics";
+            spin_up_months,
+        )
+    end
 end
 
 """

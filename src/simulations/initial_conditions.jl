@@ -475,10 +475,11 @@ end
         max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
         fractional_c3 = ClimaLand.Canopy.static_fractional_c3(canopy.photosynthesis),
         Mc = canopy.photosynthesis.constants.Mc,
+        state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
     ) where {FT}
 
 Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
-`A0_annual`, `precip_annual`, `PET_annual`, `VPDA0_annual`, `growing_days`,
+`A0_annual`, `precip_annual`, `PET_annual`, `VPDgs_annual`, `growing_days`,
 `A0c3_annual`, `A0c4_annual`, `GPPc3_annual`) from the netCDF file at `ic_path`,
 which must contain `lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0`
 on a (lon, lat) grid.
@@ -488,7 +489,7 @@ spin-up. The annual totals start at their climatological values, which are their
 steady state whatever `tau_long_term`; `A0_daily` starts at the daily share of
 `A0_annual`.
 
-`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
+`PET_annual`, `VPDgs_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
 and `GSL` start at the artifact values they replace, then relax to the simulated
 climate over `tau_long_term`. Since `f0(AI)` peaks at `f0_max`, the `f0` seed uses
 the arid branch of the inverse, and a cell whose artifact `f0` exceeds the peak
@@ -509,6 +510,16 @@ competition (`c4_advantage_for_c3_fraction`): given that tree share, it is the C
 potential GPP at which the competition returns the static C3 map `fractional_c3` (the
 photosynthesis model's; `Mc` is the molar mass of carbon). Where the map is pure C3 the
 seed is `A0c4_annual = 0`, which leaves a small C4 grass share in the open canopy.
+
+These climatological seeds are then replaced, where it has data, by the state at
+`state_path` (unless it is `nothing`): the final state of a spin-up of the model
+(`experiments/long_runs/optimal_lai_spinup.jl`), on a (lon, lat) grid. In particular,
+it replaces the `PET_annual` seed, which is far too high where the climate is humid.
+
+The 30-day totals start at the 30-day share of the annual ones, the snow store empty,
+and the yearly sums of the moist growing season and of the days, degree-days and
+maintenance load above freezing at zero: they average their history until it reaches
+`tau_long_term`.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -523,6 +534,7 @@ function set_canopy_component_initial_conditions!(
         canopy.photosynthesis,
     ),
     Mc = canopy.photosynthesis.constants.Mc,
+    state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
 ) where {FT}
     ic = optimal_lai_initial_conditions(axes(Y.canopy.biomass.LAI), ic_path)
     nan_to_zero(x) = ifelse(isnan(x), zero(x), x)
@@ -538,10 +550,12 @@ function set_canopy_component_initial_conditions!(
         f0_max,
     )
     Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
-    # vpd_gs is recovered as VPDA0_annual / A0_annual.
-    Y.canopy.biomass.VPDA0_annual .=
-        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.A0_annual
     Y.canopy.biomass.growing_days .= nan_to_zero.(ic.GSL)
+    # vpd_gs is recovered as VPDgs_annual / (growing_days in s).
+    seconds_per_day = FT(86400)
+    Y.canopy.biomass.VPDgs_annual .=
+        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.growing_days .*
+        seconds_per_day
     Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
     k = model.parameters.k
     @. Y.canopy.biomass.GPPc3_annual =
@@ -553,14 +567,65 @@ function set_canopy_component_initial_conditions!(
                 fractional_c3,
                 ClimaLand.Canopy.tree_share_from_gpp(
                     Y.canopy.biomass.GPPc3_annual,
+                    Y.canopy.biomass.growing_days,
                     Mc,
                     parameters,
                 ),
                 parameters,
             )
         )
+
+    if !isnothing(state_path)
+        surface_space = axes(Y.canopy.biomass.LAI)
+        regridder_kwargs = (;
+            extrapolation_bc = (
+                Interpolations.Periodic(),
+                Interpolations.Flat(),
+            ),
+            interpolation_method = Interpolations.Constant(),
+        )
+        for name in OPTIMAL_LAI_STATE_NAMES
+            state = SpaceVaryingInput(
+                state_path,
+                String(name),
+                surface_space;
+                regridder_type = :InterpolationsRegridder,
+                regridder_kwargs,
+            )
+            field = getproperty(Y.canopy.biomass, name)
+            @. field = ifelse(isnan(state), field, state)
+        end
+    end
+
+    Y.canopy.biomass.water_30d .= Y.canopy.biomass.precip_annual .* FT(30 / 365)
+    Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
+    for name in (
+        :snow_store,
+        :VPD_moist_annual,
+        :moist_days,
+        :degree_days,
+        :warm_days,
+        :maintenance_days,
+        :age,
+    )
+        getproperty(Y.canopy.biomass, name) .= 0
+    end
     return nothing
 end
+
+# The optimal-LAI state read from the spin-up file in its initial conditions
+const OPTIMAL_LAI_STATE_NAMES = (
+    :A0_daily,
+    :A0_annual,
+    :precip_annual,
+    :PET_annual,
+    :VPDgs_annual,
+    :growing_days,
+    :A0c3_annual,
+    :A0c4_annual,
+    :GPPc3_annual,
+    :LAI,
+)
 
 """
     set_canopy_component_initial_conditions!(

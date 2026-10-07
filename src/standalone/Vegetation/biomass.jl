@@ -380,6 +380,9 @@ water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored
 - `RAI`: Prescribed root area index (m^2 m^-2)
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
 - `height`: Canopy height (m) - can be scalar (uniform) or spatially-varying Field
+- `tree_share`: Tree share of the vegetation (dimensionless), which sets the unit cost of
+  leaves (`leaf_cost`): prescribed (scalar or Field), or `PrognosticTreeShare()` to
+  compute it from the simulated climate (`climate_tree_share`)
 
 # References
 Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
@@ -391,6 +394,7 @@ struct ZhouOptimalLAIModel{
     FS <: Union{FT, ClimaCore.Fields.Field},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
+    TSH <: Union{FT, ClimaCore.Fields.Field, PrognosticTreeShare},
     T,
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
@@ -403,6 +407,8 @@ struct ZhouOptimalLAIModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
+    "Tree share of the vegetation (dimensionless): a scalar or Field, or `PrognosticTreeShare()`"
+    tree_share::TSH
     "Time integrated prognostic vars"
     time_integrated_vars::T
 end
@@ -416,6 +422,7 @@ Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
         RAI,
         rooting_depth,
         height,
+        tree_share,
     ) where {FT <: AbstractFloat}
 
 Outer constructor for the ZhouOptimalLAIModel struct.
@@ -426,6 +433,9 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
+- `tree_share`: Tree share of the vegetation (dimensionless), which weights the unit
+  cost of leaves between `z_tree` and `z_grass`; scalar or spatially-varying Field, or
+  `PrognosticTreeShare()` to compute it from the simulated climate
 
 Declares the prognostic time integrated variables: the 1-day potential-GPP total
 `A0_daily`, the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
@@ -438,15 +448,29 @@ instantaneous steady-state target `L_opt`:
     dLAI/dt           = (L_opt - LAI) / τ_LAI,                   τ_LAI  = 1 day / α.
 
 Six further 1-year `RunningSum`s carry the climate the LAI formulas respond to:
-`PET_annual` (with `precip_annual`, the aridity index behind `f0`), `VPDA0_annual`
-(with `A0_annual`, the A0-weighted growing-season VPD `vpd_gs`), `growing_days`
-(the growing-season length `GSL`), `A0c3_annual`/`A0c4_annual`, the per-pathway
+`PET_annual` (with `precip_annual`, the aridity index behind `f0`), `VPDgs_annual`
+(the VPD summed while the air is above freezing, which with `growing_days` gives the
+VPD of the growing season, used where it has no moist season), `growing_days` (the
+growing-season length `GSL`),
+`A0c3_annual`/`A0c4_annual`, the per-pathway
 potential GPP the C3/C4 competition compares, and `GPPc3_annual`, the C3 potential
-GPP scaled by the realized fAPAR, from which the competition estimates tree cover.
+GPP scaled by the realized fAPAR and soil-moisture stress `βm`, from which the
+competition estimates tree cover.
 
 Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
 smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
 as the LAI_max/steady-state formulas require.
+
+Nine more variables carry the climate of the moist growing season, of the leaf cost
+and of the tree share: a degree-day snow store (`snow_store`), which holds the
+precipitation that falls below freezing until it melts; the 30-day totals of the water
+input, rain and snowmelt (`water_30d`), and of the PET (`PET_30d`); the yearly sums of
+the VPD (`VPD_moist_annual`) and of the days (`moist_days`) of the moist growing
+season, when the air is above freezing and the 30-day water input is at least half the
+PET; the yearly sums of the degree-days (`degree_days`), of the days (`warm_days`) and
+of the maintenance load (`maintenance_days`, see `leaf_cost_scale`) above freezing; and
+their `age`, the time since the start. The yearly ones average all of their history
+until it reaches τ_long, so they hardly depend on their initial values.
 """
 function ZhouOptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT};
@@ -454,10 +478,11 @@ function ZhouOptimalLAIModel{FT}(
     RAI,
     rooting_depth,
     height,
+    tree_share,
 ) where {FT <: AbstractFloat}
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
     tau_long_term = parameters.tau_long_term
-    tiv = ClimaLand.time_integrated_variables(
+    base_tivs = (
         ClimaLand.TimeIntegratedVariable{FT}(;
             name = :A0_daily,
             reduction = ClimaLand.RunningSum(
@@ -487,7 +512,7 @@ function ZhouOptimalLAIModel{FT}(
             ),
         ),
         ClimaLand.TimeIntegratedVariable{FT}(;
-            name = :VPDA0_annual,
+            name = :VPDgs_annual,
             reduction = ClimaLand.RunningSum(
                 365 * seconds_per_day,
                 tau_long_term,
@@ -528,12 +553,54 @@ function ZhouOptimalLAIModel{FT}(
             ),
         ),
     )
+    month = 30 * seconds_per_day
+    year = 365 * seconds_per_day
+    climate_tivs = (
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :snow_store,
+            reduction = ClimaLand.TimeIntegral(),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :water_30d,
+            reduction = ClimaLand.RunningSum(month, month),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :PET_30d,
+            reduction = ClimaLand.RunningSum(month, month),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :VPD_moist_annual,
+            reduction = ClimaLand.RunningSum(year, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :moist_days,
+            reduction = ClimaLand.RunningSum(year, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :degree_days,
+            reduction = ClimaLand.RunningSum(year, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :warm_days,
+            reduction = ClimaLand.RunningSum(year, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :maintenance_days,
+            reduction = ClimaLand.RunningSum(year, tau_long_term),
+        ),
+        ClimaLand.TimeIntegratedVariable{FT}(;
+            name = :age,
+            reduction = ClimaLand.TimeIntegral(),
+        ),
+    )
+    tiv = ClimaLand.time_integrated_variables(base_tivs..., climate_tivs...)
     return ZhouOptimalLAIModel{
         FT,
         typeof(parameters),
         typeof(SAI),
         typeof(rooting_depth),
         typeof(height),
+        typeof(tree_share),
         typeof(tiv),
     }(
         parameters,
@@ -541,6 +608,7 @@ function ZhouOptimalLAIModel{FT}(
         RAI,
         rooting_depth,
         height,
+        tree_share,
         tiv,
     )
 end
@@ -552,11 +620,11 @@ end
 
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
-- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel
+- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel, with the model's own unit cost ratios (`β_c3`, `β_c4`)
 - `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
 - `L_opt`: Optimal LAI predicted by Zhou et al.
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
-- `vpd_gs`: A0-weighted mean VPD (Pa), for the water-limitation term of LAI_max
+- `vpd_gs`: mean VPD of the moist growing season (Pa), for the water-limitation term of LAI_max (`moist_season_vpd`)
 - `f0`: fraction of precipitation available for transpiration (dimensionless), from the aridity index
 - `composition.tree, composition.c3_grass, composition.c4_grass`: shares of the canopy
   from the C3/C4 competition (dimensionless, summing to one); see
@@ -599,9 +667,10 @@ Updates the optimal-LAI cache from the prognostic state in `Y`: sets SAI and RAI
 their prescribed values; derives `f0`, `vpd_gs` and `GSL` from the trailing climate
 totals; sets the canopy `composition` (tree, C3 grass, C4 grass shares) from the
 C3/C4 competition on the trailing per-pathway potential GPP (`A0c3_annual`,
-`A0c4_annual`) and realized C3 GPP (`GPPc3_annual`); and sets the leaf area index
-used by the rest of the canopy from the prognostic `LAI`, clipped below 0.05 and
-zeroed where a lake is present (`mask_biomass!`). This runs first in `update_aux`,
+`A0c4_annual`) and realized C3 GPP (`GPPc3_annual`), or the climate tree share; and
+sets the leaf area index used by the rest of the canopy from the prognostic `LAI` and
+the canopy trees retain (`set_leaf_area_index!`), clipped below 0.05 and zeroed where
+a lake is present (`mask_biomass!`). This runs first in `update_aux`,
 before radiative transfer and photosynthesis read the area index and C3 fraction.
 """
 function update_biomass!(
@@ -619,21 +688,208 @@ function update_biomass!(
         Y.canopy.biomass.precip_annual,
         parameters.f0_max,
     )
-    @. p.canopy.biomass.vpd_gs =
-        Y.canopy.biomass.VPDA0_annual / max(Y.canopy.biomass.A0_annual, eps(FT))
-    @. p.canopy.biomass.GSL = Y.canopy.biomass.growing_days
-    @. p.canopy.biomass.composition = canopy_composition_from_competition(
-        Y.canopy.biomass.A0c3_annual,
-        Y.canopy.biomass.A0c4_annual,
-        Y.canopy.biomass.GPPc3_annual,
-        canopy.photosynthesis.constants.Mc,
-        parameters,
+    seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    b = Y.canopy.biomass
+    @. p.canopy.biomass.vpd_gs = moist_season_vpd(
+        b.VPD_moist_annual,
+        b.moist_days,
+        b.VPDgs_annual,
+        b.growing_days,
+        seconds_per_day,
     )
-    @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
+    @. p.canopy.biomass.GSL = b.growing_days
+    update_composition!(p, Y, component.tree_share, component, canopy)
+    set_leaf_area_index!(p, Y, component, canopy)
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+end
+
+# Memory (s) of a growing running sum at its start: its initial value weighs as much as
+# this much of its history.
+const RUNNING_SUM_START_MEMORY = 86400
+
+# Melt of the snow store of the optimal-LAI climate (m of water per K per day above
+# freezing), and the shortest time (s) over which it can empty
+const SNOWMELT_DEGREE_DAY_FACTOR = 3e-3
+const SNOWMELT_MIN_TIMESCALE = 3600
+
+"""
+    growing_running_sum_tendency(f, X, age, reduction::ClimaLand.RunningSum)
+
+Tendency of a running sum `X` of `f` whose memory grows with its `age` (s) until it
+reaches the timescale of `reduction`: `dX/dt = (f τ − X)/min(age + τ₀, τ_long)`, with
+τ₀ = 1 day. While the memory grows, `X` is the mean of all of its history (and of its
+initial value, with weight τ₀) scaled to the window τ, so it hardly depends on its
+initial value.
+"""
+growing_running_sum_tendency(f, X, age, reduction::ClimaLand.RunningSum) =
+    (f * reduction.τ - X) /
+    min(age + oftype(age, RUNNING_SUM_START_MEMORY), reduction.τ_long)
+
+"""
+    moist_season_vpd(VPD_moist_annual, moist_days, VPDgs_annual, growing_days, seconds_per_day)
+
+Mean VPD of the moist growing season (Pa), when the air is above freezing and the
+30-day water input (rain and snowmelt) is at least half the PET: the VPD the water limit of LAI_max
+uses. Where the moist season is shorter than a month (deserts), it blends into the
+VPD of the whole growing season (above freezing).
+"""
+function moist_season_vpd(
+    VPD_moist_annual::FT,
+    moist_days::FT,
+    VPDgs_annual::FT,
+    growing_days::FT,
+    seconds_per_day,
+) where {FT}
+    vpd_moist = VPD_moist_annual / max(moist_days * seconds_per_day, eps(FT))
+    vpd_warm = VPDgs_annual / max(growing_days * seconds_per_day, eps(FT))
+    w = min(moist_days / 30, one(FT))
+    return w * vpd_moist + (1 - w) * vpd_warm
+end
+
+"""
+    leaf_cost_tree_share(tree_share, p)
+
+Tree share that sets the leaf cost `z`: the prescribed one, or the climate tree share
+of the canopy composition with `PrognosticTreeShare()`.
+"""
+leaf_cost_tree_share(tree_share, p) = tree_share
+leaf_cost_tree_share(::PrognosticTreeShare, p) =
+    p.canopy.biomass.composition.tree
+
+"""
+    set_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel, canopy)
+
+Sets the leaf area index from the prognostic `LAI`, which follows the seasonal optimum,
+and the canopy trees keep through the unfavourable season: the tree share keeps at
+least `tree_retention` of LAI_max, with the χ of the growing-season temperature and VPD.
+"""
+function set_leaf_area_index!(
+    p,
+    Y,
+    component::ZhouOptimalLAIModel{FT},
+    canopy,
+) where {FT}
+    parameters = component.parameters
+    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
+        canopy.photosynthesis.parameters,
+        parameters,
+    )
+    constants = canopy.photosynthesis.constants
+    T_freeze = LP.T_freeze(canopy.earth_param_set)
+    b = Y.canopy.biomass
+    tree = leaf_cost_tree_share(component.tree_share, p)
+    T_growing = @. lazy(b.degree_days / max(b.warm_days, eps(FT)))
+    fractional_c3 = @. lazy(1 - p.canopy.biomass.composition.c4_grass)
+    χ_growing = @. lazy(
+        fractional_c3 * optimal_chi(
+            T_freeze + T_growing,
+            p.drivers.P,
+            p.drivers.c_co2,
+            p.canopy.biomass.vpd_gs,
+            lai_pmodel_parameters.β_c3,
+            constants,
+        ) +
+        (1 - fractional_c3) * optimal_chi(
+            T_freeze + T_growing,
+            p.drivers.P,
+            p.drivers.c_co2,
+            p.canopy.biomass.vpd_gs,
+            lai_pmodel_parameters.β_c4,
+            constants,
+        ),
+    )
+    LAI_max = @. lazy(
+        compute_L_max(
+            b.A0_annual,
+            parameters.k,
+            leaf_cost(tree, parameters.z_tree, parameters.z_grass) *
+            leaf_cost_scale(b.maintenance_days, parameters.maintenance_share),
+            b.precip_annual,
+            p.canopy.biomass.f0,
+            p.drivers.c_co2 * p.drivers.P,
+            χ_growing,
+            p.canopy.biomass.vpd_gs,
+        ),
+    )
+    @. p.canopy.biomass.area_index.leaf =
+        b.LAI + tree * max(parameters.tree_retention * LAI_max - b.LAI, 0)
+end
+
+"""
+    update_composition!(p, Y, tree_share, component::ZhouOptimalLAIModel, canopy)
+
+Sets the canopy `composition` from the C3/C4 competition. With a prescribed tree share,
+the competition's tree share is estimated from the realized C3 GPP
+(`canopy_composition_from_competition`); with `PrognosticTreeShare()`, it is the climate
+tree share (`climate_tree_share`) that also sets the leaf cost, from the LAI_max of a
+tree canopy, the number of dry months of the growing season (its warm days that are not
+moist) and the growing-season temperature.
+"""
+function update_composition!(p, Y, tree_share, component, canopy)
+    @. p.canopy.biomass.composition = canopy_composition_from_competition(
+        Y.canopy.biomass.A0c3_annual,
+        Y.canopy.biomass.A0c4_annual,
+        Y.canopy.biomass.GPPc3_annual,
+        Y.canopy.biomass.growing_days,
+        canopy.photosynthesis.constants.Mc,
+        component.parameters,
+    )
+end
+
+function update_composition!(
+    p,
+    Y,
+    ::PrognosticTreeShare,
+    component::ZhouOptimalLAIModel{FT},
+    canopy,
+) where {FT}
+    parameters = component.parameters
+    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
+        canopy.photosynthesis.parameters,
+        parameters,
+    )
+    constants = canopy.photosynthesis.constants
+    T_freeze = LP.T_freeze(canopy.earth_param_set)
+    b = Y.canopy.biomass
+    # mean air temperature above freezing (°C)
+    T_growing = @. lazy(b.degree_days / max(b.warm_days, eps(FT)))
+    χ_growing = @. lazy(
+        optimal_chi(
+            T_freeze + T_growing,
+            p.drivers.P,
+            p.drivers.c_co2,
+            p.canopy.biomass.vpd_gs,
+            lai_pmodel_parameters.β_c3,
+            constants,
+        ),
+    )
+    L_tree = @. lazy(
+        compute_L_max(
+            b.A0c3_annual,
+            parameters.k,
+            parameters.z_tree * leaf_cost_scale(
+                b.maintenance_days,
+                parameters.maintenance_share,
+            ),
+            b.precip_annual,
+            p.canopy.biomass.f0,
+            p.drivers.c_co2 * p.drivers.P,
+            χ_growing,
+            p.canopy.biomass.vpd_gs,
+        ),
+    )
+    @. p.canopy.biomass.composition = canopy_composition(
+        climate_tree_share(
+            L_tree,
+            max(b.warm_days - b.moist_days, 0) * 12 / 365,
+            T_growing,
+            parameters,
+        ),
+        open_canopy_c4_share(b.A0c3_annual, b.A0c4_annual, parameters),
+    )
 end
 
 """
@@ -655,7 +911,7 @@ get_fractional_c3(p, ::ZhouOptimalLAIModel, photosynthesis) =
 """
     ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
 
-Advances the optimal-LAI model's ten time-integrated variables.
+Advances the optimal-LAI model's time-integrated variables.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
@@ -664,17 +920,29 @@ function ClimaLand.make_compute_exp_tendency(
     ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
     tivs = component.time_integrated_vars
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    # mol H2O m^-2 s^-1 K^-1
+    snowmelt_factor = FT(SNOWMELT_DEGREE_DAY_FACTOR) * ρ_m_liq / seconds_per_day
     earth_param_set = canopy.earth_param_set
     σ = LP.Stefan(earth_param_set)
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
     T_freeze = LP.T_freeze(earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    h_atmos = canopy.boundary_conditions.atmos.h
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
-    pmodel_parameters = canopy.photosynthesis.parameters
+    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
+        canopy.photosynthesis.parameters,
+        parameters,
+    )
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
+        tree = leaf_cost_tree_share(component.tree_share, p)
+        z = @. lazy(
+            leaf_cost(tree, parameters.z_tree, parameters.z_grass) *
+            leaf_cost_scale(
+                Y.canopy.biomass.maintenance_days,
+                parameters.maintenance_share,
+            ),
+        )
         fractional_c3 = get_fractional_c3(p, canopy)
         # Supersaturated forcing gives a negative VPD.
         VPD = @. lazy(
@@ -693,7 +961,7 @@ function ClimaLand.make_compute_exp_tendency(
         # the f0·P/A0 term of LAI_max.
         @. p.canopy.biomass.OptVars = compute_A0_and_χ(
             fractional_c3,
-            pmodel_parameters,
+            lai_pmodel_parameters,
             pmodel_constants,
             earth_param_set,
             p.drivers.T,
@@ -715,7 +983,7 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.A0_daily,
             parameters.k,
             Y.canopy.biomass.A0_annual,
-            parameters.z,
+            z,
             p.canopy.biomass.GSL,
             parameters.sigma,
             Y.canopy.biomass.precip_annual,
@@ -736,34 +1004,36 @@ function ClimaLand.make_compute_exp_tendency(
             tivs.A0_annual.reduction,
         )
         # P_liq/P_snow are negative-downward volume fluxes (m/s); negate for a positive total.
+        precip = @. lazy(-(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq)
         @. dY.canopy.biomass.precip_annual = apply_time_reduction(
-            -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
+            precip,
             Y.canopy.biomass.precip_annual,
             tivs.precip_annual.reduction,
         )
-        # PET_annual / precip_annual is the aridity index behind f0.
-        @. dY.canopy.biomass.PET_annual = apply_time_reduction(
+        PET = @. lazy(
             potential_evaporation(
                 p.drivers.SW_d,
                 p.drivers.LW_d,
                 p.drivers.T,
                 p.drivers.P,
-                p.drivers.q,
-                p.drivers.u,
-                h_atmos,
                 ϵ_sfc,
                 σ,
                 M_w,
                 thermo_params,
             ),
+        )
+        # PET_annual / precip_annual is the aridity index behind f0.
+        @. dY.canopy.biomass.PET_annual = apply_time_reduction(
+            PET,
             Y.canopy.biomass.PET_annual,
             tivs.PET_annual.reduction,
         )
-        # VPDA0_annual / A0_annual is vpd_gs, the A0-weighted mean VPD.
-        @. dY.canopy.biomass.VPDA0_annual = apply_time_reduction(
-            VPD * p.canopy.biomass.OptVars.A0,
-            Y.canopy.biomass.VPDA0_annual,
-            tivs.VPDA0_annual.reduction,
+        # VPD while the air is above freezing; with growing_days, the VPD of the
+        # growing season where it has no moist season.
+        @. dY.canopy.biomass.VPDgs_annual = apply_time_reduction(
+            ifelse(p.drivers.T > T_freeze, VPD, zero(FT)),
+            Y.canopy.biomass.VPDgs_annual,
+            tivs.VPDgs_annual.reduction,
         )
         # 1/day while air T is above freezing, so the yearly total is GSL in days.
         @. dY.canopy.biomass.growing_days = apply_time_reduction(
@@ -782,10 +1052,11 @@ function ClimaLand.make_compute_exp_tendency(
             tivs.A0c4_annual.reduction,
         )
         # The tree-cover relation is fitted to annual realized GPP, so the C3
-        # potential is scaled by the realized fAPAR before the yearly total.
+        # potential is scaled by the realized fAPAR and soil-moisture stress.
         @. dY.canopy.biomass.GPPc3_annual = apply_time_reduction(
             p.canopy.biomass.OptVars.A0_c3 *
-            (1 - exp(-parameters.k * Y.canopy.biomass.LAI)),
+            (1 - exp(-parameters.k * Y.canopy.biomass.LAI)) *
+            p.canopy.soil_moisture_stress.βm,
             Y.canopy.biomass.GPPc3_annual,
             tivs.GPPc3_annual.reduction,
         )
@@ -794,6 +1065,71 @@ function ClimaLand.make_compute_exp_tendency(
             Y.canopy.biomass.LAI,
             tivs.LAI.reduction,
         )
+        b = Y.canopy.biomass
+        # Precipitation below freezing accumulates as snow until it melts.
+        frozen = @. lazy(p.drivers.T <= T_freeze)
+        melt = @. lazy(
+            ifelse(
+                frozen,
+                zero(FT),
+                min(
+                    snowmelt_factor * (p.drivers.T - T_freeze),
+                    b.snow_store / SNOWMELT_MIN_TIMESCALE,
+                ),
+            ),
+        )
+        @. dY.canopy.biomass.snow_store = apply_time_reduction(
+            ifelse(frozen, precip, zero(FT)) - melt,
+            b.snow_store,
+            tivs.snow_store.reduction,
+        )
+        @. dY.canopy.biomass.water_30d = apply_time_reduction(
+            ifelse(frozen, zero(FT), precip) + melt,
+            b.water_30d,
+            tivs.water_30d.reduction,
+        )
+        @. dY.canopy.biomass.PET_30d =
+            apply_time_reduction(PET, b.PET_30d, tivs.PET_30d.reduction)
+        # Moist growing season: above freezing, and the last 30 days not dry.
+        moist =
+            @. lazy((p.drivers.T > T_freeze) & (b.water_30d >= b.PET_30d / 2))
+        @. dY.canopy.biomass.VPD_moist_annual = growing_running_sum_tendency(
+            ifelse(moist, VPD, zero(FT)),
+            b.VPD_moist_annual,
+            b.age,
+            tivs.VPD_moist_annual.reduction,
+        )
+        # 1/day while moist (warm), so the yearly totals are in days.
+        @. dY.canopy.biomass.moist_days = growing_running_sum_tendency(
+            ifelse(moist, 1 / seconds_per_day, zero(FT)),
+            b.moist_days,
+            b.age,
+            tivs.moist_days.reduction,
+        )
+        @. dY.canopy.biomass.degree_days = growing_running_sum_tendency(
+            max(p.drivers.T - T_freeze, zero(FT)) / seconds_per_day,
+            b.degree_days,
+            b.age,
+            tivs.degree_days.reduction,
+        )
+        @. dY.canopy.biomass.warm_days = growing_running_sum_tendency(
+            ifelse(p.drivers.T > T_freeze, 1 / seconds_per_day, zero(FT)),
+            b.warm_days,
+            b.age,
+            tivs.warm_days.reduction,
+        )
+        @. dY.canopy.biomass.maintenance_days = growing_running_sum_tendency(
+            maintenance_rate(
+                p.drivers.T,
+                T_freeze,
+                parameters.maintenance_q10,
+            ) / seconds_per_day,
+            b.maintenance_days,
+            b.age,
+            tivs.maintenance_days.reduction,
+        )
+        @. dY.canopy.biomass.age =
+            apply_time_reduction(one(FT), b.age, tivs.age.reduction)
     end
     return compute_exp_tendency!
 end

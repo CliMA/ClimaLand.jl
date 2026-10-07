@@ -106,14 +106,20 @@ type = "float"
 description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
-["optimal_lai_z"]
-value = 29.2
+["optimal_lai_z_tree"]
+value = 9.92
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1). Calibrated against MODIS LAI (Yuan et al. 2017)."
+description = "Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1), calibrated with the climate tree share against MODIS LAI in an offline emulator of the model (Zhou et al. 2025 fitted a single z of 12.227). The cost of a canopy is the tree and grass costs averaged geometrically, weighted by its tree share."
+tag = "OptimalLAIModel"
+
+["optimal_lai_z_grass"]
+value = 154.0
+type = "float"
+description = "Unit cost of grass leaves (mol m^-2 yr^-1), above that of trees as z includes the below-ground allocation that supplies the leaves. Calibrated with the climate tree share against MODIS LAI in an offline emulator of the model."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 1.01
+value = 1.09
 type = "float"
 description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
@@ -170,6 +176,60 @@ tag = "OptimalLAIModel"
 value = 2.8
 type = "float"
 description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation: tc(gpp)/tc(gpp_ref) clamped to [0,1] is the C3 tree proportion. Fitted by Lavergne et al. (2022)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_β_c3"]
+value = 146.0
+type = "float"
+description = "Unit cost ratio β of C3 plants (dimensionless) with which the optimal-LAI model computes its potential GPP and ci/ca ratio, and the C3/C4 competition its per-pathway potential GPP: the pyrealm default (Stocker et al., 2020), with which Zhou et al. (2025) and the competition were fitted, independent of pmodel_β_c3 used for GPP."
+tag = "OptimalLAIModel"
+
+["optimal_lai_β_c4"]
+value = 16.222
+type = "float"
+description = "Unit cost ratio β of C4 plants (dimensionless) of the optimal-LAI model: the pyrealm default, 146/9, independent of pmodel_β_c4 used for GPP."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b0"]
+value = -1.07
+type = "float"
+description = "Intercept of the logistic of the climate tree share of the optimal-LAI model (dimensionless), calibrated jointly against MODIS LAI and the natural-vegetation tree share of the CLM5 surface data."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_lai"]
+value = 0.0254
+type = "float"
+description = "Coefficient of the LAI_max of a tree canopy in the logistic of the climate tree share (m^-2 m^2)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_dry"]
+value = -0.372
+type = "float"
+description = "Coefficient of the number of dry months of the growing season (above 0 °C, with the 30-day water input of rain and snowmelt below half the potential evaporation) in the logistic of the climate tree share (month^-1)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_b_temp"]
+value = 0.0917
+type = "float"
+description = "Coefficient of the growing-season (above 0 °C) mean air temperature in the logistic of the climate tree share (°C^-1)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_tree_retention"]
+value = 0.5
+type = "float"
+description = "Fraction of their LAI_max that trees keep through the unfavourable season (dimensionless): the evergreen and semi-evergreen part of their canopy in the optimal-LAI model."
+tag = "OptimalLAIModel"
+
+["optimal_lai_maintenance_share"]
+value = 0.43
+type = "float"
+description = "Share of the leaf cost of the optimal-LAI model that is maintenance (dimensionless), which accrues while the air is above freezing, faster when warm: it scales with the yearly maintenance load (365 days for a year-round 25 °C season), so leaves of short, cold seasons are cheaper. Calibrated against MODIS LAI in an offline emulator of the model."
+tag = "OptimalLAIModel"
+
+["optimal_lai_maintenance_q10"]
+value = 2.0
+type = "float"
+description = "Temperature sensitivity (Q10) of the leaf maintenance of the optimal-LAI model (dimensionless)."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters

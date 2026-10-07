@@ -59,11 +59,16 @@ const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 # `PROGNOSTIC_LAI=""` as an environment variable on Buildkite. The default
 # (unset) prescribes MODIS LAI.
 const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
+# With prognostic LAI, the tree share behind the leaf cost is computed from the
+# simulated climate by default; set `CLM_TREE_SHARE=""` to prescribe it from the
+# natural vegetation of the CLM surface data instead.
+const CLM_TREE_SHARE = haskey(ENV, "CLM_TREE_SHARE") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
+lai_suffix =
+    PROGNOSTIC_LAI ? (CLM_TREE_SHARE ? "_opt_lai_clm_tree" : "_opt_lai") : ""
 root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
@@ -77,6 +82,7 @@ function setup_model(
     domain,
     toml_dict;
     prognostic_lai = false,
+    use_clm_tree_share = false,
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -92,7 +98,52 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    if prognostic_lai
+    if prognostic_lai && use_clm_tree_share
+        soil = ClimaLand.Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+        surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            surface_domain,
+            (;
+                atmos,
+                radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            toml_dict;
+            prognostic_land_components,
+            soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{
+                FT,
+            }(
+                domain,
+                toml_dict;
+                soil_params = (;
+                    ν = soil.parameters.ν,
+                    θ_r = soil.parameters.θ_r,
+                ),
+            ),
+            biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                surface_domain,
+                toml_dict;
+                tree_share = ClimaLand.Canopy.clm_tree_share(
+                    surface_domain.space.surface,
+                ),
+            ),
+        )
+        land = LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            soil,
+            canopy,
+        )
+    elseif prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.
         land = LandModel{FT}(
@@ -121,13 +172,17 @@ function setup_model(
     return land
 end
 
-# If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-# If LONGER run, run for 19 years, with the correct forcing each year.
-# Note that since the Northern hemisphere's winter season is defined as DJF,
-# we simulate from and until the beginning of
-# March so that a full season is included in seasonal metrics.
+# If not LONGER_RUN, run for 2 years (3 with prognostic LAI, whose canopy composition
+# relaxes over 2 years); note that the forcing from 2008 is repeated. The leaderboard
+# compares the last year. If LONGER run, run for 19 years, with the correct forcing
+# each year. Note that since the Northern hemisphere's winter season is defined as
+# DJF, we simulate from and until the beginning of March so that a full season is
+# included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+stop_date =
+    LONGER_RUN ? DateTime("2019-03-01") :
+    PROGNOSTIC_LAI ? DateTime("2011-03-01") : DateTime("2010-03-01")
+spin_up_months = !LONGER_RUN && PROGNOSTIC_LAI ? 24 : 12
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -147,6 +202,7 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
+    use_clm_tree_share = CLM_TREE_SHARE,
 )
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
@@ -158,12 +214,24 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
+# The final optimal-LAI state, to start later runs from it
+if PROGNOSTIC_LAI
+    include("optimal_lai_state.jl")
+    write_optimal_lai_state(
+        joinpath(root_path, "optimal_lai_state.nc"),
+        simulation,
+    )
+end
+
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"]
+PROGNOSTIC_LAI && push!(leaderboard_data_sources, "FlagshipVegetationMetrics")
 LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,
-    leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"],
+    leaderboard_data_sources,
+    spin_up_months,
 )
 
 if LONGER_RUN

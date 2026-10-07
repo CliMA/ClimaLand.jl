@@ -57,6 +57,11 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
 
     """Type of model to use"""
     model_type::MODEL
+
+    "Whether the canopy computes LAI with the optimal-LAI model
+    (`ZhouOptimalLAIModel`) rather than prescribing MODIS LAI. Only affects
+    `ClimaLand.LandModel` runs."
+    prognostic_lai::Bool
 end
 
 """
@@ -76,6 +81,7 @@ end
             "land_observation_vector.jld2",
         ),
         model_type = ClimaLand.LandModel,
+        prognostic_lai = false,
     )
 
 Initializes a CalibrateConfig, which is of interest to a user running
@@ -117,6 +123,10 @@ Keyword arguments
 
 - `model_type`: A type indicating which model to use. The only supported
   models are "ClimaLand.LandModel" and "ClimaLand.Bucket.BucketModel".
+
+- `prognostic_lai`: If `true`, the `ClimaLand.LandModel` computes LAI with the
+  optimal-LAI model (`ZhouOptimalLAIModel`, as in the optimal-LAI long run),
+  starting from its spun-up state, instead of prescribing MODIS LAI.
 """
 function CalibrateConfig(;
     short_names,
@@ -134,6 +144,7 @@ function CalibrateConfig(;
         "land_observation_vector.jld2",
     ),
     model_type = ClimaLand.LandModel,
+    prognostic_lai = false,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
 
@@ -186,6 +197,7 @@ function CalibrateConfig(;
         rng_seed,
         obs_vec_filepath,
         model_type,
+        prognostic_lai,
     )
 
 end
