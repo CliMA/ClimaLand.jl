@@ -168,7 +168,7 @@ A slab lake model for inland water points.
 
 $(DocStringExtensions.FIELDS)
 """
-struct SlabLakeModel{FT, PS, D, BC, M} <: AbstractInlandWaterModel{FT}
+mutable struct SlabLakeModel{FT, PS, D, BC, M} <: AbstractInlandWaterModel{FT}
     "Lake parameters"
     parameters::PS
     "The lake domain (surface only)"

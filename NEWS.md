@@ -2,6 +2,18 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🚀performance] `LandModel`, `EnergyHydrology`, `CanopyModel`,
+  `SnowModel`, `SoilCO2Model` and `SlabLakeModel` are now `mutable struct`s.
+  Closures over a model (the tendency, cache-update and diagnostic
+  functions, the `ClimaODEFunction`) used to store a copy of the whole model
+  struct, whose type embeds every parameter field and forcing input, and
+  compiling the construction of each such closure cost seconds of pure
+  codegen. They now hold a reference. On the global snowy land model this
+  takes the compile time to the end of the first step from 307 s to 162 s:
+  `default_diagnostics` from 62 s to 5 s, the construction of the ODE
+  functions from 23 s to 1 s, the `LandSimulation` constructor body from 25 s
+  to 3 s and the time stepper's first step from 27 s to 6 s. No field of a
+  model is ever assigned after construction.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

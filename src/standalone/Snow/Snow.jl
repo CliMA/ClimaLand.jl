@@ -534,7 +534,7 @@ Base.broadcastable(ps::SnowParameters) = tuple(ps)
 A container/type for the bulk snow model, based on the UEB snow model
 of Tarboton et al. (1995) and Tarboton and Luce (1996).
 """
-struct SnowModel{FT, PS <: SnowParameters{FT}, BC, D} <: AbstractSnowModel{FT}
+mutable struct SnowModel{FT, PS <: SnowParameters{FT}, BC, D} <: AbstractSnowModel{FT}
     "Parameters required by the snow model"
     parameters::PS
     "Boundary conditions"
