@@ -2,6 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Score the default `LandModel` at the FLUXNET2015 sites against the ILAMB
+  land-hist models every week, on a new Buildkite pipeline (`.buildkite/fluxnet_ilamb`):
+  each site runs over its whole record with MODIS LAI (the MODIS climatology outside
+  2000-2020), and the RMSE of monthly means after a one-year spin-up is plotted as in ILAMB
+  (`experiments/integrated/generic_site/fluxnet_ilamb_rmse_*.jl`).
+  PR [#1910](https://github.com/CliMA/ClimaLand.jl/pull/1910)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
