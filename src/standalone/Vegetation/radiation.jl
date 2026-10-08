@@ -351,6 +351,24 @@ end
 ## For interfacing with ClimaParams
 
 """
+    raised_leaf_nir_optics(x, ω, ω_min)
+
+Temporary leaf NIR optics fix. Return the leaf NIR reflectance or
+transmittance `x` of a canopy element whose NIR single-scattering albedo is
+`ω = α + τ`, raised to `ω_min / 2` (`α = τ`) when `0.6 < ω < ω_min`. The
+default table and gridded values for broad leaves (`α = 0.45, τ = 0.25`) and
+grasses (`0.35, 0.34`) have `ω ≈ 0.7`, well below leaf-level measurements
+(`α ≈ τ ≈ 0.42`), which makes humid grass, crop and broadleaf canopies too
+dark in the NIR and pushes the absorbed energy into sensible heat; the shoot
+level needleleaf values (`ω = 0.45`) are left unchanged. Set
+`leaf_NIR_omega_min = 0` to disable. To be replaced by the universal leaf
+optics work.
+"""
+function raised_leaf_nir_optics(x::FT, ω::FT, ω_min::FT) where {FT}
+    return (ω > FT(0.6) && ω < ω_min) ? ω_min / 2 : x
+end
+
+"""
     function TwoStreamParameters(
         toml_dict::CP.ParamDict;
         G_Function,
@@ -397,6 +415,12 @@ function TwoStreamParameters(
     τ_PAR_leaf = FT.(τ_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
     τ_NIR_leaf = FT.(τ_NIR_leaf)
+    # Temporary: raise the leaf NIR single-scattering albedo of broad leaves
+    # and grasses to the leaf-level value (see `leaf_NIR_omega_min`).
+    ω_NIR_min = FT(toml_dict["leaf_NIR_omega_min"])
+    ω_NIR = α_NIR_leaf .+ τ_NIR_leaf
+    α_NIR_leaf = raised_leaf_nir_optics.(α_NIR_leaf, ω_NIR, ω_NIR_min)
+    τ_NIR_leaf = raised_leaf_nir_optics.(τ_NIR_leaf, ω_NIR, ω_NIR_min)
     α_PAR_stem = FT.(α_PAR_stem)
     τ_PAR_stem = FT.(τ_PAR_stem)
     α_NIR_stem = FT.(α_NIR_stem)

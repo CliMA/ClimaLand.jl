@@ -560,6 +560,12 @@ type = "float"
 description = "NIR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
 tag = "AbstractRadiationModel"
 
+[leaf_NIR_omega_min]
+value = 0.84
+type = "float"
+description = "Temporary: minimum leaf NIR single-scattering albedo (reflectance + transmittance, unitless) of broad leaves and grasses in TwoStreamParameters. Elements whose table or gridded value lies between 0.6 and this minimum are set to reflectance = transmittance = leaf_NIR_omega_min / 2, the leaf-level value (Jacquemoud and Baret 1990; Asner 1998); needleleaf shoot values (0.45) are unchanged. 0 disables. To be replaced by universal leaf optics."
+tag = "AbstractRadiationModel"
+
 # Farquhar canopy scaling
 ["canopy_nitrogen_extinction_coefficient"]
 value = 0.5
