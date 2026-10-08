@@ -28,6 +28,9 @@ ClimaLand can read FLUXNET data from two artifacts:
 | --- | --- |
 | `run_generic_site.jl` | Runs one site and plots model vs observations to `out/<SITE_ID>/`. |
 | `list_fluxnet_sites.jl` | Prints every site ID in the `fluxnet2015` artifact, one per line. |
+| `fluxnet_ilamb_rmse_sites.jl` | Runs sites in series and writes their monthly LE, H, SWup and LWup to `out/ilamb_rmse/sites/`. |
+| `fluxnet_ilamb_rmse_plot.jl` | Computes the ILAMB RMSE from those files and plots it against the ILAMB land-hist models. |
+| `ilamb_land_hist_site_rmse.jl` | Writes `ilamb_land_hist_site_rmse.csv`, the per-site RMSE of the land-hist models. |
 
 ## Run a site
 
@@ -48,8 +51,47 @@ conditions, diagnostics) explicitly, so any of them can be swapped, for example
 by passing `canopy = ...` to `LandModel` as in the
 [ERA5 single-column tutorial](../../../docs/src/tutorials/integrated/snowy_land_era5_tutorial.jl).
 
+## RMSE against the ILAMB land-hist models
+
+`boxplot_rmse_fluxnet2015.png` compares ClimaLand's FLUXNET2015 RMSE of LE, H,
+SWup and LWup with the ILAMB land-hist models (CLM, ISBA-CTRIP and JSBACH,
+each forced by CRUJRA, GSWP3 and Princeton;
+[dashboard](https://www.ilamb.org/land-hist/)), computed the way ILAMB does
+(`AnalysisMeanStateSites` in
+[ILAMB](https://github.com/rubisco-sfa/ILAMB)): at each site, the RMSE of the
+monthly means against the FLUXNET2015 monthly files (`LE_F_MDS`, `H_F_MDS`,
+`SW_OUT`, `LW_OUT`, the columns of ILAMB's benchmark), then the mean over
+sites. All models are averaged over the same sites: those where ClimaLand and
+every land-hist model have a value.
+
+- `fluxnet_ilamb_rmse_sites.jl` runs every site of
+  `ilamb_land_hist_site_rmse.csv` in the `fluxnet2015` artifact, except the
+  four sites of `fluxnet_sites`, which resolve to that single-year artifact.
+  Each site runs over the span in which every forcing variable is observed,
+  spins up for one year, up to the next month boundary in local standard time,
+  and is scored on every complete calendar month after that; sites with less
+  than one year left after the spin-up are skipped. LAI is the MODIS LAI of
+  each year (2000-2020) at the site, and the MODIS climatology in the other
+  years. It also accepts a list of site IDs.
+- `fluxnet_ilamb_rmse_plot.jl` writes the figure, `rmse_summary.csv` (mean over
+  sites per model) and `rmse_per_site.csv` (ClimaLand) to `out/ilamb_rmse/`.
+
+ClimaLand is forced by the tower meteorology, while the land-hist models are
+global runs forced by gridded reanalyses, sampled at the sites and scored over
+each site's whole record.
+
+```bash
+julia --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_sites.jl DE-Tha BE-Vie
+julia --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_plot.jl
+```
+
 ## CI
 
 The buildkite step `generic_site BE-Vie run` runs `run_generic_site.jl` at
 BE-Vie, which is not in `fluxnet_sites`, so it exercises the `fluxnet2015`
 metadata and data paths.
+
+The Buildkite pipeline `.buildkite/fluxnet_ilamb/pipeline.yml` runs weekly on
+a schedule (or on a manual build): `fluxnet_ilamb_rmse_sites.jl` split over 24
+parallel CPU jobs on the central cluster, which has the `fluxnet2015` artifact,
+then `fluxnet_ilamb_rmse_plot.jl`. The figure and CSVs are kept as artifacts.
