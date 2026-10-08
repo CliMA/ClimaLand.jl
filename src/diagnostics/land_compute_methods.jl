@@ -1283,6 +1283,9 @@ function screen_level(model::CanopyModel{FT}, Y, p) where {FT}
     tf = p.canopy.turbulent_fluxes
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     earth_param_set = ClimaLand.get_earth_param_set(model)
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    PAI = @. lazy(area_index.leaf + area_index.stem)
     return @. lazy(
         ClimaLand.screen_level_values(
             tf.T_sfc,
@@ -1290,9 +1293,29 @@ function screen_level(model::CanopyModel{FT}, Y, p) where {FT}
             tf.ustar,
             tf.ζ,
             tf.Δz_eff,
-            sfp.displ,
-            sfp.z_0m,
-            sfp.z_0b,
+            ClimaLand.Canopy.canopy_displacement(
+                sfp.raupach_frontal_area,
+                sfp.displ,
+                height,
+                PAI,
+            ),
+            ClimaLand.Canopy.canopy_z_0m(
+                sfp.raupach_frontal_area,
+                sfp.z_0min,
+                sfp.z_0m,
+                height,
+                PAI,
+            ),
+            ClimaLand.Canopy.canopy_z_0b(
+                sfp.kB_inv,
+                ClimaLand.Canopy.canopy_z_0m(
+                    sfp.raupach_frontal_area,
+                    sfp.z_0min,
+                    sfp.z_0m,
+                    height,
+                    PAI,
+                ),
+            ),
             p.drivers.T,
             p.drivers.q,
             FT(2),

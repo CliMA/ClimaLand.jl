@@ -708,6 +708,12 @@ type = "float"
 description = "Excess resistance to scalar transfer of the canopy, kB⁻¹ = ln(z_0m / z_0b) (unitless); the scalar (heat and vapor) roughness length is z_0b = z_0m exp(-kB⁻¹). The value 2 is the standard one for vegetated surfaces (Garratt 1992, pp. 92-94; Brutsaert 1982, Ch. 5). Replaces a scalar roughness length nearly equal to z_0m, which over-coupled short canopies to the atmosphere: at FLUXNET2015 grass, crop and broadleaf sites it lowered the daytime sensible heat bias from +33 to +26 W/m² and raised the evaporative fraction toward the observations."
 tag = "MoninObukhovCanopyFluxes"
 
+["canopy_raupach_frontal_area"]
+value = 0.5
+type = "float"
+description = "Frontal area index per unit plant area index (leaf + stem) used in the Raupach (1994) momentum roughness length and displacement height of the canopy, z_0m / h = (1 - d/h) exp(-κ U_h/u_* + ψ_h), d/h = 1 - (1 - exp(-√(c_d1 Λ)))/√(c_d1 Λ), with Λ = canopy_raupach_frontal_area × PAI (unitless). 0.5 treats the one-sided plant area as frontal area projected on a vertical plane; 0 selects the static roughness canopy_z_0m_coeff × height + canopy_z_0min and canopy_d_coeff × height. Temporary workaround until the Raupach roughness lives in SurfaceFluxes.jl. Raupach 1994, Boundary-Layer Meteorol. 71, 211-216"
+tag = "MoninObukhovCanopyFluxes"
+
 ["canopy_d_coeff"]
 value = 0.67
 type = "float"

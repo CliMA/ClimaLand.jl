@@ -3,6 +3,18 @@ ClimaLand.jl Release Notes
 main
 ----
 
+### Raupach (1994) canopy roughness length and displacement height (temporary)
+
+With `canopy_raupach_frontal_area = 0.5` (default), the canopy momentum
+roughness length and displacement height used in the flux solves, the
+sub-canopy forcing and the screen-level diagnostics are the Raupach (1994)
+functions of canopy height and plant area index, `Λ = 0.5 (LAI + SAI)`,
+instead of fixed fractions of the height; `0` restores the static values. For
+10-30 cm grass and crop canopies this lowers `z_0m` by 30-40 % and, on top of
+`kB⁻¹ = 2`, lowers the daytime sensible heat bias at eight FLUXNET2015 sites
+by a further 1.2 W/m² (DE-Gri +23 → +19). This is a temporary workaround: the
+parameterization belongs in SurfaceFluxes.jl and will migrate there.
+
 ### Canopy scalar roughness length from kB⁻¹ (`canopy_kB_inv`)
 
 The canopy scalar (heat and vapor) roughness length is now

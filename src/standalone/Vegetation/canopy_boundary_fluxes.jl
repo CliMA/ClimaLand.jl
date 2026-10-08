@@ -84,8 +84,18 @@ function AtmosDrivenCanopyBC(
     # Monin-Obukhov similarity needs the forcing above the roughness sublayer
     if atmos isa PrescribedAtmosphere &&
        turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
-        (; displ, z_0m) = turbulent_flux_parameterization
-        clearance = minimum(@. atmos.h - displ - z_0m)
+        (; displ, z_0m, raupach_frontal_area, height) =
+            turbulent_flux_parameterization
+        # With the Raupach roughness the sink height displ + z_0m depends on
+        # the plant area index; its maximum over Λ (≈ 0.86 h at Λ ≈ 5) is used.
+        FT = eltype(height)
+        sink_max =
+            raupach_frontal_area > 0 ?
+            (
+                raupach_displacement_fraction(FT(5)) +
+                raupach_roughness_fraction(FT(5))
+            ) .* height : displ .+ z_0m
+        clearance = minimum(@. atmos.h - sink_max)
         clearance > 0 || throw(
             ArgumentError(
                 "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the momentum roughness length everywhere; the minimum clearance is $clearance m.",
@@ -289,7 +299,16 @@ function ClimaLand.surface_displacement_height(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
-    return sfp.displ
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        canopy_displacement(
+            sfp.raupach_frontal_area,
+            sfp.displ,
+            height,
+            area_index.leaf + area_index.stem,
+        ),
+    )
 end
 
 """
@@ -304,8 +323,22 @@ function ClimaLand.surface_roughness_model(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    z_0m = @. lazy(
+        canopy_z_0m(
+            sfp.raupach_frontal_area,
+            sfp.z_0min,
+            sfp.z_0m,
+            height,
+            area_index.leaf + area_index.stem,
+        ),
+    )
     return @. lazy(
-        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
+        SurfaceFluxes.ConstantRoughnessParams{FT}(
+            z_0m,
+            canopy_z_0b(sfp.kB_inv, z_0m),
+        ),
     )
 end
 
@@ -619,13 +652,25 @@ of `p.drivers` and the atmospheric driver.
 function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     atmos = canopy.boundary_conditions.atmos
     sfp = canopy.boundary_conditions.turbulent_flux_parameterization
-    (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
-        sfp
+    (; subcanopy_min_reference_height, subcanopy_wind_extinction) = sfp
     h_forcing = atmos.h
     floor = ClimaLand.gustiness_floor(atmos.gustiness)
     height = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u
+    PAI = @. lazy(area_index.leaf + area_index.stem)
+    displ = @. lazy(
+        canopy_displacement(sfp.raupach_frontal_area, sfp.displ, height, PAI),
+    )
+    z_0m = @. lazy(
+        canopy_z_0m(
+            sfp.raupach_frontal_area,
+            sfp.z_0min,
+            sfp.z_0m,
+            height,
+            PAI,
+        ),
+    )
     plants = @. lazy(area_index.leaf + area_index.stem >= 0.05)
     h_subcanopy = @. lazy(
         subcanopy_reference_height(

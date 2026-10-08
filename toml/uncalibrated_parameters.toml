@@ -621,6 +621,12 @@ type = "float"
 description = "Excess resistance to scalar transfer of the canopy, kB⁻¹ = ln(z_0m / z_0b) (unitless); z_0b = z_0m exp(-kB⁻¹). Garratt 1992, pp. 92-94"
 tag = "MoninObukhovCanopyFluxes"
 
+["canopy_raupach_frontal_area"]
+value = 0.5
+type = "float"
+description = "Frontal area index per unit plant area index of the Raupach (1994) canopy roughness length and displacement height (unitless); 0 selects the static, height-proportional roughness. Raupach 1994"
+tag = "MoninObukhovCanopyFluxes"
+
 ["canopy_d_coeff"]
 value = 0.67
 type = "float"
