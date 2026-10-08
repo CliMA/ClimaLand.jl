@@ -28,30 +28,49 @@ function _percentile_contour_kwargs(
 end
 
 """
-    _global_mean_series(sim, obs)
+    _area_mean_series(sim, obs)
 
-Return `(dates, sim_global, obs_global)`: the date of every output time and the
-lonlat-weighted global mean of `sim` and `obs` there.
+Return `(dates, sim_mean, obs_mean)`: the date of every output time and the
+lonlat-weighted mean of `sim` and `obs` there over their non-`NaN` cells.
 
 `sim` and `obs` are expected to cover the same cells (see
 `_land_intersection_mask`), so the SIM/OBS gap here matches the global bias in
 the ANN column.
 """
-function _global_mean_series(sim, obs)
-    global_mean(var) = vec(ClimaAnalysis.weighted_average_lonlat(var).data)
-    return (ClimaAnalysis.dates(sim), global_mean(sim), global_mean(obs))
+function _area_mean_series(sim, obs)
+    area_mean(var) = vec(ClimaAnalysis.weighted_average_lonlat(var).data)
+    return (ClimaAnalysis.dates(sim), area_mean(sim), area_mean(obs))
 end
 
 """
-    _monthly_climatology(dates, sim_global, obs_global)
+    _hemisphere_mask(var, hemisphere)
+
+Return a copy of `var` with every cell outside the northern (`:NH`) or southern
+(`:SH`) `hemisphere` set to `NaN`. A latitude row centered on the equator counts
+as northern, so the two hemispheres partition the globe.
+"""
+function _hemisphere_mask(var, hemisphere)
+    # Grid latitudes can miss zero by round-off.
+    north = ClimaAnalysis.latitudes(var) .>= -1e-6
+    outside = hemisphere == :NH ? .!north : north
+    # Masked rather than windowed: `weighted_average_lonlat` takes latitudes
+    # that are all negative to be in radians and warns.
+    data = copy(var.data)
+    lat_dim = var.dim2index[ClimaAnalysis.latitude_name(var)]
+    selectdim(data, lat_dim, outside) .= NaN
+    return ClimaAnalysis.remake(var; data)
+end
+
+"""
+    _monthly_climatology(dates, sim_mean, obs_mean)
 
 Return `(sim_monthly, obs_monthly, sim_spread, obs_spread)`, each a 12-element
 vector indexed by calendar month. The first two are the climatology of the
-global means from `_global_mean_series`; the last two their standard deviation
-across years, drawn as the interannual band on the MON panel. Months with no
+area means from `_area_mean_series`; the last two their standard deviation
+across years, drawn as the interannual band on the MON panels. Months with no
 valid sample are `NaN`, months sampled in a single year get a spread of zero.
 """
-function _monthly_climatology(dates, sim_global, obs_global)
+function _monthly_climatology(dates, sim_mean, obs_mean)
     isempty(dates) && return ntuple(_ -> fill(NaN, 12), 4)
     months = Dates.month.(dates)
     out_sim, out_obs = fill(NaN, 12), fill(NaN, 12)
@@ -59,11 +78,9 @@ function _monthly_climatology(dates, sim_global, obs_global)
     for m in 1:12
         idxs = findall(==(m), months)
         isempty(idxs) && continue
-        for (global_vals, means, spreads) in (
-            (sim_global, out_sim, spread_sim),
-            (obs_global, out_obs, spread_obs),
-        )
-            vals = filter(isfinite, global_vals[idxs])
+        for (mean_vals, means, spreads) in
+            ((sim_mean, out_sim, spread_sim), (obs_mean, out_obs, spread_obs))
+            vals = filter(isfinite, mean_vals[idxs])
             isempty(vals) && continue
             means[m] = sum(vals) / length(vals)
             spreads[m] = length(vals) > 1 ? Statistics.std(vals) : 0.0
@@ -76,7 +93,7 @@ end
     _annual_means(dates, sim_global, obs_global)
 
 Return `(years, sim_annual, obs_annual)`, one entry per calendar year of the
-global means from `_global_mean_series`.
+global means from `_area_mean_series`.
 
 Only years covering all twelve months in both series contribute: a partial
 year's mean is aliased by whichever part of the seasonal cycle it sampled. Each
@@ -696,9 +713,10 @@ function compute_seasonal_leaderboard(
     # Map short name to the (sim_var, obs_var) full windowed time series, kept
     # for the metadata that survives collapsing along time below.
     sim_obs_full_dict = Dict()
-    # Map short name to the global mean at each output time, which the MON and
-    # IAV columns both reduce.
+    # Map short name to the global mean at each output time, for the IAV column
     global_series_dict = Dict()
+    # Map short name to Dict which maps hemisphere to its monthly climatology
+    hemisphere_climatology_dict = Dict()
     seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
 
     spin_up_months = 12
@@ -754,7 +772,15 @@ function compute_seasonal_leaderboard(
 
         # Reduce along time before collapsing the vars along it below.
         sim_obs_full_dict[short_name] = (sim_var, obs_var)
-        global_series_dict[short_name] = _global_mean_series(sim_var, obs_var)
+        global_series_dict[short_name] = _area_mean_series(sim_var, obs_var)
+        hemisphere_climatology_dict[short_name] = Dict(
+            hemisphere => _monthly_climatology(
+                _area_mean_series(
+                    _hemisphere_mask(sim_var, hemisphere),
+                    _hemisphere_mask(obs_var, hemisphere),
+                )...,
+            ) for hemisphere in (:NH, :SH)
+        )
         sim_var_seasons = (sim_var, ClimaAnalysis.split_by_season(sim_var)...)
         obs_var_seasons = (obs_var, ClimaAnalysis.split_by_season(obs_var)...)
 
@@ -1011,13 +1037,16 @@ function compute_seasonal_leaderboard(
             elseif group == "MON"
                 sim_var_full, _ = sim_obs_full_dict[short_name]
                 isempty(sim_var_full) && break
-                sim_monthly, obs_monthly, sim_spread, obs_spread =
-                    _monthly_climatology(global_series_dict[short_name]...)
                 units_str = ClimaAnalysis.units(sim_var_full)
+                # Explained in the title rather than a legend: with the two
+                # hemispheres out of phase, the curves reach every corner.
                 ax = CairoMakie.Axis(
                     fig_sim_ann[row_idx, col_idx],
                     xlabel = "Month",
                     ylabel = "$short_name ($units_str)",
+                    title = row_idx == 1 ?
+                            "Hemispheric means: solid NH, dashed SH\n(black OBS, red SIM)" :
+                            "",
                     xticks = (
                         1:12,
                         [
@@ -1036,39 +1065,46 @@ function compute_seasonal_leaderboard(
                         ],
                     ),
                 )
-                # Bands show the spread of the global monthly mean across the
+                climatologies = hemisphere_climatology_dict[short_name]
+                # Bands show the spread of the monthly mean across the
                 # simulated years, so the SIM/OBS gap can be read against the
-                # interannual variability rather than in isolation.
-                _band_interannual_spread!(ax, obs_monthly, obs_spread, :black)
-                _band_interannual_spread!(
-                    ax,
-                    sim_monthly,
-                    sim_spread,
-                    :firebrick,
-                )
-                CairoMakie.lines!(
-                    ax,
-                    1:12,
-                    obs_monthly;
-                    color = :black,
-                    linewidth = 4,
-                    label = "OBS",
-                )
-                CairoMakie.lines!(
-                    ax,
-                    1:12,
-                    sim_monthly;
-                    color = :firebrick,
-                    linewidth = 4,
-                    label = "SIM",
-                )
-                # First row only: on some variables the curves run through the
-                # :rt anchor, and repeating the legend clutters the figure.
-                row_idx == 1 && CairoMakie.axislegend(
-                    ax,
-                    position = :rt,
-                    framevisible = false,
-                )
+                # interannual variability rather than in isolation. They go in
+                # first so that no band covers a line.
+                for hemisphere in (:NH, :SH)
+                    sim_monthly, obs_monthly, sim_spread, obs_spread =
+                        climatologies[hemisphere]
+                    _band_interannual_spread!(
+                        ax,
+                        obs_monthly,
+                        obs_spread,
+                        :black,
+                    )
+                    _band_interannual_spread!(
+                        ax,
+                        sim_monthly,
+                        sim_spread,
+                        :firebrick,
+                    )
+                end
+                for (hemisphere, linestyle) in ((:NH, :solid), (:SH, :dash))
+                    sim_monthly, obs_monthly, _, _ = climatologies[hemisphere]
+                    CairoMakie.lines!(
+                        ax,
+                        1:12,
+                        obs_monthly;
+                        color = :black,
+                        linestyle,
+                        linewidth = 4,
+                    )
+                    CairoMakie.lines!(
+                        ax,
+                        1:12,
+                        sim_monthly;
+                        color = :firebrick,
+                        linestyle,
+                        linewidth = 4,
+                    )
+                end
             else
                 sim_var, obs_var =
                     sim_obs_season_comparison_dict[short_name][group]
