@@ -1,3 +1,97 @@
+[K_maxLAI_coeff]
+value = 0.0
+type = "float"
+
+[K_gsl_coeff]
+value = 0.0
+type = "float"
+
+[K_gs_vpd_coeff]
+value =0.0
+type = "float"
+
+[K_ann_p_coeff]
+value =0.0
+type = "float"
+
+[K_elevation_coeff]
+value =0.0
+type = "float"
+
+[K_mu_coeff]
+value =0.0
+type = "float"
+
+[K_constant]
+value = 0.5
+type = "float"
+
+[nir_maxLAI_coeff]
+value = 0.0
+type = "float"
+
+[nir_gsl_coeff]
+value = 0.0
+type = "float"
+
+[nir_gs_vpd_coeff]
+value = 0.0
+type = "float"
+
+[nir_ann_p_coeff]
+value = 0.0
+type = "float"
+
+[nir_elevation_coeff]
+value = 0.0
+type = "float"
+
+[nir_mu_coeff]
+value = 0.0
+type = "float"
+
+[nir_cos_coeff]
+value = 0.0
+type = "float"
+
+[nir_constant]
+value = 0.3
+type = "float"
+
+[par_maxLAI_coeff]
+value = 0.0
+type = "float"
+
+[par_gsl_coeff]
+value = 0.0
+type = "float"
+
+[par_gs_vpd_coeff]
+value = 0.0
+type = "float"
+
+[par_ann_p_coeff]
+value = 0.0
+type = "float"
+
+[par_elevation_coeff]
+value = 0.0
+type = "float"
+
+[par_mu_coeff]
+value = 0.0
+type = "float"
+
+[par_cos_coeff]
+value = 0.0
+type = "float"
+
+[par_constant]
+value = 0.07
+type = "float"
+
+
+
 # Moisture stress models
 [moisture_stress_c]
 value = 0.591

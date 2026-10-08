@@ -1,5 +1,6 @@
 export BeerLambertParameters,
     BeerLambertModel,
+    EnvironmentalBeerLambertModel,
     TwoStreamParameters,
     TwoStreamModel,
     canopy_radiant_energy_fluxes!,
@@ -89,6 +90,136 @@ function BeerLambertModel{FT}(
     parameters::BeerLambertParameters{FT},
 ) where {FT <: AbstractFloat}
     return BeerLambertModel{eltype(parameters), typeof(parameters)}(parameters)
+end
+
+
+Base.@kwdef struct EnvironmentalBeerLambertModel{
+    FT <: AbstractFloat,
+    F <: Union{FT, ClimaCore.Fields.Field},
+    NT
+}
+    ""
+    K_lw::FT
+    ""
+    ϵ_canopy::FT
+    ""
+    maxLAI::F
+    ""
+    gsl::F
+    ""
+    gs_vpd::F
+    ""
+    ann_p::F
+    ""
+    elevation::F
+    ""
+    μ::F
+    coeffs::NT
+end
+
+Base.eltype(::EnvironmentalBeerLambertModel{FT}) where {FT} = FT
+function EnvironmentalBeerLambertModel(
+    domain, toml_dict::CP.ParamDict;
+    ϵ_canopy = toml_dict["canopy_emissivity"],
+    K_lw = toml_dict["canopy_K_lw"],
+    data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(domain.space.surface)),
+    lai_data_path = Artifacts.modis_max_lai_data_path(; context = ClimaComms.context(domain.space.surface)),
+    topo_data_path = "topographic_data.nc",
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    surface_space = domain.space.surface
+    nans_to_zero(x) = isnan(x) ? eltype(x)(0) : x
+
+    gsl = SpaceVaryingInput(
+        data_path,
+        "gsl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = (; preprocess_func = nans_to_zero,),
+    )
+
+    gs_vpd = SpaceVaryingInput(
+        data_path,
+        "vpd_gs",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = (; preprocess_func = nans_to_zero,),
+    )
+
+    ann_p = SpaceVaryingInput(
+        data_path,
+        "precip_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = (; preprocess_func = nans_to_zero,),
+    )
+
+    μ = SpaceVaryingInput(
+        topo_data_path,
+        "mean_slope",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    elevation = SpaceVaryingInput(
+        topo_data_path,
+        "mean_height",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    maxLAI = SpaceVaryingInput(
+        lai_data_path,
+        "lai",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    
+    coeffs = (; K = (;maxLAI = toml_dict["K_maxLAI_coeff"],
+                     gsl = toml_dict["K_gsl_coeff"],
+                     gs_vpd = toml_dict["K_gs_vpd_coeff"],
+                     ann_p =  toml_dict["K_ann_p_coeff"],
+                     elevation = toml_dict["K_elevation_coeff"],
+                     μ = toml_dict["K_mu_coeff"],
+                     constant = toml_dict["K_constant"]),
+              par = (;maxLAI = toml_dict["par_maxLAI_coeff"],
+                     gsl = toml_dict["par_gsl_coeff"],
+                     gs_vpd = toml_dict["par_gs_vpd_coeff"],
+                     ann_p =  toml_dict["par_ann_p_coeff"],
+                     elevation = toml_dict["par_elevation_coeff"],
+                     μ = toml_dict["par_mu_coeff"],
+                     cosθs = toml_dict["par_cos_coeff"],
+                     constant = toml_dict["par_constant"]),
+              nir = (;maxLAI = toml_dict["nir_maxLAI_coeff"],
+                     gsl = toml_dict["nir_gsl_coeff"],
+                     gs_vpd = toml_dict["nir_gs_vpd_coeff"],
+                     ann_p =  toml_dict["nir_ann_p_coeff"],
+                     elevation = toml_dict["nir_elevation_coeff"],
+                     μ = toml_dict["nir_mu_coeff"],
+                     cosθs = toml_dict["nir_cos_coeff"],
+                     constant = toml_dict["nir_constant"]),
+              )
+              
+    return EnvironmentalBeerLambertModel{typeof(K_lw), typeof(maxLAI), typeof(coeffs)}(;K_lw,
+                                                             ϵ_canopy,
+                                                             maxLAI,
+                                                             gsl,
+                                                             gs_vpd,
+                                                             ann_p,
+                                                             elevation,
+                                                                       μ,
+                                                                       coeffs
+                                                             )
 end
 
 """
@@ -190,10 +321,10 @@ end
 Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
-ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
+ClimaLand.auxiliary_vars(model::AbstractRadiationModel) =
     (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ)
 ClimaLand.auxiliary_types(
-    model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
+    model::AbstractRadiationModel{FT},
 ) where {FT} = (
     FT,
     FT,
@@ -203,7 +334,7 @@ ClimaLand.auxiliary_types(
     FT,
     FT,
 )
-ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
+ClimaLand.auxiliary_domain_names(::AbstractRadiationModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
@@ -465,6 +596,87 @@ function compute_fractional_absorbances!(
         LAI,
         α_soil_NIR,
     )
+end
+
+function compute_fractional_absorbances!(
+    p,
+    RT::EnvironmentalBeerLambertModel{FT},
+    LAI,
+    α_soil_PAR,
+    α_soil_NIR,
+) where {FT}
+    RTP = RT.parameters
+    cosθs = p.drivers.cosθs
+    @. p.canopy.radiative_transfer.par = env_canopy_sw_rt_beer_lambert(:par,
+        RTP.maxLAI,
+        RTP.gsl,
+        RTP.gs_vpd,
+        RTP.ann_p,
+        RTP.elevation,
+        RTP.μ,
+        cosθs,
+        LAI,
+                                                                       α_soil_PAR,
+                                                                       Ref(RTP.coeffs)
+    )
+    @. p.canopy.radiative_transfer.nir = env_canopy_sw_rt_beer_lambert(:nir,
+        RTP.maxLAI,
+        RTP.gsl,
+        RTP.gs_vpd,
+        RTP.ann_p,
+        RTP.elevation,
+        RTP.μ,
+        cosθs,
+        LAI,
+                                                                       α_soil_NIR,
+                                                                       Ref(RTP.coeffs)
+    )
+end
+function env_canopy_sw_rt_beer_lambert(wavelength_flag,
+                                   maxLAI,
+                                   gsl,
+                                   gs_vpd,
+                                   ann_p,
+                                   elevation,
+                                   μ,
+                                   cosθs,
+                                   LAI,
+                                       α_soil::FT,
+                                       coeffs) where {FT}
+
+    K = environmental_extiction(maxLAI, gsl, max(cosθs,eps(FT)), gs_vpd, elevation, ann_p, μ, coeffs.K)
+    α_leaf = environmental_α(maxLAI, gsl, max(cosθs,eps(FT)), gs_vpd, elevation, ann_p, μ, getproperty(coeffs, wavelength_flag))
+    transmitted_fraction = exp(-K * LAI)
+    absorbed_downwards_pass = (1 - transmitted_fraction) * (1 - α_leaf)
+    reflected_downwards_pass = α_leaf * (1 - transmitted_fraction)
+    # soil absorbs (1-α_soil)*transmitted_fraction
+    # soil reflects α_soil*transmitted_fraction
+    upwelling_from_soil = α_soil * transmitted_fraction
+    absorbed_upwards_pass =
+        upwelling_from_soil * (1 - transmitted_fraction) * (1 - α_leaf)
+    reflected_upwards_pass =
+        upwelling_from_soil * (1 - transmitted_fraction) * α_leaf
+    transmitted_upwards_pass = upwelling_from_soil * transmitted_fraction
+    # total canopy absorbed fraction = absorbed_downwards_pass+absorbed_upwards_pass
+    # do not track second reflection off of canopy (reflected_upwards_pass) - instead just count this as part of the pass through
+    upwelling_from_land =
+        reflected_downwards_pass +
+        reflected_upwards_pass +
+        transmitted_upwards_pass
+    return (;
+        abs = absorbed_downwards_pass + absorbed_upwards_pass,
+        refl = upwelling_from_land,
+        trans = transmitted_fraction,
+    )
+end
+
+function environmental_extiction(maxLAI::FT, gsl::FT, cosθs::FT, gs_vpd::FT, elevation::FT, ann_p::FT, μ::FT, coeffs)::FT where {FT}
+    G::FT = coeffs.maxLAI * maxLAI + coeffs.gsl * gsl + coeffs.gs_vpd * gs_vpd + coeffs.elevation * elevation + coeffs.ann_p * ann_p + coeffs.μ*μ + coeffs.constant
+    return  min(G / cosθs, FT(1e6))
+end
+function environmental_α(maxLAI::FT, gsl::FT, cosθs::FT, gs_vpd::FT, elevation::FT, ann_p::FT, μ::FT, coeffs)::FT where {FT}
+    α::FT =  coeffs.maxLAI * maxLAI + coeffs.gsl * gsl + coeffs.cosθs*cosθs + coeffs.gs_vpd * gs_vpd + coeffs.elevation * elevation + coeffs.ann_p * ann_p + coeffs.μ*μ + coeffs.constant
+    return α
 end
 
 """

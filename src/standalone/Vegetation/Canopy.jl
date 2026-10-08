@@ -827,7 +827,7 @@ function CanopyModel{FT}(
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
-    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    radiative_transfer = EnvironmentalBeerLambertModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
