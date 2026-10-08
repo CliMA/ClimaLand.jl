@@ -702,10 +702,10 @@ type = "float"
 description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Lower than the Brutsaert (1982) value of 0.123 for dense canopies; the leaf boundary layer conductance (leaf_Cd) acts in series with the aerodynamic conductance. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
 tag = "MoninObukhovCanopyFluxes"
 
-["canopy_z_0b_coeff"]
-value = 0.073
+["canopy_kB_inv"]
+value = 2.0
 type = "float"
-description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. Nearly equal to z_0m because the leaf boundary layer conductance (leaf_Cd), in series with the aerodynamic conductance, accounts for the extra resistance to scalar transfer that a reduced scalar roughness length would otherwise represent (Brutsaert 1982, Ch. 5)"
+description = "Excess resistance to scalar transfer of the canopy, kB⁻¹ = ln(z_0m / z_0b) (unitless); the scalar (heat and vapor) roughness length is z_0b = z_0m exp(-kB⁻¹). The value 2 is the standard one for vegetated surfaces (Garratt 1992, pp. 92-94; Brutsaert 1982, Ch. 5). Replaces a scalar roughness length nearly equal to z_0m, which over-coupled short canopies to the atmosphere: at FLUXNET2015 grass, crop and broadleaf sites it lowered the daytime sensible heat bias from +33 to +26 W/m² and raised the evaporative fraction toward the observations."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]

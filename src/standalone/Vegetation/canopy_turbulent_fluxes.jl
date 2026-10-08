@@ -48,20 +48,22 @@ A constructor for a MoninObukhovCanopyFluxes surface flux theory,
 fluxes, and momentum fluxes between the atmosphere and the canopy based on Monin-Obukhov Surface Theory, assuming that the roughness lengths
 and displacment height are linear in the canopy height:
 z_0m = coeff1 * height + z_0min
-z_0b = coeff2 * height + z_0min
+z_0b = z_0m * exp(-kB⁻¹)
 displacement = coeff3*height
 
-where the coefficients are read from the toml_dict. The height can be
+where the coefficients and kB⁻¹ = ln(z_0m / z_0b), the excess resistance
+to scalar transfer of a rough vegetated surface (Garratt 1992, Ch. 4;
+Brutsaert 1982, Ch. 5), are read from the toml_dict. The height can be
 either a float or a field. The leaf drag coefficient, the extinction
 coefficient of the wind speed within the canopy, and the minimum reference
 height of the ground below the canopy are also read from the toml_dict.
 
-Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304
+Cowan 1968; Brutsaert 1982, pp. 113–116; Garratt 1992, pp. 92–94; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304
 """
 function MoninObukhovCanopyFluxes(toml_dict, height)
     z_0min = toml_dict["canopy_z_0min"]
     z_0m = toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min
-    z_0b = toml_dict["canopy_z_0b_coeff"] .* height .+ z_0min
+    z_0b = z_0m .* exp(-toml_dict["canopy_kB_inv"])
     displ = toml_dict["canopy_d_coeff"] .* height
     Cd = toml_dict["leaf_Cd"]
     subcanopy_wind_extinction =

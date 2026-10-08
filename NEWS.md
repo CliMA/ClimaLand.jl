@@ -3,6 +3,20 @@ ClimaLand.jl Release Notes
 main
 ----
 
+### Canopy scalar roughness length from kB⁻¹ (`canopy_kB_inv`)
+
+The canopy scalar (heat and vapor) roughness length is now
+`z_0b = z_0m exp(-kB⁻¹)` with `canopy_kB_inv = 2`, the standard excess
+resistance of vegetated surfaces (Garratt 1992), instead of
+`canopy_z_0b_coeff * height + z_0min`, which made `z_0b ≈ 0.9 z_0m` and
+over-coupled short canopies to the atmosphere. The parameter
+`canopy_z_0b_coeff` is removed. At eight FLUXNET2015 grass, crop and
+broadleaf sites (730 d, GPP and LAI prescribed) the daytime sensible heat
+bias falls from +33 to +26 W/m² and its RMSE from 65 to 60 W/m² (all eight
+sites improve), the evaporative fraction error from 0.10 to 0.08; latent heat
+is unchanged and upward longwave rises by 2-3 W/m² at the humid sites, where
+it was already too high.
+
 ### Temporary leaf NIR optics floor (`leaf_NIR_omega_min`)
 
 `TwoStreamParameters` now raises the leaf NIR single-scattering albedo of
