@@ -71,7 +71,12 @@ the PFT values.
   soil-albedo channels: the daily-mean ground heat flux is nearly unbiased
   (the daytime excess against plate measurements at 5–8 cm is a storage-phase
   difference) and the soil-albedo residuals differ in sign between
-  neighbouring semi-arid sites.
+  neighbouring semi-arid sites. Refit after the NIR floor, kB⁻¹ and Raupach
+  roughness changes above (which remove most of the mean bias on their own:
+  EF |bias| 0.073 → 0.064 online), the factor's intercept falls from
+  `b = +0.082` to `+0.026` and the leave-one-site-out EF |bias| from 0.064 to
+  0.053 (RMSE 0.180 → 0.167); the coefficients are in
+  `experiments/integrated/fluxnet/conductance_correction_fluxnet2015.toml`.
 - ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
   the soil surface diffuses through the pore space of a dry litter layer of
   thickness `litter_layer_thickness` and porosity `litter_porosity`
