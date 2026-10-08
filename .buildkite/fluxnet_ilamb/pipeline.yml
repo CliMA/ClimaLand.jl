@@ -1,0 +1,57 @@
+# FLUXNET2015 RMSE of the default LandModel against the ILAMB land-hist models
+# (experiments/integrated/generic_site/README.md). Run weekly by a Buildkite
+# schedule; a manual build runs it on any branch. Every site of the
+# `fluxnet2015` artifact, which is only on the central cluster, is run over its
+# whole record: about 60 site-years per job.
+
+agents:
+  queue: central
+  slurm_mem: 8G
+  modules: climacommon/2026_02_18
+
+env:
+  SSL_CERT_FILE: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+  OPENBLAS_NUM_THREADS: 1
+  SLURM_KILL_BAD_EXIT: 1
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  JULIA_MAX_NUM_PRECOMPILE_FILES: 100
+
+steps:
+  - label: "init environment :computer:"
+    key: "init_cpu_env"
+    concurrency: 1
+    concurrency_group: "depot/climaland-fluxnet-ilamb"
+    command:
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(); Pkg.status()'"
+    agents:
+      slurm_cpus_per_task: 8
+      slurm_mem: 24G
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+
+  - wait
+
+  - label: "FLUXNET2015 sites"
+    key: "fluxnet_ilamb_rmse_sites"
+    command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_sites.jl"
+    parallelism: 24
+    timeout_in_minutes: 240
+    artifact_paths: "experiments/integrated/generic_site/out/ilamb_rmse/sites/*"
+    agents:
+      slurm_time: "04:00:00"
+      slurm_mem: 16G
+
+  - label: "FLUXNET2015 RMSE boxplot"
+    depends_on: "fluxnet_ilamb_rmse_sites"
+    allow_dependency_failure: true
+    command:
+      - buildkite-agent artifact download "experiments/integrated/generic_site/out/ilamb_rmse/sites/*" .
+      - julia --color=yes --project=.buildkite experiments/integrated/generic_site/fluxnet_ilamb_rmse_plot.jl
+      # Show the figure on the build page
+      - buildkite-agent artifact upload experiments/integrated/generic_site/out/ilamb_rmse/boxplot_rmse_fluxnet2015.png
+      - buildkite-agent annotate --style info --context fluxnet-ilamb-rmse "<img src='artifact://experiments/integrated/generic_site/out/ilamb_rmse/boxplot_rmse_fluxnet2015.png' alt='FLUXNET2015 RMSE vs ILAMB land-hist'>"
+    timeout_in_minutes: 30
+    artifact_paths: "experiments/integrated/generic_site/out/ilamb_rmse/*.csv"
+    agents:
+      slurm_time: "00:30:00"

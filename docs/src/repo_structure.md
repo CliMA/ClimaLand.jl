@@ -11,7 +11,7 @@ The [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 6 main
 
 The repo also has 3 CI-related folders, containing workflows that are run at each pull request.
 
-- .buildkite: contains a script that runs a variety of ClimaLand simulations, largely from the experiments and tests folders. These runs are carried out as part of CI and must run without error in order to merge a PR.
+- .buildkite: contains a script that runs a variety of ClimaLand simulations, largely from the experiments and tests folders. These runs are carried out as part of CI and must run without error in order to merge a PR. Its subfolders hold the pipelines of separate Buildkite pipelines: `longruns_gpu` (global long runs, weekly and on demand), `target` (benchmarks), `calibration`, and `fluxnet_ilamb` (weekly FLUXNET2015 RMSE against the ILAMB land-hist models).
 - .dev: contains useful tools for developers, such as a format checker for Julia (which is run as part of CI and must pass before a PR can be merged into main).
 - .github: contains various Github Actions scripts, for example, this documentation website is built each time a change is push to `ClimaLand`.
 
@@ -63,6 +63,10 @@ and folders for four fluxnet sites. For example `/experiments/integrated/fluxnet
 fluxtower site
 - US-MOz_simulation.jl: Contains simulation variables for running Clima Land on the US-MOz
 fluxtower site
+
+`/experiments/integrated/generic_site/` runs the default `LandModel` at any FLUXNET2015 site
+(`run_generic_site.jl`) and scores it against the ILAMB land-hist models at the FLUXNET2015
+sites (`fluxnet_ilamb_rmse_sites.jl`, `fluxnet_ilamb_rmse_plot.jl`); see its `README.md`.
 
 The `experiments` folder also contains a `benchmarks` folder and a `long_runs` folder. These contain experiments that are run as part of CI on the Caltech cluster. `benchmarks` is ran to ensure the model runs in a similar amount of time after changes are made. `long_runs` create
 outputs that can be checked for validity.
