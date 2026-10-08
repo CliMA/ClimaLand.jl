@@ -87,8 +87,8 @@ end
 """
      heaviside(x::FT, a::FT)::FT where {FT}
 
-Computes the heaviside function H(y) = 1 (y ≥0), 0 (y < 0),
-where y = x-a.
+Computes the heaviside function H(y) = 1 (y > eps(FT)), 0 (y ≤ eps(FT)),
+where y = x-a, so that H is zero at and within roundoff of y = 0.
 """
 function heaviside(x::FT, a::FT)::FT where {FT}
     if x - a > eps(FT)

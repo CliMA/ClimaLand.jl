@@ -81,7 +81,10 @@ t0 = 0.0;
 start_date = DateTime(2005)
 stop_date = start_date + Second(50 * 86400)
 # run for 50 days to test monthly file update
-Δt = 3600.0;
+# The explicit step is limited by the surface energy balance of the 5 cm top
+# layer, whose turbulent and radiative fluxes respond to its temperature at
+# about 100 W/m²/K; an hourly step overshoots by tens of kelvin at midday
+Δt = 1200.0;
 
 
 function setup_prob(start_date, stop_date, Δt, outdir)

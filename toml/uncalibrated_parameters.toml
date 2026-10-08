@@ -455,6 +455,37 @@ type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
+[stem_PAR_reflectance]
+value = 0.16
+type = "float"
+description = "PAR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_PAR_transmittance]
+value = 0.001
+type = "float"
+description = "PAR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_reflectance]
+value = 0.39
+type = "float"
+description = "NIR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+[stem_NIR_transmittance]
+value = 0.001
+type = "float"
+description = "NIR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+tag = "AbstractRadiationModel"
+
+# Farquhar canopy scaling
+["canopy_nitrogen_extinction_coefficient"]
+value = 0.5
+type = "float"
+description = "Extinction coefficient of the exponential decay of leaf photosynthetic capacity (Vcmax25) with cumulative leaf area index from the top of the canopy, per unit LAI. Unitless. With this scaling, Vcmax25 is the capacity of leaves at the top of the canopy; set to 0 to use Vcmax25 as the canopy-mean leaf capacity. Sellers et al. (1992); Bonan (2019), Eq. 15.6."
+tag = "FarquharParameters"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]
@@ -581,25 +612,43 @@ tag = "MoninObukhovCanopyFluxes"
 ["canopy_z_0m_coeff"]
 value = 0.0175
 type = "float"
-description = "Scalar multipling canopy height to get z_0m"
+description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
 tag = "MoninObukhovCanopyFluxes"
 
-["canopy_z_0b_coeff"]
-value = 0.0175
+["canopy_kB_inv"]
+value = 2.0
 type = "float"
-description = "Scalar multipling canopy height to get z_0b"
+description = "Excess resistance to scalar transfer of the canopy, kB⁻¹ = ln(z_0m / z_0b) (unitless); z_0b = z_0m exp(-kB⁻¹). Garratt 1992, pp. 92-94"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_raupach_frontal_area"]
+value = 0.5
+type = "float"
+description = "Frontal area index per unit plant area index of the Raupach (1994) canopy roughness length and displacement height (unitless); 0 selects the static, height-proportional roughness. Raupach 1994"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.16
+value = 0.67
 type = "float"
-description = "Scalar multipling canopy height to get displacement height"
+description = "Ratio of the canopy displacement height to the canopy height (unitless). Brutsaert 1982, p. 116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
 value = 0.1
 type = "float"
-description = ""
+description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the canopy and the canopy air is Cd * u_star * PAI (m/s). Compare the laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2) of Choudhury and Monteith 1988; Jones 2014, Ch. 3"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_subcanopy_wind_extinction_coefficient"]
+value = 0.5
+type = "float"
+description = "Extinction coefficient of the wind speed across a plant canopy per unit plant area index (LAI + SAI), unitless: the wind driving the ground below the canopy is the neutral log-profile wind at max(z_ref, height) times exp(-coefficient * PAI). Inoue (1963); Cionco (1965); Brutsaert (1982); Shuttleworth and Wallace (1985); Choudhury and Monteith (1988)."
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_subcanopy_min_reference_height"]
+value = 2.0
+type = "float"
+description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 2.7 m and for deep snow. Set to the WMO screen height."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters
@@ -717,6 +766,18 @@ tag = "EnergyHydrologyParameters"
 value = 1.0
 type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
+tag = "EnergyHydrologyParameters"
+
+["litter_layer_thickness"]
+value = 0.0
+type = "float"
+description = "Thickness of the litter layer on the soil surface (m). Water vapor leaving the soil surface diffuses through the pore space of the litter, which adds the resistance of the layer to that of the dry soil layer; zero for no litter. Litter layers under forest canopies are 1-5 cm thick; 2 cm with porosity 0.8 gives about 1000 s/m, in the range measured by Schaap and Bouten (1997) and Ogée and Brunet (2002)."
+tag = "EnergyHydrologyParameters"
+
+["litter_porosity"]
+value = 0.8
+type = "float"
+description = "Porosity of the litter layer (unitless), which sets its Millington-Quirk tortuosity factor for vapor diffusion (Millington and Quirk, 1961)."
 tag = "EnergyHydrologyParameters"
 
 # Slab Lake Model

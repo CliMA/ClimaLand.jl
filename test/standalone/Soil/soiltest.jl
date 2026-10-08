@@ -241,6 +241,8 @@ for FT in (Float32, Float64)
             FT(0.015), #d_ds
             FT(1), # evap_p,
             FT(1), #evap_α
+            FT(0), # d_litter
+            FT(0.8), # ν_litter
             earth_param_set,
         )
         soil_water_on = Soil.EnergyHydrology{FT}(;
@@ -440,6 +442,8 @@ for FT in (Float32, Float64)
             FT(0.015), #d_ds
             FT(1), # evap_p,
             FT(1), #evap_α
+            FT(0), # d_litter
+            FT(0.8), # ν_litter
             earth_param_set,
         )
 

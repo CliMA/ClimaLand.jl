@@ -92,7 +92,10 @@ z_0b = FT(1e-3);
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
 τc = FT(3600);
-Δt = 3600.0;
+# The explicit step is limited by the surface energy balance of the 5 cm top
+# layer, whose turbulent and radiative fluxes respond to its temperature at
+# about 100 W/m²/K; an hourly step overshoots by tens of kelvin at midday
+Δt = 1200.0;
 
 bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);

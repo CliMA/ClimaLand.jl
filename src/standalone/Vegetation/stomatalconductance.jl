@@ -1,5 +1,8 @@
 export MedlynConductanceParameters,
-    MedlynConductanceModel, PModelConductanceParameters, PModelConductance
+    MedlynConductanceModel,
+    PModelConductanceParameters,
+    PModelConductance,
+    CorrectedConductance
 
 abstract type AbstractStomatalConductanceModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -138,7 +141,8 @@ Computes and updates the canopy-level conductance (units of m/s) according to th
 The P-model predicts the ratio of plant internal to external CO2 concentration χ, and therefore
 the stomatal conductance can be inferred from their difference and the net assimilation rate `An`. 
 
-Note that the moisture stress factor `βm` is applied to `An` already, so it is not applied again here. 
+Note that the moisture stress factor `βm` is applied instantaneously to `An` and `gs_co2` in the
+P-model photosynthesis update, so it is not applied again here.
 """
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     P_air = p.drivers.P
@@ -157,3 +161,131 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
             ) + eps(FT)
         ) # avoids division by zero, since conductance is zero when An is zero 
 end
+
+#################### Corrected conductance ####################
+"""
+    CorrectedConductance{FT, M, C} <: AbstractStomatalConductanceModel{FT}
+
+A stomatal conductance model `model` whose canopy conductance is multiplied by
+the bounded factor `correction`, a [`LogLinearFactor`](@ref) of the canopy
+correction features [`canopy_correction_features`](@ref) (leaf area index,
+cosine of the solar zenith angle, vapor pressure deficit, snow cover fraction,
+top-layer soil water content, moisture stress factor, and log canopy height).
+
+The factor carries empirical corrections of the canopy water-use efficiency,
+for example a regression of the evaporative-fraction residuals of the model
+against flux-tower observations, into the model without changing its
+structure: the corrected conductance enters the same canopy energy and water
+balance, so both remain closed.
+$(DocStringExtensions.FIELDS)
+"""
+struct CorrectedConductance{
+    FT,
+    M <: AbstractStomatalConductanceModel{FT},
+    C <: LogLinearFactor{FT},
+} <: AbstractStomatalConductanceModel{FT}
+    "The stomatal conductance model being corrected"
+    model::M
+    "The multiplicative correction of the canopy conductance"
+    correction::C
+end
+
+CorrectedConductance(
+    model::AbstractStomatalConductanceModel{FT},
+    correction,
+) where {FT} = CorrectedConductance{FT, typeof(model), typeof(correction)}(
+    model,
+    correction,
+)
+
+# The wrapped model's `parameters` are reached through the wrapper, as the
+# update functions read `canopy.conductance.parameters`.
+Base.getproperty(m::CorrectedConductance, s::Symbol) =
+    s === :parameters ? getfield(m, :model).parameters : getfield(m, s)
+
+ClimaLand.auxiliary_vars(m::CorrectedConductance) =
+    ClimaLand.auxiliary_vars(m.model)
+ClimaLand.auxiliary_types(m::CorrectedConductance) =
+    ClimaLand.auxiliary_types(m.model)
+ClimaLand.auxiliary_domain_names(m::CorrectedConductance) =
+    ClimaLand.auxiliary_domain_names(m.model)
+
+"""
+    update_canopy_conductance!(p, Y, model::CorrectedConductance, canopy)
+
+Updates the canopy conductance with the wrapped model and divides the canopy
+stomatal resistance by the correction factor.
+"""
+function update_canopy_conductance!(p, Y, model::CorrectedConductance, canopy)
+    update_canopy_conductance!(p, Y, model.model, canopy)
+    f = model.correction
+    x = canopy_correction_features(p, canopy)
+    @. p.canopy.conductance.r_stomata_canopy /= f(
+        x.LAI,
+        x.cosθs,
+        x.VPD,
+        x.snow_cover_fraction,
+        x.θ_top,
+        x.βm,
+        x.log_height,
+    )
+end
+
+"""
+    canopy_correction_features(p, canopy)
+
+Return a NamedTuple of (lazy) fields of the state variables that the
+[`LogLinearFactor`](@ref) corrections of the canopy are functions of: the leaf
+area index `LAI`, the cosine of the solar zenith angle `cosθs`, the vapor
+pressure deficit `VPD` (kPa), the `snow_cover_fraction` (zero without a snow
+model), the volumetric water content of the top soil layer `θ_top`, the
+moisture stress factor `βm`, and the logarithm of the canopy height
+`log_height` (m, floored at 0.05 m).
+"""
+function canopy_correction_features(p, canopy)
+    thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
+    LAI = p.canopy.biomass.area_index.leaf
+    cosθs = p.drivers.cosθs
+    VPD = @. lazy(
+        Thermodynamics.vapor_pressure_deficit(
+            thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        ) / 1000,
+    )
+    components = Val(canopy.boundary_conditions.prognostic_land_components)
+    snow_cover_fraction = canopy_snow_cover_fraction(p, components, LAI)
+    θ_top = canopy_top_soil_water(p, canopy.boundary_conditions.ground, LAI)
+    βm = p.canopy.soil_moisture_stress.βm
+    log_height = log_canopy_height(canopy.biomass.height, eltype(LAI))
+    return (; LAI, cosθs, VPD, snow_cover_fraction, θ_top, βm, log_height)
+end
+
+"""
+    log_canopy_height(height, FT)
+
+The logarithm of the canopy `height` (a number or a field), floored at 0.05 m.
+"""
+log_canopy_height(height::Number, FT) = log(max(FT(height), FT(0.05)))
+log_canopy_height(height, FT) = @. lazy(log(max(height, FT(0.05))))
+
+"""
+    canopy_snow_cover_fraction(p, components::Val, LAI)
+
+The snow cover fraction seen by the canopy: that of the snow model when the
+land components include `:snow`, zero otherwise.
+"""
+canopy_snow_cover_fraction(p, ::Val{components}, LAI) where {components} =
+    :snow in components ? p.snow.snow_cover_fraction : @. lazy(zero(LAI))
+
+"""
+    canopy_top_soil_water(p, ground, LAI)
+
+The volumetric water content of the top soil layer seen by the canopy: that
+of the soil model with `PrognosticGroundConditions`, the prescribed driver
+`p.drivers.θ` with `PrescribedGroundConditions`.
+"""
+canopy_top_soil_water(p, ::ClimaLand.PrognosticGroundConditions, LAI) =
+    ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
+canopy_top_soil_water(p, ::PrescribedGroundConditions, LAI) = p.drivers.θ

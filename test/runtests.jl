@@ -46,6 +46,12 @@ if TEST_GROUP in ("all", "core")
         include("shared_utilities/drivers.jl")
         include("shared_utilities/coupled_fluxes.jl")
     end
+    @safetestset "Stability cap tests" begin
+        include("shared_utilities/stability_cap.jl")
+    end
+    @safetestset "State correction tests" begin
+        include("shared_utilities/state_corrections.jl")
+    end
 
     # Standalone Bucket model tests
     @safetestset "Bucket albedo types tests" begin
@@ -139,6 +145,9 @@ if TEST_GROUP in ("all", "core")
     end
     @safetestset "Big Leaf model tests" begin
         include("standalone/Vegetation/test_bigleaf_parameterizations.jl")
+    end
+    @safetestset "Canopy helper function tests" begin
+        include("standalone/Vegetation/test_canopy_helpers.jl")
     end
     @safetestset "Two Stream model tests" begin
         include("standalone/Vegetation/test_two_stream.jl")

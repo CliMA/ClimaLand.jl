@@ -41,10 +41,12 @@ end
         prognostic_land_components::Union{
             Val{(:canopy, :lake, :snow, :soil, :soilco2)},
             Val{(:canopy, :lake, :snow, :soil)},},
+        canopy,
     )
 
-Mask out areas where there is a lake by setting LAI, RAI, and SAI to zero.
-Called in canopy update_aux!.
+Mask out areas where there is a lake by setting LAI, RAI, and SAI to zero, and
+reduce the leaf and stem area indices to the part of the canopy above the snow
+surface (`Canopy.bury_biomass_in_snow!`). Called in canopy update_aux!.
 
 Currently treats the lake mask as 1 or 0. It is TBD how to clip LAI, SAI RAI - or if it
 is needed - if the lake fraction is not binary.
@@ -55,6 +57,7 @@ function Canopy.mask_biomass!(
         Val{(:canopy, :lake, :snow, :soil, :soilco2)},
         Val{(:canopy, :lake, :snow, :soil)},
     },
+    canopy,
 )
     canopy_mask = p.lake_fraction
     FT = eltype(p.canopy.biomass.area_index.leaf)
@@ -64,6 +67,7 @@ function Canopy.mask_biomass!(
         ifelse(canopy_mask == 1, FT(0), p.canopy.biomass.area_index.stem)
     @. p.canopy.biomass.area_index.root =
         ifelse(canopy_mask == 1, FT(0), p.canopy.biomass.area_index.root)
+    Canopy.bury_biomass_in_snow!(p, canopy.biomass.height)
 end
 
 """

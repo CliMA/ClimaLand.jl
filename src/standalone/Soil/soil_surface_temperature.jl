@@ -45,6 +45,24 @@ soil_surface_temperature(_, p) =
     ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
 """
+    frozen_soil_vapor_weight(θ_i, ν)
+
+Return the weight `β_ice = (θ_i / ν)^4` [-] of the saturation specific
+humidity in the surface specific humidity of a frozen soil losing water by
+sublimation, given the volumetric ice content `θ_i` and the porosity `ν`
+[m³/m³]. This is a heuristic without a published source: it suppresses
+sublimation from a frozen surface whose pores hold little ice, in the same
+way that the dry-soil-layer conductance suppresses evaporation from an
+unfrozen surface holding little liquid water, and reaches one when the pores
+are filled with ice. The exponent is chosen so that the suppression is strong
+at intermediate ice contents.
+
+Called from `update_soil_surface_temperature!` and
+`get_update_surface_humidity_function(::EnergyHydrology)`.
+"""
+frozen_soil_vapor_weight(θ_i, ν) = (θ_i / ν)^4
+
+"""
     soil_surface_vapor_weight(q_air, qsat, g_liq, g_h, β_ice, frozen)
 
 Return the weight `w` [-] such that the surface specific humidity of the soil
@@ -303,11 +321,11 @@ temperature with the turbulent fluxes at it.
 and `buoyancy_flux` before `T_sfc` if `return_extra_fluxes` is `Val(true)`: the
 latent and sensible heat fluxes [W/m²], the vapor flux [m/s of liquid water]
 from liquid water or from ice (sublimation at and below the freezing
-temperature), and the skin temperature [K] (see `soil_turbulent_fluxes`).
+temperature), and the skin temperature in K (see `soil_turbulent_fluxes`).
 
 Called from [`update_soil_surface_temperature!`](@ref).
 """
-function solve_soil_surface_temperature_at_a_point(
+@inline function solve_soil_surface_temperature_at_a_point(
     return_extra_fluxes::Val,
     T_top::FT,
     r::FT,
@@ -327,10 +345,10 @@ function solve_soil_surface_temperature_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     earth_param_set,
-) where {FT}
+) where {FT, UDT, UDQ}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
     update_T(args...) = update_soil_T_sfc_scheme(
@@ -397,6 +415,7 @@ function solve_soil_surface_temperature_at_a_point(
         T_atmos,
         q_atmos,
         atmos_h - h_sfc,
+        displ,
         earth_param_set,
     )
     return soil_turbulent_fluxes(fluxes, output.T_sfc, Tf_depressed)
@@ -405,9 +424,11 @@ end
 """
     soil_surface_vapor_conductance!(g_soil_sfc, model::EnergyHydrology, Y, p)
 
-Compute the conductance [m/s] of the dry soil layer to water vapor at the soil
-surface into `g_soil_sfc` and return it. The liquid water content is
-extrapolated to the surface from the top two cells.
+Compute the conductance [m/s] to water vapor between the soil surface and the
+air above it into `g_soil_sfc` and return it: the resistance of the dry soil
+layer ([`soil_conductance`](@ref)) in series with that of the litter layer
+([`litter_resistance`](@ref)). The liquid water content is extrapolated to the
+surface from the top two cells.
 
 Called from [`update_soil_surface_temperature!`](@ref) and
 `get_update_surface_humidity_function(::EnergyHydrology)`.
@@ -419,8 +440,17 @@ function soil_surface_vapor_conductance!(
     p,
 )
     FT = eltype(Y)
-    (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
-        model.parameters
+    (;
+        ν,
+        θ_r,
+        d_ds,
+        evap_p,
+        evap_α,
+        d_litter,
+        ν_litter,
+        hydrology_cm,
+        earth_param_set,
+    ) = model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
     S_c_sfc = hydrology_cm_sfc.S_c
     ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
@@ -451,13 +481,18 @@ function soil_surface_vapor_conductance!(
         θ_r_sfc,
         θ_i_sfc,
     )
+    r_litter = litter_resistance(d_litter, ν_litter, _D_vapor)
+    @. g_soil_sfc = 1 / (1 / g_soil_sfc + r_litter)
     # Reusing g_soil_sfc for the intermediates keeps the kernel argument
     # count within the parameter memory limit of P100 GPUs
     return g_soil_sfc
 end
 
 """
-    update_soil_surface_temperature!(model::EnergyHydrology, SW_n, LW_d, Y, p, t)
+    update_soil_surface_temperature!(model::EnergyHydrology, SW_n, LW_d, Y, p, t;
+                                     h_atmos = nothing, u_atmos = p.drivers.u,
+                                     T_atmos = p.drivers.T, q_atmos = p.drivers.q,
+                                     gustiness = nothing)
     update_soil_surface_temperature!(model::EnergyHydrology, Y, p, t)
 
 Solve for the soil skin temperature from the surface energy balance and store
@@ -474,9 +509,14 @@ condition is an `AtmosDrivenFluxBC`.
 `SW_n` and `LW_d` may be fields or lazy broadcasts; land models with a canopy
 pass the radiation transmitted and emitted by the canopy. The four-argument
 method is for soil exposed to the sky and uses the downwelling radiation in
-`p.drivers` and the soil albedo. The atmospheric state at the reference height
-`atmos.h` is read from `p.drivers`, whether prescribed or supplied by a
-coupler, and `p.soil.sfc_scratch` is overwritten.
+`p.drivers` and the soil albedo. The atmospheric pressure is read from
+`p.drivers`, whether prescribed or supplied by a coupler, and
+`p.soil.sfc_scratch` is overwritten. The reference height `h_atmos`, the wind
+`u_atmos`, temperature `T_atmos`, and specific humidity `q_atmos` at it, and
+the gustiness model default to those of the atmospheric forcing (see
+`ClimaLand.gustiness_model`); land models with a canopy pass the sub-canopy
+reference height, attenuated wind, canopy-air temperature and humidity, and
+zero gustiness (see `Canopy.subcanopy_forcing`).
 
 Called from the `soil_boundary_fluxes!` methods and, in integrated models,
 from `lsm_radiant_energy_fluxes!`. See also
@@ -488,11 +528,20 @@ function update_soil_surface_temperature!(
     LW_d,
     Y,
     p,
-    t,
+    t;
+    h_atmos = nothing,
+    u_atmos = p.drivers.u,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+    gustiness = nothing,
 )
     bc = model.boundary_conditions.top
     bc isa AtmosDrivenFluxBC || return nothing
     atmos = bc.atmos
+    h_atmos = isnothing(h_atmos) ? atmos.h : h_atmos
+    gustiness = ClimaLand.gustiness_model(
+        isnothing(gustiness) ? atmos.gustiness : gustiness,
+    )
     earth_param_set = model.parameters.earth_param_set
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
@@ -508,9 +557,8 @@ function update_soil_surface_temperature!(
     h_sfc = ClimaLand.surface_height(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
     r = @. lazy(Δz_top / κ_top)
-    β_ice = @. lazy((θ_i_sfc / ν_sfc)^4)
+    β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
     update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
@@ -528,11 +576,11 @@ function update_soil_surface_temperature!(
         h_sfc,
         displ,
         p.drivers.P,
-        p.drivers.T,
-        p.drivers.q,
-        p.drivers.u,
+        T_atmos,
+        q_atmos,
+        u_atmos,
         roughness_model,
-        atmos.h,
+        h_atmos,
         gustiness,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,

@@ -9,6 +9,8 @@ using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
 using Dates
+import SurfaceFluxes
+import SurfaceFluxes.Parameters as SFP
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
@@ -137,6 +139,169 @@ end
     end
 end
 
+@testset "Gustiness models, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    sf_params = LP.surface_fluxes_parameters(earth_param_set)
+    β = SFP.gustiness_coeff(sf_params)
+    z_i = SFP.gustiness_zi(sf_params)
+
+    spec = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    @test spec isa SurfaceFluxes.AbstractGustinessSpec
+    # The gustiness is a function of the stability parameter and the state,
+    # so SurfaceFluxes uses its closed-form friction velocity
+    @test !SurfaceFluxes.depends_on_ustar(spec)
+    # Stable or neutral (non-positive buoyancy flux): only the floor applies
+    for B in (FT(0), FT(-0.01))
+        @test SurfaceFluxes.gustiness_value(spec, sf_params, B) == FT(1)
+    end
+    # Unstable: Deardorff value when it exceeds the floor
+    B = FT(0.02)
+    expected = β * cbrt(B * z_i)
+    @test expected > 1
+    @test SurfaceFluxes.gustiness_value(spec, sf_params, B) ≈ expected
+    # A floor above the convective value wins
+    @test SurfaceFluxes.gustiness_value(
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(10)),
+        sf_params,
+        B,
+    ) == FT(10)
+
+    # Conversions and floors
+    c = SurfaceFluxes.ConstantGustinessSpec(FT(2))
+    @test ClimaLand.gustiness_model(1, FT) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    @test ClimaLand.gustiness_model(FT(1)) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    @test ClimaLand.gustiness_model(spec, FT) === spec
+    @test ClimaLand.gustiness_model(spec) === spec
+    @test ClimaLand.gustiness_model(c) === c
+    @test ClimaLand.gustiness_floor(spec) == FT(1)
+    @test ClimaLand.gustiness_floor(c) == FT(2)
+    @test ClimaLand.gustiness_floor(FT(3)) == FT(3)
+    @test ClimaLand.gustiness_floor(SurfaceFluxes.DeardorffGustinessSpec()) == 0
+
+    # A flux solve with the model: in calm unstable conditions the effective
+    # wind speed is at least the floor, so the fluxes exceed those of a solve
+    # without gustiness; the solve is a function of its inputs alone
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    solve(gustiness) = ClimaLand.surface_fluxes_at_a_point(
+        FT(300), # T_sfc
+        FT(0.015), # q_sfc
+        nothing,
+        nothing,
+        FT(101325), # P_atmos
+        FT(290), # T_atmos
+        FT(0.005), # q_atmos
+        FT(0.1), # u_atmos
+        FT(10), # h_atmos
+        FT(0), # h_sfc
+        FT(0), # displ
+        roughness_model,
+        gustiness,
+        earth_param_set,
+    )
+    with_gust = solve(spec)
+    @test with_gust == solve(spec)
+    no_gust = solve(SurfaceFluxes.ConstantGustinessSpec(FT(0)))
+    floor_only = solve(SurfaceFluxes.ConstantGustinessSpec(FT(1)))
+    @test with_gust.shf > no_gust.shf > 0 # upward sensible heat flux
+    @test with_gust.shf >= floor_only.shf
+    @test with_gust.ustar >= floor_only.ustar
+    @test with_gust.ζ < 0 # unstable
+    @test isfinite(with_gust.lhf) && isfinite(with_gust.L_MO)
+    # Self-consistency: the effective wind speed of the solve, u* / sqrt(Cd),
+    # is the gustiness β w* of its own buoyancy flux (the mean wind is
+    # negligible here), and a solve with that constant gustiness agrees to
+    # within the tolerance of the stability solve
+    ΔU = with_gust.ustar / sqrt(with_gust.Cd)
+    B = -with_gust.ustar^3 / (SFP.von_karman_const(sf_params) * with_gust.L_MO)
+    @test B > 0
+    @test ΔU ≈ β * cbrt(B * z_i) rtol = sqrt(eps(FT))
+    @test ΔU > 1
+    same = solve(SurfaceFluxes.ConstantGustinessSpec(ΔU))
+    @test same.shf ≈ with_gust.shf rtol = 1e-3
+    @test same.ustar ≈ with_gust.ustar rtol = 1e-3
+
+    # Atmospheric drivers accept a number or a gustiness model
+    f = TimeVaryingInput((t) -> 10.0)
+    pa = ClimaLand.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1), toml_dict)
+    @test pa.gustiness == SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    pa2 = ClimaLand.PrescribedAtmosphere(
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        FT(1),
+        toml_dict;
+        gustiness = 2,
+    )
+    @test pa2.gustiness == SurfaceFluxes.ConstantGustinessSpec(FT(2))
+    # A CoupledAtmosphere keeps the number the coupler reads; the flux solve
+    # converts it to a constant gustiness
+    ca = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
+    @test ca.gustiness == FT(1)
+    @test ClimaLand.gustiness_floor(ca.gustiness) == FT(1)
+    @test ClimaLand.gustiness_model(ca.gustiness) ==
+          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+end
+
+@testset "Turbulent flux selections, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    fluxes(stored) = ClimaLand.turbulent_fluxes_at_a_point(
+        stored,
+        FT(101325), # P_atmos
+        FT(290), # T_atmos
+        FT(0.005), # q_atmos
+        FT(2), # u_atmos
+        FT(10), # h_atmos
+        FT(295), # T_sfc
+        FT(0.015), # q_sfc
+        roughness_model,
+        nothing,
+        nothing,
+        FT(0), # h_sfc
+        FT(0), # displ
+        (args...) -> FT(1),
+        (args...) -> FT(1),
+        gustiness,
+        earth_param_set,
+    )
+    # The Boolean selections are the contract of ClimaCoupler, which
+    # evaluates them directly into its flux fields
+    @test propertynames(fluxes(Val(false))) ==
+          (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T)
+    @test propertynames(fluxes(Val(true))) == (
+        :lhf,
+        :shf,
+        :vapor_flux,
+        :∂lhf∂T,
+        :∂shf∂T,
+        :ρτxz,
+        :ρτyz,
+        :buoyancy_flux,
+    )
+    # A tuple of names selects from the full output, in the order given
+    stored = Val((:ustar, :shf, :T_sfc, :q_sfc, :ζ, :Δz_eff, :buoyancy_flux))
+    selected = fluxes(stored)
+    @test propertynames(selected) ==
+          (:ustar, :shf, :T_sfc, :q_sfc, :ζ, :Δz_eff, :buoyancy_flux)
+    @test selected.shf == fluxes(Val(false)).shf
+    @test selected.buoyancy_flux == fluxes(Val(true)).buoyancy_flux
+    @test selected.T_sfc == FT(295)
+    @test selected.q_sfc == FT(0.015)
+    @test selected.Δz_eff == FT(10)
+    @test selected.ustar > 0
+    @test selected.ζ < 0 # unstable
+    @test eltype(values(selected)) == FT
+end
+
 @testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin
     domain = ClimaLand.Domains.global_domain(FT)
     coords = ClimaLand.Domains.coordinates(domain)
@@ -253,4 +418,113 @@ end
         @test p_soil_driver.drivers.θ == (zero_instance .+ FT(0.1))
         @test p_soil_driver.drivers.T_ground == (zero_instance .- 1)
     end
+end
+
+@testset "Screen-level reconstruction, FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    sf_params = LP.surface_fluxes_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    κ = SFP.von_karman_const(sf_params)
+    g = LP.grav(earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    heat = SurfaceFluxes.UniversalFunctions.HeatTransport()
+    momentum = SurfaceFluxes.UniversalFunctions.MomentumTransport()
+    # The neutral heat profile carries the neutral turbulent Prandtl number
+    Pr_0 = SFP.Pr_0(sf_params)
+
+    # Neutral: logarithmic profiles
+    z0m, z0h, Δz_eff = FT(0.1), FT(0.01), FT(20)
+    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(0), z0h, heat, sf_params) ≈
+          Pr_0 * log(5 / z0h)
+    @test ClimaLand.profile_shape(
+        FT(5),
+        Δz_eff,
+        FT(0),
+        z0m,
+        momentum,
+        sf_params,
+    ) ≈ log(5 / z0m)
+    # Clamped to the forcing height and to the roughness length
+    @test ClimaLand.profile_shape(FT(50), Δz_eff, FT(0), z0h, heat, sf_params) ≈
+          Pr_0 * log(Δz_eff / z0h)
+    @test ClimaLand.profile_shape(FT(0), Δz_eff, FT(0), z0h, heat, sf_params) ==
+          0
+    # Stable conditions reduce the mixing: larger profile value
+    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(1), z0h, heat, sf_params) >
+          Pr_0 * log(5 / z0h)
+
+    T_sfc, T_air, q_sfc, q_air, ustar =
+        FT(300), FT(290), FT(0.02), FT(0.01), FT(0.3)
+    s = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        Δz_eff,
+        FT(0),
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    r = log((z0h + 2) / z0h) / log(Δz_eff / z0h)
+    @test s.T ≈
+          T_sfc + (T_air - T_sfc) * r + g / cp_d * (r * Δz_eff - (z0h + 2))
+    @test s.q ≈ q_sfc + (q_air - q_sfc) * r
+    @test s.u ≈ ustar / κ * log((z0m + 10) / z0m)
+    @test s.g_h ≈ κ * ustar / (Pr_0 * log(Δz_eff / z0h))
+    # With a displacement height, the screen level is that much higher above
+    # the surface, which only enters the adiabatic term
+    displ = FT(5)
+    s_d = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        Δz_eff,
+        displ,
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    @test s_d.q == s.q
+    @test s_d.T ≈ s.T + g / cp_d * (r - 1) * displ
+    # Forcing at or below the screen height: forcing values are returned
+    s_low = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        FT(1.5),
+        FT(0),
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(2),
+        FT(10),
+        earth_param_set,
+    )
+    @test s_low.T ≈ T_air
+    @test s_low.q ≈ q_air
+    @test s_low.u ≈ ustar / κ * log(FT(1.5) / z0m)
+
+    # Weighted mean over surfaces: area fraction times conductance
+    s1 = (; T = FT(1), q = FT(1), u = FT(1), g_h = FT(2))
+    s2 = (; T = FT(3), q = FT(3), u = FT(3), g_h = FT(1))
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s1)) == 1
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s1), (FT(1), s2)) ≈
+          (2 * 1 + 1 * 3) / 3
+    @test ClimaLand.screen_level_mean(Val(:u), (FT(0.5), s1), (FT(1), s2)) ≈
+          (1 * 1 + 1 * 3) / 2
+    s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
+    @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
 end

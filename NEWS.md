@@ -2,6 +2,246 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+### Raupach (1994) canopy roughness length and displacement height (temporary)
+
+With `canopy_raupach_frontal_area = 0.5` (default), the canopy momentum
+roughness length and displacement height used in the flux solves, the
+sub-canopy forcing and the screen-level diagnostics are the Raupach (1994)
+functions of canopy height and plant area index, `Λ = 0.5 (LAI + SAI)`,
+instead of fixed fractions of the height; `0` restores the static values. For
+10-30 cm grass and crop canopies this lowers `z_0m` by 30-40 % and, on top of
+`kB⁻¹ = 2`, lowers the daytime sensible heat bias at eight FLUXNET2015 sites
+by a further 1.2 W/m² (DE-Gri +23 → +19). This is a temporary workaround: the
+parameterization belongs in SurfaceFluxes.jl and will migrate there.
+
+### Canopy scalar roughness length from kB⁻¹ (`canopy_kB_inv`)
+
+The canopy scalar (heat and vapor) roughness length is now
+`z_0b = z_0m exp(-kB⁻¹)` with `canopy_kB_inv = 2`, the standard excess
+resistance of vegetated surfaces (Garratt 1992), instead of
+`canopy_z_0b_coeff * height + z_0min`, which made `z_0b ≈ 0.9 z_0m` and
+over-coupled short canopies to the atmosphere. The parameter
+`canopy_z_0b_coeff` is removed. At eight FLUXNET2015 grass, crop and
+broadleaf sites (730 d, GPP and LAI prescribed) the daytime sensible heat
+bias falls from +33 to +26 W/m² and its RMSE from 65 to 60 W/m² (all eight
+sites improve), the evaporative fraction error from 0.10 to 0.08; latent heat
+is unchanged and upward longwave rises by 2-3 W/m² at the humid sites, where
+it was already too high.
+
+### Temporary leaf NIR optics floor (`leaf_NIR_omega_min`)
+
+`TwoStreamParameters` now raises the leaf NIR single-scattering albedo of
+broad leaves and grasses (table and gridded values `ω ≈ 0.7`) to
+`α = τ = 0.38` (`leaf_NIR_omega_min = 0.76`); needleleaf shoot values are
+left unchanged. The too-dark NIR canopies made humid grass, crop and broadleaf
+sites absorb too much shortwave, which came out as sensible heat (FLUXNET2015
+midday SWup 50-80 % of observed; H bias 3-9 W/m² per site). The floor sits
+below the leaf-level value (`α ≈ τ ≈ 0.42`) because the full value over-brightens
+closed broadleaf canopies (monthly SWup +12-19 W/m² at evergreen and deciduous
+broadleaf FLUXNET2015 sites). Set `leaf_NIR_omega_min = 0` to recover the
+previous optics. This is a stop-gap until the universal leaf optics replace
+the PFT values.
+
+- ![][badge-✨feature] Add bounded, state-dependent multiplicative corrections
+  that carry empirical (e.g. flux-tower regression) error corrections into the
+  flux solves without changing the model structure: `LogLinearFactor`,
+  `f = exp(clamp(b + Σ wᵢ (xᵢ - μᵢ)/σᵢ, -L, L))`, applied to the canopy
+  conductance (`Canopy.CorrectedConductance`, wrapping any stomatal
+  conductance model), to the clumping index of the two-stream scheme
+  (`TwoStreamModel(…; clumping_correction)`, `Ω → min(1, Ω f)`), and to the
+  soil albedo (`CLMTwoBandSoilAlbedo(…; correction)`). The canopy factors are
+  functions of the model state only (leaf area index, cosine of the solar
+  zenith angle, vapor pressure deficit, snow cover fraction, top-layer soil
+  water content, moisture stress factor, and log canopy height), the soil
+  factor of the zenith angle and the surface water content; energy and water
+  remain conserved and the solves restart-reproducible. All defaults are
+  `nothing` (no correction), leaving every result unchanged. Trained on the
+  residuals of 24 FLUXNET sites with GPP and LAI prescribed (year 2 of 730-day
+  runs; finite-difference sensitivities from runs with the conductance x1.5),
+  a conductance factor of cos θs, VPD, βm and log canopy height
+  (f ≈ 1.3 for short canopies at low VPD, ≈ 0.85 for tall canopies at 2 kPa)
+  reduces the leave-one-site-out evaporative-fraction bias from 0.072 to 0.052
+  and the RMSE from 0.187 to 0.170 (linearised), and online, in the full
+  model, the EF bias from 0.072 to 0.057 and the RMSE from 0.188 to 0.175
+  (22 of 24 sites), the sensible heat flux RMSE from 46.7 to 45.3 W/m² (21 of
+  24) and the latent heat flux RMSE from 37.0 to 36.1 W/m² (19 of 24), with
+  SWup, LWup and Rn unchanged. Factors of the state variables alone, without
+  the canopy height, have no out-of-sample skill, nor do the clumping and
+  soil-albedo channels: the daily-mean ground heat flux is nearly unbiased
+  (the daytime excess against plate measurements at 5–8 cm is a storage-phase
+  difference) and the soil-albedo residuals differ in sign between
+  neighbouring semi-arid sites. Refit after the NIR floor, kB⁻¹ and Raupach
+  roughness changes above (which remove most of the mean bias on their own:
+  EF |bias| 0.073 → 0.064 online), the factor's intercept falls from
+  `b = +0.082` to `+0.026` and the leave-one-site-out EF |bias| from 0.064 to
+  0.053 (RMSE 0.180 → 0.167); the coefficients are in
+  `experiments/integrated/fluxnet/conductance_correction_fluxnet2015.toml`.
+- ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
+  the soil surface diffuses through the pore space of a dry litter layer of
+  thickness `litter_layer_thickness` and porosity `litter_porosity`
+  (`Soil.litter_resistance`, Millington-Quirk tortuosity), in series with the
+  resistance of the dry soil layer. The default thickness is zero, which leaves
+  all results unchanged. With 2 cm of litter (about 1000 s/m, as measured under
+  forest canopies by Schaap and Bouten, 1997, and Ogée and Brunet, 2002) the
+  evaporation from the floor of closed forests at FLUXNET sites falls from
+  35–75 % of the evapotranspiration, where the wet mineral soil evaporated like
+  a free water surface, to 5–15 %, as observed.
+- ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
+  at the water content of the permanent wilting point (ψ = -150 m). At sites
+  where the observed water content is below the residual water content of the
+  soil parameters (US-SRG), the soil started outside the domain of the
+  retention curve, where the pressure head is unbounded and its derivative
+  vanishes, and the first rain produced an unbounded flux and NaNs.
+- ![][badge-🔥behavioralΔ] Initialize the soil of FLUXNET simulations with depth-dependent
+  profiles instead of a uniform column. The water content relaxes from the
+  shallow observation at the start date to the record mean of the deepest soil
+  moisture sensor with a 0.5 m e-folding depth, and the temperature from the
+  shallow observation to the record mean with the 2 m annual damping depth. At
+  sites without any soil moisture record, which previously started at 95 % of
+  saturation throughout, the deep water content is estimated from the aridity
+  `P/PET` of the record between the wilting point and field capacity
+  (`climatological_soil_moisture`). The site soil column has a zero-flux bottom
+  and loses water almost only by evapotranspiration, so a uniform wet initial
+  column kept semi-arid sites (e.g. US-Seg, US-Ton) wet for years, with
+  evaporation, ground heat flux, and soil thermal inertia far above the
+  observations. At the four semi-arid sites without soil moisture data
+  (US-Seg, US-Ses, US-Wjs, US-Vcp) the first-year bias of the latent heat
+  flux falls from +11 to +18 W/m² to -1 to +10 W/m²; at sites with soil
+  moisture data the changes are within a few W/m².
+
+- ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
+  and stem area indices in the cache are reduced to the part of the canopy
+  above the snow surface (`Canopy.exposed_canopy_fraction`,
+  `Canopy.bury_biomass_in_snow!`), with the snow depth and snow cover fraction
+  of the snow model and the canopy height. Over the snow-covered part of the
+  ground the local snow depth is the mean depth divided by the cover
+  fraction; plant area is taken as uniform in height. Short vegetation under a
+  snowpack deeper than its height therefore no longer intercepts radiation or
+  exchanges heat and water vapor, and the land surface takes the albedo of the
+  snow, as observed over snow-covered grassland and cropland while forests
+  stay dark (Betts and Ball, 1997). Forests with heights of tens of meters are
+  almost unaffected. `Canopy.mask_biomass!` now receives the canopy model as a
+  third argument.
+- ![][badge-✨feature] Add the screen-level diagnostics `t2m`, `q2m`, and `u10m` (air
+  temperature and specific humidity 2 m above the apparent sink for heat, and
+  wind speed 10 m above the apparent sink for momentum) for the soil, snow,
+  and canopy models and the integrated models, reconstructed from the
+  Monin-Obukhov profiles of the flux solves (`ClimaLand.screen_level_values`),
+  with the temperature following the dry static energy. Integrated models
+  average over their surfaces weighted by area fraction and heat conductance
+  (`ClimaLand.screen_level_mean`). To support this, the soil, snow, and canopy
+  turbulent flux cache variables store the friction velocity `ustar`, the
+  (capped) stability parameter `ζ`, and the effective forcing height `Δz_eff`
+  of the solve, the soil and canopy also store the effective surface humidity
+  `q_sfc` at which their fluxes were evaluated, and the canopy stores the
+  temperature `T_sfc` as well; `ClimaLand.turbulent_fluxes!` stores whichever
+  of these the destination names (`ClimaLand.select_fluxes`), while
+  `ClimaLand.turbulent_fluxes_at_a_point` keeps returning the energy and vapor
+  fluxes and their derivatives (and, for `Val(true)`, the momentum and
+  buoyancy fluxes) that ClimaCoupler evaluates directly. Below a canopy, the
+  soil and snow profiles are reconstructed toward the canopy-air state of
+  their flux solves. `t2m`, `q2m`, and `u10m` are included in the default
+  short diagnostics of `LandModel`.
+- ![][badge-🔥behavioralΔ] Add convective gustiness to the effective wind speed of the land
+  surface fluxes: `PrescribedAtmosphere` and `CoupledAtmosphere` now hold a
+  gustiness model in their `gustiness` field, and the default of
+  `PrescribedAtmosphere` and of the ERA5, CRU-JRA, and FLUXNET forcing helpers
+  is `SurfaceFluxes.FlooredDeardorffGustinessSpec(1 m/s)` (SurfaceFluxes
+  1.4), the larger of the previous 1 m/s floor and the Deardorff convective
+  velocity `β (B z_i)^{1/3}` (`gustiness_coeff`, `gustiness_zi` of
+  SurfaceFluxes; Deardorff 1970, Beljaars 1995). The buoyancy flux `B` is that
+  of the flux solve itself, which SurfaceFluxes.jl makes consistent with the
+  friction velocity, so the fluxes depend only on the current state. Requires
+  SurfaceFluxes 1.4. The ground below a canopy keeps the convective part of
+  the model with a zero floor, since the floor is folded into the wind above
+  the canopy (`ClimaLand.gustiness_floor`, `Canopy.ground_gustiness`). Passing
+  a number for `gustiness`
+  recovers the constant floor everywhere (`SurfaceFluxes.ConstantGustinessSpec`).
+- ![][badge-🔥behavioralΔ] Cap the stability of all land surface turbulent fluxes at the
+  stability of maximum sensible heat flux (`SurfaceFluxes.MaxHeatFluxStabilityCap`,
+  configured in `ClimaLand.surface_flux_config`), so that canopies and snow
+  stay coupled to the atmosphere in stable conditions. Requires SurfaceFluxes
+  1.3.
+- ![][badge-🔥behavioralΔ] Set the canopy displacement height coefficient `canopy_d_coeff` to
+  0.67.
+- ![][badge-🔥behavioralΔ] Use the plant area index `LAI + SAI` and plant-area-weighted optical
+  properties in canopy shortwave radiative transfer (`TwoStreamModel` and
+  `BeerLambertModel`), longwave emissivity (`1 - exp(-K_lw * (LAI + SAI))`),
+  big-leaf heat capacity (`ac_canopy * (LAI + SAI)`), and canopy sensible heat
+  exchange (`leaf_Cd * u_star * (LAI + SAI)`), while weighting the absorbed PAR
+  that drives photosynthesis and fluorescence by the leaf share `LAI / (LAI + SAI)`
+  (`Canopy.leaf_fAPAR`).
+- ![][badge-🔥behavioralΔ] Scale leaf-level photosynthetic capacities in `FarquharModel` by the
+  canopy-mean nitrogen decay factor `(1 - exp(-kn * LAI)) / (kn * LAI)`
+  (Sellers et al. 1992; Bonan 2019, Eq. 15.6), with the extinction coefficient
+  `kn` read from the new TOML parameter `canopy_nitrogen_extinction_coefficient`
+  (default 0.5) into the new field `FarquharParameters.kn`. The parameter
+  `Vcmax25` now denotes the capacity of leaves at the top of the canopy;
+  `get_Vcmax25_leaf` returns the canopy-mean leaf value and
+  `get_Vcmax25_canopy` (the `vcmax25` diagnostic) its integral over the leaf
+  area index. Site values of `Vcmax25` calibrated as canopy-mean leaf values
+  are reproduced by setting `canopy_nitrogen_extinction_coefficient` to zero,
+  or by dividing them by `canopy_nitrogen_scaling(kn, LAI)`.
+- ![][badge-🔥behavioralΔ] Start the snow surface temperature solve of the
+  `EquilibriumGradientTemperatureModel` from `min((T_air + T_snow)/2, T_freeze)`
+  instead of `max(...)`, so that the initial guess lies at or below the freezing
+  cap of the solution.
+- ![][badge-🔥behavioralΔ] `AtmosDrivenCanopyBC` throws an `ArgumentError` when the
+  reference height of a `PrescribedAtmosphere` does not exceed the canopy
+  displacement height plus the momentum roughness length everywhere, instead of
+  producing undefined Monin-Obukhov fluxes at run time.
+- ![][badge-🐛bugfix] Update the volumetric liquid water fraction `p.soil.θ_l` in
+  `make_update_implicit_aux` of `Soil.EnergyHydrology` so that implicit
+  evaluations see the updated liquid water fraction.
+- ![][badge-🐛bugfix] Convert `soil_vg_α` in the `US-NR1`, `US-MOz`, and `US-Ha1`
+  FLUXNET site configurations from $\text{cm}^{-1}$ (Wang et al. 2021) to SI
+  ($\text{m}^{-1}$), update `K_sat_plant` at `US-NR1` and `US-Ha1` to match
+  `default_parameters.toml` (`7e-8 m/s`), and mask frozen-soil dielectric sensor
+  readings (`TS <= 0 °C`) when initializing total volumetric water in
+  `FluxnetSimulations`.
+- ![][badge-✨feature] Register `soilrn`, `soilshf`, and `soillhf` in the default diagnostics of
+  `Soil.EnergyHydrology` (and `LandModel`).
+- ![][badge-🔥behavioralΔ] Evaluate the soil and snow turbulent fluxes below a canopy at a
+  sub-canopy reference height, with the wind attenuated by the canopy and the
+  temperature and humidity of the canopy air, instead of at the forcing height
+  with the above-canopy state. The reference height is the apparent sink height
+  of the canopy `d + z_0m`, at least `canopy_subcanopy_min_reference_height`
+  (new TOML parameter, default 2 m) above the ground or snow surface
+  (`Canopy.subcanopy_reference_height`). The wind there is the neutral
+  log-profile wind at `max(z_ref, h)` attenuated by `exp(-α (LAI + SAI))`
+  across the full plant area index (`Canopy.subcanopy_wind`; Shuttleworth and
+  Wallace, 1985; Choudhury and Monteith, 1988), so that short canopies
+  (`h < z_ref`) also shelter the ground beneath them; `α` is read from the new
+  TOML parameter `canopy_subcanopy_wind_extinction_coefficient` (default 0.5).
+  Both parameters are stored in the new fields
+  `MoninObukhovCanopyFluxes.subcanopy_min_reference_height` and
+  `subcanopy_wind_extinction`. Where plants are present (`LAI + SAI >= 0.05`),
+  `Canopy.subcanopy_forcing` also returns the canopy-air temperature `T_sfc`
+  and specific humidity `q_sfc` at the scalar roughness height `d + z_0b` from
+  the canopy Monin-Obukhov solve, and the gustiness model of the forcing
+  without its floor, which is folded into the sub-canopy wind
+  (`Canopy.ground_gustiness`); where plants are absent, the ground is forced
+  as a standalone surface, at the forcing height with the forcing wind,
+  temperature, humidity, and gustiness. `LandModel` and `SoilCanopyModel`
+  evaluate the canopy boundary fluxes before the ground skin solves and pass
+  the sub-canopy height, wind, temperature, humidity, and gustiness to
+  `Soil.update_soil_surface_temperature!`, `Snow.update_surf_temp!`, and
+  `ClimaLand.turbulent_fluxes!` through their new `h_atmos`, `u_atmos`,
+  `T_atmos`, `q_atmos`, and `gustiness` keyword arguments. Prevent reverse
+  transpiration through stomata during condensation: the canopy surface
+  humidity is floored at the atmospheric value (`q_sfc >= q_vap_int`, with
+  `∂q_sfc/∂T = 0` where the floor binds), and the canopy latent heat flux and
+  transpiration are zeroed where `vapor_flux <= 0` in both the explicit and
+  implicit boundary flux updates (`Canopy.zero_canopy_fluxes_without_plants!`).
+- ![][badge-🔥behavioralΔ] Apply the soil moisture stress factor `βm` instantaneously to `GPP`,
+  `Rd`, `An`, and `gs_co2` in `PModel` while acclimating well-watered capacities
+  (`βm = 1`), and set the upper moisture threshold `θ_high` in
+  `PiecewiseMoistureStressModel` to the field capacity
+  `θ_fc = θ_r + S_fc * (ν - θ_r)`, with `S_fc = (1 + 1/m)^(-m)` the effective
+  saturation at the inflection point of the van Genuchten retention curve
+  (`Soil.field_capacity_saturation`; van Genuchten 1980; Assouline and Or
+  2014), when soil hydrology parameters are available.
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the

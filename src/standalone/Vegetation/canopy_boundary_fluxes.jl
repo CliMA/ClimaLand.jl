@@ -81,6 +81,27 @@ function AtmosDrivenCanopyBC(
     else
         @assert :soil ∈ prognostic_land_components
     end
+    # Monin-Obukhov similarity needs the forcing above the roughness sublayer
+    if atmos isa PrescribedAtmosphere &&
+       turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
+        (; displ, z_0m, raupach_frontal_area, height) =
+            turbulent_flux_parameterization
+        # With the Raupach roughness the sink height displ + z_0m depends on
+        # the plant area index; its maximum over Λ (≈ 0.86 h at Λ ≈ 5) is used.
+        FT = eltype(height)
+        sink_max =
+            raupach_frontal_area > 0 ?
+            (
+                raupach_displacement_fraction(FT(5)) +
+                raupach_roughness_fraction(FT(5))
+            ) .* height : displ .+ z_0m
+        clearance = minimum(@. atmos.h - sink_max)
+        clearance > 0 || throw(
+            ArgumentError(
+                "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the momentum roughness length everywhere; the minimum clearance is $clearance m.",
+            ),
+        )
+    end
 
     args = (
         atmos,
@@ -120,7 +141,8 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
+- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,
+  the canopy temperature and effective surface humidity of the flux solve, and its similarity scales
 - `p.canopy.hydraulics.fa[end]`: Transpiration
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
@@ -158,17 +180,7 @@ NVTX.@annotate function canopy_boundary_fluxes!(
         p,
         t,
     )
-    # Due to roundoff problem when multiplying and dividing by cp_d, set
-    # SHF to zero if LAI < 0.01
-    zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
-    @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
-        p.canopy.turbulent_fluxes.shf,
-        p.canopy.biomass.area_index.leaf,
-    )
-    @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
-        p.canopy.turbulent_fluxes.∂shf∂T,
-        p.canopy.biomass.area_index.leaf,
-    )
+    zero_canopy_fluxes_without_plants!(p.canopy.turbulent_fluxes, p)
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
         p.canopy.hydraulics.fa_roots,
@@ -189,6 +201,53 @@ NVTX.@annotate function canopy_boundary_fluxes!(
         p,
         t,
     )
+end
+
+"""
+    zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
+
+Set the canopy sensible heat flux and its temperature derivative to zero
+where the plant area index (leaves and stems) is below 0.05, and the
+latent heat flux, transpiration, and the latent heat flux derivative to
+zero where the leaf area index is below 0.05 or the transpiration is not
+positive (the canopy does not condense water); modify `turbulent_fluxes`
+in place and return `nothing`. The area indices are read from
+`p.canopy.biomass.area_index`.
+
+Below these area indices the Monin-Obukhov solve exchanges heat with a
+canopy of negligible conductance, and the fluxes it returns are roundoff.
+
+Called from `canopy_boundary_fluxes!` and from the implicit boundary flux
+update of the canopy energy model, so that the explicit and implicit
+fluxes agree.
+"""
+function zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
+    zero_below_pai(X, pai) = ifelse(pai < 0.05, zero(X), X)
+    zero_below_lai(X, vapor_flux, lai) =
+        ifelse(lai < 0.05 || vapor_flux <= 0, zero(X), X)
+    area_index = p.canopy.biomass.area_index
+    @. turbulent_fluxes.shf =
+        zero_below_pai(turbulent_fluxes.shf, area_index.leaf + area_index.stem)
+    @. turbulent_fluxes.∂shf∂T = zero_below_pai(
+        turbulent_fluxes.∂shf∂T,
+        area_index.leaf + area_index.stem,
+    )
+    @. turbulent_fluxes.∂lhf∂T = zero_below_lai(
+        turbulent_fluxes.∂lhf∂T,
+        turbulent_fluxes.vapor_flux,
+        area_index.leaf,
+    )
+    @. turbulent_fluxes.lhf = zero_below_lai(
+        turbulent_fluxes.lhf,
+        turbulent_fluxes.vapor_flux,
+        area_index.leaf,
+    )
+    @. turbulent_fluxes.vapor_flux = zero_below_lai(
+        turbulent_fluxes.vapor_flux,
+        turbulent_fluxes.vapor_flux,
+        area_index.leaf,
+    )
+    return nothing
 end
 
 """
@@ -240,7 +299,16 @@ function ClimaLand.surface_displacement_height(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
-    return sfp.displ
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        canopy_displacement(
+            sfp.raupach_frontal_area,
+            sfp.displ,
+            height,
+            area_index.leaf + area_index.stem,
+        ),
+    )
 end
 
 """
@@ -255,8 +323,22 @@ function ClimaLand.surface_roughness_model(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    z_0m = @. lazy(
+        canopy_z_0m(
+            sfp.raupach_frontal_area,
+            sfp.z_0min,
+            sfp.z_0m,
+            height,
+            area_index.leaf + area_index.stem,
+        ),
+    )
     return @. lazy(
-        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
+        SurfaceFluxes.ConstantRoughnessParams{FT}(
+            z_0m,
+            canopy_z_0b(sfp.kB_inv, z_0m),
+        ),
     )
 end
 
@@ -314,7 +396,9 @@ function ClimaLand.get_update_surface_humidity_function(
         # q_sfc = (q_canopy + g_h * r_land * q_atm) / (1 + g_h * r_land)
 
         q_new = (g_land / g_h * q_canopy + q_vap_int) / (1 + g_land / g_h)
-        return q_new
+        # No condensation onto the canopy: q_new lies between q_canopy and
+        # q_vap_int, so the floor binds exactly when q_canopy <= q_vap_int
+        return max(q_new, q_vap_int)
     end
     # Closure
     update_q_vap_sfc_field(Cd, LAI, r, qc) =
@@ -335,7 +419,10 @@ function ClimaLand.get_update_surface_temperature_function(
 )
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    # Sensible heat is exchanged by all plant surfaces, leaves and stems
+    # (plant area index); transpiration (humidity callback) passes through
+    # stomata and uses the leaf area only.
+    area_index = p.canopy.biomass.area_index
     T_canopy = canopy_temperature(model.energy, model, Y, p)
     function update_T_sfc_at_a_point(
         ζ,
@@ -347,7 +434,7 @@ function ClimaLand.get_update_surface_temperature_function(
         z_0m,
         z_0b,
         leaf_Cd,
-        AI,
+        area_index_pt,
         T_canopy,
     )
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
@@ -362,6 +449,7 @@ function ClimaLand.get_update_surface_temperature_function(
             z_0b,
             scheme,
         )
+        AI = area_index_pt.leaf + area_index_pt.stem
         g_land = leaf_Cd * u_star * AI
 
         ΔΦ = Φ_int - Φ_sfc
@@ -373,7 +461,7 @@ function ClimaLand.get_update_surface_temperature_function(
     # Closure
     update_T_sfc_field(Cd, AI, T_c) =
         (args...) -> update_T_sfc_at_a_point(args..., Cd, AI, T_c)
-    return @. lazy(update_T_sfc_field(Cd, AI, T_canopy))
+    return @. lazy(update_T_sfc_field(Cd, area_index, T_canopy))
 end
 
 
@@ -383,12 +471,18 @@ end
 a helper function which creates and returns the function which computes
 the partial derivative of the surface specific humididity with respect to
 the canopy temperature.
+
+The derivative is zero where the surface humidity is held at the
+atmospheric value by `get_update_surface_humidity_function`, i.e. where
+the saturation specific humidity of the canopy `q_sat` does not exceed
+the atmospheric specific humidity.
 """
 function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    q_air = p.drivers.q
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
@@ -398,23 +492,31 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         leaf_Cd,
         LAI,
         r_stomata_canopy,
+        q_air,
     )
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
-        return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(
-            q_sat,
-            T_sfc,
-            Thermodynamics.Liquid(),
-            earth_param_set,
-        )
+        ∂q_sfc∂T =
+            ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(
+                q_sat,
+                T_sfc,
+                Thermodynamics.Liquid(),
+                earth_param_set,
+            )
+        return ifelse(q_sat > q_air, ∂q_sfc∂T, zero(∂q_sfc∂T))
     end
     # Closure
-    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
-        (args...) ->
-            update_∂q_sfc∂T_at_a_point(args..., leaf_Cd, LAI_val, r_val)
-    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
+    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd, q_air_val) =
+        (args...) -> update_∂q_sfc∂T_at_a_point(
+            args...,
+            leaf_Cd,
+            LAI_val,
+            r_val,
+            q_air_val,
+        )
+    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd, q_air))
 end
 
 """
@@ -427,14 +529,15 @@ the canopy temperature.
 function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = p.canopy.biomass.area_index.leaf
+    area_index = p.canopy.biomass.area_index
     function update_∂T_sfc∂T_at_a_point(
         u_star,
         g_h,
         earth_param_set,
         leaf_Cd,
-        AI,
+        area_index_pt,
     )
+        AI = area_index_pt.leaf + area_index_pt.stem
         g_land = leaf_Cd * u_star * AI
         ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T
@@ -442,7 +545,7 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     # Closure
     update_∂T_sfc∂T_field(AI_val, leaf_Cd) =
         (args...) -> update_∂T_sfc∂T_at_a_point(args..., leaf_Cd, AI_val)
-    return @. lazy(update_∂T_sfc∂T_field(AI, Cd))
+    return @. lazy(update_∂T_sfc∂T_field(area_index, Cd))
 end
 
 """
@@ -458,8 +561,19 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-            Tuple{FT, FT, FT, FT, FT},
+            (
+                :lhf,
+                :shf,
+                :vapor_flux,
+                :∂lhf∂T,
+                :∂shf∂T,
+                :T_sfc,
+                :q_sfc,
+                :ustar,
+                :ζ,
+                :Δz_eff,
+            ),
+            NTuple{10, FT},
         },
     )
 
@@ -498,7 +612,97 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
             :buoyancy_flux,
+            :T_sfc,
+            :q_sfc,
+            :ustar,
+            :ζ,
+            :Δz_eff,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        NTuple{13, FT},
     },
 )
+
+"""
+    subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
+
+Return the NamedTuple `(; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)` of
+lazy broadcasts of the reference height [m], the wind [m/s], the air
+temperature [K], the specific humidity [kg/kg], and the gustiness model for
+the turbulent fluxes of a ground surface at height `h_sfc` (soil, or snow of
+depth `h_sfc`) below the canopy, from the atmospheric forcing in `p.drivers`,
+the canopy height and plant area index in `canopy.biomass` and
+`p.canopy.biomass.area_index`, the canopy-air state in
+`p.canopy.turbulent_fluxes`, and the canopy turbulent flux parameterization;
+see [`subcanopy_reference_height`](@ref), [`subcanopy_wind`](@ref), and
+[`ground_gustiness`](@ref).
+
+Where plants are present (`LAI + SAI >= 0.05`), the reference height is the
+sub-canopy height, the wind the attenuated wind there, and the gustiness the
+model of the forcing without its floor, which is folded into that wind;
+`T_atmos` and `q_atmos` are the canopy-air temperature
+`p.canopy.turbulent_fluxes.T_sfc` and specific humidity
+`p.canopy.turbulent_fluxes.q_sfc` at the scalar roughness height `d + z_0b`
+from the canopy Monin-Obukhov solve (where that solve has run, `T_sfc > 0`),
+so that the ground exchanges heat and water vapor with the canopy air space
+rather than directly with the atmosphere above the canopy (Shuttleworth and
+Wallace, 1985). Where plants are absent, the ground is forced as a standalone
+surface: the forcing height, wind, temperature, humidity, and gustiness model
+of `p.drivers` and the atmospheric driver.
+"""
+function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
+    atmos = canopy.boundary_conditions.atmos
+    sfp = canopy.boundary_conditions.turbulent_flux_parameterization
+    (; subcanopy_min_reference_height, subcanopy_wind_extinction) = sfp
+    h_forcing = atmos.h
+    floor = ClimaLand.gustiness_floor(atmos.gustiness)
+    height = canopy.biomass.height
+    area_index = p.canopy.biomass.area_index
+    u = p.drivers.u
+    PAI = @. lazy(area_index.leaf + area_index.stem)
+    displ = @. lazy(
+        canopy_displacement(sfp.raupach_frontal_area, sfp.displ, height, PAI),
+    )
+    z_0m = @. lazy(
+        canopy_z_0m(
+            sfp.raupach_frontal_area,
+            sfp.z_0min,
+            sfp.z_0m,
+            height,
+            PAI,
+        ),
+    )
+    plants = @. lazy(area_index.leaf + area_index.stem >= 0.05)
+    h_subcanopy = @. lazy(
+        subcanopy_reference_height(
+            h_sfc,
+            displ,
+            z_0m,
+            subcanopy_min_reference_height,
+            h_forcing,
+        ),
+    )
+    h_atmos = @. lazy(ifelse(plants, h_subcanopy, h_forcing))
+    u_atmos = @. lazy(
+        ifelse(
+            plants,
+            subcanopy_wind(
+                u,
+                floor,
+                h_forcing,
+                h_subcanopy,
+                height,
+                displ,
+                z_0m,
+                area_index.leaf + area_index.stem,
+                subcanopy_wind_extinction,
+            ),
+            u,
+        ),
+    )
+    T_ca = p.canopy.turbulent_fluxes.T_sfc
+    q_ca = p.canopy.turbulent_fluxes.q_sfc
+    T_atmos = @. lazy(ifelse(plants && T_ca > 0, T_ca, p.drivers.T))
+    q_atmos = @. lazy(ifelse(plants && T_ca > 0, q_ca, p.drivers.q))
+    gustiness = ground_gustiness(atmos.gustiness, plants)
+    return (; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)
+end

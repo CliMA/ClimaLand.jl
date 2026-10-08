@@ -1,0 +1,26 @@
+# Coefficients of the empirical canopy conductance correction
+# (`Canopy.CorrectedConductance` with a `LogLinearFactor`): the stomatal
+# conductance is multiplied by
+#
+#     f = exp(clamp(bias + Σ weights[i] (x[i] - center[i]) / scale[i], -log_fmax, log_fmax))
+#
+# with the features cosz (cosine of the solar zenith angle), vpd_kpa (vapor
+# pressure deficit, kPa), msf (soil moisture stress factor βm) and loghc
+# (log of the canopy height in m). Not used by any default model; the
+# FLUXNET2015 evaluation driver reads this file when asked to.
+#
+# Fit: residual evaporative fraction of 24 FLUXNET2015 sites (year 2 of
+# 730-day runs with GPP and LAI prescribed, site PFT, 1 cm litter, Stocker
+# 2020 value of beta_c3 via override) against the finite-difference
+# sensitivity dEF/dln f of runs with the conductance x1.5; model as of
+# commit 1a6fdb6e7 (leaf_NIR_omega_min = 0.76, canopy_kB_inv = 2, Raupach
+# z_0m and d). Leave-one-site-out, linearised: EF |bias| 0.064 -> 0.053,
+# EF RMSE 0.180 -> 0.167. Earlier fit (before those three changes):
+# bias 0.082 with features cosz, vpd_kpa, swc, loghc.
+[conductance]
+features = ["cosz", "vpd_kpa", "msf", "loghc"]
+bias = 0.026457835784389788
+weights = [0.014469755799704128, -0.130218184611316, 0.12977438107954484, -0.11412792695161553]
+center = [0.6590073142358872, 1.3373451327655501, 0.8655901354583613, 1.2154906006914663]
+scale = [0.18503069684855314, 1.0673923827124425, 0.14780121642830735, 1.9653496628975695]
+log_fmax = 1.0986122886681098

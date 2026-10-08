@@ -3727,9 +3727,9 @@ version = "7.2.1+1"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "0b35705e1866e02f581851e692573dbdd74f6291"
+git-tree-sha1 = "f94a556a89eb23a494eedac7947c0db2f3c9068a"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "1.2.1"
+version = "1.4.0"
 weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]

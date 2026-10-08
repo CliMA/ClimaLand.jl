@@ -19,6 +19,8 @@ ClimaLand.Canopy.PModelConductance{FT}(
     toml_dict::CP.ParamDict
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.PModelConductanceParameters
+ClimaLand.Canopy.CorrectedConductance
+ClimaLand.LogLinearFactor
 ```
 
 ## Methods
@@ -27,4 +29,5 @@ ClimaLand.Canopy.PModelConductanceParameters
 ClimaLand.Canopy.medlyn_term
 ClimaLand.Canopy.medlyn_conductance
 ClimaLand.Canopy.penman_monteith
+ClimaLand.Canopy.canopy_correction_features
 ```

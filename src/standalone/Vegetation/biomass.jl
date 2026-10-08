@@ -327,21 +327,85 @@ function update_biomass!(
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
-    mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+    mask_biomass!(
+        p,
+        Val(canopy.boundary_conditions.prognostic_land_components),
+        canopy,
+    )
 end
 
 """
-    mask_biomass!(p, prognostic_land_components)
+    mask_biomass!(p, prognostic_land_components, canopy)
 
-Default method of setting LAI/RAI/SAI to zero where there
-cannot be canopy; does nothing.
+Adjusts the area indices in `p.canopy.biomass.area_index` for the other land
+components after they have been set from the biomass model; called at the end
+of [`update_biomass!`](@ref). This default method does nothing.
 
-Currently, this is only does something when a lake model
-is included in integrated models, as we cannot have 
-vegetation over a lake, and the lake masks may not be consistent with
-the biomass model.
+Integrated models define methods that set the indices to zero where there is a
+lake, and that reduce the leaf and stem area indices to the part of the canopy
+above the snow surface ([`bury_biomass_in_snow!`](@ref)).
 """
-mask_biomass!(p, prognostic_land_components) = nothing
+mask_biomass!(p, prognostic_land_components, canopy) = nothing
+
+"""
+    exposed_canopy_fraction(z_snow::FT, snow_cover_fraction::FT, height::FT) where {FT}
+
+Returns the fraction of the plant area that is above the snow surface, for a
+canopy of height `height` [m] whose plant area is distributed uniformly between
+the ground and the top of the canopy, a snow depth `z_snow` [m] averaged over
+the ground area, and the snow cover fraction `snow_cover_fraction`.
+
+Over the snow-covered part of the ground, the local snow depth is
+`z_snow / snow_cover_fraction`, and the exposed fraction of the canopy there is
+`1 - z_snow / (snow_cover_fraction * height)`, bounded between zero and one;
+the snow-free part of the ground exposes the whole canopy. The result is one
+without snow and zero when the snow is at least as deep as the canopy is tall
+everywhere. Vegetation below the snow surface neither intercepts radiation nor
+exchanges heat and water vapor with the air, which is why a snow-covered
+meadow has the albedo of snow while a forest keeps a low albedo (Betts and
+Ball, 1997).
+
+Betts, A. K., and J. H. Ball (1997). Albedo over the boreal forest. J.
+Geophys. Res., 102(D24), 28901–28909. https://doi.org/10.1029/96JD03876
+"""
+function exposed_canopy_fraction(
+    z_snow::FT,
+    snow_cover_fraction::FT,
+    height::FT,
+) where {FT}
+    f_sc = min(max(snow_cover_fraction, FT(0)), FT(1))
+    f_sc > 0 || return FT(1)
+    exposed_covered = min(max(1 - z_snow / (f_sc * height), FT(0)), FT(1))
+    return (1 - f_sc) + f_sc * exposed_covered
+end
+
+"""
+    bury_biomass_in_snow!(p, height)
+
+Reduces the leaf and stem area indices in `p.canopy.biomass.area_index` to the
+part of the canopy above the snow surface, given by
+[`exposed_canopy_fraction`](@ref) with the snow depth and snow cover fraction
+of the snow model and the canopy `height` (a number or a field). The leaf area
+index is clipped below 0.05 as in [`update_biomass!`](@ref). The root area
+index is unchanged.
+"""
+function bury_biomass_in_snow!(p, height)
+    FT = eltype(p.canopy.biomass.area_index.leaf)
+    @. p.canopy.biomass.area_index.leaf = clip(
+        p.canopy.biomass.area_index.leaf * exposed_canopy_fraction(
+            p.snow.z_snow,
+            p.snow.snow_cover_fraction,
+            height,
+        ),
+        FT(0.05),
+    )
+    @. p.canopy.biomass.area_index.stem *= exposed_canopy_fraction(
+        p.snow.z_snow,
+        p.snow.snow_cover_fraction,
+        height,
+    )
+    return nothing
+end
 
 """
     root_distribution(z::FT, rooting_depth::FT)
@@ -633,7 +697,11 @@ function update_biomass!(
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
-    mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+    mask_biomass!(
+        p,
+        Val(canopy.boundary_conditions.prognostic_land_components),
+        canopy,
+    )
 end
 
 """

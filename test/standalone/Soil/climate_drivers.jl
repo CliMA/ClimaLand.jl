@@ -4,6 +4,7 @@ ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
 using Thermodynamics
+import SurfaceFluxes
 using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
@@ -74,7 +75,9 @@ for FT in (Float32, Float64)
             h_atmos,
             toml_dict,
         )
-        @test atmos.gustiness == FT(1)
+        @test atmos.gustiness ==
+              SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+        @test ClimaLand.gustiness_floor(atmos.gustiness) == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)
@@ -137,8 +140,17 @@ for FT in (Float32, Float64)
                 :cosθs,
                 :frac_diff,
             )
-            @test propertynames(p.soil.turbulent_fluxes) ==
-                  (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice, :T_sfc)
+            @test propertynames(p.soil.turbulent_fluxes) == (
+                :lhf,
+                :shf,
+                :vapor_flux_liq,
+                :vapor_flux_ice,
+                :T_sfc,
+                :q_sfc,
+                :ustar,
+                :ζ,
+                :Δz_eff,
+            )
             @test propertynames(p.soil) == (
                 :total_water,
                 :total_energy,
@@ -260,6 +272,9 @@ for FT in (Float32, Float64)
                 FT(0.01) .*
                 (abs.(parent(conditions.vapor_flux_liq)) .+ eps(FT)),
             )
+            @test parent(conditions.Δz_eff) == parent(stored.Δz_eff)
+            @test all(parent(stored.ustar) .> 0)
+            @test all(isfinite, parent(stored.ζ))
 
             ClimaLand.Soil.soil_boundary_fluxes!(
                 top_bc,
@@ -435,6 +450,61 @@ for FT in (Float32, Float64)
             # At saturation there is no dry layer: the conductance is unbounded
             @test gsoil[end] > FT(1e3)
             @test issorted(gsoil)
+
+            # Litter layer: no litter adds no resistance; 2 cm of litter with
+            # porosity 0.8 is a resistance of order 1000 s/m, in series with
+            # the dry soil layer
+            @test ClimaLand.Soil.litter_resistance(FT(0), FT(0.8), _D_vapor) ==
+                  FT(0)
+            r_L = ClimaLand.Soil.litter_resistance(FT(0.02), FT(0.8), _D_vapor)
+            @test r_L ≈ FT(0.02) / (_D_vapor * FT(0.8)^(FT(4) / 3))
+            @test FT(500) < r_L < FT(2000)
+            @test ClimaLand.Soil.litter_resistance(
+                FT(0.02),
+                FT(0.5),
+                _D_vapor,
+            ) > r_L
+            params_litter = ClimaLand.Soil.EnergyHydrologyParameters(
+                toml_dict;
+                ν,
+                ν_ss_om,
+                ν_ss_quartz,
+                ν_ss_gravel,
+                hydrology_cm = hcm,
+                K_sat,
+                S_s,
+                θ_r,
+                albedo,
+                emissivity,
+                z_0m,
+                z_0b,
+                d_litter = FT(0.02),
+            )
+            @test params_litter.d_litter == FT(0.02)
+            @test params_litter.ν_litter == FT(0.8)
+            @test params.d_litter == FT(0)
+            model_litter = Soil.EnergyHydrology{FT}(;
+                parameters = params_litter,
+                domain = domain,
+                boundary_conditions = boundary_fluxes,
+                sources = (),
+            )
+            g_sfc = ClimaLand.Soil.soil_surface_vapor_conductance!(
+                p.soil.sfc_scratch,
+                model,
+                Y,
+                p,
+            )
+            g_sfc_no_litter = copy(g_sfc)
+            g_sfc = ClimaLand.Soil.soil_surface_vapor_conductance!(
+                p.soil.sfc_scratch,
+                model_litter,
+                Y,
+                p,
+            )
+            @test all(
+                parent(g_sfc) .≈ 1 ./ (1 ./ parent(g_sfc_no_litter) .+ r_L),
+            )
         end
     end
 end

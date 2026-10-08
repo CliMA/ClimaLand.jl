@@ -93,10 +93,6 @@ struct LandModel{
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
             check_land_equality(
-                canopy.soil_moisture_stress.θ_high,
-                soil.parameters.ν,
-            )
-            check_land_equality(
                 canopy.soil_moisture_stress.θ_low,
                 soil.parameters.θ_r,
             )
@@ -253,7 +249,11 @@ function LandModel{FT}(
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
             toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
         ),
     ),
     snow = Snow.SnowModel(
@@ -314,7 +314,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
+            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -380,7 +380,11 @@ function LandModel{FT}(
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
             toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
         ),
     ),
     snow = Snow.SnowModel(
@@ -549,6 +553,11 @@ function make_update_boundary_fluxes(
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+        # The canopy fluxes come first, so that the canopy-air state
+        # p.canopy.turbulent_fluxes.T_sfc and q_sfc is current when the ground
+        # solves in lsm_radiant_energy_fluxes! read it; the canopy radiation
+        # LW_n and SW_n is set there, after the canopy fluxes
+        update_canopy_bf!(p, Y, t)
         # Radiation - updates Rn for soil, lake, snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -592,8 +601,6 @@ function make_update_boundary_fluxes(
             land.lake,
         )
 
-        # Update canopy
-        update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
     end
@@ -728,6 +735,19 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
+    # The snow and soil surfaces below the canopy exchange with the air at the
+    # sub-canopy reference height, with the wind there; bare ground is forced
+    # as a standalone surface
+    snow_forcing = Canopy.subcanopy_forcing(
+        canopy,
+        p,
+        ClimaLand.surface_height(snow, Y, p),
+    )
+    soil_forcing = Canopy.subcanopy_forcing(
+        canopy,
+        p,
+        ClimaLand.surface_height(land.soil, Y, p),
+    )
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
         snow,
@@ -736,7 +756,12 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        h_atmos = snow_forcing.h_atmos,
+        u_atmos = snow_forcing.u_atmos,
+        T_atmos = snow_forcing.T_atmos,
+        q_atmos = snow_forcing.q_atmos,
+        gustiness = snow_forcing.gustiness,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -747,7 +772,12 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         LW_d_canopy,
         Y,
         p,
-        t,
+        t;
+        h_atmos = soil_forcing.h_atmos,
+        u_atmos = soil_forcing.u_atmos,
+        T_atmos = soil_forcing.T_atmos,
+        q_atmos = soil_forcing.q_atmos,
+        gustiness = soil_forcing.gustiness,
     )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
@@ -1093,6 +1123,32 @@ Returns the bare soil fraction of 1-snow cover fraction when no lakes are modell
 """
 bare_soil_fraction(p, snow, lake::Nothing) =
     @. lazy(1 - p.snow.snow_cover_fraction)
+
+"""
+    Canopy.mask_biomass!(
+        p,
+        prognostic_land_components::Union{
+            Val{(:canopy, :snow, :soil, :soilco2)},
+            Val{(:canopy, :snow, :soil)},},
+        canopy,
+    )
+
+Reduces the leaf and stem area indices to the part of the canopy above the
+snow surface (`Canopy.bury_biomass_in_snow!`), using the snow depth and snow
+cover fraction of the snow model and the canopy height. Called at the end of
+`Canopy.update_biomass!`; the snow cache is updated before the canopy cache in
+`make_update_aux(::LandModel)`.
+"""
+function Canopy.mask_biomass!(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
+    canopy,
+)
+    Canopy.bury_biomass_in_snow!(p, canopy.biomass.height)
+end
 
 """
     update_lake_sediment_heat_flux!(p, lake::Nothing, soil)

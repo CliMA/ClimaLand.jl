@@ -14,6 +14,7 @@ using DocStringExtensions
 using Insolation
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
+import SurfaceFluxes.UniversalFunctions as UF
 using StaticArrays
 using NVTX
 import ..Parameters as LP
@@ -83,6 +84,43 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
+    gustiness_model(gustiness[, ::Type{FT}])
+
+Return the gustiness model of an atmospheric driver as a
+`SurfaceFluxes.AbstractGustinessSpec`: a number is a constant minimum wind
+speed in m/s (`SurfaceFluxes.ConstantGustinessSpec`, converted to `FT` when
+given), and a gustiness model is returned as is.
+"""
+gustiness_model(gustiness::Number, ::Type{FT}) where {FT} =
+    SurfaceFluxes.ConstantGustinessSpec(FT(gustiness))
+gustiness_model(
+    gustiness::SurfaceFluxes.AbstractGustinessSpec,
+    ::Type{FT},
+) where {FT} = gustiness
+gustiness_model(gustiness::Number) =
+    SurfaceFluxes.ConstantGustinessSpec(gustiness)
+gustiness_model(gustiness::SurfaceFluxes.AbstractGustinessSpec) = gustiness
+# A field or lazy broadcast of gustiness models (`Canopy.ground_gustiness`)
+gustiness_model(gustiness) = gustiness
+
+"""
+    gustiness_floor(gustiness)
+
+Return the minimum wind speed [m/s] of a gustiness model, which is folded into
+the wind above a canopy before the wind below it is computed
+(`Canopy.subcanopy_wind`): a number or the value of a `ConstantGustinessSpec`,
+the floor of a `SurfaceFluxes.FlooredDeardorffGustinessSpec`, and zero
+otherwise.
+"""
+gustiness_floor(gustiness::Number) = gustiness
+gustiness_floor(gustiness::SurfaceFluxes.ConstantGustinessSpec) =
+    gustiness.value
+gustiness_floor(gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec) =
+    gustiness.u_min
+gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec) = 0
+
+
+"""
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
@@ -94,6 +132,12 @@ The default CO2 concentration is a constant as a function of time, equal to
 
 Since not all models require co2 concentration, the default for that
 is `nothing`.
+
+The keyword `gustiness` is a SurfaceFluxes gustiness model or a number, which
+is the constant minimum wind speed [m/s] of a
+`SurfaceFluxes.ConstantGustinessSpec`; the default is a
+`SurfaceFluxes.FlooredDeardorffGustinessSpec` with a floor of 1 m/s, the
+larger of that floor and the Deardorff convective gustiness.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAtmosphere{
@@ -106,6 +150,7 @@ struct PrescribedAtmosphere{
     RA <: AbstractTimeVaryingInput,
     CA <: AbstractTimeVaryingInput,
     DT,
+    G,
     TP,
 } <: AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
@@ -126,8 +171,8 @@ struct PrescribedAtmosphere{
     start_date::DT
     "Reference height (m), relative to surface elevation"
     h::FT
-    "Minimum wind speed (gustiness; m/s)"
-    gustiness::FT
+    "Gustiness model of the effective wind speed (see `gustiness_model`)"
+    gustiness::G
     "Thermodynamic parameters"
     thermo_params::TP
     function PrescribedAtmosphere(
@@ -140,13 +185,19 @@ struct PrescribedAtmosphere{
         start_date,
         h::FT,
         toml_dict::CP.ParamDict;
-        gustiness = FT(1),
+        gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
-        return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
+        gustiness = gustiness_model(gustiness, FT)
+        return new{
+            typeof(h),
+            typeof.(args)...,
+            typeof(gustiness),
+            typeof(thermo_params),
+        }(
             args...,
             h,
             gustiness,
@@ -349,6 +400,11 @@ but it still acts as a flag that fluxes have been updated by the coupler
 and don't need to be recomputed.
 When constructed with a space, the struct contains the fields needed to compute
 surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
+
+The gustiness is a number, the constant minimum wind speed [m/s] that the
+coupler uses in its flux computation; land models driven by a
+`CoupledAtmosphere` inside ClimaLand use it as a
+`SurfaceFluxes.ConstantGustinessSpec` (see `gustiness_model`).
 """
 struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <:
        AbstractAtmosphericDrivers{FT}
@@ -379,7 +435,6 @@ function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
         Δh,
         q_air,
     )
-    return ρ_sfc
 end
 
 return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
@@ -391,7 +446,12 @@ return_momentum_fluxes(atmos::CoupledAtmosphere) = true
                       model::AbstractModel,
                       Y,
                       p,
-                      t
+                      t;
+                      h_atmos = atmos.h,
+                      u_atmos = p.drivers.u,
+                      T_atmos = p.drivers.T,
+                      q_atmos = p.drivers.q,
+                      gustiness = atmos.gustiness,
                       )
 
 Computes the turbulent surface flux terms at the ground,
@@ -400,9 +460,16 @@ including turbulent energy fluxes as well as the water vapor flux
 Positive fluxes indicate flow from the ground to the atmosphere.
 
 It solves for these given atmospheric conditions,
-model parameters, and the surface conditions. If the elements of `dest` have a
-field `T_sfc`, the surface temperature at which the fluxes are evaluated is
-stored in it (see `with_surface_temperature`).
+model parameters, and the surface conditions. The elements of `dest` select,
+by name, which of the quantities of `turbulent_fluxes_at_a_point` are stored
+(see `select_fluxes`).
+
+The reference height `h_atmos`, the wind `u_atmos`, temperature `T_atmos`, and
+specific humidity `q_atmos` at it, and the gustiness model default to those of
+the atmospheric forcing (a number is a constant minimum wind speed, see
+`gustiness_model`). Integrated models pass the sub-canopy reference height,
+attenuated wind, canopy-air temperature and humidity, and zero gustiness for
+the surfaces beneath a canopy (see `Canopy.subcanopy_forcing`).
 """
 function turbulent_fluxes!(
     dest,
@@ -410,7 +477,12 @@ function turbulent_fluxes!(
     model::AbstractModel,
     Y,
     p,
-    t,
+    t;
+    h_atmos = atmos.h,
+    u_atmos = p.drivers.u,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+    gustiness = atmos.gustiness,
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
@@ -423,51 +495,78 @@ function turbulent_fluxes!(
     update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
-    momentum_fluxes = Val(return_momentum_fluxes(atmos))
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
-    stores_T_sfc = Val(hasfield(eltype(dest), :T_sfc))
-    dest .= with_surface_temperature.(
-        stores_T_sfc,
-        turbulent_fluxes_at_a_point.(
-            momentum_fluxes, # return_extra_fluxes
-            p.drivers.P,
-            p.drivers.T,
-            p.drivers.q, # q_tot
-            p.drivers.u,
-            atmos.h,
-            T_sfc,
-            q_sfc,
-            roughness_model,
-            update_T_sfc,
-            update_q_sfc,
-            h_sfc,
-            displ,
-            update_∂T_sfc∂T,
-            update_∂q_sfc∂T,
-            gustiness,
-            earth_param_set,
-        ),
+    gustiness = gustiness_model(gustiness)
+    stored = Val(fieldnames(eltype(dest)))
+    dest .= turbulent_fluxes_at_a_point.(
+        stored,
+        p.drivers.P,
+        T_atmos,
+        q_atmos, # q_tot
+        u_atmos,
+        h_atmos,
         T_sfc,
+        q_sfc,
+        roughness_model,
+        update_T_sfc,
+        update_q_sfc,
+        h_sfc,
+        displ,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        gustiness,
+        earth_param_set,
     )
     return nothing
 end
 
 """
-    with_surface_temperature(stores_T_sfc, fluxes, T_sfc)
+    select_fluxes(::Val{names}, fluxes)
 
-Return the NamedTuple `fluxes`, followed by the surface temperature `T_sfc` at
-which they are evaluated if `stores_T_sfc` is `Val(true)`. Models whose surface
-temperature is solved for with their fluxes, such as the snow model, store it
-with them.
+Return the NamedTuple of the fields `names` of the NamedTuple `fluxes` returned
+by `turbulent_fluxes_from_output`. Each model stores the subset it needs in its
+cache: all store the energy and vapor fluxes and their temperature derivatives,
+and the soil, snow, and canopy also store the surface state and similarity
+scales of the flux solve for the screen-level diagnostics.
 """
-with_surface_temperature(::Val{false}, fluxes, T_sfc) = fluxes
-with_surface_temperature(::Val{true}, fluxes, T_sfc) = (; fluxes..., T_sfc)
+@inline select_fluxes(::Val{names}, fluxes) where {names} =
+    NamedTuple{names}(fluxes)
+
+"""
+    flux_names(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities that
+`turbulent_fluxes_at_a_point` returns for `return_extra_fluxes`: the energy
+fluxes `lhf` and `shf`, the vapor flux `vapor_flux`, and the temperature
+derivatives `∂lhf∂T` and `∂shf∂T`, followed for `Val(true)` by the momentum
+fluxes `ρτxz` and `ρτyz` and the buoyancy flux `buoyancy_flux`.
+"""
+flux_names(::Val{false}) = Val((:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T))
+flux_names(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+))
+
+"""
+    flux_tuple_type(::Val{names}, ::Type{FT})
+
+Return the `NamedTuple` type with fields `names`, all of type `FT`; the
+element type of the cache variables holding the turbulent fluxes.
+"""
+flux_tuple_type(::Val{names}, ::Type{FT}) where {names, FT} =
+    NamedTuple{names, NTuple{length(names), FT}}
 """
     turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
                                 u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,
                                 roughness_model, update_T_sfc, update_q_vap_sfc, h_sfc,
                                 displ, update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness,
                                 earth_param_set)
+    turbulent_fluxes_at_a_point(stored::Val{names}, args...)
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`,
@@ -486,16 +585,30 @@ Computes turbulent surface fluxes at a point on a surface given
     specific.
 (5) the parameter set.
 
-This returns the NamedTuple `(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the
-energy fluxes, the liquid water volume flux, and the derivatives of the energy
-fluxes with respect to the component temperature. If `return_extra_fluxes` is
-`Val(true)`, it also returns the momentum flux components in the horizontal
-directions, `ρτxz` and `ρτyz`, and the buoyancy flux `buoyancy_flux`. Space for
-the extra fluxes is only allocated in the cache when running with a
-`CoupledAtmosphere`.
+With `return_extra_fluxes = Val(false)`, this returns the NamedTuple
+`(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the energy fluxes, the liquid
+water volume flux, and the derivatives of the energy fluxes with respect to
+the component temperature; with `Val(true)`, it also returns the momentum flux
+components in the horizontal directions, `ρτxz` and `ρτyz`, and the buoyancy
+flux `buoyancy_flux` (see `flux_names`). ClimaCoupler evaluates this method
+directly into its flux fields.
+
+With a `Val` of a tuple of names, it returns the fields `names` of the full
+NamedTuple of `turbulent_fluxes_from_output`, which also holds the surface
+temperature `T_sfc` and specific humidity `q_sfc` at which the fluxes were
+evaluated and the friction velocity `ustar`, stability parameter `ζ`, and
+effective height `Δz_eff` of the Monin-Obukhov profiles. `turbulent_fluxes!`
+passes the field names of its destination, so that each model stores the
+subset it needs; space for the extra fluxes is only allocated in the cache
+when running with a `CoupledAtmosphere`.
 """
-function turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val,
+@inline turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Union{Val{true}, Val{false}},
+    args...,
+) = turbulent_fluxes_at_a_point(flux_names(return_extra_fluxes), args...)
+
+@inline function turbulent_fluxes_at_a_point(
+    stored::Val{names},
     P_atmos,
     T_atmos,
     q_tot_atmos,
@@ -504,15 +617,15 @@ function turbulent_fluxes_at_a_point(
     T_sfc_guess,
     q_vap_sfc_guess,
     roughness_model,
-    update_T_sfc,
-    update_q_vap_sfc,
+    update_T_sfc::UT,
+    update_q_vap_sfc::UQ,
     h_sfc,
     displ,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     gustiness,
     earth_param_set,
-)
+) where {names, UT, UQ, UDT, UDQ}
     output = surface_fluxes_at_a_point(
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -529,8 +642,10 @@ function turbulent_fluxes_at_a_point(
         gustiness,
         earth_param_set,
     )
-    return turbulent_fluxes_from_output(
-        return_extra_fluxes,
+    # The momentum and buoyancy fluxes are cheap, so they are evaluated for
+    # every selection and kept only where named
+    fluxes = turbulent_fluxes_from_output(
+        Val(true),
         output,
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -540,9 +655,38 @@ function turbulent_fluxes_at_a_point(
         T_atmos,
         q_tot_atmos,
         h_atmos - h_sfc,
+        displ,
         earth_param_set,
     )
+    return select_fluxes(stored, fluxes)
 end
+
+"""
+    surface_flux_config(roughness_model, gustiness)
+
+Return the SurfaceFluxes configuration used for the turbulent fluxes of all
+land surfaces: the given roughness and gustiness models, moist thermodynamics,
+no roughness sublayer correction, and the `MaxHeatFluxStabilityCap` in stable
+conditions.
+
+The stability cap holds the exchange coefficients at their values at the
+stability `ζ_p` at which the Monin-Obukhov sensible heat flux at fixed wind
+speed is maximal. `ζ_p` depends only on the ratio of the effective forcing
+height to the momentum roughness length: ≈ 0.15–0.4 over tall forests,
+≈ 0.4–0.8 over grass, ≈ 1–1.2 over bare soil, and ≈ 1.4–1.6 over snow.
+Without a cap, the Monin-Obukhov exchange collapses once the bulk Richardson
+number becomes supercritical, which decouples canopies and snow from the
+atmosphere at night (runaway cooling). The cap has no free parameters. See the
+SurfaceFluxes documentation.
+"""
+@inline surface_flux_config(roughness_model, gustiness) =
+    SurfaceFluxes.SurfaceFluxConfig(
+        roughness_model,
+        gustiness,
+        SurfaceFluxes.MoistModel(),
+        SurfaceFluxes.NoRoughnessSubLayer(),
+        SurfaceFluxes.MaxHeatFluxStabilityCap(),
+    )
 
 """
     surface_fluxes_at_a_point(T_sfc_guess, q_vap_sfc_guess, update_T_sfc, update_q_vap_sfc,
@@ -562,11 +706,11 @@ Called from `turbulent_fluxes_at_a_point` and the surface temperature solves of
 the soil and snow models, which use its output with
 `turbulent_fluxes_from_output`.
 """
-function surface_fluxes_at_a_point(
+@inline function surface_fluxes_at_a_point(
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    update_T_sfc,
-    update_q_vap_sfc,
+    update_T_sfc::UT,
+    update_q_vap_sfc::UQ,
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
@@ -577,11 +721,11 @@ function surface_fluxes_at_a_point(
     roughness_model,
     gustiness,
     earth_param_set,
-) where {FT}
+) where {FT, UT, UQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set)
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    config = surface_flux_config(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
@@ -616,32 +760,37 @@ end
 """
     turbulent_fluxes_from_output(return_extra_fluxes, output, T_sfc_guess, q_vap_sfc_guess,
                                  update_∂T_sfc∂T, update_∂q_sfc∂T, P_atmos, T_atmos,
-                                 q_tot_atmos, Δz, earth_param_set)
+                                 q_tot_atmos, Δz, displ, earth_param_set)
 
 Return the NamedTuple of `turbulent_fluxes_at_a_point` from the SurfaceFluxes.jl
 `output` of `surface_fluxes_at_a_point`: the latent and sensible heat fluxes,
-the vapor flux in volume of liquid water, and the approximate derivatives of
+the vapor flux in volume of liquid water, the approximate derivatives of
 the heat fluxes with respect to the component temperature (evaluated with
 `update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the surface temperature and
-humidity `T_sfc_guess` and `q_vap_sfc_guess`), followed for
+humidity `T_sfc_guess` and `q_vap_sfc_guess`), the surface temperature `T_sfc`
+and specific humidity `q_sfc` at which the fluxes were evaluated, the friction
+velocity `ustar`, the stability parameter `ζ` and effective height `Δz_eff` of
+the Monin-Obukhov profiles (see `screen_level_values`), followed for
 `return_extra_fluxes = Val(true)` by the momentum fluxes and the buoyancy
-flux. The atmospheric state is given at height `Δz` above the surface. Models
-that solve for their surface temperature within the Monin-Obukhov iterations
-use it to obtain the fluxes from that solve.
+flux. The atmospheric state is given at height `Δz` above the surface, and the
+surface has displacement height `displ`. Models that solve for their surface
+temperature within the Monin-Obukhov iterations use it to obtain the fluxes
+from that solve.
 """
-function turbulent_fluxes_from_output(
+@inline function turbulent_fluxes_from_output(
     return_extra_fluxes::Val,
     output,
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    update_∂T_sfc∂T,
-    update_∂q_sfc∂T,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
     P_atmos::FT,
     T_atmos::FT,
     q_tot_atmos::FT,
     Δz::FT,
+    displ::FT,
     earth_param_set,
-) where {FT}
+) where {FT, UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
@@ -676,12 +825,20 @@ function turbulent_fluxes_from_output(
         )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    Δz_eff = Δz - displ
     fluxes = (;
         lhf = output.lhf,
         shf = output.shf,
         vapor_flux = output.evaporation / _ρ_liq, # volume of liquid water
         ∂lhf∂T,
         ∂shf∂T,
+        T_sfc = output.T_sfc,
+        q_sfc = output.q_vap_sfc,
+        ustar = u_star,
+        # Stability parameter at which the exchange coefficients were
+        # evaluated (capped in stable conditions); zero when neutral
+        ζ = Δz_eff / output.L_eff,
+        Δz_eff,
     )
     return with_extra_fluxes(
         return_extra_fluxes,
@@ -699,8 +856,8 @@ Return the NamedTuple `fluxes`, followed for `Val(true)` by the momentum fluxes
 `ρτxz`, `ρτyz` of the SurfaceFluxes.jl `output` and the buoyancy flux at the
 surface air density `ρ_sfc`.
 """
-with_extra_fluxes(::Val{false}, fluxes, args...) = fluxes
-function with_extra_fluxes(
+@inline with_extra_fluxes(::Val{false}, fluxes, args...) = fluxes
+@inline function with_extra_fluxes(
     ::Val{true},
     fluxes,
     output,
@@ -1484,7 +1641,7 @@ end
                             toml_dict::CP.ParamDict,
                             FT;
                             use_lowres_forcing = false,
-                            gustiness=1,
+                            gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                             max_wind_speed = nothing,
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -1532,6 +1689,16 @@ and linear spatial interpolation for high resolution forcing.
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
     clima cluster.
+
+!!! note "Reference heights"
+    The wind is the ERA5 10 m wind, `sqrt(u10² + v10²)`, and the reference
+    height of the forcing is set to 10 m. The temperature and humidity are the
+    ERA5 2 m fields (`t2m`, `d2m`), which are themselves products of ERA5's own
+    surface-layer scheme, not 10 m values. The Monin-Obukhov solve therefore
+    evaluates the temperature and humidity differences to the surface over
+    2 m but the wind over 10 m, which weakens the diagnosed stability and
+    instability. The hourly-mean components also give a scalar wind speed
+    somewhat below the mean of the instantaneous speed.
 """
 function prescribed_forcing_era5(
     start_date,
@@ -1540,7 +1707,7 @@ function prescribed_forcing_era5(
     toml_dict::CP.ParamDict,
     FT;
     use_lowres_forcing = false,
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -1658,7 +1825,7 @@ function prescribed_forcing_era5(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 
@@ -1863,7 +2030,7 @@ end
                               surface_space,
                               toml_dict::CP.ParamDict,
                               FT;
-                              gustiness = 1,
+                              gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                               time_interpolation_method = LinearInterpolation(),
                               regridder_type = :InterpolationsRegridder,
@@ -1895,7 +2062,7 @@ function prescribed_forcing_crujra(
     surface_space,
     toml_dict::CP.ParamDict,
     FT;
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
@@ -2002,7 +2169,7 @@ function prescribed_forcing_crujra(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 
