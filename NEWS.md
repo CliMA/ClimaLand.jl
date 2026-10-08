@@ -32,13 +32,16 @@ it was already too high.
 ### Temporary leaf NIR optics floor (`leaf_NIR_omega_min`)
 
 `TwoStreamParameters` now raises the leaf NIR single-scattering albedo of
-broad leaves and grasses (table and gridded values `ω ≈ 0.7`) to the leaf-level
-value `α = τ = 0.42` (`leaf_NIR_omega_min = 0.84`); needleleaf shoot values are
+broad leaves and grasses (table and gridded values `ω ≈ 0.7`) to
+`α = τ = 0.38` (`leaf_NIR_omega_min = 0.76`); needleleaf shoot values are
 left unchanged. The too-dark NIR canopies made humid grass, crop and broadleaf
 sites absorb too much shortwave, which came out as sensible heat (FLUXNET2015
-midday SWup 50-80 % of observed; H bias 3-9 W/m² per site). Set
-`leaf_NIR_omega_min = 0` to recover the previous optics. This is a stop-gap
-until the universal leaf optics replace the PFT values.
+midday SWup 50-80 % of observed; H bias 3-9 W/m² per site). The floor sits
+below the leaf-level value (`α ≈ τ ≈ 0.42`) because the full value over-brightens
+closed broadleaf canopies (monthly SWup +12-19 W/m² at evergreen and deciduous
+broadleaf FLUXNET2015 sites). Set `leaf_NIR_omega_min = 0` to recover the
+previous optics. This is a stop-gap until the universal leaf optics replace
+the PFT values.
 
 - ![][badge-✨feature] Add bounded, state-dependent multiplicative corrections
   that carry empirical (e.g. flux-tower regression) error corrections into the

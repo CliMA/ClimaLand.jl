@@ -357,12 +357,13 @@ Temporary leaf NIR optics fix. Return the leaf NIR reflectance or
 transmittance `x` of a canopy element whose NIR single-scattering albedo is
 `ω = α + τ`, raised to `ω_min / 2` (`α = τ`) when `0.6 < ω < ω_min`. The
 default table and gridded values for broad leaves (`α = 0.45, τ = 0.25`) and
-grasses (`0.35, 0.34`) have `ω ≈ 0.7`, well below leaf-level measurements
+grasses (`0.35, 0.34`) have `ω ≈ 0.7`, below leaf-level measurements
 (`α ≈ τ ≈ 0.42`), which makes humid grass, crop and broadleaf canopies too
 dark in the NIR and pushes the absorbed energy into sensible heat; the shoot
-level needleleaf values (`ω = 0.45`) are left unchanged. Set
-`leaf_NIR_omega_min = 0` to disable. To be replaced by the universal leaf
-optics work.
+level needleleaf values (`ω = 0.45`) are left unchanged. The default floor
+(`0.76`) stays below the leaf-level value because the latter over-brightens
+closed broadleaf canopies. Set `leaf_NIR_omega_min = 0` to disable. To be
+replaced by the universal leaf optics work.
 """
 function raised_leaf_nir_optics(x::FT, ω::FT, ω_min::FT) where {FT}
     return (ω > FT(0.6) && ω < ω_min) ? ω_min / 2 : x
