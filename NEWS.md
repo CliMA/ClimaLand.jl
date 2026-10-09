@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add a pipeline that calibrates 10 P-model, moisture stress, canopy
+  turbulence, and longwave parameters of the default land model forced by
+  CRUJRA, on a `ColumnEnsemble` of 200 columns representing global land,
+  against FLUXCOM LHF, SHF, GPP and CERES SWU, LWU (5 TransformUnscented EKI
+  iterations). It runs on Buildkite when a PR has the `calibrate CRUJRA` label
+  and uploads the calibrated parameters as `crujra_parameters.toml`. See
+  `experiments/calibration/crujra_columns`.
+  PR [#PRNUMBER](https://github.com/CliMA/ClimaLand.jl/pull/PRNUMBER)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
