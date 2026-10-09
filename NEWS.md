@@ -9,7 +9,7 @@ main
   iterations). It runs on Buildkite when a PR has the `calibrate CRUJRA` label
   and uploads the calibrated parameters as `crujra_parameters.toml`. See
   `experiments/calibration/crujra_columns`.
-  PR [#PRNUMBER](https://github.com/CliMA/ClimaLand.jl/pull/PRNUMBER)
+  PR [#1911](https://github.com/CliMA/ClimaLand.jl/pull/1911)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
