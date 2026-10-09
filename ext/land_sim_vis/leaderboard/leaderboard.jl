@@ -50,15 +50,22 @@ Return a copy of `var` with every cell outside the northern (`:NH`) or southern
 as northern, so the two hemispheres partition the globe.
 """
 function _hemisphere_mask(var, hemisphere)
+    hemisphere in (:NH, :SH) ||
+        error("hemisphere must be :NH or :SH, got $(repr(hemisphere))")
     # Grid latitudes can miss zero by round-off.
     north = ClimaAnalysis.latitudes(var) .>= -1e-6
-    outside = hemisphere == :NH ? .!north : north
+    outside = findall(hemisphere == :NH ? .!north : north)
     # Masked rather than windowed: `weighted_average_lonlat` takes latitudes
     # that are all negative to be in radians and warns.
-    data = copy(var.data)
-    lat_dim = var.dim2index[ClimaAnalysis.latitude_name(var)]
-    selectdim(data, lat_dim, outside) .= NaN
-    return ClimaAnalysis.remake(var; data)
+    masked = deepcopy(var)
+    isempty(outside) && return masked
+    outside_var = ClimaAnalysis.view_select(
+        masked;
+        by = ClimaAnalysis.Index(),
+        lat = outside,
+    )
+    fill!(outside_var.data, NaN)
+    return masked
 end
 
 """
