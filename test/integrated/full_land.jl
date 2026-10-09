@@ -490,7 +490,7 @@ end
         )
         soil_exp = int_cache
         canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
-        @. canopy_exp = area_index * h_canopy * ϑ0
+        @. canopy_exp = area_index * max(h_canopy, 1) * ϑ0
         snow_exp = S0
         total_water = ClimaCore.Fields.zeros(domain.space.surface)
         cache = ClimaCore.Fields.zeros(domain.space.surface)

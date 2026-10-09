@@ -554,9 +554,10 @@ and return its output. The surface temperature and specific humidity start
 from `T_sfc_guess` and `q_vap_sfc_guess` and are updated within the iterations
 by the callbacks `update_T_sfc` and `update_q_vap_sfc` (or held fixed if these
 are `nothing`). The atmospheric pressure, temperature, specific humidity, and
-wind (a speed or a horizontal vector) are given at the absolute height
-`h_atmos`, and the surface is at height `h_sfc` with displacement height
-`displ`.
+wind (a speed or a horizontal vector) are given at the height `h_atmos`, and the
+surface is at height `h_sfc`. The aerodynamic height used in the similarity
+functions is `h_atmos - h_sfc + z_0m`, so the displacement height `displ` does
+not currently enter the fluxes.
 
 Called from `turbulent_fluxes_at_a_point` and the surface temperature solves of
 the soil and snow models, which use its output with
@@ -591,15 +592,14 @@ function surface_fluxes_at_a_point(
     u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
+    # Only valid for a constant roughness length; one that depends on u★
+    # would need to be handled inside SurfaceFluxes.
     z_0m = SurfaceFluxes.momentum_roughness(
         roughness_model,
         nothing,
         nothing,
         nothing,
     )
-    # The above wont work for non- ConstantRoughnessModel.
-    # In fact in that case the fix should occur internally to SF.jl because the roughness length could depend on u⋆.
-    # Note that h_sfc is always zero, and h_atmos is interpreted as height relative to the surface. 
     return SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
@@ -609,9 +609,12 @@ function surface_fluxes_at_a_point(
         ρ_atmos,
         T_sfc_guess,
         q_vap_sfc_guess,
-        _grav * (h_sfc + displ + z_0m), # This is modified so that the dz used in graviational potential energy = physical distance.
-        h_atmos + displ + z_0m - h_sfc,
-        displ,
+        _grav * h_sfc,
+        h_atmos - h_sfc,
+        # SurfaceFluxes takes Δz - d as the aerodynamic height and g * Δz as the
+        # geopotential difference; d = -z_0m keeps the former positive under
+        # tall canopies without biasing the latter.
+        -z_0m,
         u,
         (FT(0), FT(0)), # u_sfc
         nothing, # roughness inputs

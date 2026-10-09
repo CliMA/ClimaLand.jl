@@ -575,8 +575,11 @@ end
     SAI = canopy.biomass.plant_area_index.SAI
     RAI = canopy.biomass.plant_area_index.RAI
     f_T = ar_params.Q10^((FT(289) - ar_params.T_ref) / FT(10))
-    Ra_baseline = f_T * ar_params.Rd_ref * (RAI + ar_params.μs * SAI)
-    @test all(Array(parent(p.canopy.autotrophic_respiration.Ra)) .≈ Ra_baseline)
+    Ra_baseline = @. f_T * ar_params.Rd_ref * (RAI + ar_params.μs * SAI)
+    @test all(
+        Array(parent(p.canopy.autotrophic_respiration.Ra)) .≈
+        Array(parent(Ra_baseline)),
+    )
 
     exp_tend! = make_exp_tendency(canopy)
     exp_tend!(dY, Y, p, FT(0))

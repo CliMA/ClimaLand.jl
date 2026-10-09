@@ -26,6 +26,7 @@ import ClimaLand:
     component_specific_humidity,
     get_update_surface_humidity_function,
     get_update_surface_temperature_function,
+    surface_height,
     surface_albedo,
     surface_emissivity,
     surface_displacement_height,

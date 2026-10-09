@@ -107,7 +107,8 @@ for FT in (Float32, Float64)
             dY.bucket.Ws .= 1.0
             dY.bucket.σS .= 0.0
             exp_tendency!(dY, Y, p, 0.0)
-            @test mean(Array(parent(dY.bucket.T))) < eps(FT)
+            # g * h_atmos still drives a tiny sensible heat flux
+            @test mean(Array(parent(dY.bucket.T))) < sqrt(eps(FT))
             @test mean(Array(parent(dY.bucket.W))) < eps(FT)
             @test mean(Array(parent(dY.bucket.Ws))) < eps(FT)
             @test mean(Array(parent(dY.bucket.σS))) < eps(FT)
