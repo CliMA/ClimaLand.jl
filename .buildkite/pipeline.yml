@@ -257,3 +257,27 @@ steps:
           - "bucket_era5_gpu"
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
+
+  # Calibrates parameters on an ensemble of columns forced by CRUJRA. Runs when
+  # the PR has the "calibrate CRUJRA" label, or on a manual build with
+  # `CALIBRATE_CRUJRA=""`. See experiments/calibration/crujra_columns/README.md.
+  - group: "Calibration on CRUJRA columns"
+    if: build.pull_request.labels includes "calibrate CRUJRA" || build.env("CALIBRATE_CRUJRA") != null
+    steps:
+      - label: ":gear: Calibrate on CRUJRA columns (5 EKI iterations)"
+        key: "calibrate_crujra"
+        command:
+          - julia --color=yes --project=.buildkite experiments/calibration/crujra_columns/run_calibration.jl crujra_calibration
+          - buildkite-agent annotate --style success --context crujra-calibration < crujra_calibration/results/summary.md
+        artifact_paths:
+          - "crujra_calibration/results/*"
+        # One worker per ensemble member, spread over the 4 GPUs of a node
+        agents:
+          slurm_ntasks: 1
+          slurm_cpus_per_task: 24
+          slurm_gpus: 4
+          slurm_mem: 200G
+          slurm_time: "24:00:00"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          CALIBRATION_N_WORKERS: 21

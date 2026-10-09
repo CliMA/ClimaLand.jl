@@ -5,6 +5,9 @@ land model or bucket model. The observations are seasonal averages of `lhf`,
 `shf`, `lwu`, and `swu` spanning twenty years (1979-3 to 2024-8)  with a
 latitude-weighted scalar covariance matrix.
 
+To calibrate on an ensemble of columns forced by CRUJRA, against FLUXCOM and
+CERES observations, see [`crujra_columns`](crujra_columns/README.md).
+
 # How do I run a calibration?
 
 1. Pick (or create) a configuration file under
