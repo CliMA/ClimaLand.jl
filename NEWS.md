@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] The MON column of the annual leaderboards
+  (`*_sim_annual_time_avg_over_all_years.png`) shows the seasonal cycle of the
+  northern and southern hemisphere means (solid and dashed) instead of the
+  global mean, which is dominated by the northern hemisphere.
+  PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
 - ![][badge-🔥behavioralΔ] Solve for the soil skin temperature (`p.soil.turbulent_fluxes.T_sfc`) from the surface energy
   balance within the Monin-Obukhov iterations, separating the radiating and
   turbulent-exchange surface of the soil from the top cell center by the
