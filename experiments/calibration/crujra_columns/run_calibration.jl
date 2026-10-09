@@ -6,8 +6,9 @@
 #   julia --project=.buildkite experiments/calibration/crujra_columns/run_calibration.jl [OUTPUT_DIR]
 #
 # Ensemble members run one after another in this process, or concurrently on
-# `CALIBRATION_N_WORKERS` local worker processes that share the device chosen by
-# `CLIMACOMMS_DEVICE`. The calibrated parameters (`crujra_parameters.toml`),
+# `CALIBRATION_N_WORKERS` local worker processes on the device chosen by
+# `CLIMACOMMS_DEVICE`, spread over the GPUs in `CUDA_VISIBLE_DEVICES` if there
+# are several. The calibrated parameters (`crujra_parameters.toml`),
 # figures, and a summary are written to `OUTPUT_DIR/results`. Rerunning with the
 # same `OUTPUT_DIR` resumes an interrupted calibration (workers only).
 
@@ -61,6 +62,23 @@ function final_ekp(output_dir)
 end
 
 """
+    add_local_workers(n_workers)
+
+Start `n_workers` local worker processes. If `CUDA_VISIBLE_DEVICES` lists
+several GPUs, each worker sees only one of them, in turn.
+"""
+function add_local_workers(n_workers)
+    exeflags = "--project=$(Base.active_project())"
+    gpus = filter(!isempty, split(get(ENV, "CUDA_VISIBLE_DEVICES", ""), ","))
+    length(gpus) <= 1 && return addprocs(n_workers; exeflags)
+    @info "Spreading $n_workers workers over GPUs $(join(gpus, ", "))"
+    return mapreduce(vcat, 1:n_workers) do i
+        gpu = gpus[mod1(i, length(gpus))]
+        addprocs(1; exeflags, env = ["CUDA_VISIBLE_DEVICES" => gpu])
+    end
+end
+
+"""
     main(output_dir; n_workers = 0)
 
 Run the calibration in `output_dir` and write its results to
@@ -72,7 +90,7 @@ function main(output_dir; n_workers = 0)
     columns = read_columns()
 
     if n_workers > 0
-        addprocs(n_workers; exeflags = "--project=$(Base.active_project())")
+        add_local_workers(n_workers)
         @everywhere workers() include($MODEL_INTERFACE_FILE)
         backend = ClimaCalibrate.WorkerBackend()
     else

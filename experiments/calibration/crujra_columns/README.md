@@ -43,8 +43,9 @@ CLIMACOMMS_DEVICE=CUDA CALIBRATION_N_WORKERS=7 \
 CRUJRA is only available on the CliMA clusters. With
 `CALIBRATION_N_WORKERS = 0` (the default), the ensemble members run one after
 another in a single process. Otherwise, they run concurrently on that many
-local worker processes, which share the device selected by
-`CLIMACOMMS_DEVICE`.
+local worker processes on the device selected by `CLIMACOMMS_DEVICE`. When
+`CUDA_VISIBLE_DEVICES` lists several GPUs, the workers are spread over them, one
+GPU per worker in turn.
 
 ## Files
 
