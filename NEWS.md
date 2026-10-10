@@ -2,6 +2,22 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Adopt SurfaceFluxes 1.5, in which the surface state of a
+  Monin-Obukhov solve applies at the displacement height: the dry static
+  energy difference that drives the sensible heat flux of the canopy is
+  `cp (T_atmos - T_sfc) + g (Δz - d)`, so the air column below the
+  displacement height no longer enters the canopy exchange (a stabilizing
+  0.15 K at `d = 15` m before). The canopy surface energy balance uses the
+  same geopotential (`SurfaceFluxes.surface_geopotential(param_set, inputs)`),
+  the surface air density for the flux derivatives is extrapolated over the
+  effective height, the stored stability parameter `ζ` is the capped
+  `ζ_eff` of the solve, and the screen-level temperature follows the dry
+  static energy from the surface state at the displacement height, which no
+  longer enters `ClimaLand.screen_level_values`. The gustiness floor accessors
+  of SurfaceFluxes (`SurfaceFluxes.minimum_wind_speed`,
+  `SurfaceFluxes.without_floor`) replace `ClimaLand.gustiness_floor`, and
+  `ClimaLand.profile_shape` evaluates `SurfaceFluxes.dimensionless_profile_value`.
+  Requires SurfaceFluxes 1.5.
 - ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
   at the water content of the permanent wilting point (ψ = -150 m). At sites
   where the observed water content is below the residual water content of the
@@ -41,7 +57,7 @@ main
   friction velocity, so the fluxes depend only on the current state. Requires
   SurfaceFluxes 1.4. The ground below a canopy keeps the convective part of
   the model with a zero floor, since the floor is folded into the wind above
-  the canopy (`ClimaLand.gustiness_floor`, `Canopy.ground_gustiness`). The flux
+  the canopy (`SurfaceFluxes.minimum_wind_speed`, `Canopy.ground_gustiness`). The flux
   functions take gustiness models only (`ClimaLand.gustiness_spec`);
   `PrescribedAtmosphere` stores a number passed for `gustiness` as a
   `SurfaceFluxes.ConstantGustinessSpec`, which recovers the constant floor

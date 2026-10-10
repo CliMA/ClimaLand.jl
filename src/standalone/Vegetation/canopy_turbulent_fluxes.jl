@@ -189,28 +189,21 @@ the model of the atmospheric forcing `gustiness` with its minimum wind speed
 set to zero, since that floor is folded into the sub-canopy wind
 ([`subcanopy_wind`](@ref)), so that only its convective part remains; where
 they are absent, the model of the forcing itself, so that bare ground is
-forced as a standalone surface. Models without a floor are returned as they
-are.
+forced as a standalone surface (see `SurfaceFluxes.without_floor`). Models
+without a floor are returned as they are.
 """
 function ground_gustiness(
-    gustiness::SurfaceFluxes.ConstantGustinessSpec,
+    gustiness::Union{
+        SurfaceFluxes.ConstantGustinessSpec,
+        SurfaceFluxes.FlooredDeardorffGustinessSpec,
+    },
     plants,
 )
-    u_min = gustiness.value
-    return @. lazy(
-        SurfaceFluxes.ConstantGustinessSpec(ifelse(plants, zero(u_min), u_min)),
-    )
-end
-function ground_gustiness(
-    gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec,
-    plants,
-)
-    u_min = gustiness.u_min
-    return @. lazy(
-        SurfaceFluxes.FlooredDeardorffGustinessSpec(
-            ifelse(plants, zero(u_min), u_min),
-        ),
-    )
+    # The models enter the broadcast as scalars (`Ref`), since a gustiness model
+    # broadcasts as a 1-tuple
+    floored = Ref(gustiness)
+    unfloored = Ref(SurfaceFluxes.without_floor(gustiness))
+    return @. lazy(ifelse(plants, $unfloored, $floored))
 end
 ground_gustiness(gustiness::SurfaceFluxes.AbstractGustinessSpec, plants) =
     gustiness

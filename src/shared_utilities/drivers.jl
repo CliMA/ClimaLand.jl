@@ -84,21 +84,6 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
-    gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec)
-
-Return the minimum wind speed [m/s] of a gustiness model, which is folded into
-the wind above a canopy before the wind below it is computed
-(`Canopy.subcanopy_wind`): the value of a `ConstantGustinessSpec`, the floor
-of a `SurfaceFluxes.FlooredDeardorffGustinessSpec`, and zero otherwise.
-"""
-gustiness_floor(gustiness::SurfaceFluxes.ConstantGustinessSpec) =
-    gustiness.value
-gustiness_floor(gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec) =
-    gustiness.u_min
-gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec) = 0
-
-
-"""
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
@@ -791,12 +776,15 @@ from that solve.
     # Approximate derivatives of fluxes with respect to T_sfc
     g_h = output.g_h
     u_star = output.ustar
+    # The surface state applies at the displacement height, so the density is
+    # extrapolated over the effective height, as in the flux solve
+    Δz_eff = Δz - displ
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,
         ρ_atmos,
         output.T_sfc,
-        Δz,
+        Δz_eff,
         q_tot_atmos,
         FT(0),
         FT(0),
@@ -816,7 +804,6 @@ from that solve.
         )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    Δz_eff = Δz - displ
     fluxes = (;
         lhf = output.lhf,
         shf = output.shf,
@@ -827,8 +814,8 @@ from that solve.
         q_sfc = output.q_vap_sfc,
         ustar = u_star,
         # Stability parameter at which the exchange coefficients were
-        # evaluated (capped in stable conditions); zero when neutral
-        ζ = Δz_eff / output.L_eff,
+        # evaluated (capped in stable conditions)
+        ζ = output.ζ_eff,
         Δz_eff,
     )
     return with_extra_fluxes(

@@ -447,7 +447,7 @@ function ClimaLand.get_update_surface_temperature_function(
         area_index_pt,
         T_canopy,
     )
-        Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
+        Φ_sfc = SurfaceFluxes.surface_geopotential(param_set, inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
         g_h = SurfaceFluxes.heat_conductance(
@@ -666,7 +666,10 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
         sfp
     h_forcing = atmos.h
     atmos_gustiness = ClimaLand.gustiness_spec(atmos)
-    floor = ClimaLand.gustiness_floor(atmos_gustiness)
+    surface_flux_params =
+        LP.surface_fluxes_parameters(ClimaLand.get_earth_param_set(canopy))
+    floor =
+        SurfaceFluxes.minimum_wind_speed(atmos_gustiness, surface_flux_params)
     height = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u

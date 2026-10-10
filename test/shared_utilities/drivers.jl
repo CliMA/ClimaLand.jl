@@ -169,9 +169,12 @@ end
 
     # Floors
     c = SurfaceFluxes.ConstantGustinessSpec(FT(2))
-    @test ClimaLand.gustiness_floor(spec) == FT(1)
-    @test ClimaLand.gustiness_floor(c) == FT(2)
-    @test ClimaLand.gustiness_floor(SurfaceFluxes.DeardorffGustinessSpec()) == 0
+    @test SurfaceFluxes.minimum_wind_speed(spec, sf_params) == FT(1)
+    @test SurfaceFluxes.minimum_wind_speed(c, sf_params) == FT(2)
+    @test SurfaceFluxes.minimum_wind_speed(
+        SurfaceFluxes.DeardorffGustinessSpec(),
+        sf_params,
+    ) == 0
 
     # A flux solve with the model: in calm unstable conditions the effective
     # wind speed is at least the floor, so the fluxes exceed those of a solve
@@ -454,7 +457,6 @@ end
         ustar,
         FT(0),
         Δz_eff,
-        FT(0),
         z0m,
         z0h,
         T_air,
@@ -469,26 +471,6 @@ end
     @test s.q ≈ q_sfc + (q_air - q_sfc) * r
     @test s.u ≈ ustar / κ * log((z0m + 10) / z0m)
     @test s.g_h ≈ κ * ustar / (Pr_0 * log(Δz_eff / z0h))
-    # With a displacement height, the screen level is that much higher above
-    # the surface, which only enters the adiabatic term
-    displ = FT(5)
-    s_d = ClimaLand.screen_level_values(
-        T_sfc,
-        q_sfc,
-        ustar,
-        FT(0),
-        Δz_eff,
-        displ,
-        z0m,
-        z0h,
-        T_air,
-        q_air,
-        FT(2),
-        FT(10),
-        earth_param_set,
-    )
-    @test s_d.q == s.q
-    @test s_d.T ≈ s.T + g / cp_d * (r - 1) * displ
     # Forcing at or below the screen height: forcing values are returned
     s_low = ClimaLand.screen_level_values(
         T_sfc,
@@ -496,7 +478,6 @@ end
         ustar,
         FT(0),
         FT(1.5),
-        FT(0),
         z0m,
         z0h,
         T_air,

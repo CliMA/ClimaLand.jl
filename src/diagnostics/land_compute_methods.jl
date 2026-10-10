@@ -1233,7 +1233,6 @@ function screen_level(
     tf = p.soil.turbulent_fluxes
     params = model.parameters
     earth_param_set = params.earth_param_set
-    displ = ClimaLand.surface_displacement_height(model, Y, p)
     z_screen = ClimaLand.screen_height(FT)
     z_anemometer = ClimaLand.anemometer_height(FT)
     return @. lazy(
@@ -1243,7 +1242,6 @@ function screen_level(
             tf.ustar,
             tf.ζ,
             tf.Δz_eff,
-            displ,
             params.z_0m,
             params.z_0b,
             T_atmos,
@@ -1264,7 +1262,6 @@ function screen_level(
     tf = p.snow.turbulent_fluxes
     params = model.parameters
     earth_param_set = params.earth_param_set
-    displ = ClimaLand.surface_displacement_height(model, Y, p)
     z_screen = ClimaLand.screen_height(FT)
     z_anemometer = ClimaLand.anemometer_height(FT)
     return @. lazy(
@@ -1274,7 +1271,6 @@ function screen_level(
             tf.ustar,
             tf.ζ,
             tf.Δz_eff,
-            displ,
             params.z_0m,
             params.z_0b,
             T_atmos,
@@ -1298,7 +1294,6 @@ function screen_level(model::CanopyModel{FT}, Y, p) where {FT}
             tf.ustar,
             tf.ζ,
             tf.Δz_eff,
-            sfp.displ,
             sfp.z_0m,
             sfp.z_0b,
             p.drivers.T,
