@@ -51,10 +51,10 @@ jobs:
             ~/.julia/logs
           # The cache key includes the OS, Julia version, and the project's dependencies
           key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
-          # Fallback keys to use if the primary key isn't found
+          # Fallback to a depot of the same Julia version only; the compiled
+          # caches of another version do not apply
           restore-keys: |
             ${{ matrix.os }}-julia-${{ matrix.version }}-
-            ${{ matrix.os }}-julia-
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:

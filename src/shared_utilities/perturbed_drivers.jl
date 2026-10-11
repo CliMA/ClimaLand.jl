@@ -89,7 +89,7 @@ end
                              toml_dict::CP.ParamDict,
                              ΔT,
                              FT;
-                             gustiness=1,
+                             gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -111,7 +111,7 @@ function prescribed_perturbed_temperature_era5(
     toml_dict::CP.ParamDict,
     ΔT,
     FT;
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -211,7 +211,7 @@ function prescribed_perturbed_temperature_era5(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 
@@ -285,7 +285,7 @@ end
                              toml_dict::CP.ParamDict,
                              Δrh,
                              FT;
-                             gustiness=1,
+                             gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -307,7 +307,7 @@ function prescribed_perturbed_rh_era5(
     toml_dict::CP.ParamDict,
     Δrh,
     FT;
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -405,7 +405,7 @@ function prescribed_perturbed_rh_era5(
         start_date,
         h_atmos,
         toml_dict;
-        gustiness = FT(gustiness),
+        gustiness,
         c_co2 = c_co2,
     )
 

@@ -35,6 +35,8 @@ ClimaLand.Canopy.dark_respiration_farquhar
 ClimaLand.Canopy.MM_Kc
 ClimaLand.Canopy.MM_Ko
 ClimaLand.Canopy.compute_Vcmax_farquhar
+ClimaLand.Canopy.canopy_nitrogen_scaling
+ClimaLand.Canopy.update_photosynthesis!(p, Y, model::ClimaLand.Canopy.FarquharModel, canopy)
 ```
 
 ## PModel Methods

@@ -219,7 +219,7 @@ end
             T_atmos = (t) -> 280.0
             u_atmos = (t) -> 1.0
             q_atmos = (t) -> 0.0 # no atmos water
-            h_atmos = FT(1e-8)
+            h_atmos = FT(1)
             P_atmos = (t) -> 101325
             bucket_atmos = PrescribedAtmosphere(
                 TimeVaryingInput(precip),
@@ -321,7 +321,7 @@ for (name, infile_path, varname) in name_ds_var_list
                 T_atmos = (t) -> 280.0
                 u_atmos = (t) -> 1.0
                 q_atmos = (t) -> 0.0 # no atmos water
-                h_atmos = FT(1e-8)
+                h_atmos = FT(1)
                 P_atmos = (t) -> 101325
                 bucket_atmos = PrescribedAtmosphere(
                     TimeVaryingInput(precip),

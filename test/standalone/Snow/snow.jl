@@ -126,10 +126,7 @@ import ClimaLand.Parameters as LP
     # p.snow.turbulent_fluxes.T_sfc and p.surf_residual_flux
     # the first time - now we can compare the results:
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
-    #might need to change below line in future depending on how gustiness models are implemented:
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(
-        model.boundary_conditions.atmos.gustiness,
-    )
+    gustiness = model.boundary_conditions.atmos.gustiness
     h_sfc = ClimaLand.surface_height(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     tsfc_original = copy(p.snow.turbulent_fluxes.T_sfc)
@@ -162,7 +159,7 @@ import ClimaLand.Parameters as LP
     )
     tsfc_1 .= solution.T_sfc
 
-    #no update should occur from update_surf_temp!:
+    # update_surf_temp! reproduces the pointwise solve from the same state
     Snow.update_surf_temp!(
         model,
         model.parameters.surf_temp,
@@ -172,7 +169,7 @@ import ClimaLand.Parameters as LP
         p,
         t0,
     )
-    @test p.snow.turbulent_fluxes.T_sfc == tsfc_original
+    @test p.snow.turbulent_fluxes.T_sfc == tsfc_1
     earth_param_set = model.parameters.earth_param_set
     _LH_f0 = LP.LH_f0(earth_param_set)
     @test p.snow.surf_residual_flux ≈

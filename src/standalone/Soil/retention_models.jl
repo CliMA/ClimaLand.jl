@@ -65,3 +65,20 @@ struct BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
         return new{FT}(c, ψb, S_c)
     end
 end
+
+"""
+    field_capacity_saturation(cm::vanGenuchten)
+    field_capacity_saturation(cm::BrooksCorey)
+
+Return the effective saturation at field capacity. For the van Genuchten
+retention curve this is the saturation `(1 + 1/m)^(-m)` at the inflection
+point of `S(ψ)` (van Genuchten, 1980), which Assouline and Or (2014) identify
+with field capacity; it lies between 0.54 (`n = 3`) and 0.63 (`n = 1.5`).
+The Brooks and Corey curve has no inflection point, and the saturation at its
+air entry potential, one, is returned.
+"""
+field_capacity_saturation(cm::vanGenuchten) = (1 + 1 / cm.m)^(-cm.m)
+field_capacity_saturation(cm::BrooksCorey{FT}) where {FT} = FT(1)
+# Retention models broadcast as scalars, so a field of them maps elementwise
+field_capacity_saturation(cm::ClimaCore.Fields.Field) =
+    field_capacity_saturation.(cm)

@@ -408,14 +408,8 @@ function Base.show(io::IO, ::MIME"text/plain", atmos::PrescribedAtmosphere)
             "}",
         )
         println(io, "  start_date: ", atmos.start_date)
-        println(
-            io,
-            "  reference height: ",
-            atmos.h,
-            " m, gustiness: ",
-            atmos.gustiness,
-            " m/s",
-        )
+        println(io, "  reference height: ", atmos.h, " m")
+        println(io, "  gustiness: ", atmos.gustiness)
         driver_fields = (:liquid_precip, :snow_precip, :T, :u, :q, :P)
         kinds = unique(_driver_kind(getfield(atmos, f)) for f in driver_fields)
         if length(kinds) == 1
@@ -734,6 +728,10 @@ function Base.show(io::IO, ::MIME"text/plain", ps::Canopy.TwoStreamParameters)
             _scalar_or_field_str(ps.α_PAR_leaf),
             ", τ_leaf=",
             _scalar_or_field_str(ps.τ_PAR_leaf),
+            ", α_stem=",
+            _scalar_or_field_str(ps.α_PAR_stem),
+            ", τ_stem=",
+            _scalar_or_field_str(ps.τ_PAR_stem),
         )
         println(
             io,
@@ -741,6 +739,10 @@ function Base.show(io::IO, ::MIME"text/plain", ps::Canopy.TwoStreamParameters)
             _scalar_or_field_str(ps.α_NIR_leaf),
             ", τ_leaf=",
             _scalar_or_field_str(ps.τ_NIR_leaf),
+            ", α_stem=",
+            _scalar_or_field_str(ps.α_NIR_stem),
+            ", τ_stem=",
+            _scalar_or_field_str(ps.τ_NIR_stem),
         )
         println(
             io,

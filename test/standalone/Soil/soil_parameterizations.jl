@@ -494,3 +494,17 @@ for FT in (Float32, Float64)
         ) == 2
     end
 end
+
+@testset "Soil evaporation weight" begin
+    β = Soil.soil_evaporation_beta
+    # Unfrozen: the conductance ratio of the dry soil layer
+    @test β(0.01, 0.02, 0.01, 0.03, 0.5, false) ≈ 0.01 / (0.01 + 0.03)
+    # Frozen: the ice weight when losing water, one when gaining it
+    @test β(0.01, 0.02, 0.01, 0.03, 0.5, true) == 0.5
+    @test β(0.03, 0.02, 0.01, 0.03, 0.5, true) == 1
+    # Arguments of different types, as with dual numbers, promote
+    w = β(0.01f0, 0.02f0, 0.01f0, 0.03, 0.5f0, false)
+    @test w isa Float64
+    @test w ≈ 0.25 rtol = 1e-6
+    @test β(0.01f0, 0.02f0, 0.01f0, 0.03, 0.5f0, true) isa Float64
+end

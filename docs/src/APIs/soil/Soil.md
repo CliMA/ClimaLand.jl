@@ -75,6 +75,7 @@ ClimaLand.Soil.hydraulic_conductivity
 ClimaLand.Soil.impedance_factor
 ClimaLand.Soil.viscosity_factor
 ClimaLand.Soil.effective_saturation
+ClimaLand.Soil.field_capacity_saturation
 ClimaLand.Soil.matric_potential
 ClimaLand.Soil.dψdϑ
 ClimaLand.Soil.inverse_matric_potential
@@ -107,7 +108,9 @@ ClimaLand.Soil.thermal_time
 ```@docs
 ClimaLand.Soil.soil_surface_temperature
 ClimaLand.Soil.update_soil_surface_temperature!
-ClimaLand.Soil.soil_surface_vapor_weight
+ClimaLand.Soil.soil_turbulent_fluxes
+ClimaLand.Soil.soil_evaporation_beta
+ClimaLand.Soil.frozen_soil_vapor_weight
 ClimaLand.Soil.soil_skin_state
 ClimaLand.Soil.update_soil_T_sfc_scheme
 ClimaLand.Soil.update_soil_q_vap_sfc_scheme

@@ -317,7 +317,7 @@ end
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
-        h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
+        h_int = FT(10.0) # m, measurement height above the 2 m canopy
         lat = FT(0.0) # degree
         long = FT(-180) # degree
         start_date = DateTime(2005)
@@ -348,8 +348,12 @@ end
 
         liquid_precip = (t) -> 0 # m
         snow_precip = (t) -> 0 # m
-        T_atmos = t -> 290 # Kelvin
-        q_atmos = t -> 0.001 # kg/kg
+        # The analytic flux derivatives neglect the dependence of the exchange
+        # coefficient on the canopy temperature through the buoyancy flux.
+        # Moist, near-neutral forcing and a low measurement height keep that
+        # neglected term small relative to the finite-difference derivatives
+        T_atmos = t -> 288 # Kelvin
+        q_atmos = t -> 0.0095 # kg/kg
         P_atmos = t -> 1e5 # Pa
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
@@ -449,7 +453,10 @@ end
         Y_2 = deepcopy(Y)
         Y_2.canopy.energy.T = FT(289 + ΔT)
         p_2 = deepcopy(p)
-        set_initial_cache!(p_2, Y_2, t0)
+        # Update only what the implicit solve updates (fluxes at fixed stomatal
+        # conductance), since that is what the Jacobian linearizes
+        update_implicit_cache! = ClimaLand.make_update_implicit_cache(canopy)
+        update_implicit_cache!(p_2, Y_2, t0)
         T_sfc2 = Y_2.canopy.energy.T
         dY_2 = similar(Y_2)
         compute_imp_tendency!(dY_2, Y_2, p_2, t0)
@@ -472,21 +479,20 @@ end
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
         )[1] < 0.05
 
-        # It's not obvious why this is so poor compared to SHF
         finitediff_LHF =
             (p_2.canopy.turbulent_fluxes.lhf .- p.canopy.turbulent_fluxes.lhf) ./
             ΔT
         estimated_LHF = p.canopy.turbulent_fluxes.∂lhf∂T
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
-        )[1] < 0.5
+        )[1] < 0.05
 
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
         ∂Ṫ∂T = Array(parent(jac_value))[1] .+ 1
         @test abs.(
             Array(parent(dY_2.canopy.energy.T .- dY.canopy.energy.T))[1] ./ ΔT -
             ∂Ṫ∂T,
-        ) / abs.(∂Ṫ∂T) < 0.5 # Error propagates here from ∂LHF∂T
+        ) / abs.(∂Ṫ∂T) < 0.05
     end
 end
 

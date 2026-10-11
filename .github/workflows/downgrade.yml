@@ -41,10 +41,10 @@ jobs:
             ~/.julia/logs
           # The cache key includes the OS, Julia version, and the project's dependencies
           key: ubuntu-latest-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
-          # Fallback keys to use if the primary key isn't found
+          # Fallback to a depot of the same Julia version only; the compiled
+          # caches of another version do not apply
           restore-keys: |
             ubuntu-latest-julia-${{ matrix.version }}-
-            ubuntu-latest-julia-
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
           skip: Adapt, CalibrateEmulateSample, Dates, LazyArtifacts, LinearAlgebra, Test, Statistics, Printf, InteractiveUtils

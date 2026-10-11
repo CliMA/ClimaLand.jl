@@ -36,6 +36,10 @@ ClimaLand.Canopy.canopy_radiant_energy_fluxes!
 ClimaLand.Canopy.ground_albedo_PAR
 ClimaLand.Canopy.ground_albedo_NIR
 ClimaLand.Canopy.compute_fractional_absorbances!
+ClimaLand.Canopy.stem_area_fraction
+ClimaLand.Canopy.plant_area_weighted
+ClimaLand.Canopy.leaf_absorption_fraction
+ClimaLand.Canopy.leaf_fAPAR
 ClimaLand.Canopy.canopy_sw_rt_beer_lambert
 ClimaLand.Canopy.canopy_sw_rt_two_stream
 ClimaLand.Canopy.extinction_coeff

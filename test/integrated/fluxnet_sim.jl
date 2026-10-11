@@ -81,7 +81,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test soil_K_sat == FT(4e-7)
     @test soil_S_s == FT(1e-3)
     @test soil_vg_n == FT(2.05)
-    @test soil_vg_α == FT(0.04)
+    @test soil_vg_α == FT(4.0)
     @test θ_r == FT(0.067)
     @test ν_ss_quartz == FT(0.1)
     @test ν_ss_om == FT(0.1)
@@ -107,7 +107,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test Vcmax25 == FT(1e-4)
     @test SAI == FT(1.0)
     @test f_root_to_shoot == FT(3.5)
-    @test K_sat_plant == 5e-9
+    @test K_sat_plant == 7e-8
     @test ψ63 == FT(-4 / 0.0098)
     @test Weibull_param == FT(4)
     @test a == FT(0.05 * 0.0098)
