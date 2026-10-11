@@ -83,7 +83,7 @@ function FluxnetSimulations.get_parameters(
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-2),
     soil_vg_n = FT(2.0),
-    soil_vg_α = FT(0.05),
+    soil_vg_α = FT(5.0),
     θ_r = FT(0.04),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),

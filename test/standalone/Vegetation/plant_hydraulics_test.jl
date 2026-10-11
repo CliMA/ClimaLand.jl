@@ -85,6 +85,8 @@ for FT in (Float32, Float64)
             z_0b,
             FT(0.67) * h_int,
             toml_dict["leaf_Cd"],
+            toml_dict["canopy_subcanopy_wind_extinction_coefficient"],
+            toml_dict["canopy_subcanopy_min_reference_height"],
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree

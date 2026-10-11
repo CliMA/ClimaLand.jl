@@ -14,8 +14,10 @@ Base.@kwdef struct FarquharParameters{
     MECH <: Union{FT, ClimaCore.Fields.Field},
     VC <: Union{FT, ClimaCore.Fields.Field},
 }
-    "Vcmax at 25 °C (mol CO2/m^2/s); leaf level"
+    "Vcmax at 25 °C (mol CO2/m^2/s); leaf level, at the top of the canopy (the canopy-mean leaf value when kn = 0)"
     Vcmax25::VC
+    "Extinction coefficient of the exponential canopy nitrogen profile, per unit leaf area index (unitless); zero for a uniform canopy"
+    kn::FT
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
     "Michaelis-Menten parameter for CO2 at 25 °C (mol/mol)"
@@ -270,6 +272,24 @@ function gross_leaf_photosynthesis_at_a_point_Farquhar(
 end
 
 """
+    canopy_nitrogen_scaling(kn, LAI)
+
+Return the ratio of the canopy-mean to the top-of-canopy leaf photosynthetic
+capacity, `(1 - exp(-kn * LAI)) / (kn * LAI)`, for a capacity that decays
+exponentially with cumulative leaf area index at the rate `kn` (Sellers et al.,
+1992; Bonan, 2019, Eq. 15.6). The ratio tends to one as `kn * LAI` tends to zero,
+which is also the value returned for `kn * LAI = 0`.
+
+Called from [`update_photosynthesis!`](@ref) for the `FarquharModel`.
+"""
+function canopy_nitrogen_scaling(kn, LAI)
+    x = kn * LAI
+    # Guard the division; the ratio tends to one as x -> 0
+    x_safe = max(x, eps(typeof(x)))
+    return ifelse(x > eps(typeof(x)), (1 - exp(-x_safe)) / x_safe, one(x))
+end
+
+"""
     update_photosynthesis!(
         p,
         Y,
@@ -280,10 +300,16 @@ end
 Computes the net leaf-level photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar
 model, along with the dark leaf-level respiration `Rd` (mol CO2/m^2/s), and
 canopy level gross photosynthesis (mol CO2/m^2/s).
+
+The leaf-level rates are those of the canopy-mean leaf: the top-of-canopy
+`Vcmax25` is scaled by [`canopy_nitrogen_scaling`](@ref) and the absorbed PAR
+per unit leaf area is the canopy mean. The canopy-level `GPP` is the leaf-level
+gross photosynthesis times the leaf area index.
 """
 function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (;
         Vcmax25,
+        kn,
         is_c3,
         Γstar25,
         ΔHJmax,
@@ -315,7 +341,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     An = p.canopy.photosynthesis.An
     GPP = p.canopy.photosynthesis.GPP
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    f_abs = p.canopy.radiative_transfer.par.abs
+    f_abs = leaf_fAPAR(p) # PAR absorbed by leaves
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     T_air = p.drivers.T
@@ -334,10 +360,11 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 
     β = p.canopy.soil_moisture_stress.βm
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+    Vcmax25_leaf = @. lazy(Vcmax25 * canopy_nitrogen_scaling(kn, LAI))
 
     @. Rd = dark_respiration_farquhar(
         is_c3,
-        Vcmax25,
+        Vcmax25_leaf,
         β,
         T_canopy,
         R,
@@ -364,7 +391,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
             c_co2_air,
             medlyn_factor,
             R,
-            Vcmax25,
+            Vcmax25_leaf,
             is_c3,
             Γstar25,
             ΔHJmax,
@@ -397,11 +424,20 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
-get_Vcmax25_leaf(Y, p, m::FarquharModel, canopy) = m.parameters.Vcmax25
+# Leaf-level quantities are those of the canopy-mean leaf
+get_Vcmax25_leaf(Y, p, m::FarquharModel, canopy) = @. lazy(
+    m.parameters.Vcmax25 * canopy_nitrogen_scaling(
+        m.parameters.kn,
+        p.canopy.biomass.area_index.leaf,
+    ),
+)
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy) =
-    @. lazy(m.parameters.Vcmax25 * p.canopy.biomass.area_index.leaf)
+get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy) = @. lazy(
+    m.parameters.Vcmax25 *
+    canopy_nitrogen_scaling(m.parameters.kn, p.canopy.biomass.area_index.leaf) *
+    p.canopy.biomass.area_index.leaf,
+)
 get_Rd_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.Rd * p.canopy.biomass.area_index.leaf)
 get_An_canopy(p, m::FarquharModel) =
@@ -411,16 +447,18 @@ static_fractional_c3(m::FarquharModel) = m.parameters.is_c3
 
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    (; Vcmax25, ΔHJmax, To) = m.parameters
+    (; Vcmax25, kn, ΔHJmax, To) = m.parameters
+    LAI = p.canopy.biomass.area_index.leaf
+    Vcmax25_leaf = @. lazy(Vcmax25 * canopy_nitrogen_scaling(kn, LAI))
     R = LP.gas_constant(canopy.earth_param_set)
     return @. lazy(
-        max_electron_transport_farquhar(Vcmax25, ΔHJmax, T_canopy, To, R),
+        max_electron_transport_farquhar(Vcmax25_leaf, ΔHJmax, T_canopy, To, R),
     )
 end
 
 function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     earth_param_set = canopy.earth_param_set
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
@@ -492,6 +530,7 @@ function FarquharParameters(
         :Vcmax_activation_energy => :ΔHVcmax,
         :Γstar_activation_energy => :ΔHΓstar,
         :CO2_activation_energy => :ΔHkc,
+        :canopy_nitrogen_extinction_coefficient => :kn,
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)

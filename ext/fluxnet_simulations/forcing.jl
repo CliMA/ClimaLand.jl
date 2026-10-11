@@ -12,7 +12,7 @@ import ClimaLand.FluxnetSimulations: FLUXNET_FORCING_COLUMNS
                                 start_date,
                                 toml_dict::CP.ParamDict,
                                 FT;
-                                gustiness=1,
+                                gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                                 split_precip= true,
 )
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
@@ -51,7 +51,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     toml_dict::CP.ParamDict,
     FT;
     split_precip = true,
-    gustiness = 1,
+    gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -195,6 +195,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         atmos_h,
         toml_dict;
         c_co2,
+        gustiness,
     )
 
     cos_zenith_angle =

@@ -70,7 +70,7 @@ function update_SIF!(
     earth_param_set = canopy.earth_param_set
 
     # Compute APAR
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
@@ -122,7 +122,7 @@ function update_SIF!(
     SIF = p.canopy.sif.SIF
     earth_param_set = canopy.earth_param_set
 
-    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
@@ -136,7 +136,8 @@ function update_SIF!(
     T_freeze = LP.T_freeze(earth_param_set)
     sif_parameters = sif_model.parameters
 
-    Vcmax25_leaf = photosynthesis_model.parameters.Vcmax25
+    # Canopy-mean leaf capacity, as in the photosynthesis update
+    Vcmax25_leaf = get_Vcmax25_leaf(Y, p, photosynthesis_model, canopy)
     LAI = p.canopy.biomass.area_index.leaf
 
     @. SIF = compute_SIF_at_a_point_farquhar(

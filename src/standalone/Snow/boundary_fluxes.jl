@@ -151,22 +151,56 @@ function snow_boundary_fluxes!(
 end
 
 """
+    snow_flux_names(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities of
+`ClimaLand.turbulent_fluxes_at_a_point` stored in `p.snow.turbulent_fluxes`:
+the energy and vapor fluxes and their temperature derivatives, the momentum
+and buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs),
+the surface temperature `T_sfc` at which the fluxes are evaluated, and the
+similarity scales `ustar`, `ζ`, `Δz_eff` of the solve, which the screen-level
+diagnostics use.
+"""
+snow_flux_names(::Val{false}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :T_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+snow_flux_names(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+    :T_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+
+"""
     boundary_vars(bc, ::ClimaLand.TopBoundary)
     boundary_var_domain_names(bc, ::ClimaLand.TopBoundary)
     boundary_var_types(::SnowModel, bc, ::ClimaLand.TopBoundary)
 
 Fallbacks for the boundary conditions methods which add the turbulent
-fluxes, with the surface temperature `T_sfc` at which they are evaluated, to
-the auxiliary variables.
+fluxes, with the surface temperature `T_sfc` at which they are evaluated and
+the similarity scales of the solve (see `snow_flux_names`), to the auxiliary
+variables.
 """
 boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
 boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
-boundary_var_types(::SnowModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} = (
-    NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T, :T_sfc),
-        Tuple{FT, FT, FT, FT, FT, FT},
-    },
-)
+boundary_var_types(::SnowModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
+    (ClimaLand.flux_tuple_type(snow_flux_names(Val(false)), FT),)
 
 """
     boundary_var_types(
@@ -192,19 +226,4 @@ boundary_var_types(
     ::SnowModel{FT},
     ::AtmosDrivenSnowBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
     ::ClimaLand.TopBoundary,
-) where {FT} = (
-    NamedTuple{
-        (
-            :lhf,
-            :shf,
-            :vapor_flux,
-            :∂lhf∂T,
-            :∂shf∂T,
-            :ρτxz,
-            :ρτyz,
-            :buoyancy_flux,
-            :T_sfc,
-        ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
-    },
-)
+) where {FT} = (ClimaLand.flux_tuple_type(snow_flux_names(Val(true)), FT),)
