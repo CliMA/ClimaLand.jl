@@ -333,7 +333,7 @@ end
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"]
+        height =  clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
@@ -352,7 +352,7 @@ function PrescribedBiomassModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -376,7 +376,7 @@ end
         SAI = toml_dict["SAI_coeff"] .* maxLAI,
         RAI = toml_dict["RAI_coeff"] .* maxLAI,
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"],
+        height = clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel with time-constant stem and root area indices
@@ -393,7 +393,7 @@ function PrescribedBiomassModel{FT}(
     SAI = toml_dict["SAI_coeff"] .* maxLAI,
     RAI = toml_dict["RAI_coeff"] .* maxLAI,
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
@@ -792,7 +792,7 @@ end
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
         energy = BigLeafEnergyModel{FT}(toml_dict),
-        biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+        biomass= PrescribedBiomassModel{FT}(domain, LAI,  modis_max_lai(domain.space.surface), toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
         turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
     ) where {FT, PSE}
@@ -833,7 +833,12 @@ function CanopyModel{FT}(
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
-    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    biomass = PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        modis_max_lai(domain.space.surface),
+        toml_dict,
+    ),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,

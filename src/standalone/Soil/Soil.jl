@@ -95,7 +95,6 @@ import ClimaLand:
     component_specific_humidity,
     get_update_surface_humidity_function,
     get_update_surface_temperature_function,
-    surface_height,
     surface_displacement_height,
     surface_roughness_model,
     get_∂T_sfc∂T_function,
