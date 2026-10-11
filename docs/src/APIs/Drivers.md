@@ -22,7 +22,6 @@ ClimaLand.surface_flux_config
 ClimaLand.gustiness_spec
 ClimaLand.screen_level_values
 ClimaLand.screen_level_mean
-ClimaLand.profile_shape
 ClimaLand.component_temperature
 ClimaLand.component_specific_humidity
 ClimaLand.surface_roughness_model

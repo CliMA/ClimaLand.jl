@@ -994,12 +994,26 @@ function ClimaLand.surface_emissivity(
 end
 
 """
-    ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
+    ClimaLand.component_specific_humidity(
+        model::EnergyHydrology,
+        Y,
+        p;
+        h_atmos = model.boundary_conditions.top.atmos.h,
+        T_atmos = p.drivers.T,
+        q_atmos = p.drivers.q,
+    )
 
-a helper function which returns the surface specific humidity for the canopy
-model.
+Return the surface specific humidity for the `EnergyHydrology` soil model,
+updating `p.soil.q_sfc` in place.
 """
-function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
+function ClimaLand.component_specific_humidity(
+    model::EnergyHydrology,
+    Y,
+    p;
+    h_atmos = model.boundary_conditions.top.atmos.h,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+)
     earth_param_set = get_earth_param_set(model)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
@@ -1008,14 +1022,13 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    atmos = model.boundary_conditions.top.atmos
     ρ_sfc = @.lazy(
         ClimaLand.compute_ρ_sfc(
             surface_flux_params,
-            p.drivers.T,
+            T_atmos,
             p.drivers.P,
-            p.drivers.q,
-            atmos.h - h_sfc,
+            q_atmos,
+            h_atmos - h_sfc,
             T_sfc,
         ),
     )
@@ -1063,7 +1076,10 @@ end
 function ClimaLand.get_update_surface_humidity_function(
     model::EnergyHydrology,
     Y,
-    p,
+    p;
+    h_atmos = model.boundary_conditions.top.atmos.h,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
 )
     function update_q_vap_sfc_at_a_point(
         ζ,
@@ -1089,25 +1105,15 @@ function ClimaLand.get_update_surface_humidity_function(
             z_0b,
             scheme,
         )
-        q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q_air::FT = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
         # Sublimation; at T_sfc = Tf_depressed, qsat_sfc is over ice
-        if inputs.T_sfc_guess <= Tf_depressed
-            if q_air < qsat_sfc # water loss to atmosphere, adjust β
-                return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
-            else
-                return qsat_sfc
-            end
-        else
-            return (g_liq / g_h * qsat_sfc + q_air) / (1 + g_liq / g_h)
-        end
-
+        frozen = inputs.T_sfc_guess <= Tf_depressed
+        w = soil_evaporation_beta(q_air, qsat_sfc, g_liq, g_h, β_ice, frozen)
+        return w * qsat_sfc + (1 - w) * q_air
     end
     # Closure
-    FT = eltype(Y)
-    earth_param_set = get_earth_param_set(model)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    T_sfc = component_temperature(model, Y, p)
-    qsat_sfc = component_specific_humidity(model, Y, p)
+    qsat_sfc =
+        component_specific_humidity(model, Y, p; h_atmos, T_atmos, q_atmos)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
@@ -1161,14 +1167,26 @@ function turbulent_fluxes!(
     model::EnergyHydrology,
     Y,
     p,
-    t,
+    t;
+    h_atmos = atmos.h,
+    u_atmos = p.drivers.u,
+    T_atmos = p.drivers.T,
+    q_atmos = p.drivers.q,
+    gustiness = ClimaLand.gustiness_spec(atmos),
 )
 
     T_sfc = component_temperature(model, Y, p)
-    q_sfc = component_specific_humidity(model, Y, p)
+    q_sfc = component_specific_humidity(model, Y, p; h_atmos, T_atmos, q_atmos)
     roughness_model = surface_roughness_model(model, Y, p)
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
-    update_q_sfc = get_update_surface_humidity_function(model, Y, p)
+    update_q_sfc = get_update_surface_humidity_function(
+        model,
+        Y,
+        p;
+        h_atmos,
+        T_atmos,
+        q_atmos,
+    )
     h_sfc = surface_height(model, Y, p)
     displ = surface_displacement_height(model, Y, p)
     update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
@@ -1177,15 +1195,14 @@ function turbulent_fluxes!(
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    gustiness = ClimaLand.gustiness_spec(atmos)
     dest .= soil_turbulent_fluxes_at_a_point.(
         soil_flux_inputs(momentum_fluxes),
         Tf_depressed_sfc,
         p.drivers.P,
-        p.drivers.T,
-        p.drivers.q, # q_tot
-        p.drivers.u,
-        atmos.h,
+        T_atmos,
+        q_atmos, # q_tot
+        u_atmos,
+        h_atmos,
         T_sfc,
         q_sfc,
         roughness_model,

@@ -150,12 +150,14 @@ for FT in (Float32, Float64)
         c = SurfaceFluxes.ConstantGustinessSpec(FT(2))
         # Below plants the floor is folded into the sub-canopy wind; bare
         # ground keeps the model of the forcing
+        @test isbitstype(typeof(ground_gustiness(c, true)))
         @test Base.materialize(ground_gustiness(c, true)) ==
               SurfaceFluxes.ConstantGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(c, false)) == c
         d = SurfaceFluxes.DeardorffGustinessSpec()
         @test ground_gustiness(d, true) === d
         spec = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+        @test isbitstype(typeof(ground_gustiness(spec, true)))
         @test Base.materialize(ground_gustiness(spec, true)) ==
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(spec, false)) == spec

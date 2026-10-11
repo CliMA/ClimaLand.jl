@@ -15,31 +15,6 @@ screen_height(::Type{FT}) where {FT} = FT(2)
 anemometer_height(::Type{FT}) where {FT} = FT(10)
 
 """
-    profile_shape(z, Δz_eff, ζ, z0, transport, surface_flux_params)
-
-Return the dimensionless Monin-Obukhov profile `F̂(z) = log(z / z0) - ψ(z / L) +
-ψ(z0 / L)` of SurfaceFluxes.jl for momentum or heat (`transport`,
-`UF.MomentumTransport()` or `UF.HeatTransport()`) at the effective height `z`
-above the displacement height, with the roughness length `z0` and the Obukhov
-length `L = Δz_eff / ζ` of a flux solve at the effective forcing height
-`Δz_eff` and stability parameter `ζ`
-(`SurfaceFluxes.dimensionless_profile_value`). The height is clamped to the
-range from `z0`, where the profile is zero, to the forcing height, so that the
-profile stays within the levels the solve connected.
-"""
-profile_shape(z, Δz_eff, ζ, z0, transport, surface_flux_params) =
-    SurfaceFluxes.dimensionless_profile_value(
-        surface_flux_params,
-        Δz_eff / ζ, # Inf when neutral
-        z0,
-        z,
-        Δz_eff,
-        transport,
-        UF.PointValueScheme(),
-        SurfaceFluxes.NoRoughnessSubLayer(),
-    )
-
-"""
     screen_level_values(T_sfc, q_sfc, ustar, ζ, Δz_eff, z0m, z0h, T_atmos, q_atmos,
                         z_screen, z_anemometer, earth_param_set)
 
@@ -48,22 +23,22 @@ humidity [kg/kg] at the height `z_screen` [m] above the apparent sink for heat
 `displ + z0h`, the wind speed [m/s] at the height `z_anemometer` [m] above the
 apparent sink for momentum `displ + z0m`, and the heat conductance `g_h` [m/s]
 of a surface, reconstructed from the Monin-Obukhov profiles of its flux solve
-(`turbulent_fluxes_at_a_point`). The inputs are the surface temperature
-`T_sfc` [K] and specific humidity `q_sfc` at which the fluxes were evaluated,
-the friction velocity `ustar` [m/s], the stability parameter `ζ` and the
-effective forcing height `Δz_eff` [m], the height of the forcing above the
-displacement height, of the solve, the roughness lengths for momentum `z0m` and
-heat `z0h` [m], and the atmospheric temperature `T_atmos` [K] and specific
-humidity `q_atmos` at the forcing height.
+(`turbulent_fluxes_at_a_point`) with `SurfaceFluxes.screen_level_values`. The
+inputs are the surface temperature `T_sfc` [K] and specific humidity `q_sfc` at
+which the fluxes were evaluated, the friction velocity `ustar` [m/s], the
+stability parameter `ζ` and the effective forcing height `Δz_eff` [m], the
+height of the forcing above the displacement height, of the solve, the roughness
+lengths for momentum `z0m` and heat `z0h` [m], and the atmospheric temperature
+`T_atmos` [K] and specific humidity `q_atmos` at the forcing height.
 
 Between the surface and the forcing height, a quantity `X` carried by the heat
 profile takes the value `X_sfc + (X_atmos - X_sfc) F̂_h(z) / F̂_h(Δz_eff)` at the
 effective height `z`, with the dimensionless profile `F̂_h` of
-[`profile_shape`](@ref) at the stability of the solve. The temperature follows
-this relation in terms of the dry static energy, with the surface state at the
-displacement height (`SurfaceFluxes.surface_geopotential`), so it includes the
-adiabatic temperature change `g / c_p` per meter between the screen and forcing
-heights, and the displacement height itself does not enter.
+`SurfaceFluxes.dimensionless_profile_value` at the stability of the solve. The
+temperature follows this relation in terms of the dry static energy, with the
+surface state at the displacement height (`SurfaceFluxes.surface_geopotential`),
+so it includes the adiabatic temperature change `g / c_p` per meter between the
+screen and forcing heights, and the displacement height itself does not enter.
 The wind speed is `ustar F̂_m(z) / κ`, which at the forcing height is the wind
 speed the solve used (including gustiness). Levels at or above the forcing
 height take the forcing values.
@@ -83,30 +58,55 @@ function screen_level_values(
     earth_param_set,
 ) where {FT}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     κ = SurfaceFluxes.Parameters.von_karman_const(surface_flux_params)
-    _grav = LP.grav(earth_param_set)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    heat = UF.HeatTransport()
-    momentum = UF.MomentumTransport()
-
-    F̂_h_ref = profile_shape(Δz_eff, Δz_eff, ζ, z0h, heat, surface_flux_params)
-    z_T = z0h + z_screen
-    F̂_h = profile_shape(z_T, Δz_eff, ζ, z0h, heat, surface_flux_params)
-    r = F̂_h_ref > 0 ? min(F̂_h / F̂_h_ref, FT(1)) : FT(1)
-    # The dry static energy varies linearly with r from the surface state at the
-    # displacement height to the forcing; the heights above the displacement
-    # height of the forcing and of the screen level convert it to temperature
-    T =
-        T_sfc +
-        (T_atmos - T_sfc) * r +
-        _grav / cp_d * (r * Δz_eff - min(z_T, Δz_eff))
-    q = q_sfc + (q_atmos - q_sfc) * r
-
-    z_u = z0m + z_anemometer
-    F̂_m = profile_shape(z_u, Δz_eff, ζ, z0m, momentum, surface_flux_params)
-    u = ustar * max(F̂_m, FT(0)) / κ
-    g_h = F̂_h_ref > 0 ? κ * ustar / F̂_h_ref : FT(0)
+    L_eff = Δz_eff / ζ # Inf when neutral
+    rsl = SurfaceFluxes.NoRoughnessSubLayer()
+    F̂_h_ref = SurfaceFluxes.dimensionless_profile_value(
+        surface_flux_params,
+        L_eff,
+        z0h,
+        Δz_eff,
+        Δz_eff,
+        UF.HeatTransport(),
+        UF.PointValueScheme(),
+        rsl,
+    )
+    g_h = ifelse(F̂_h_ref > 0, κ * ustar / max(F̂_h_ref, eps(FT)), FT(0))
+    sc = SurfaceFluxes.SurfaceFluxConditions{FT}(
+        FT(0),
+        FT(0),
+        FT(0),
+        FT(0),
+        FT(0),
+        ustar,
+        ζ,
+        FT(0),
+        g_h,
+        T_sfc,
+        q_sfc,
+        L_eff,
+        L_eff,
+        ζ,
+        true,
+    )
+    inputs = (;
+        T_int = T_atmos,
+        q_tot_int = q_atmos,
+        q_liq_int = FT(0),
+        q_ice_int = FT(0),
+        Δz = Δz_eff,
+        d = FT(0),
+        roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z0m, z0h),
+        roughness_inputs = nothing,
+        rsl_model = rsl,
+    )
+    (; T, q, u) = SurfaceFluxes.screen_level_values(
+        surface_flux_params,
+        sc,
+        inputs,
+        z_screen,
+        z_anemometer,
+    )
     return (; T, q, u, g_h)
 end
 

@@ -15,7 +15,7 @@ ClimaLand.Canopy.CanopyModel{FT}(
         ClimaLand.Domains.SphericalSurface,
     },
     forcing::NamedTuple,
-    LAI::AbstractTimeVaryingInput,
+    LAI::Union{AbstractTimeVaryingInput, Nothing},
     toml_dict::CP.ParamDict,
 ) where {FT}
 ClimaLand.Canopy.AbstractCanopyComponent

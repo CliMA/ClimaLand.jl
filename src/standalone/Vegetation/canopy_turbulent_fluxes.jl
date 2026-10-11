@@ -199,11 +199,9 @@ function ground_gustiness(
     },
     plants,
 )
-    # The models enter the broadcast as scalars (`Ref`), since a gustiness model
-    # broadcasts as a 1-tuple
-    floored = Ref(gustiness)
-    unfloored = Ref(SurfaceFluxes.without_floor(gustiness))
-    return @. lazy(ifelse(plants, $unfloored, $floored))
+    unfloored = SurfaceFluxes.without_floor(gustiness)
+    choose_gustiness(has_plants) = ifelse(has_plants, unfloored, gustiness)
+    return @. lazy(choose_gustiness(plants))
 end
 ground_gustiness(gustiness::SurfaceFluxes.AbstractGustinessSpec, plants) =
     gustiness

@@ -13,10 +13,10 @@ main
   effective height, the stored stability parameter `ζ` is the capped
   `ζ_eff` of the solve, and the screen-level temperature follows the dry
   static energy from the surface state at the displacement height, which no
-  longer enters `ClimaLand.screen_level_values`. The gustiness floor accessors
+  longer enters `ClimaLand.screen_level_values` (now delegating to
+  `SurfaceFluxes.screen_level_values`). The gustiness floor accessors
   of SurfaceFluxes (`SurfaceFluxes.minimum_wind_speed`,
-  `SurfaceFluxes.without_floor`) replace `ClimaLand.gustiness_floor`, and
-  `ClimaLand.profile_shape` evaluates `SurfaceFluxes.dimensionless_profile_value`.
+  `SurfaceFluxes.without_floor`) replace `ClimaLand.gustiness_floor`.
   Requires SurfaceFluxes 1.5.
 - ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
   at the water content of the permanent wilting point (ψ = -150 m). At sites
@@ -28,7 +28,8 @@ main
   temperature and specific humidity 2 m above the apparent sink for heat, and
   wind speed 10 m above the apparent sink for momentum) for the soil, snow,
   and canopy models and the integrated models, reconstructed from the
-  Monin-Obukhov profiles of the flux solves (`ClimaLand.screen_level_values`),
+  Monin-Obukhov profiles of the flux solves (`ClimaLand.screen_level_values`,
+  `SurfaceFluxes.screen_level_values`),
   with the temperature following the dry static energy. Integrated models
   average over their surfaces weighted by area fraction and heat conductance
   (`ClimaLand.screen_level_mean`). To support this, the soil, snow, and canopy

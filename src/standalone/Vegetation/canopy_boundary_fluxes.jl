@@ -81,17 +81,6 @@ function AtmosDrivenCanopyBC(
     else
         @assert :soil ∈ prognostic_land_components
     end
-    # Monin-Obukhov similarity needs the forcing above the roughness sublayer
-    if atmos isa PrescribedAtmosphere &&
-       turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
-        (; displ, z_0m) = turbulent_flux_parameterization
-        clearance = minimum(@. atmos.h - displ - z_0m)
-        clearance > 0 || throw(
-            ArgumentError(
-                "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the momentum roughness length everywhere; the minimum clearance is $clearance m.",
-            ),
-        )
-    end
 
     args = (
         atmos,
@@ -397,7 +386,7 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
 
-        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q_vap_int = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
 
         # Solve for q_sfc analytically to satisfy balance of fluxes:
         # Flux_aero = ρ * g_h * (q_sfc - q_atm)

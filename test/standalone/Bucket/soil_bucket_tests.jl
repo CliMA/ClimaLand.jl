@@ -21,10 +21,12 @@ using ClimaLand:
 # Bucket model parameters
 import ClimaLand
 import ClimaLand.Parameters as LP
+import Thermodynamics
 
 for FT in (Float32, Float64)
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     α_bareground_func = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
     σS_c = FT(0.2)
@@ -60,12 +62,13 @@ for FT in (Float32, Float64)
         )
 
         @testset "Zero flux tendency, FT = $FT" begin
-            # Radiation
-            bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(
-                FT;
-                toml_dict,
-                h_atmos = FT(1e-8),
-            )
+            # Adiabatic temperature difference over the 1 m default forcing
+            # height so the dry static energy difference (and thus SHF) vanishes
+            _grav = LP.grav(earth_param_set)
+            cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+            T_atmos = (t) -> FT(280) - _grav / cp_d * FT(1)
+            bucket_atmos, bucket_rad =
+                ClimaLand.prescribed_analytic_forcing(FT; toml_dict, T_atmos)
             τc = FT(1.0)
             bucket_parameters =
                 BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)

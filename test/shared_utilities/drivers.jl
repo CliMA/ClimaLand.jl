@@ -423,32 +423,10 @@ end
     κ = SFP.von_karman_const(sf_params)
     g = LP.grav(earth_param_set)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    heat = SurfaceFluxes.UniversalFunctions.HeatTransport()
-    momentum = SurfaceFluxes.UniversalFunctions.MomentumTransport()
     # The neutral heat profile carries the neutral turbulent Prandtl number
     Pr_0 = SFP.Pr_0(sf_params)
 
-    # Neutral: logarithmic profiles
     z0m, z0h, Δz_eff = FT(0.1), FT(0.01), FT(20)
-    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(0), z0h, heat, sf_params) ≈
-          Pr_0 * log(5 / z0h)
-    @test ClimaLand.profile_shape(
-        FT(5),
-        Δz_eff,
-        FT(0),
-        z0m,
-        momentum,
-        sf_params,
-    ) ≈ log(5 / z0m)
-    # Clamped to the forcing height and to the roughness length
-    @test ClimaLand.profile_shape(FT(50), Δz_eff, FT(0), z0h, heat, sf_params) ≈
-          Pr_0 * log(Δz_eff / z0h)
-    @test ClimaLand.profile_shape(FT(0), Δz_eff, FT(0), z0h, heat, sf_params) ==
-          0
-    # Stable conditions reduce the mixing: larger profile value
-    @test ClimaLand.profile_shape(FT(5), Δz_eff, FT(1), z0h, heat, sf_params) >
-          Pr_0 * log(5 / z0h)
-
     T_sfc, T_air, q_sfc, q_air, ustar =
         FT(300), FT(290), FT(0.02), FT(0.01), FT(0.3)
     s = ClimaLand.screen_level_values(
@@ -489,6 +467,24 @@ end
     @test s_low.T ≈ T_air
     @test s_low.q ≈ q_air
     @test s_low.u ≈ ustar / κ * log(FT(1.5) / z0m)
+    # Screen height at or below the roughness length is clamped to z0h
+    s_z0 = ClimaLand.screen_level_values(
+        T_sfc,
+        q_sfc,
+        ustar,
+        FT(0),
+        Δz_eff,
+        z0m,
+        z0h,
+        T_air,
+        q_air,
+        FT(-1),
+        FT(-1),
+        earth_param_set,
+    )
+    @test s_z0.T ≈ T_sfc - g / cp_d * z0h
+    @test s_z0.q ≈ q_sfc
+    @test s_z0.u == 0
 
     # Weighted mean over surfaces: area fraction times conductance
     s1 = (; T = FT(1), q = FT(1), u = FT(1), g_h = FT(2))

@@ -111,19 +111,7 @@ function soil_skin_state(
     Tf_depressed::FT,
     earth_param_set,
 ) where {FT}
-    T_atmos = inputs.T_int
-    ρ_atmos = inputs.ρ_int
-    q_atmos = inputs.q_tot_int
-    P_atmos =
-        Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
-    ρ_sfc = ClimaLand.compute_ρ_sfc(
-        param_set,
-        T_atmos,
-        P_atmos,
-        q_atmos,
-        inputs.Δz,
-        T_sfc,
-    )
+    ρ_sfc = SurfaceFluxes.surface_density(param_set, inputs, T_sfc, nothing)
     qsat = soil_specific_humidity(
         T_sfc,
         ρ_sfc,
@@ -193,7 +181,7 @@ function update_soil_T_sfc_scheme(
     earth_param_set,
 )
     T_sfc = inputs.T_sfc_guess
-    q_air = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+    q_air = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
     (; ρ_sfc, qsat, ∂qsat∂T, frozen) = soil_skin_state(
         T_sfc,
         inputs,
@@ -262,7 +250,7 @@ function update_soil_q_vap_sfc_scheme(
     Tf_depressed,
     earth_param_set,
 )
-    q_air = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+    q_air = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
     (; qsat, frozen) = soil_skin_state(
         T_sfc,
         inputs,
@@ -382,7 +370,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
         T_atmos,
         P_atmos,
         q_atmos,
-        atmos_h - h_sfc,
+        atmos_h - h_sfc - displ,
         T_top,
     )
     q_sfc_guess = soil_specific_humidity(
@@ -579,7 +567,14 @@ function update_soil_surface_temperature!(
         earth_param_set,
     )
     # Updates the cached surface humidity to match the new skin temperature
-    ClimaLand.component_specific_humidity(model, Y, p)
+    ClimaLand.component_specific_humidity(
+        model,
+        Y,
+        p;
+        h_atmos,
+        T_atmos,
+        q_atmos,
+    )
     return nothing
 end
 

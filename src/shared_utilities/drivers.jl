@@ -463,7 +463,7 @@ function turbulent_fluxes!(
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
-    q_sfc = component_specific_humidity(model, Y, p) # guess
+    q_sfc = component_specific_humidity(model, Y, p; h_atmos, T_atmos, q_atmos) # guess
     roughness_model = surface_roughness_model(model, Y, p)
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
@@ -900,7 +900,7 @@ function surface_temperature_newton_update(
         param_set,
         inputs,
         g_h,
-        inputs.q_tot_int,
+        SurfaceFluxes.interior_vapor_specific_humidity(inputs),
         q_sfc,
         ρ_sfc,
         inputs.moisture_model,
@@ -1046,7 +1046,15 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file. Please see
 the documentation for an update function in the `turbulent_fluxes!` call.
 """
-function component_specific_humidity(model::AbstractModel, Y, p) end
+function component_specific_humidity end
+component_specific_humidity(
+    model::AbstractModel,
+    Y,
+    p;
+    h_atmos = nothing,
+    T_atmos = nothing,
+    q_atmos = nothing,
+) = component_specific_humidity(model, Y, p)
 
 """
     surface_roughness_model(model::AbstractModel, Y, p)
@@ -1059,7 +1067,7 @@ compute surface fluxes using the functions in this file.
 function surface_roughness_model(model::AbstractModel, Y, p) end
 
 """
-    surface_roughness_model(model::AbstractModel, Y, p)
+    surface_displacement_height(model::AbstractModel, Y, p)
 
 Returns the displacement height for `model`.
 
@@ -1085,12 +1093,13 @@ compute surface fluxes using the functions in this file.
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
 
 """
-    get_update_surface_specific_humidity_function(model::AbstractModel, Y, p)
+    get_update_surface_humidity_function(model::AbstractModel, Y, p)
 
-Returns the SurfaceFluxes `update_T_sfc` function for `model`.
+Returns the SurfaceFluxes `update_q_vap_sfc` function for `model`.
 
-This is only required if the output of `component_temperature` does not coincide
-with the temperature that should be used to compute turbulent fluxes.
+This is only required if the output of `component_specific_humidity` does not
+coincide with the specific humidity that should be used to compute turbulent
+fluxes.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file.
@@ -1880,7 +1889,7 @@ end
                                  T_atmos = (t) -> 280.0,
                                  u_atmos = (t) -> 1.0,
                                  q_atmos = (t) -> 0.0, # no atmos water
-                                 h_atmos = FT(1e-8),
+                                 h_atmos = FT(1),
                                  P_atmos = (t) -> 101325,
                                  atmos = PrescribedAtmosphere(
                                      TimeVaryingInput(precip),
