@@ -150,14 +150,39 @@ for FT in (Float32, Float64)
         c = SurfaceFluxes.ConstantGustinessSpec(FT(2))
         # Below plants the floor is folded into the sub-canopy wind; bare
         # ground keeps the model of the forcing
+        @test isbitstype(typeof(ground_gustiness(c, true)))
         @test Base.materialize(ground_gustiness(c, true)) ==
               SurfaceFluxes.ConstantGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(c, false)) == c
         d = SurfaceFluxes.DeardorffGustinessSpec()
         @test ground_gustiness(d, true) === d
         spec = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+        @test isbitstype(typeof(ground_gustiness(spec, true)))
         @test Base.materialize(ground_gustiness(spec, true)) ==
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(spec, false)) == spec
+    end
+end
+
+for FT in (Float32, Float64)
+    @testset "Reference height above the canopy sinks, FT = $FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(
+            FT;
+            toml_dict,
+            h_atmos = FT(2),
+        )
+        ground = ClimaLand.PrescribedGroundConditions{FT}()
+        short = Canopy.MoninObukhovCanopyFluxes(toml_dict, FT(1))
+        @test Canopy.AtmosDrivenCanopyBC(atmos, radiation, ground, short) isa
+              Canopy.AtmosDrivenCanopyBC
+        # A 10 m canopy places its apparent sinks above the 2 m forcing
+        tall = Canopy.MoninObukhovCanopyFluxes(toml_dict, FT(10))
+        @test_throws ArgumentError Canopy.AtmosDrivenCanopyBC(
+            atmos,
+            radiation,
+            ground,
+            tall,
+        )
     end
 end

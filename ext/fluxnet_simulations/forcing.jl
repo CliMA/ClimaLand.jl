@@ -195,6 +195,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         atmos_h,
         toml_dict;
         c_co2,
+        gustiness,
     )
 
     cos_zenith_angle =

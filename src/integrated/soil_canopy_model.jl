@@ -395,11 +395,7 @@ function lsm_radiant_energy_fluxes!(
     # The soil surface below the canopy exchanges with the air at the
     # sub-canopy reference height, with the wind there; bare ground is forced
     # as a standalone surface
-    soil_forcing = Canopy.subcanopy_forcing(
-        land.canopy,
-        p,
-        ClimaLand.surface_height(land.soil, Y, p),
-    )
+    soil_forcing = ground_forcing(land, Y, p)
     Soil.update_soil_surface_temperature!(
         land.soil,
         SW_n_soil,

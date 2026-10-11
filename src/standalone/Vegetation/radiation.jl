@@ -905,7 +905,8 @@ end
 
 Updates the following cache variables in place:
 - downwelling PAR and NIR in W/m^2: p.canopy.radiative_transfer.par_d, .nir_d
-- absorbed (by leaves and stems), reflected, and transmitted fractions of PAR and NIR: p.canopy.radiative_transfer.par, .nir
+- absorbed (by leaves and stems), reflected, and transmitted fractions of PAR
+  and NIR: p.canopy.radiative_transfer.par, .nir
 - canopy emissivity: p.canopy.radiative_transfer.ϵ
 
 Leaves and stems are treated as randomly mixed canopy elements, with the plant

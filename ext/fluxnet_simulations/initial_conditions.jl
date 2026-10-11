@@ -72,9 +72,10 @@ end
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.EnergyHydrology)
 
 Sets the values of Y.soil in place with:
-- \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date,
-  bounded between the water content at the permanent wilting point (ψ = -150 m) and 95% of the
-  effective saturation range above the residual water content.
+- \vartheta_l: observed value of SWC at the surface at the observation date
+  closest to the start date, bounded between the water content at the
+  permanent wilting point (ψ = -150 m) and 95% of the effective saturation
+  range above the residual water content.
 - θ_i: no ice (θ_i = 0)
 - \rho e_int: an internal energy computed using the above θ_l, θ_i, and the temperature of the soil
   in the first layer, at the observation date closest to the start date. If the soil

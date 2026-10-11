@@ -81,14 +81,15 @@ function AtmosDrivenCanopyBC(
     else
         @assert :soil ∈ prognostic_land_components
     end
-    # Monin-Obukhov similarity needs the forcing above the roughness sublayer
+    # SurfaceFluxes returns NaN where the forcing lies at or below the apparent
+    # sinks of the canopy, so the configuration is validated here
     if atmos isa PrescribedAtmosphere &&
        turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
-        (; displ, z_0m) = turbulent_flux_parameterization
-        clearance = minimum(@. atmos.h - displ - z_0m)
+        (; displ, z_0m, z_0b) = turbulent_flux_parameterization
+        clearance = minimum(@. atmos.h - displ - max(z_0m, z_0b))
         clearance > 0 || throw(
             ArgumentError(
-                "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the momentum roughness length everywhere; the minimum clearance is $clearance m.",
+                "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the larger of the roughness lengths for momentum and heat everywhere; the minimum clearance is $clearance m.",
             ),
         )
     end
@@ -131,8 +132,9 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,
-  the canopy temperature and effective surface humidity of the flux solve, and its similarity scales
+- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, their
+  derivatives with respect to T, the canopy temperature and effective surface
+  humidity of the flux solve, and its similarity scales
 - `p.canopy.hydraulics.fa[end]`: Transpiration
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
@@ -222,15 +224,30 @@ function canopy_root_fluxes!(p, canopy::CanopyModel, Y, t)
     return nothing
 end
 
+# Area index below which a canopy is treated as absent; below it, the
+# Monin-Obukhov solve exchanges heat with a canopy of negligible conductance
+const MIN_CANOPY_AREA_INDEX = 0.05
+
 """
     plants_present(LAI, SAI)
 
-Whether the plant area index `LAI + SAI` reaches the threshold 0.05 below
-which the canopy exchanges no heat with the air and the ground below it is
-forced as a standalone surface. Called from
-[`zero_canopy_fluxes_without_plants!`](@ref) and [`subcanopy_forcing`](@ref).
+Whether the plant area index `LAI + SAI` reaches the threshold
+`MIN_CANOPY_AREA_INDEX` (0.05) below which the canopy exchanges no heat with
+the air and the ground below it is forced as a standalone surface. Called from
+[`zero_canopy_fluxes_without_plants!`](@ref), [`subcanopy_forcing`](@ref), and
+the screen-level diagnostics.
 """
-plants_present(LAI, SAI) = LAI + SAI >= 0.05
+plants_present(LAI, SAI) = LAI + SAI >= MIN_CANOPY_AREA_INDEX
+
+"""
+    leaves_present(LAI)
+
+Whether the leaf area index `LAI` reaches the threshold `MIN_CANOPY_AREA_INDEX`
+(0.05) below which the canopy transpires no water. Stems exchange heat but do
+not transpire, so this test uses the leaf area index alone. Called from
+[`zero_canopy_fluxes_without_plants!`](@ref).
+"""
+leaves_present(LAI) = LAI >= MIN_CANOPY_AREA_INDEX
 
 """
     zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
@@ -238,8 +255,8 @@ plants_present(LAI, SAI) = LAI + SAI >= 0.05
 Set the canopy sensible heat flux and its temperature derivative to zero
 where plants are absent ([`plants_present`](@ref)), and the
 latent heat flux, transpiration, and the latent heat flux derivative to
-zero where the leaf area index is below 0.05 or the transpiration is not
-positive (the canopy does not condense water); modify `turbulent_fluxes`
+zero where leaves are absent ([`leaves_present`](@ref)) or the
+transpiration is not positive (the canopy does not condense water); modify `turbulent_fluxes`
 in place and return `nothing`. The area indices are read from
 `p.canopy.biomass.area_index`.
 
@@ -254,7 +271,7 @@ function zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
     zero_without_plants(X, lai, sai) =
         ifelse(plants_present(lai, sai), X, zero(X))
     zero_below_lai(X, vapor_flux, lai) =
-        ifelse(lai < 0.05 || vapor_flux <= 0, zero(X), X)
+        ifelse(!leaves_present(lai) || vapor_flux <= 0, zero(X), X)
     area_index = p.canopy.biomass.area_index
     @. turbulent_fluxes.shf = zero_without_plants(
         turbulent_fluxes.shf,
@@ -397,7 +414,7 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
 
-        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q_vap_int = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
 
         # Solve for q_sfc analytically to satisfy balance of fluxes:
         # Flux_aero = ρ * g_h * (q_sfc - q_atm)
@@ -447,7 +464,7 @@ function ClimaLand.get_update_surface_temperature_function(
         area_index_pt,
         T_canopy,
     )
-        Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
+        Φ_sfc = SurfaceFluxes.surface_geopotential(param_set, inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
         g_h = SurfaceFluxes.heat_conductance(
@@ -658,6 +675,12 @@ rather than directly with the atmosphere above the canopy (Shuttleworth and
 Wallace, 1985). Where plants are absent, the ground is forced as a standalone
 surface: the forcing height, wind, temperature, humidity, and gustiness model
 of `p.drivers` and the atmospheric driver.
+
+The coupling is one-way: the canopy solve that sets the canopy-air state
+includes the exchange of the canopy itself only, and the ground fluxes pass to
+the atmosphere without a budget of the canopy air space. The air pressure of
+the forcing, `p.drivers.P`, serves at the sub-canopy height too; the
+hydrostatic difference across a canopy is below 0.1 %.
 """
 function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     atmos = canopy.boundary_conditions.atmos
@@ -666,7 +689,10 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
         sfp
     h_forcing = atmos.h
     atmos_gustiness = ClimaLand.gustiness_spec(atmos)
-    floor = ClimaLand.gustiness_floor(atmos_gustiness)
+    surface_flux_params =
+        LP.surface_fluxes_parameters(ClimaLand.get_earth_param_set(canopy))
+    floor =
+        SurfaceFluxes.minimum_wind_speed(atmos_gustiness, surface_flux_params)
     height = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u

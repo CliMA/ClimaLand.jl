@@ -32,6 +32,7 @@ ClimaLand.Canopy.canopy_turbulent_fluxes!
 ClimaLand.Canopy.canopy_root_fluxes!
 ClimaLand.Canopy.zero_canopy_fluxes_without_plants!
 ClimaLand.Canopy.plants_present
+ClimaLand.Canopy.leaves_present
 ClimaLand.Canopy.MoninObukhovCanopyFluxes
 ClimaLand.Canopy.subcanopy_wind
 ClimaLand.Canopy.subcanopy_reference_height

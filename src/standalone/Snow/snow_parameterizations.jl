@@ -139,17 +139,39 @@ function ClimaLand.component_temperature(model::SnowModel, Y, p)
 end
 
 """
-    ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
+    ClimaLand.component_specific_humidity(
+        model::SnowModel,
+        Y,
+        p,
+        forcing = (;
+            h_atmos = model.boundary_conditions.atmos.h,
+            T_atmos = p.drivers.T,
+            q_atmos = p.drivers.q,
+        ),
+    )
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
-This uses the atmospheric T, P, q from p.drivers.
+The surface air density is extrapolated from the air temperature `T_atmos`
+and specific humidity `q_atmos` at the reference height `h_atmos` of
+`forcing`, which default to the atmospheric forcing; below a canopy, the
+sub-canopy forcing is passed.
 """
-function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
+function ClimaLand.component_specific_humidity(
+    model::SnowModel,
+    Y,
+    p,
+    forcing = (;
+        h_atmos = model.boundary_conditions.atmos.h,
+        T_atmos = p.drivers.T,
+        q_atmos = p.drivers.q,
+    ),
+)
+    (; h_atmos, T_atmos, q_atmos) = forcing
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    h_air = model.boundary_conditions.atmos.h
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
     thermo_params =
@@ -158,10 +180,10 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.turbulent_fluxes.T_sfc,
         p.snow.q_l,
-        p.drivers.T,
+        T_atmos,
         p.drivers.P,
-        p.drivers.q,
-        h_air - h_sfc,
+        q_atmos,
+        h_atmos - h_sfc - displ,
         surface_flux_params,
         thermo_params,
     )
@@ -187,13 +209,34 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
+    snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
     snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, surface_flux_params, thermo_params) where {FT}
 
-Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
-of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
+Computes the snow surface specific humidity at a point as the average,
+weighted by mass fraction, of the saturated specific humidity over ice and over
+liquid at temperature `T_sfc` and surface air density `ρ_sfc`. The second
+method extrapolates `ρ_sfc` from the air state at the height `Δz` above the
+surface.
 
-Be aware that if this function changes you must also change the internals of `update_T_sfc_scheme`.
+`update_T_sfc_scheme` repeats this computation, with its derivative, and must
+change with it.
 """
+function snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
+    qsat_over_ice = Thermodynamics.q_vap_saturation(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
+    qsat_over_liq = Thermodynamics.q_vap_saturation(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+    return qsat_over_ice * (1 - q_l) + q_l * qsat_over_liq
+end
+
 function snow_surface_specific_humidity(
     T_sfc::FT,
     q_l::FT,
@@ -212,19 +255,7 @@ function snow_surface_specific_humidity(
         Δz,
         T_sfc,
     )
-    qsat_over_ice = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    qsat_over_liq = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
-    return qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
+    return snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
 end
 
 """
@@ -676,7 +707,9 @@ end
 A helper function for the Surface Fluxes computation which, given a 
 required and fixed set of positional arguments (ζ, `param_set`, `thermo_params`
 inputs, scheme, `T_sfc`, `u_star`, `z_0m`, `z_0b`) and the snow
-liquid fraction `q_l`, computes the snow surface specific humidity.
+liquid fraction `q_l`, computes the snow surface specific humidity at the
+surface air density extrapolated over the effective height with the current
+surface humidity guess of the solve.
 
 This function is required because with the EquilibriumGradient parameterization
 for surface temperature, we must recompute q.
@@ -693,24 +726,13 @@ function update_q_vap_sfc_scheme(
     z_0b,
     q_l,
 )
-    q_atmos = inputs.q_tot_int
-    ρ_atmos = inputs.ρ_int
-    Δz = inputs.Δz
-    T_atmos = inputs.T_int
-    P_atmos =
-        Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
-
-    q_sfc = snow_surface_specific_humidity(
-        T_sfc,
-        q_l,
-        T_atmos,
-        P_atmos,
-        q_atmos,
-        Δz,
+    ρ_sfc = SurfaceFluxes.surface_density(
         param_set,
-        thermo_params,
+        inputs,
+        T_sfc,
+        inputs.q_vap_sfc_guess,
     )
-    return q_sfc
+    return snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
 end
 
 """
@@ -770,14 +792,12 @@ function update_T_sfc_scheme(
     LW_d,
 )
     T_sfc = inputs.T_sfc_guess
-    T_atmos = inputs.T_int
-    ρ_atmos = inputs.ρ_int
-    q_atmos = inputs.q_tot_int
-    Δz = inputs.Δz
-    P_atmos =
-        Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
-    ρ_sfc =
-        ClimaLand.compute_ρ_sfc(param_set, T_atmos, P_atmos, q_atmos, Δz, T_sfc)
+    ρ_sfc = SurfaceFluxes.surface_density(
+        param_set,
+        inputs,
+        T_sfc,
+        inputs.q_vap_sfc_guess,
+    )
     qsat_over_ice = Thermodynamics.q_vap_saturation(
         thermo_params,
         T_sfc,
@@ -790,7 +810,7 @@ function update_T_sfc_scheme(
         ρ_sfc,
         Thermodynamics.Liquid(),
     )
-    q_sfc = qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
+    q_sfc = qsat_over_ice * (1 - q_l) + q_l * qsat_over_liq
     ∂q∂T =
         Thermodynamics.∂q_vap_sat_∂T_from_L(
             thermo_params,
@@ -1040,7 +1060,12 @@ function update_surf_temp!(
         surf_temp,
     )
     # Updates the cached surface humidity to match the new surface temperature
-    ClimaLand.component_specific_humidity(model, Y, p)
+    ClimaLand.component_specific_humidity(
+        model,
+        Y,
+        p,
+        (; h_atmos, T_atmos, q_atmos),
+    )
     return nothing
 end
 

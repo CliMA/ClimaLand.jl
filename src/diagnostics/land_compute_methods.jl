@@ -1224,89 +1224,55 @@ height; for soil and snow below a canopy, integrated models pass the
 canopy-air values of `Canopy.subcanopy_forcing`.
 """
 function screen_level(
-    model::EnergyHydrology{FT},
+    model::Union{EnergyHydrology{FT}, SnowModel{FT}, CanopyModel{FT}},
     Y,
     p;
     T_atmos = p.drivers.T,
     q_atmos = p.drivers.q,
 ) where {FT}
-    tf = p.soil.turbulent_fluxes
-    params = model.parameters
-    earth_param_set = params.earth_param_set
-    displ = ClimaLand.surface_displacement_height(model, Y, p)
-    z_screen = ClimaLand.screen_height(FT)
-    z_anemometer = ClimaLand.anemometer_height(FT)
-    return @. lazy(
-        ClimaLand.screen_level_values(
-            tf.T_sfc,
-            tf.q_sfc,
-            tf.ustar,
-            tf.ζ,
-            tf.Δz_eff,
-            displ,
-            params.z_0m,
-            params.z_0b,
-            T_atmos,
-            q_atmos,
-            z_screen,
-            z_anemometer,
-            earth_param_set,
-        ),
-    )
-end
-function screen_level(
-    model::SnowModel{FT},
-    Y,
-    p;
-    T_atmos = p.drivers.T,
-    q_atmos = p.drivers.q,
-) where {FT}
-    tf = p.snow.turbulent_fluxes
-    params = model.parameters
-    earth_param_set = params.earth_param_set
-    displ = ClimaLand.surface_displacement_height(model, Y, p)
-    z_screen = ClimaLand.screen_height(FT)
-    z_anemometer = ClimaLand.anemometer_height(FT)
-    return @. lazy(
-        ClimaLand.screen_level_values(
-            tf.T_sfc,
-            p.snow.q_sfc,
-            tf.ustar,
-            tf.ζ,
-            tf.Δz_eff,
-            displ,
-            params.z_0m,
-            params.z_0b,
-            T_atmos,
-            q_atmos,
-            z_screen,
-            z_anemometer,
-            earth_param_set,
-        ),
-    )
-end
-function screen_level(model::CanopyModel{FT}, Y, p) where {FT}
-    tf = p.canopy.turbulent_fluxes
-    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    (; tf, q_sfc, z_0m, z_0b) = screen_level_state(model, p)
     earth_param_set = ClimaLand.get_earth_param_set(model)
     z_screen = ClimaLand.screen_height(FT)
     z_anemometer = ClimaLand.anemometer_height(FT)
     return @. lazy(
         ClimaLand.screen_level_values(
             tf.T_sfc,
-            tf.q_sfc,
+            q_sfc,
             tf.ustar,
             tf.ζ,
             tf.Δz_eff,
-            sfp.displ,
-            sfp.z_0m,
-            sfp.z_0b,
-            p.drivers.T,
-            p.drivers.q,
+            z_0m,
+            z_0b,
+            T_atmos,
+            q_atmos,
             z_screen,
             z_anemometer,
             earth_param_set,
         ),
+    )
+end
+
+# The stored state of the flux solve of a surface, the surface humidity at
+# which its fluxes were evaluated, and its roughness lengths
+screen_level_state(model::EnergyHydrology, p) = (;
+    tf = p.soil.turbulent_fluxes,
+    q_sfc = p.soil.turbulent_fluxes.q_sfc,
+    model.parameters.z_0m,
+    model.parameters.z_0b,
+)
+screen_level_state(model::SnowModel, p) = (;
+    tf = p.snow.turbulent_fluxes,
+    q_sfc = p.snow.q_sfc,
+    model.parameters.z_0m,
+    model.parameters.z_0b,
+)
+function screen_level_state(model::CanopyModel, p)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    return (;
+        tf = p.canopy.turbulent_fluxes,
+        q_sfc = p.canopy.turbulent_fluxes.q_sfc,
+        sfp.z_0m,
+        sfp.z_0b,
     )
 end
 
@@ -1318,9 +1284,11 @@ surfaces of `land_model` that exchange with the atmosphere, each as a lazy
 broadcast of a `Tuple` over a field of the values, for
 `ClimaLand.screen_level_mean`. The soil and
 snow of a `LandModel` are weighted by the bare soil and snow cover fractions,
-the canopy covers the whole area, and lakes are not included. Below a canopy,
-the soil and snow profiles are reconstructed toward the canopy-air state their
-flux solves were forced with (`Canopy.subcanopy_forcing`).
+the canopy covers the whole area where plants are present
+(`Canopy.plants_present`) and none elsewhere, since its fluxes are zero there,
+and lakes are not included. Below a canopy, the soil and snow profiles are
+reconstructed toward the canopy-air state their flux solves were forced with
+(`Canopy.subcanopy_forcing`).
 """
 screen_level_pairs(
     model::Union{EnergyHydrology{FT}, SnowModel{FT}, CanopyModel{FT}},
@@ -1328,11 +1296,7 @@ screen_level_pairs(
     p,
 ) where {FT} = (weighted_screen_level(FT(1), screen_level(model, Y, p)),)
 function screen_level_pairs(model::SoilCanopyModel{FT}, Y, p) where {FT}
-    soil_forcing = ClimaLand.Canopy.subcanopy_forcing(
-        model.canopy,
-        p,
-        ClimaLand.surface_height(model.soil, Y, p),
-    )
+    soil_forcing = ClimaLand.ground_forcing(model, Y, p)
     return (
         weighted_screen_level(
             FT(1),
@@ -1344,7 +1308,10 @@ function screen_level_pairs(model::SoilCanopyModel{FT}, Y, p) where {FT}
                 q_atmos = soil_forcing.q_atmos,
             ),
         ),
-        weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+        weighted_screen_level(
+            canopy_weight(model.canopy, p),
+            screen_level(model.canopy, Y, p),
+        ),
     )
 end
 function screen_level_pairs(model::SoilSnowModel{FT}, Y, p) where {FT}
@@ -1358,16 +1325,7 @@ function screen_level_pairs(model::SoilSnowModel{FT}, Y, p) where {FT}
     )
 end
 function screen_level_pairs(model::LandModel{FT}, Y, p) where {FT}
-    soil_forcing = ClimaLand.Canopy.subcanopy_forcing(
-        model.canopy,
-        p,
-        ClimaLand.surface_height(model.soil, Y, p),
-    )
-    snow_forcing = ClimaLand.Canopy.subcanopy_forcing(
-        model.canopy,
-        p,
-        ClimaLand.surface_height(model.snow, Y, p),
-    )
+    forcing = ClimaLand.ground_forcing(model, Y, p)
     return (
         weighted_screen_level(
             p.bare_soil_fraction,
@@ -1375,21 +1333,32 @@ function screen_level_pairs(model::LandModel{FT}, Y, p) where {FT}
                 model.soil,
                 Y,
                 p;
-                T_atmos = soil_forcing.T_atmos,
-                q_atmos = soil_forcing.q_atmos,
+                T_atmos = forcing.T_atmos,
+                q_atmos = forcing.q_atmos,
             ),
         ),
-        weighted_screen_level(FT(1), screen_level(model.canopy, Y, p)),
+        weighted_screen_level(
+            canopy_weight(model.canopy, p),
+            screen_level(model.canopy, Y, p),
+        ),
         weighted_screen_level(
             p.snow.snow_cover_fraction,
             screen_level(
                 model.snow,
                 Y,
                 p;
-                T_atmos = snow_forcing.T_atmos,
-                q_atmos = snow_forcing.q_atmos,
+                T_atmos = forcing.T_atmos,
+                q_atmos = forcing.q_atmos,
             ),
         ),
+    )
+end
+
+# Area weight of the canopy: one where plants are present, zero elsewhere
+function canopy_weight(canopy::CanopyModel{FT}, p) where {FT}
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        FT(ClimaLand.Canopy.plants_present(area_index.leaf, area_index.stem)),
     )
 end
 

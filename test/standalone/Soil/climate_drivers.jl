@@ -77,7 +77,10 @@ for FT in (Float32, Float64)
         )
         @test atmos.gustiness ==
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
-        @test ClimaLand.gustiness_floor(atmos.gustiness) == FT(1)
+        @test SurfaceFluxes.minimum_wind_speed(
+            atmos.gustiness,
+            LP.surface_fluxes_parameters(earth_param_set),
+        ) == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)

@@ -14,9 +14,9 @@ Base.@kwdef struct FarquharParameters{
     MECH <: Union{FT, ClimaCore.Fields.Field},
     VC <: Union{FT, ClimaCore.Fields.Field},
 }
-    "Vcmax at 25 °C (mol CO2/m^2/s); leaf level, at the top of the canopy (the canopy-mean leaf value when kn = 0)"
+    "Leaf Vcmax at 25 °C at the top of the canopy (mol CO2/m^2/s)"
     Vcmax25::VC
-    "Extinction coefficient of the exponential canopy nitrogen profile, per unit leaf area index (unitless); zero for a uniform canopy"
+    "Canopy nitrogen extinction coefficient per unit leaf area index (unitless)"
     kn::FT
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
@@ -277,8 +277,8 @@ end
 Return the ratio of the canopy-mean to the top-of-canopy leaf photosynthetic
 capacity, `(1 - exp(-kn * LAI)) / (kn * LAI)`, for a capacity that decays
 exponentially with cumulative leaf area index at the rate `kn` (Sellers et al.,
-1992; Bonan, 2019, Eq. 15.6). The ratio tends to one as `kn * LAI` tends to zero,
-which is also the value returned for `kn * LAI = 0`.
+1992; Bonan, 2019, Eq. 15.6). The ratio tends to one as `kn * LAI` tends to
+zero, which is also the value returned for `kn * LAI = 0`.
 
 Called from [`update_photosynthesis!`](@ref) for the `FarquharModel`.
 """

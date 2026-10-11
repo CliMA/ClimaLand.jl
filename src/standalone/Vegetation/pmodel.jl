@@ -299,14 +299,15 @@ _pmodel_capacities_type(::Type{FT}) where {FT} = NamedTuple{
 
 Defines the auxiliary vars of the P-model:
 
-- `instantaneous`: a NamedTuple with the canopy-level net photosynthesis (`An`),
-    gross photosynthesis (`GPP`), dark respiration (`Rd`) and stomatal conductance
-    to CO2 (`gs_co2`), computed each step from the acclimated capacities and scaled
-    instantaneously by the moisture stress factor `βm`.
+- `instantaneous`: a NamedTuple with the canopy-level net photosynthesis
+    (`An`), gross photosynthesis (`GPP`), dark respiration (`Rd`) and stomatal
+    conductance to CO2 (`gs_co2`), computed each step from the acclimated
+    capacities and scaled instantaneously by the moisture stress factor `βm`.
 - `optimal`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
-    `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4`, holding the instantaneous optimal
-    well-watered (`βm = 1`) capacities — the target that the prognostic acclimated capacities
-    `Y.canopy.photosynthesis.acclimated` relax toward (see `prognostic_vars`).
+    `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4`, holding the instantaneous
+    optimal well-watered (`βm = 1`) capacities, toward which the prognostic
+    acclimated capacities `Y.canopy.photosynthesis.acclimated` relax (see
+    `prognostic_vars`).
 """
 ClimaLand.auxiliary_vars(model::PModel) = (:instantaneous, :optimal)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (

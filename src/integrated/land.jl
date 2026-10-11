@@ -173,7 +173,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r)),
+            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -311,7 +311,6 @@ end
                 radiation = forcing.radiation,
                 ground = ClimaLand.PrognosticGroundConditions{FT}(),
             ),
-            LAI,
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
@@ -737,16 +736,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # The snow and soil surfaces below the canopy exchange with the air at the
     # sub-canopy reference height, with the wind there; bare ground is forced
     # as a standalone surface
-    snow_forcing = Canopy.subcanopy_forcing(
-        canopy,
-        p,
-        ClimaLand.surface_height(snow, Y, p),
-    )
-    soil_forcing = Canopy.subcanopy_forcing(
-        canopy,
-        p,
-        ClimaLand.surface_height(land.soil, Y, p),
-    )
+    snow_forcing = soil_forcing = ground_forcing(land, Y, p)
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
         snow,
@@ -1215,3 +1205,17 @@ function make_update_aux(land::LandModel)
     end
     return update_aux!
 end
+
+"""
+    ground_forcing(land::Union{SoilCanopyModel, LandModel}, Y, p)
+
+Return the sub-canopy forcing ([`Canopy.subcanopy_forcing`](@ref)) of the
+ground surfaces of `land`. The soil and snow surfaces lie at the same height,
+the surface elevation (`ClimaLand.surface_height`), so one forcing serves both.
+"""
+ground_forcing(land::Union{SoilCanopyModel, LandModel}, Y, p) =
+    Canopy.subcanopy_forcing(
+        land.canopy,
+        p,
+        ClimaLand.surface_height(land.soil, Y, p),
+    )

@@ -336,11 +336,11 @@ end
         @test all(min.(q_sfc, q_air) .<= parent(q2m) .<= max.(q_sfc, q_air))
         @test all(0 .< parent(u10m))
         # A standalone soil is a single surface: the diagnostic is the
-        # pointwise reconstruction
+        # pointwise reconstruction, up to the round-off of the weighted mean
         s = Base.materialize(ClimaLand.Diagnostics.screen_level(model, u, p))
-        @test parent(t2m) == parent(s.T)
-        @test parent(q2m) == parent(s.q)
-        @test parent(u10m) == parent(s.u)
+        @test parent(t2m) ≈ parent(s.T) rtol = 4 * eps(FT)
+        @test parent(q2m) ≈ parent(s.q) rtol = 4 * eps(FT)
+        @test parent(u10m) ≈ parent(s.u) rtol = 4 * eps(FT)
         # In place
         t2m2 = copy(t2m)
         ClimaLand.Diagnostics.compute_t2m!(t2m2, u, p, t, model)

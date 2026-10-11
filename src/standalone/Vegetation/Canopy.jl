@@ -110,16 +110,16 @@ end
     soil_params
 ) where {FT <: AbstractFloat}
 
-Create a `PiecewiseMoistureStressModel` whose thresholds are computed from the
-soil parameters: the low threshold `θ_low` is the residual water content `θ_r`,
-and the high threshold `θ_high` is the field capacity
+Create a `PiecewiseMoistureStressModel` whose thresholds are computed from
+the soil parameters: the low threshold `θ_low` is the residual water content
+`θ_r`, and the high threshold `θ_high` is the field capacity
 
     θ_high = θ_r + S_fc (ν - θ_r),
 
 where `S_fc` is the effective saturation at the inflection point of the
 retention curve (`Soil.field_capacity_saturation`), which Assouline and Or
-(2014) identify with field capacity. Stomata are then unstressed above field
-capacity instead of only at saturation.
+(2014) identify with field capacity. Stomata are unstressed above field
+capacity.
 
 The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
 the field capacity, the retention model `hydrology_cm` (as returned by

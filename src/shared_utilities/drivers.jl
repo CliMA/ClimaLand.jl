@@ -84,21 +84,6 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
-    gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec)
-
-Return the minimum wind speed [m/s] of a gustiness model, which is folded into
-the wind above a canopy before the wind below it is computed
-(`Canopy.subcanopy_wind`): the value of a `ConstantGustinessSpec`, the floor
-of a `SurfaceFluxes.FlooredDeardorffGustinessSpec`, and zero otherwise.
-"""
-gustiness_floor(gustiness::SurfaceFluxes.ConstantGustinessSpec) =
-    gustiness.value
-gustiness_floor(gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec) =
-    gustiness.u_min
-gustiness_floor(gustiness::SurfaceFluxes.AbstractGustinessSpec) = 0
-
-
-"""
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
@@ -478,7 +463,9 @@ function turbulent_fluxes!(
 )
 
     T_sfc = component_temperature(model, Y, p) # guess
-    q_sfc = component_specific_humidity(model, Y, p) # guess
+    # Guess
+    q_sfc =
+        component_specific_humidity(model, Y, p, (; h_atmos, T_atmos, q_atmos))
     roughness_model = surface_roughness_model(model, Y, p)
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
@@ -528,8 +515,8 @@ scales of the flux solve for the screen-level diagnostics.
 Return, as a `Val`, the names of the quantities that
 `turbulent_fluxes_at_a_point` returns for `return_extra_fluxes`: the energy
 fluxes `lhf` and `shf`, the vapor flux `vapor_flux`, and the temperature
-derivatives `∂lhf∂T` and `∂shf∂T`, followed for `Val(true)` by the momentum
-fluxes `ρτxz` and `ρτyz` and the buoyancy flux `buoyancy_flux`.
+derivatives `∂lhf∂T` and `∂shf∂T`, followed for `Val(true)` by the
+momentum fluxes `ρτxz` and `ρτyz` and the buoyancy flux `buoyancy_flux`.
 """
 flux_names(::Val{false}) = Val((:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T))
 flux_names(::Val{true}) = Val((
@@ -577,8 +564,8 @@ Computes turbulent surface fluxes at a point on a surface given
 (5) the parameter set.
 
 With `return_extra_fluxes = Val(false)`, this returns the NamedTuple
-`(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the energy fluxes, the liquid
-water volume flux, and the derivatives of the energy fluxes with respect to
+`(; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)` of the energy fluxes, the
+liquid water volume flux, and the derivatives of the energy fluxes with respect to
 the component temperature; with `Val(true)`, it also returns the momentum flux
 components in the horizontal directions, `ρτxz` and `ρτyz`, and the buoyancy
 flux `buoyancy_flux` (see `flux_names`). ClimaCoupler evaluates this method
@@ -663,8 +650,8 @@ conditions.
 The stability cap holds the exchange coefficients at their values at the
 stability `ζ_p` at which the Monin-Obukhov sensible heat flux at fixed wind
 speed is maximal. `ζ_p` depends only on the ratio of the effective forcing
-height to the momentum roughness length: ≈ 0.15–0.4 over tall forests,
-≈ 0.4–0.8 over grass, ≈ 1–1.2 over bare soil, and ≈ 1.4–1.6 over snow.
+height to the momentum roughness length: about 0.15–0.4 over tall forests,
+0.4–0.8 over grass, 1–1.2 over bare soil, and 1.4–1.6 over snow.
 Without a cap, the Monin-Obukhov exchange collapses once the bulk Richardson
 number becomes supercritical, which decouples the surface from the
 atmosphere at night (runaway cooling). The cap has no free parameters. See the
@@ -791,12 +778,15 @@ from that solve.
     # Approximate derivatives of fluxes with respect to T_sfc
     g_h = output.g_h
     u_star = output.ustar
+    # The surface state applies at the displacement height, so the density is
+    # extrapolated over the effective height, as in the flux solve
+    Δz_eff = Δz - displ
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,
         ρ_atmos,
         output.T_sfc,
-        Δz,
+        Δz_eff,
         q_tot_atmos,
         FT(0),
         FT(0),
@@ -816,7 +806,6 @@ from that solve.
         )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    Δz_eff = Δz - displ
     fluxes = (;
         lhf = output.lhf,
         shf = output.shf,
@@ -827,8 +816,8 @@ from that solve.
         q_sfc = output.q_vap_sfc,
         ustar = u_star,
         # Stability parameter at which the exchange coefficients were
-        # evaluated (capped in stable conditions); zero when neutral
-        ζ = Δz_eff / output.L_eff,
+        # evaluated (capped in stable conditions)
+        ζ = output.ζ_eff,
         Δz_eff,
     )
     return with_extra_fluxes(
@@ -913,7 +902,7 @@ function surface_temperature_newton_update(
         param_set,
         inputs,
         g_h,
-        inputs.q_tot_int,
+        SurfaceFluxes.interior_vapor_specific_humidity(inputs),
         q_sfc,
         ρ_sfc,
         inputs.moisture_model,
@@ -1050,16 +1039,25 @@ function component_temperature(model::AbstractModel, Y, p) end
 
 """
     component_specific_humidity(model::AbstractModel, Y, p)
+    component_specific_humidity(model::AbstractModel, Y, p, forcing)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
 different ways and places.
+
+The second form takes the forcing `(; h_atmos, T_atmos, q_atmos)` of the flux
+solve, the reference height and the air temperature and specific humidity at
+it, which differ from the atmospheric forcing below a canopy. Models whose
+surface humidity depends on the forcing extend it; for other models, it
+returns the first form.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file. Please see
 the documentation for an update function in the `turbulent_fluxes!` call.
 """
 function component_specific_humidity(model::AbstractModel, Y, p) end
+component_specific_humidity(model::AbstractModel, Y, p, forcing) =
+    component_specific_humidity(model, Y, p)
 
 """
     surface_roughness_model(model::AbstractModel, Y, p)
@@ -1072,7 +1070,7 @@ compute surface fluxes using the functions in this file.
 function surface_roughness_model(model::AbstractModel, Y, p) end
 
 """
-    surface_roughness_model(model::AbstractModel, Y, p)
+    surface_displacement_height(model::AbstractModel, Y, p)
 
 Returns the displacement height for `model`.
 
@@ -1098,12 +1096,13 @@ compute surface fluxes using the functions in this file.
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
 
 """
-    get_update_surface_specific_humidity_function(model::AbstractModel, Y, p)
+    get_update_surface_humidity_function(model::AbstractModel, Y, p)
 
-Returns the SurfaceFluxes `update_T_sfc` function for `model`.
+Returns the SurfaceFluxes `update_q_vap_sfc` function for `model`.
 
-This is only required if the output of `component_temperature` does not coincide
-with the temperature that should be used to compute turbulent fluxes.
+This is only required if the output of `component_specific_humidity` does not
+coincide with the specific humidity that should be used to compute turbulent
+fluxes.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file.
@@ -1893,7 +1892,7 @@ end
                                  T_atmos = (t) -> 280.0,
                                  u_atmos = (t) -> 1.0,
                                  q_atmos = (t) -> 0.0, # no atmos water
-                                 h_atmos = FT(1e-8),
+                                 h_atmos = FT(1),
                                  P_atmos = (t) -> 101325,
                                  atmos = PrescribedAtmosphere(
                                      TimeVaryingInput(precip),

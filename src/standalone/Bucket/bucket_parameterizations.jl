@@ -88,7 +88,7 @@ function ClimaLand.get_update_surface_humidity_function(
         β,
         qsat,
     )
-        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q_vap_int = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
         q = β * qsat + (1 - β) * q_vap_int
         return q
     end

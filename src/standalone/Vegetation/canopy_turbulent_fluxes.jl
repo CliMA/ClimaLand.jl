@@ -34,9 +34,9 @@ struct MoninObukhovCanopyFluxes{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
     displ::F
     "Leaf level drag coefficient (unitless)"
     Cd::FT
-    "Extinction coefficient of the wind speed within the canopy per unit plant area index (unitless)"
+    "Wind extinction coefficient per unit plant area index (unitless)"
     subcanopy_wind_extinction::FT
-    "Minimum height above the ground surface at which the fluxes of the ground below the canopy are evaluated (m)"
+    "Minimum height above the ground of the sub-canopy reference level (m)"
     subcanopy_min_reference_height::FT
 end
 
@@ -119,14 +119,14 @@ canopy down to `max(z, height)`; across the canopy it is attenuated
 exponentially by the full plant area index `PAI` between the canopy top and the
 ground (Inoue, 1963; Cionco, 1965; Brutsaert, 1982; Shuttleworth and Wallace,
 1985; Choudhury and Monteith, 1988), with the extinction coefficient
-`extinction` per unit plant area index. Attenuating by the full `PAI` ensures
-that dense short canopies (`height < z`, where `z` is floored at
-`subcanopy_min_reference_height`) still shelter the ground beneath them. The
+`extinction` per unit plant area index. Attenuation by the full `PAI` lets
+dense short canopies (`height < z`, where `z` is floored at
+`subcanopy_min_reference_height`) shelter the ground beneath them. The
 gustiness is folded into the wind at `h_atmos` so that it acts as a floor on
 the wind speed above the canopy, as in the Monin-Obukhov solve of
-SurfaceFluxes.jl (`SurfaceFluxes.windspeed`), rather than below it; the
-ground-level solve is therefore given the gustiness model without its floor
-(see [`ground_gustiness`](@ref)).
+SurfaceFluxes.jl (`SurfaceFluxes.windspeed`); the ground-level solve is
+therefore given the gustiness model without its floor (see
+[`ground_gustiness`](@ref)).
 
 When `u` is a two-component `SVector`, the attenuated wind keeps the
 direction of `u`; a zero vector is mapped onto the first component.
@@ -189,28 +189,19 @@ the model of the atmospheric forcing `gustiness` with its minimum wind speed
 set to zero, since that floor is folded into the sub-canopy wind
 ([`subcanopy_wind`](@ref)), so that only its convective part remains; where
 they are absent, the model of the forcing itself, so that bare ground is
-forced as a standalone surface. Models without a floor are returned as they
-are.
+forced as a standalone surface (see `SurfaceFluxes.without_floor`). Models
+without a floor are returned as they are.
 """
 function ground_gustiness(
-    gustiness::SurfaceFluxes.ConstantGustinessSpec,
+    gustiness::Union{
+        SurfaceFluxes.ConstantGustinessSpec,
+        SurfaceFluxes.FlooredDeardorffGustinessSpec,
+    },
     plants,
 )
-    u_min = gustiness.value
-    return @. lazy(
-        SurfaceFluxes.ConstantGustinessSpec(ifelse(plants, zero(u_min), u_min)),
-    )
-end
-function ground_gustiness(
-    gustiness::SurfaceFluxes.FlooredDeardorffGustinessSpec,
-    plants,
-)
-    u_min = gustiness.u_min
-    return @. lazy(
-        SurfaceFluxes.FlooredDeardorffGustinessSpec(
-            ifelse(plants, zero(u_min), u_min),
-        ),
-    )
+    unfloored = SurfaceFluxes.without_floor(gustiness)
+    choose_gustiness(has_plants) = ifelse(has_plants, unfloored, gustiness)
+    return @. lazy(choose_gustiness(plants))
 end
 ground_gustiness(gustiness::SurfaceFluxes.AbstractGustinessSpec, plants) =
     gustiness

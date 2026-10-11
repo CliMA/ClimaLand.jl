@@ -982,4 +982,23 @@ end
     @test all(isfinite, q2m_land)
     @test all(q2m_land .>= 0)
     @test all(0 .< u10m_land)
+    # Where plants and snow are absent, the 2 m temperature is that of the soil
+    area_index = p.canopy.biomass.area_index
+    PAI = Array(parent(area_index.leaf))[:] .+ Array(parent(area_index.stem))[:]
+    scf = Array(parent(p.snow.snow_cover_fraction))[:]
+    bare = land_mask .& (PAI .< FT(0.05)) .& (scf .== 0)
+    if any(bare)
+        soil_forcing = ClimaLand.ground_forcing(model, u, p)
+        soil_screen = Base.materialize(
+            ClimaLand.Diagnostics.screen_level(
+                model.soil,
+                u,
+                p;
+                T_atmos = soil_forcing.T_atmos,
+                q_atmos = soil_forcing.q_atmos,
+            ),
+        )
+        T_soil = Array(parent(soil_screen.T))[:]
+        @test Array(parent(t2m))[:][bare] ≈ T_soil[bare]
+    end
 end
