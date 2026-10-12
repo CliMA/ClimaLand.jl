@@ -670,6 +670,20 @@ function ilamb_respiration_nee_dataset_path(filename; context = nothing)
 end
 
 """
+    ilamb_fluxcom_energy_dataset_path(filename; context = nothing)
+
+Triggers the download of the ILAMB FLUXCOM energy flux dataset, if not already
+downloaded, using Julia Artifacts, and returns the path to this file.
+
+Available datasets are "hfls_FLUXCOM_hfls.nc" (latent heat flux) and
+"hfss_FLUXCOM_hfss.nc" (sensible heat flux), both monthly from 1980 to 2016 in
+MJ m-2 day-1, positive upward.
+"""
+function ilamb_fluxcom_energy_dataset_path(filename; context = nothing)
+    return joinpath(@clima_artifact("ilamb_fluxcom_energy", context), filename)
+end
+
+"""
     inversion_nee_dataset_path(; context = nothing)
 
 Triggers the download of the inversion-derived NEE, GPP, ER, and Rh dataset

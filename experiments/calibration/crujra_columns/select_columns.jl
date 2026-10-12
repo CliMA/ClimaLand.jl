@@ -9,9 +9,7 @@
 # of the candidates' area, so the columns span the observed climates of global
 # land and their weighted mean approximates a global land mean.
 #
-# This needs the full FLUXCOM record (not the committed 2008-2010 subset):
-#   FLUXCOM_ENERGY_DIR=<ilamb_fluxcom_energy artifact> \
-#       julia --project=.buildkite experiments/calibration/crujra_columns/select_columns.jl
+#   julia --project=.buildkite experiments/calibration/crujra_columns/select_columns.jl
 
 import Dates
 import Random

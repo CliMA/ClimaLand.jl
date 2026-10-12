@@ -62,6 +62,3 @@ GPU per worker in turn.
 - `model_interface.jl`: the forward model and observation map.
 - `analysis.jl`: the calibrated parameter file, metrics, figures, and summary.
 - `run_calibration.jl`: the driver.
-- `tmp_artifacts/ilamb_fluxcom_energy`: a 2008-2010 subset of the FLUXCOM
-  latent and sensible heat fluxes, used until the `ilamb_fluxcom_energy`
-  artifact (see `ClimaArtifacts/ilamb_fluxcom_energy`) is available.

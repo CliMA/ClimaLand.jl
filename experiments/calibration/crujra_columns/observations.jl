@@ -10,22 +10,6 @@ import ClimaLand
 import EnsembleKalmanProcesses as EKP
 
 """
-    fluxcom_energy_dir()
-
-Return the directory holding the FLUXCOM latent (`hfls`) and sensible (`hfss`)
-heat flux files.
-
-Until the `ilamb_fluxcom_energy` artifact is available, this defaults to a
-committed 2008-2010 subset of it. Set `FLUXCOM_ENERGY_DIR` to use the full
-record, as `select_columns.jl` needs.
-"""
-fluxcom_energy_dir() = get(
-    ENV,
-    "FLUXCOM_ENERGY_DIR",
-    joinpath(@__DIR__, "tmp_artifacts", "ilamb_fluxcom_energy"),
-)
-
-"""
     ObsSource{F <: Function}
 
 A monthly, regular latitude-longitude NetCDF file holding one observed
@@ -50,7 +34,8 @@ LHF, SHF, and GPP come from FLUXCOM (0.5°), SWU and LWU from CERES EBAF ed4.2
 """
 function obs_sources()
     ilamb(filename) = ClimaLand.Artifacts.ilamb_dataset_path(filename)
-    fluxcom_energy(filename) = joinpath(fluxcom_energy_dir(), filename)
+    fluxcom_energy(filename) =
+        ClimaLand.Artifacts.ilamb_fluxcom_energy_dataset_path(filename)
     MJ_per_day_to_W(x) = x / 0.0864
     return Dict(
         "lhf" => ObsSource(

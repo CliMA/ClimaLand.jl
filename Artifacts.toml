@@ -287,3 +287,10 @@ git-tree-sha1 = "d400472ea191639cb1dafac41b09ce36383aee54"
     [[inversion_nee.download]]
     sha256 = "84ccc2b60b276575342886535d78faa83f64dd83e327f65b31a10da8f9da721c"
     url = "https://caltech.box.com/shared/static/13xeg76obc5cc73h2sqzhogx0hr97poz.gz"
+
+[ilamb_fluxcom_energy]
+git-tree-sha1 = "d2a0d984d71d71611b5f4128c3a4af0b65e41a1b"
+
+    [[ilamb_fluxcom_energy.download]]
+    sha256 = "f70c1583687f33759cbaa445f938209b705f98a21b763072a2a924864600f60d"
+    url = "https://caltech.box.com/shared/static/v680qc8wk1hvgrp6fbzdjn9ic548af33.gz"
