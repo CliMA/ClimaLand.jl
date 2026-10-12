@@ -213,7 +213,7 @@ function update_soil_T_sfc_scheme(
         scheme,
     )
     w = soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
-    T_max = frozen ? Tf_depressed : oftype(T_sfc, Inf)
+    T_max = ifelse(frozen, promote(Tf_depressed, oftype(T_sfc, Inf))...)
     return ClimaLand.surface_temperature_newton_update(
         inputs,
         param_set,
