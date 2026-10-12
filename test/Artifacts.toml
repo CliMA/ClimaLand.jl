@@ -18,20 +18,20 @@ git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
     [[landsea_mask_1deg.download]]
     sha256 = "3722b553c2fdf28a6574aea2e0b167d16ab050f34e5969ada45625b3a3ecb6da"
     url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
-    
+
 [twostr_test]
 git-tree-sha1 = "b0986aa28e7970a9c080461f5e52fb125cda9c3d"
 
     [[twostr_test.download]]
-    sha256 = "c972f3ff4e041a4443c6e970021f1084a1cc176c2aeeda453f3351ef7cffa60b"
-    url = "https://caltech.box.com/shared/static/zh7wb0ar8kwg4sio64id9e6otzcsfhad.gz"
+    sha256 = "0364f1304866ce7334d5cc9ded1fc8e632bed881ac640f8da226bcdf8d5f51e6"
+    url = "https://caltech.box.com/shared/static/3dibg4an9wp6ycccr3i6icu0ffgh6rjr.gz"
 
 [water_conservation_test]
 git-tree-sha1 = "135f148951f20f170c3a4896848911a37500d88b"
 
     [[water_conservation_test.download]]
-    sha256 = "6f66eaf01fc8c796dfc7d879c4aec4412d06d02cba2cbf6b7ec283d4b3834838"
-    url = "https://caltech.box.com/shared/static/sid7bo8at7nxirfgmd2o7pqq8vky71pb.gz"
+    sha256 = "fcc1a9178d3df303db9cf1f87c406d2f9cf222b74e1095d11bbda8ff61c935aa"
+    url = "https://caltech.box.com/shared/static/255r53a81m0dcbc2ac9dhvvadm2j2lqi.gz"
 
 [pmodel_unittests]
 git-tree-sha1 = "7bc54ddf3fed38e986820ee8b9753ed9ad5060d0"
