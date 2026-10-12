@@ -210,7 +210,8 @@ end
 
 """
     snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, surface_flux_params, thermo_params) where {FT}
+    snow_surface_specific_humidity(T_sfc, q_l, T_air, P_air, q_air, Δz,
+                                   surface_flux_params, thermo_params)
 
 Computes the snow surface specific humidity at a point as the average,
 weighted by mass fraction, of the saturated specific humidity over ice and over
@@ -238,15 +239,15 @@ function snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
 end
 
 function snow_surface_specific_humidity(
-    T_sfc::FT,
-    q_l::FT,
-    T_air::FT,
-    P_air::FT,
-    q_air::FT,
-    Δz::FT,
+    T_sfc,
+    q_l,
+    T_air,
+    P_air,
+    q_air,
+    Δz,
     surface_flux_params,
     thermo_params,
-) where {FT}
+)
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         T_air,
@@ -339,32 +340,27 @@ function snow_thermal_conductivity(
 end
 
 """
-    diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
+    diurnal_damping_depth(κ, ρ, earth_param_set)
 
 Provides the characteristic depth for diurnal variations in temperature in snow, used in the
 calculation of the surface tempearture. Formula is replicated from the Utah Energy Balance (UEB) model.
 A paper describing the formula can be found at https://hess.copernicus.org/articles/18/5061/2014/.
 """
-function diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
-    _cp_i = FT(LP.cp_i(earth_param_set))
-    _DT_ = FT(earth_param_set.insol_params.day)
+function diurnal_damping_depth(κ, ρ, earth_param_set)
+    _cp_i = LP.cp_i(earth_param_set)
+    _DT_ = earth_param_set.insol_params.day
     return sqrt(κ * _DT_ / (pi * _cp_i * ρ))
 end
 
 """
-    surface_temp_scaling_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
+    surface_temp_scaling_length(κ, ρ, z, earth_param_set)
 
 Provides the scaling length scale for calculation of the surface temperature, which is stable
 in the small-snowpack limit (it becomes (output) -> (input z) as (input z) -> 0).
 We recomment inputting the z-per-ground-area (i.e. averaged over the grid by the snow cover fraction) to this function,
 since 0 < z-per-ground-area <= z-per-snow-area, which means the reference depth will always remain inside the snowpack as (true z) -> 0.
 """
-function surface_temp_scaling_length(
-    κ::FT,
-    ρ::FT,
-    z::FT,
-    earth_param_set,
-)::FT where {FT}
+function surface_temp_scaling_length(κ, ρ, z, earth_param_set)
     d0 = diurnal_damping_depth(κ, ρ, earth_param_set)
     return d0 * (1 - exp(-z / d0))
 end
@@ -857,29 +853,29 @@ end
 """
     solve_for_surface_temp_at_a_point(
         return_extra_fluxes::Val,
-        T_initial_guess::FT,
-        T_bulk::FT,
-        z_snow::FT,
-        κ_snow::FT,
-        ρ_snow::FT,
-        ϵ_snow::FT,
-        SW_net::FT,
-        LW_d::FT,
-        q_l::FT,
-        h_sfc::FT,
-        displ::FT,
-        P_atmos::FT,
-        T_atmos::FT,
-        q_atmos::FT,
+        T_initial_guess,
+        T_bulk,
+        z_snow,
+        κ_snow,
+        ρ_snow,
+        ϵ_snow,
+        SW_net,
+        LW_d,
+        q_l,
+        h_sfc,
+        displ,
+        P_atmos,
+        T_atmos,
+        q_atmos,
         u_atmos,
         roughness_model,
-        atmos_h::FT,
+        atmos_h,
         gustiness,
-        update_∂T_sfc∂T,
-        update_∂q_sfc∂T,
+        update_∂T_sfc∂T::UDT,
+        update_∂q_sfc∂T::UDQ,
         earth_param_set,
         surf_temp::EquilibriumGradientTemperatureModel,
-    ) where {FT}
+    ) where {UDT, UDQ}
 
 Solves for T satisfying:
 (A) f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0
@@ -903,29 +899,29 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`, as in
 """
 @inline function solve_for_surface_temp_at_a_point(
     return_extra_fluxes::Val,
-    T_initial_guess::FT,
-    T_bulk::FT,
-    z_snow::FT,
-    κ_snow::FT,
-    ρ_snow::FT,
-    ϵ_snow::FT,
-    SW_net::FT,
-    LW_d::FT,
-    q_l::FT,
-    h_sfc::FT,
-    displ::FT,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_atmos::FT,
+    T_initial_guess,
+    T_bulk,
+    z_snow,
+    κ_snow,
+    ρ_snow,
+    ϵ_snow,
+    SW_net,
+    LW_d,
+    q_l,
+    h_sfc,
+    displ,
+    P_atmos,
+    T_atmos,
+    q_atmos,
     u_atmos,
     roughness_model,
-    atmos_h::FT,
+    atmos_h,
     gustiness,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
-) where {FT, UDT, UDQ}
+) where {UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)

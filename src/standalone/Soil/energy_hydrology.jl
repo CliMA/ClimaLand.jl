@@ -1052,16 +1052,17 @@ function ClimaLand.component_specific_humidity(
 end
 
 function soil_specific_humidity(
-    T_sfc::FT,
-    ρ_sfc::FT,
-    ψ_sfc::FT,
-    Tf_depressed_sfc::FT,
+    T_sfc,
+    ρ_sfc,
+    ψ_sfc,
+    Tf_depressed_sfc,
     earth_param_set,
-) where {FT}
+)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     g = LP.grav(earth_param_set)
     R = LP.gas_constant(earth_param_set)
     M_w = LP.molar_mass_water(earth_param_set)
+    FT = promote_type(typeof(T_sfc), typeof(ρ_sfc), typeof(ψ_sfc))
     # Compute q_soil using ice or liquid as appropriate
     if T_sfc > Tf_depressed_sfc # liquid water evaporation
         q_sfc =
@@ -1070,7 +1071,7 @@ function soil_specific_humidity(
                 T_sfc,
                 ρ_sfc,
                 Thermodynamics.Liquid(),
-            ) * exp(g * min(ψ_sfc, FT(0)) * M_w / (R * T_sfc))
+            ) * exp(g * min(ψ_sfc, zero(ψ_sfc)) * M_w / (R * T_sfc))
     else
         q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
@@ -1079,7 +1080,7 @@ function soil_specific_humidity(
             Thermodynamics.Ice(),
         )
     end
-    return q_sfc
+    return FT(q_sfc)
 end
 
 function ClimaLand.get_update_surface_humidity_function(
