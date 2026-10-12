@@ -18,7 +18,7 @@ export FTfromY
     partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
 
 Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been
-computed from T and ρ over the correct phase `phase`..
+computed from T and ρ over the correct phase `phase`.
 """
 function partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
