@@ -685,21 +685,21 @@ the soil and snow models, which use its output with
 `turbulent_fluxes_from_output`.
 """
 @inline function surface_fluxes_at_a_point(
-    T_sfc_guess::FT,
-    q_vap_sfc_guess::FT,
+    T_sfc_guess,
+    q_vap_sfc_guess,
     update_T_sfc::UT,
     update_q_vap_sfc::UQ,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_tot_atmos::FT,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
     u_atmos,
-    h_atmos::FT,
-    h_sfc::FT,
-    displ::FT,
+    h_atmos,
+    h_sfc,
+    displ,
     roughness_model,
     gustiness,
     earth_param_set,
-) where {FT, UT, UQ}
+) where {UT, UQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set)
@@ -710,15 +710,15 @@ the soil and snow models, which use its output with
         flux_specs = nothing,
     )
     # A coupled atmosphere provides a wind vector; a prescribed one a speed
-    u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
+    u = u_atmos isa Real ? (u_atmos, zero(u_atmos)) : u_atmos
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
     return SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
         q_tot_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
+        zero(q_tot_atmos), # phase_partition_atmos.liq
+        zero(q_tot_atmos), # phase_partition_atmos.ice
         ρ_atmos,
         T_sfc_guess,
         q_vap_sfc_guess,
@@ -726,7 +726,7 @@ the soil and snow models, which use its output with
         h_atmos - h_sfc,
         displ,
         u,
-        (FT(0), FT(0)), # u_sfc
+        map(zero, u), # u_sfc
         nothing, # roughness inputs
         config,
         positional_default_args...,
@@ -758,20 +758,20 @@ from that solve.
 @inline function turbulent_fluxes_from_output(
     return_extra_fluxes::Val,
     output,
-    T_sfc_guess::FT,
-    q_vap_sfc_guess::FT,
+    T_sfc_guess,
+    q_vap_sfc_guess,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_tot_atmos::FT,
-    Δz::FT,
-    displ::FT,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
+    Δz,
+    displ,
     earth_param_set,
-) where {FT, UDT, UDQ}
+) where {UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _LH_v0 = LP.LH_v0(earth_param_set)
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
@@ -788,8 +788,8 @@ from that solve.
         output.T_sfc,
         Δz_eff,
         q_tot_atmos,
-        FT(0),
-        FT(0),
+        zero(q_tot_atmos),
+        zero(q_tot_atmos),
         output.q_vap_sfc,
     )
     # This assumes that q_vap_sfc_guess is the saturated value

@@ -1052,12 +1052,12 @@ function ClimaLand.component_specific_humidity(
 end
 
 function soil_specific_humidity(
-    T_sfc::FT,
-    ρ_sfc::FT,
-    ψ_sfc::FT,
-    Tf_depressed_sfc::FT,
+    T_sfc,
+    ρ_sfc,
+    ψ_sfc,
+    Tf_depressed_sfc,
     earth_param_set,
-) where {FT}
+)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     g = LP.grav(earth_param_set)
     R = LP.gas_constant(earth_param_set)
@@ -1070,7 +1070,7 @@ function soil_specific_humidity(
                 T_sfc,
                 ρ_sfc,
                 Thermodynamics.Liquid(),
-            ) * exp(g * min(ψ_sfc, FT(0)) * M_w / (R * T_sfc))
+            ) * exp(g * min(ψ_sfc, zero(ψ_sfc)) * M_w / (R * T_sfc))
     else
         q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
