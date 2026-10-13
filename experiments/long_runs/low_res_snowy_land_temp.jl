@@ -100,7 +100,7 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = DateTime("2008-03-01")
-stop_date = DateTime("2010-03-02")
+stop_date = start_date + Month(1)
 Δt = 450.0
 nelements = (30, 15)
 domain = ClimaLand.Domains.global_domain(
