@@ -94,7 +94,7 @@ function process_member_data!(
     short_names,
 )
     @info "Short names: $short_names"
-    calibration_obs_vars = ext.get_calibration_obs_var_dict()
+    calibration_obs_vars = ext.get_calibration_obs_var_dict(; short_names)
     for short_name in short_names
         short_name in keys(calibration_obs_vars) || error(
             "Variable $short_name does not appear in the observation dataset. Add the variable to get_calibration_obs_var_dict in data_sources.jl",

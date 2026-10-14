@@ -668,9 +668,9 @@ end
 """
     get_modis_lai_obs_var(; years = 2000:2020)
 
-MODIS LAI (Yuan et al., 1°×1°, per-year files) as a single `OutputVar` spanning
-`years`, keyed `lai`, units `m^2 m^-2`. Latitude is sorted ascending and
-longitude shifted to [-180, 180].
+MODIS LAI (Yuan et al., 0.25°×0.25°, per-year files) as a single `OutputVar`
+spanning `years`, keyed `lai`, units `m^2 m^-2`. Latitude is sorted ascending
+and longitude shifted to [-180, 180].
 
 The samples are postprocessed to match the convention the leaderboard and
 calibration use: a monthly mean dated on the first day of each month. The native

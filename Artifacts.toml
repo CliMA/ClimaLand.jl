@@ -12,19 +12,19 @@ git-tree-sha1 = "11ff294c5e3047cc42e35fd181842c74f8a47db9"
     sha256 = "004ba7f59fa67e00cbd594b7c33c80087c6e546eef3426aed1af05cfaf910000"
     url = "https://caltech.box.com/shared/static/2vz4nevjbo1t80nxc6m4ozyy5f5eusfo.gz"
 
-[modis_max_lai]
-git-tree-sha1 = "3977938f17914088ff69224a3c74e4526cc91bb1"
+["modis_max_lai_0.25deg"]
+git-tree-sha1 = "a9ea3ab397fd0a5aaca5bf12ea671b4af3ab24e6"
 
-    [[modis_max_lai.download]]
-    sha256 = "b128f8f5a6f7be5ef68ddfb6f03080dd2daf9f787ef2aaa265bca3c016f541d1"
-    url = "https://caltech.box.com/shared/static/iirh2rgwpgubelvt9gsunkd9artsjxt8.gz"
+    [["modis_max_lai_0.25deg".download]]
+    sha256 = "14f3368cd0776372a955fb2e650026d5ac93a5e1e74fd1db33aa91e8446a145e"
+    url = "https://caltech.box.com/shared/static/xq5om00l25iiisui5d094gkymnhvoc6m.gz"
 
-[modis_lai_climatology]
-git-tree-sha1 = "cd070348ab70f5d1b165c814f70e3822c0173eed"
+["modis_lai_climatology_0.25deg"]
+git-tree-sha1 = "bd5d1cf6e0d403fd65846a291b6ddf8d9f27c8b5"
 
-    [[modis_lai_climatology.download]]
-    sha256 = "569cc33c3db2d3096ca1d50c7a30fe19cbc8f00a5d814d57d066b1d633aa2f5f"
-    url = "https://caltech.box.com/shared/static/iquk73vo9983073uxjjri2nxqevq65tk.gz"
+    [["modis_lai_climatology_0.25deg".download]]
+    sha256 = "e8ff1e476178a850da669f73bbacc32ca2571fa6a914428978923d395c139832"
+    url = "https://caltech.box.com/shared/static/tio26exkt869err40kezpusgk03fnd7t.gz"
 
 [saturated_land_15m]
 git-tree-sha1 = "dcb51992281579a5fc183611e417e10d8ac44966"
@@ -120,12 +120,12 @@ git-tree-sha1 = "df5ec5af1ea0793c0e7d49e60db5a938098e174f"
     sha256 = "a83bf28a7a864db285e41289031a9761c2a426373a6efecd04b866a0b5374cef"
     url = "https://caltech.box.com/shared/static/m82r23e67x04a3hb6p79dfltlumvg9z0.gz"
 
-[modis_lai]
-git-tree-sha1 = "81d4bc1b22e94d66eec3d80a2d21b5dd5303bf8f"
+["modis_lai_0.25deg"]
+git-tree-sha1 = "bdebef65eee5430c1665e326708969205a033c42"
 
-    [[modis_lai.download]]
-    sha256 = "4a244428fe480aa05ff863af69299d2ed8ca66ed324b9e1bffcb440792fb4cce"
-    url = "https://caltech.box.com/shared/static/99ktg026kciezykyegsawd1gjwj1du74.gz"
+    [["modis_lai_0.25deg".download]]
+    sha256 = "3edfa7b6882196f15ad63826b9aad1537ec3d2013c4aead5cd6b6f684f68c278"
+    url = "https://caltech.box.com/shared/static/1k71dwt1nx2iohh1m3bps1jb3y08xf6s.gz"
 
 [land_albedo]
 git-tree-sha1 = "3f07b70ab43a05123e93753a45e094dcf7a66b5b"

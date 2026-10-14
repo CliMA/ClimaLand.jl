@@ -186,21 +186,21 @@ end
     modis_lai_forcing_data_path(; context)
 
 Return the path to the directory that contains the MODIS LAI forcing data for
-the years 2000 to 2020.
+the years 2000 to 2020, at 0.25°, with the LAI of the land part of each cell.
 """
 function modis_lai_forcing_data_path(; context = nothing)
-    return @clima_artifact("modis_lai", context)
+    return @clima_artifact("modis_lai_0.25deg", context)
 end
 
 """
     modis_lai_climatology_data_path(; context)
 
-Return the path to the netcdf file that contains the climatological MODIS LAI forcing data, computed from data from 2000-2020.
+Return the path to the netcdf file that contains the climatological MODIS LAI forcing data, computed from data from 2000-2020, at 0.25°.
 """
 function modis_lai_climatology_data_path(; context = nothing)
     return joinpath(
-        @clima_artifact("modis_lai_climatology", context),
-        "modis_lai_climatology.nc",
+        @clima_artifact("modis_lai_climatology_0.25deg", context),
+        "modis_lai_climatology_0.25x0.25.nc",
     )
 end
 
@@ -208,12 +208,12 @@ end
     modis_max_lai_data_path(; context)
 
 Return the path to the netcdf file that contains the max LAI from MODIS forcing
-data, computed from data from 2000-2020.
+data, computed from data from 2000-2020, at 0.25°.
 """
 function modis_max_lai_data_path(; context = nothing)
     return joinpath(
-        @clima_artifact("modis_max_lai", context),
-        "modis_max_lai.nc",
+        @clima_artifact("modis_max_lai_0.25deg", context),
+        "modis_max_lai_0.25x0.25.nc",
     )
 end
 
@@ -227,7 +227,7 @@ function modis_lai_single_year_path(;
     year = Dates.year(DateTime(2008)),
 )
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
-    return joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
+    return joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_0.25x0.25.nc")
 end
 
 """
@@ -249,7 +249,7 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
         Dates.year(stop_date)
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     paths = collect(
-        joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
+        joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_0.25x0.25.nc") for
         year in year0:yearf
     )
     for path in paths
@@ -377,7 +377,7 @@ the given `site_ID`. Resolution order:
    from the downloadable `fluxnet_sites` artifact. These are the date windows
    the fluxnet experiments are validated against; the full FLUXNET2015 record
    would change the start/stop dates and include years outside the
-   `modis_lai` artifact's coverage.
+   `modis_lai_0.25deg` artifact's coverage.
 2. For any other `site_ID`, return the half-hourly (preferred) or hourly
    FULLSET CSV of the site in the `fluxnet2015` artifact. That artifact is too
    large to be downloadable: download the data from fluxnet.org and set it up
