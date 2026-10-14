@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Use 0.25° MODIS LAI of the land part of each cell
+  (`modis_lai_0.25deg`, `modis_lai_climatology_0.25deg`, and
+  `modis_max_lai_0.25deg` artifacts, from
+  [ClimaArtifacts#186](https://github.com/CliMA/ClimaArtifacts/pull/186)) for
+  the prescribed, climatological, and maximum LAI, `get_maxLAI_at_site`, and
+  the leaderboard and calibration LAI target. The previous 1° data counted
+  water as LAI = 0, so the LAI of coastal and lake-side cells was too low by
+  their land fraction. Ocean cells are filled from the nearest land cells.
 - ![][badge-🔥behavioralΔ] Cap the stability of the land surface turbulent
   fluxes at the stability of maximum sensible heat flux
   (`SurfaceFluxes.MaxHeatFluxStabilityCap`, set in
