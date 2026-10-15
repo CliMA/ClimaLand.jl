@@ -33,7 +33,7 @@ tag = "TOPMODELRunoff"
 # Big leaf energy parameters
 
 ["ac_canopy"]
-value = 2.5e3
+value = 2.5e5
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"
@@ -703,7 +703,7 @@ description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.67
+value = 0.06
 type = "float"
 description = "Ratio of the canopy displacement height to the canopy height (unitless). Brutsaert 1982, p. 116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343"
 tag = "MoninObukhovCanopyFluxes"
@@ -721,7 +721,7 @@ description = "Extinction coefficient of the wind speed across a plant canopy pe
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_subcanopy_min_reference_height"]
-value = 2.0
+value = 0.5
 type = "float"
 description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 2.7 m. Set to the WMO screen height."
 tag = "MoninObukhovCanopyFluxes"
