@@ -1009,4 +1009,11 @@ end
         T_soil = Array(parent(soil_screen.T))[:]
         @test Array(parent(t2m))[:][bare] ≈ T_soil[bare]
     end
+    # The soil and snow are forced at heights above the ground, while the
+    # height of the reanalysis forcing is measured from the apparent sink;
+    # neither ground surface has a displacement height
+    ground = ClimaLand.ground_forcing(model, u, p)
+    h_ground = Array(parent(Base.materialize(ground.h_atmos)))[:][land_mask]
+    @test Array(parent(p.soil.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
+    @test Array(parent(p.snow.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
 end

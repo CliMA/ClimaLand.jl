@@ -94,7 +94,6 @@ function AtmosDrivenCanopyBC(
         end
     end
 
-
     args = (
         atmos,
         radiation,
@@ -652,7 +651,10 @@ boundary_var_types(
 """
     atmos_elevation_rel_ground(h_forcing, displ, z_0m, reference)
 
-Returns the elevation of the atmosphere measurements relative to the ground, depending on the reference.
+Return the height [m] of the forcing above the ground: `h_forcing` under
+`SurfaceFluxes.ReferenceAboveSurface`, and `h_forcing + displ + z_0m` under
+`SurfaceFluxes.ReferenceAboveApparentSink`, with the displacement height
+`displ` and momentum roughness length `z_0m` of the canopy.
 """
 atmos_elevation_rel_ground(
     h_forcing,
@@ -670,18 +672,18 @@ atmos_elevation_rel_ground(
 """
     subcanopy_forcing(canopy::CanopyModel, p, Y)
 
-Return the NamedTuple `(; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)` of
-lazy broadcasts of the reference height [m], the wind [m/s], the air
-temperature [K], the specific humidity [kg/kg], and the gustiness model for
-the turbulent fluxes of a ground surface (soil or snow)
+Return the NamedTuple `(; h_atmos, u_atmos, T_atmos, q_atmos, gustiness, reference)`
+of lazy broadcasts of the reference height above the ground [m], the wind
+[m/s], the air temperature [K], the specific humidity [kg/kg], and the
+gustiness model for the turbulent fluxes of a ground surface (soil or snow)
 below the canopy, from the atmospheric forcing in `p.drivers`,
 the canopy height and plant area index in `canopy.biomass` and
 `p.canopy.biomass.area_index`, the canopy-air state in
 `p.canopy.turbulent_fluxes`, and the canopy turbulent flux parameterization;
 see [`subcanopy_reference_height`](@ref), [`subcanopy_wind`](@ref), and
-[`ground_gustiness`](@ref).
-
-**Note that the reference convention of what is returned is always relative to the surface.**
+[`ground_gustiness`](@ref). Since `h_atmos` is a height above the ground,
+`reference` is always `SurfaceFluxes.ReferenceAboveSurface()`, whatever the
+reference of the forcing; callers must pass it on to the ground flux solves.
 
 Where plants are present ([`plants_present`](@ref)), the reference height is
 the sub-canopy height, the wind the attenuated wind there, and the gustiness the
@@ -692,9 +694,10 @@ model of the forcing without its floor, which is folded into that wind;
 from the canopy Monin-Obukhov solve, which the integrated models run first,
 so that the ground exchanges heat and water vapor with the canopy air space
 rather than directly with the atmosphere above the canopy (Shuttleworth and
-Wallace, 1985). Where plants are absent, the ground is forced as a standalone
-surface: the forcing height, wind, temperature, humidity, and gustiness model
-of `p.drivers` and the atmospheric driver.
+Wallace, 1985). Where plants are absent, the ground is forced by the
+atmosphere directly: the wind, temperature, humidity, and gustiness model of
+`p.drivers` and the atmospheric driver, at the height of the forcing above the
+ground (`atmos_elevation_rel_ground`).
 
 The coupling is one-way: the canopy solve that sets the canopy-air state
 includes the exchange of the canopy itself only, and the ground fluxes pass to
@@ -707,7 +710,7 @@ function subcanopy_forcing(canopy::CanopyModel, p, Y)
     sfp = canopy.boundary_conditions.turbulent_flux_parameterization
     (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
         sfp
-    h_forcing = atmos.h # Relative to apparent sink for momentum of canopy, if canopy present
+    h_forcing = atmos.h # measured according to atmos.reference
     atmos_gustiness = ClimaLand.gustiness_spec(atmos)
     surface_flux_params =
         LP.surface_fluxes_parameters(ClimaLand.get_earth_param_set(canopy))
@@ -750,7 +753,7 @@ function subcanopy_forcing(canopy::CanopyModel, p, Y)
     q_ca = p.canopy.turbulent_fluxes.q_sfc
     T_atmos = @. lazy(ifelse(plants, T_ca, p.drivers.T))
     q_atmos = @. lazy(ifelse(plants, q_ca, p.drivers.q))
-    h_atmos = @. lazy(ifelse(plants, z_subcanopy, z_atmos)) # use reference above surface option
+    h_atmos = @. lazy(ifelse(plants, z_subcanopy, z_atmos))
     gustiness = ground_gustiness(atmos_gustiness, plants)
     return (;
         h_atmos,

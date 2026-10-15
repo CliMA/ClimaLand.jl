@@ -124,7 +124,7 @@ end
             h_atmos = model.boundary_conditions.atmos.h,
             T_atmos = p.drivers.T,
             q_atmos = p.drivers.q,
-            reference = model.boundary_conditions.atmos.reference
+            reference = model.boundary_conditions.atmos.reference,
         ),
     )
 
@@ -154,15 +154,8 @@ function ClimaLand.component_specific_humidity(
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    z_0m = model.parameters.z_0m;
-    Δz_eff = @. lazy(
-        ClimaLand.compute_Δz_eff(
-            h_atmos,
-            model.parameters.z_0m,
-            displ,
-            reference,
-        ),
-    )
+    z_0m = model.parameters.z_0m
+    Δz_eff = @. lazy(ClimaLand.compute_Δz_eff(h_atmos, z_0m, displ, reference))
 
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.turbulent_fluxes.T_sfc,
@@ -936,7 +929,7 @@ are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`.
         surface_flux_params,
         nothing,
     )
-    Δz_eff = ClimaLand.compute_Δz_eff(atmos_h, displ, z_0m, reference)
+    Δz_eff = ClimaLand.compute_Δz_eff(atmos_h, z_0m, displ, reference)
     q_sfc = snow_surface_specific_humidity(
         T_initial_guess,
         q_l,
