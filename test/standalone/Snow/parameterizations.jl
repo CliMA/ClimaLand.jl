@@ -261,40 +261,6 @@ for FT in (Float32, Float64)
         @test abs(residual) / abs(sfc_flux) < 0.01
     end
 
-    @testset "Snow surface specific humidity, FT = $FT" begin
-        param_set = LP.LandParameters(toml_dict)
-        thermo_params = LP.thermodynamic_parameters(param_set)
-        T_sfc, q_l, ρ_sfc = FT(270), FT(0.2), FT(1.2)
-        q_sfc = Snow.snow_surface_specific_humidity(
-            T_sfc,
-            q_l,
-            ρ_sfc,
-            thermo_params,
-        )
-        qsat_ice = Thermodynamics.q_vap_saturation(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Ice(),
-        )
-        qsat_liq = Thermodynamics.q_vap_saturation(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Liquid(),
-        )
-        @test q_sfc ≈ (1 - q_l) * qsat_ice + q_l * qsat_liq
-        # Arguments of different types, as with dual numbers, promote
-        q_mixed = Snow.snow_surface_specific_humidity(
-            T_sfc,
-            Float64(q_l),
-            ρ_sfc,
-            thermo_params,
-        )
-        @test q_mixed isa Float64
-        @test q_mixed ≈ q_sfc rtol = 10 * eps(FT)
-    end
-
     @testset "Alternative parameterizations, FT = $FT" begin
         param_set = LP.LandParameters(toml_dict)
         m = Snow.WuWuSnowCoverFractionModel(

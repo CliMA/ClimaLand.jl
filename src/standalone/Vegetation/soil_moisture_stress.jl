@@ -125,9 +125,9 @@ struct PiecewiseMoistureStressModel{
     FT,
     F <: Union{FT, ClimaCore.Fields.Field},
 } <: AbstractSoilMoistureStressModel{FT}
-    """Water content above which stomata are unstressed (m^3 / m^3)"""
+    """Field capacity volumetric water content or porosity (m^3 / m^3) - or porosity"""
     θ_high::F
-    """Water content below which stomata are closed (m^3 / m^3)"""
+    """Wilting point volumetric water content or residual water fraction(m^3 / m^3) - or residual water"""
     θ_low::F
     """Curvature parameter (unitless)"""
     c::FT

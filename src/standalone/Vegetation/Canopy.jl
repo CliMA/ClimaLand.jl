@@ -11,8 +11,6 @@ import ClimaCore.MatrixFields: @name
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
-import StaticArrays
-import SurfaceFluxes
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
@@ -110,22 +108,15 @@ end
     soil_params
 ) where {FT <: AbstractFloat}
 
-Create a `PiecewiseMoistureStressModel` whose thresholds are computed from
-the soil parameters: the low threshold `θ_low` is the residual water content
-`θ_r`, and the high threshold `θ_high` is the field capacity
+Helper function to create `PiecewiseMoistureStressModel` by calculating field capacity (θ_high)
+and wilting point (θ_low) from the soil parameters.
 
-    θ_high = θ_r + S_fc (ν - θ_r),
+The low and high thresholds for the piecewise soil moisture stress function are given by
+the residual soil water content and the soil porosity, respectively.
 
-where `S_fc` is the effective saturation at the inflection point of the
-retention curve (`Soil.field_capacity_saturation`), which Assouline and Or
-(2014) identify with field capacity. Stomata are unstressed above field
-capacity.
-
-The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
-the field capacity, the retention model `hydrology_cm` (as returned by
-`Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`, `θ_high` is the
-porosity `ν`. The entries may be ClimaCore fields or floats, but must be
-consistently one or the other.
+The soil parameters should be a named tuple with keys of `ν` and `θ_r` 
+(additional keys may be present but they will not be used). These may 
+be ClimaCore fields or floats, but must be consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
 """
@@ -143,14 +134,8 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = if :hydrology_cm in propertynames(soil_params)
-        (; θ_r, ν, hydrology_cm) = soil_params
-        S_fc = Soil.field_capacity_saturation(hydrology_cm)
-        @. θ_r + S_fc * (ν - θ_r)
-    else
-        copy(soil_params.ν)
-    end
-    θ_low = copy(soil_params.θ_r)
+    θ_high = soil_params.ν
+    θ_low = soil_params.θ_r
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
 end

@@ -4,7 +4,6 @@ ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
 using Thermodynamics
-import SurfaceFluxes
 using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
@@ -75,12 +74,7 @@ for FT in (Float32, Float64)
             h_atmos,
             toml_dict,
         )
-        @test atmos.gustiness ==
-              SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
-        @test SurfaceFluxes.minimum_wind_speed(
-            atmos.gustiness,
-            LP.surface_fluxes_parameters(earth_param_set),
-        ) == FT(1)
+        @test atmos.gustiness == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)
@@ -143,17 +137,8 @@ for FT in (Float32, Float64)
                 :cosθs,
                 :frac_diff,
             )
-            @test propertynames(p.soil.turbulent_fluxes) == (
-                :lhf,
-                :shf,
-                :vapor_flux_liq,
-                :vapor_flux_ice,
-                :T_sfc,
-                :q_sfc,
-                :ustar,
-                :ζ,
-                :Δz_eff,
-            )
+            @test propertynames(p.soil.turbulent_fluxes) ==
+                  (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice, :T_sfc)
             @test propertynames(p.soil) == (
                 :total_water,
                 :total_energy,
@@ -275,9 +260,6 @@ for FT in (Float32, Float64)
                 FT(0.01) .*
                 (abs.(parent(conditions.vapor_flux_liq)) .+ eps(FT)),
             )
-            @test parent(conditions.Δz_eff) == parent(stored.Δz_eff)
-            @test all(parent(stored.ustar) .> 0)
-            @test all(isfinite, parent(stored.ζ))
 
             ClimaLand.Soil.soil_boundary_fluxes!(
                 top_bc,

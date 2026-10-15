@@ -92,9 +92,7 @@ z_0b = FT(1e-3);
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
 τc = FT(3600);
-# With a 5 cm top layer and typical surface fluxes, the explicit (RK4) time
-# step must not exceed about 1200 s
-Δt = 1200.0;
+Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);

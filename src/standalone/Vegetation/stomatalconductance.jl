@@ -138,8 +138,7 @@ Computes and updates the canopy-level conductance (units of m/s) according to th
 The P-model predicts the ratio of plant internal to external CO2 concentration χ, and therefore
 the stomatal conductance can be inferred from their difference and the net assimilation rate `An`. 
 
-The P-model photosynthesis update applies the moisture stress factor `βm` to
-`An` and `gs_co2`, so it is not applied again here.
+Note that the moisture stress factor `βm` is applied to `An` already, so it is not applied again here. 
 """
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     P_air = p.drivers.P

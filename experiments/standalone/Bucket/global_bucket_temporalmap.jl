@@ -81,9 +81,7 @@ t0 = 0.0;
 start_date = DateTime(2005)
 stop_date = start_date + Second(50 * 86400)
 # run for 50 days to test monthly file update
-# With a 5 cm top layer and typical surface fluxes, the explicit (RK4) time
-# step must not exceed about 1200 s
-Δt = 1200.0;
+Δt = 3600.0;
 
 
 function setup_prob(start_date, stop_date, Δt, outdir)

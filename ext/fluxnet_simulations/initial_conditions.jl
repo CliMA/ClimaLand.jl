@@ -72,10 +72,7 @@ end
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.EnergyHydrology)
 
 Sets the values of Y.soil in place with:
-- \vartheta_l: observed value of SWC at the surface at the observation date
-  closest to the start date, bounded between the water content at the
-  permanent wilting point (ψ = -150 m) and 95% of the effective saturation
-  range above the residual water content.
+- \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date, unless this is larger than 90% of porosity.
 - θ_i: no ice (θ_i = 0)
 - \rho e_int: an internal energy computed using the above θ_l, θ_i, and the temperature of the soil
   in the first layer, at the observation date closest to the start date. If the soil
@@ -107,21 +104,10 @@ function set_fluxnet_ic!(
     if isnothing(swc_idx) || all_missing(data[:, swc_idx]; val)
         θ_l_0 = tmp_ic
     else
-        swc_col = data[:, column_name_map["SWC_F_MDS_1"]]
-        ts_idx = column_name_map["TS_F_MDS_1"]
-        if !isnothing(ts_idx)
-            ts_col = data[:, ts_idx]
-            # Frozen records are masked with the missing-value marker
-            unfrozen_swc =
-                ifelse.(ts_col .> 0, swc_col, oftype(first(swc_col), val))
-            if any(x -> !var_missing(x; val), unfrozen_swc)
-                swc_col = unfrozen_swc
-            end
-        end
         θ_l_0 = min.(
             FT(
                 get_data_at_start_date(
-                    swc_col,
+                    data[:, swc_idx],
                     Δ_date;
                     preprocess_func = x -> x / 100,
                     val,
@@ -131,19 +117,6 @@ function set_fluxnet_ic!(
             tmp_ic,
         )
     end
-    # The retention curve is defined for ϑ_l > θ_r only. Where the observed
-    # water content lies below the residual water content of the soil
-    # parameters, which happens where the gridded parameters and the site
-    # observations are inconsistent, the soil is initialized at the water
-    # content of the permanent wilting point (ψ = -150 m), the driest state
-    # the hydraulics represent: at ϑ_l ≤ θ_r the pressure head is unbounded
-    # while its derivative vanishes, and the first wetting of the surface
-    # layer then drives an unbounded flux.
-    (; θ_r, ν, hydrology_cm) = model.parameters
-    θ_wilt = @. θ_r +
-       (ν - θ_r) *
-       ClimaLand.Soil.inverse_matric_potential(hydrology_cm, FT(-150))
-    θ_l_0 = max.(θ_l_0, θ_wilt)
     Y.soil.ϑ_l .= θ_l_0
     Y.soil.θ_i .= 0
 
