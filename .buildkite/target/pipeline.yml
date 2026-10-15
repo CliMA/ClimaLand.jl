@@ -33,56 +33,56 @@ steps:
 
   - wait
 
-  - group: "Benchmark (CPU)"
-    steps:
-      - label: "Soil (CPU) "
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-          slurm_gpus: 0
-        artifact_paths:
-          - "soil_benchmark_cpu/*"
-        soft_fail: true
+  # - group: "Benchmark (CPU)"
+  #   steps:
+  #     - label: "Soil (CPU) "
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #         slurm_gpus: 0
+  #       artifact_paths:
+  #         - "soil_benchmark_cpu/*"
+  #       soft_fail: true
 
-      - label: ":snow_capped_mountain: Snowy Land (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-          slurm_gpus: 0
-        artifact_paths:
-          - "snowy_land_benchmark_cpu/*"
-        soft_fail: true
+  #     - label: ":snow_capped_mountain: Snowy Land (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #         slurm_gpus: 0
+  #       artifact_paths:
+  #         - "snowy_land_benchmark_cpu/*"
+  #       soft_fail: true
 
-  - group: "Target Benchmark (GPU)"
-    steps:
-      - label: "Soil"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 16GB
-          slurm_gpus: 1
-        artifact_paths:
-          - "soil_benchmark_gpu/*"
+  # - group: "Target Benchmark (GPU)"
+  #   steps:
+      # - label: "Soil"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 16GB
+      #     slurm_gpus: 1
+      #   artifact_paths:
+      #     - "soil_benchmark_gpu/*"
 
-      - wait: ~
-        continue_on_failure: true
+      # - wait: ~
+      #   continue_on_failure: true
 
-      - label: ":snow_capped_mountain: Snowy Land (GPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 24GB
-          slurm_gpus: 1
-        artifact_paths:
-          - "snowy_land_benchmark_gpu/*"
+      # - label: ":snow_capped_mountain: Snowy Land (GPU)"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 24GB
+      #     slurm_gpus: 1
+      #   artifact_paths:
+      #     - "snowy_land_benchmark_gpu/*"
 
   - group: "Profile with Nsight"
     steps:
@@ -99,6 +99,4 @@ steps:
           JULIA_NVTX_CALLBACKS: "gc,alloc,free,inference"
           CLIMA_NAME_CUDA_KERNELS_FROM_STACK_TRACE: true
         agents:
-          slurm_mem: 64G
-          slurm_cpus_per_task: 4
           slurm_gpus: 1

@@ -164,7 +164,7 @@ function run_profiler(
     ClimaLand.Simulations.step!(simulation)
     if use_external_profiler
         @info "Profiling using external profiler"
-        CUDA.@profile external = true step_N_times!(simulation, 3)
+        CUDA.@profile external = true step_N_times!(simulation, 10)
         @info "Profiling complete"
     else
         @info "Profiling using internal profiler"
@@ -269,7 +269,7 @@ step_or_solve!(
     device::ClimaComms.CUDADevice,
 ) = ClimaLand.Simulations.solve!(sim)
 function step_or_solve!(sim::ClimaLand.Simulations.LandSimulation, device)
-    step_N_times!(sim, 5)
+    step_N_times!(sim, 10)
     ClimaLand.Simulations.close_output_writers(sim.diagnostics)
     ClimaLand.Simulations.close_all_ncfiles()
     return
