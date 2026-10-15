@@ -344,7 +344,6 @@ end
     )
 
 Read spatially-varying canopy height (m) data from CLM vegetation properties onto the `surface_space`.
-```
 """
 function clm_canopy_height(
     surface_space;

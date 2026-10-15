@@ -751,6 +751,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         T_atmos = snow_forcing.T_atmos,
         q_atmos = snow_forcing.q_atmos,
         gustiness = snow_forcing.gustiness,
+        reference = snow_forcing.reference,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -767,6 +768,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         T_atmos = soil_forcing.T_atmos,
         q_atmos = soil_forcing.q_atmos,
         gustiness = soil_forcing.gustiness,
+        reference = soil_forcing.reference,
     )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked

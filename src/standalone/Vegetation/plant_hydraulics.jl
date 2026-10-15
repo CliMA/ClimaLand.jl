@@ -170,14 +170,15 @@ ClimaLand.auxiliary_domain_names(model::PlantHydraulicsModel) =
 """
     hydraulic_height(p, Y, hydraulics::PlantHydraulicsModel{FT}, canopy)
 
-Returns a lazy broadcasted field equal to the effective hydraulic 
+Returns a lazy broadcasted field equal to the effective hydraulic
 height of the canopy.
 
 This is equal to the true height of the canopy for canopy heights
 larger than a minimum value, and equal to the minimum value otherwise.
 
-The minimum value is employed to prevent very large tendencies in the 
-plant hydraulic tendencies: height appears in the denominator of the tendency as well as in the denominator of the Darcy flux.
+The minimum value prevents very large plant hydraulic tendencies: the height
+appears in the denominator of the tendency as well as in the denominator of
+the Darcy flux.
 """
 hydraulic_height(
     p,
@@ -409,7 +410,7 @@ Below, `fa_roots` denotes the root water flux per unit ground area
 
     ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
 
-where `dz` is the canopy height from the biomass model.
+where `dz` is the hydraulic height of the canopy (see `hydraulic_height`).
 
 Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
 and both fluxes in the numerator are also zero (they are scaled by area indices).
@@ -520,7 +521,6 @@ function ClimaLand.total_liq_water_vol_per_area!(
 )
     LAI = p.canopy.biomass.area_index.leaf
     dz = hydraulic_height(p, Y, model, canopy)
-    FT = eltype(dz)
     @. surface_field = dz * LAI * Y.canopy.hydraulics.ϑ_l
     return nothing
 end
