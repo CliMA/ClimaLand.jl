@@ -10,6 +10,11 @@ main
   the leaderboard and calibration LAI target. The previous 1° data counted
   water as LAI = 0, so the LAI of coastal and lake-side cells was too low by
   their land fraction. Ocean cells are filled from the nearest land cells.
+- ![][badge-✨feature] The MON column of the annual leaderboards
+  (`*_sim_annual_time_avg_over_all_years.png`) shows the seasonal cycle of the
+  northern and southern hemisphere means (solid and dashed) instead of the
+  global mean, which is dominated by the northern hemisphere.
+  PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
 - ![][badge-🔥behavioralΔ] Cap the stability of the land surface turbulent
   fluxes at the stability of maximum sensible heat flux
   (`SurfaceFluxes.MaxHeatFluxStabilityCap`, set in
