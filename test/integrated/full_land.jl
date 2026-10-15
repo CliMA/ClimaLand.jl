@@ -479,7 +479,8 @@ end
         set_initial_cache!(p, Y, t0)
 
         # Check total
-        area_index = p.canopy.biomass.area_index.leaf
+        leaf_area_index = p.canopy.biomass.area_index.leaf
+        stem_area_index = p.canopy.biomass.area_index.stem
         h_hydr = ClimaLand.Canopy.hydraulic_height(
             p,
             Y,
@@ -495,7 +496,7 @@ end
         )
         soil_exp = int_cache
         canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
-        @. canopy_exp = area_index * h_hydr * ϑ0
+        @. canopy_exp = leaf_area_index * h_hydr * ϑ0
         snow_exp = S0
         total_water = ClimaCore.Fields.zeros(domain.space.surface)
         cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -525,7 +526,9 @@ end
         ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
         soil_exp = int_cache
         @. canopy_exp =
-            area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
+            (leaf_area_index + stem_area_index) *
+            land.canopy.energy.parameters.ac_canopy *
+            CTemp0
         snow_exp = U0
         total_energy = ClimaCore.Fields.zeros(domain.space.surface)
         ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)

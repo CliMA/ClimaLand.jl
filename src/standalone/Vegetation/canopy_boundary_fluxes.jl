@@ -81,6 +81,20 @@ function AtmosDrivenCanopyBC(
     else
         @assert :soil ∈ prognostic_land_components
     end
+    if atmos isa PrescribedAtmosphere &&
+       turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
+        (; displ, z_0m, z_0b) = turbulent_flux_parameterization
+        if atmos.reference isa SurfaceFluxes.ReferenceAboveSurface
+            clearance = minimum(@. atmos.h - displ - max(z_0m, z_0b))
+            clearance > 0 || throw(
+                ArgumentError(
+                    "The atmospheric height `atmos.h` relative to the surface must exceed the canopy displacement height plus the larger of the roughness lengths for momentum and heat everywhere; the minimum clearance is $clearance m.",
+                ),
+            )
+        end
+    end
+
+
     args = (
         atmos,
         radiation,
