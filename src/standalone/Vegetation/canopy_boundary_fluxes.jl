@@ -233,9 +233,10 @@ const MIN_CANOPY_AREA_INDEX = 0.05
 
 Whether the plant area index `LAI + SAI` reaches the threshold
 `MIN_CANOPY_AREA_INDEX` (0.05) below which the canopy exchanges no heat with
-the air and the ground below it is forced as a standalone surface. Called from
-[`zero_canopy_fluxes_without_plants!`](@ref), [`subcanopy_forcing`](@ref), and
-the screen-level diagnostics.
+the air, is transparent to radiation, and the ground below it is forced as a
+standalone surface. Called from [`zero_canopy_fluxes_without_plants!`](@ref),
+[`subcanopy_forcing`](@ref), `update_radiative_transfer!`, and the
+screen-level diagnostics.
 """
 plants_present(LAI, SAI) = LAI + SAI >= MIN_CANOPY_AREA_INDEX
 

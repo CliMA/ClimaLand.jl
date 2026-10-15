@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Treat a canopy with a plant area index below
+  `MIN_CANOPY_AREA_INDEX` as transparent to radiation with zero emissivity, as
+  it already exchanges no heat with the air; a sparse desert canopy otherwise
+  absorbs nearly all shortwave radiation at low sun with a vanishing heat
+  capacity, and its temperature runs away. Refine the soil skin temperature by
+  bisection where the Newton updates within the Monin-Obukhov iterations leave
+  the skin energy balance open, which happens at the jump of the conductance
+  between stable and unstable conditions over wet soil at low wind speed.
 - ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
   stem/root area indices in global models with a prescribed LAI, by default;
   replace true canopy height in plant hydraulics with a hydraulic height,

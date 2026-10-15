@@ -453,3 +453,41 @@ for FT in (Float32, Float64)
         end
     end
 end
+
+@testset "Soil skin energy balance at a conductance jump" begin
+    # Wet, hot soil below warm canopy air at low wind: the conductance jumps
+    # where the virtual temperatures of the surface and the air cross
+    FT = Float64
+    earth_param_set = LP.LandParameters(LP.create_toml_dict(FT))
+    σ = LP.Stefan(earth_param_set)
+    T_top, r, ϵ = FT(312.58), FT(0.016), FT(0.96)
+    SW_n, LW_d = FT(-250), FT(450)
+    fluxes = Soil.solve_soil_surface_temperature_at_a_point(
+        Val(false),
+        T_top,
+        r,
+        ϵ,
+        SW_n,
+        LW_d,
+        FT(2.08), # g_liq
+        FT(0), # β_ice
+        FT(-3.75), # ψ_sfc
+        FT(273.15), # Tf_depressed
+        FT(0), # z_sfc
+        FT(0), # displ
+        FT(1e5), # P_atmos
+        FT(308.27), # T_atmos
+        FT(0.01956), # q_atmos
+        FT(0.132), # u_atmos
+        SurfaceFluxes.ConstantRoughnessParams{FT}(FT(0.01), FT(0.001)),
+        FT(0.5), # atmos_h
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
+        SurfaceFluxes.ReferenceAboveSurface(),
+        (args...) -> FT(1),
+        (args...) -> FT(0),
+        earth_param_set,
+    )
+    F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
+    @test abs(F - (T_top - fluxes.T_sfc) / r) <
+          Soil.SKIN_ENERGY_BALANCE_TOLERANCE
+end

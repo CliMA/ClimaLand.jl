@@ -912,7 +912,8 @@ Updates the following cache variables in place:
 Leaves and stems are treated as randomly mixed canopy elements, with the plant
 area index `LAI + SAI` and plant-area-weighted optical properties (Sellers et
 al., 1996). The leaf share of the absorbed PAR is given by
-[`leaf_fAPAR`](@ref).
+[`leaf_fAPAR`](@ref). Where plants are absent ([`plants_present`](@ref)), the
+canopy is transparent and has zero emissivity.
 
 This implies that all concrete types of AbstractRadiationModel must
 set these variables.
@@ -927,8 +928,22 @@ function update_radiative_transfer!(
     par_d = p.canopy.radiative_transfer.par_d
     nir_d = p.canopy.radiative_transfer.nir_d
     area_index = p.canopy.biomass.area_index
-    LAI = area_index.leaf
-    SAI = area_index.stem
+    # At low sun a sparse canopy's absorptance approaches one while its
+    # emissivity and heat capacity vanish with the area index
+    LAI = @. lazy(
+        ifelse(
+            plants_present(area_index.leaf, area_index.stem),
+            area_index.leaf,
+            zero(area_index.leaf),
+        ),
+    )
+    SAI = @. lazy(
+        ifelse(
+            plants_present(area_index.leaf, area_index.stem),
+            area_index.stem,
+            zero(area_index.stem),
+        ),
+    )
     bc = canopy.boundary_conditions
 
     # update radiative transfer; leaves and stems both absorb and emit, so the
