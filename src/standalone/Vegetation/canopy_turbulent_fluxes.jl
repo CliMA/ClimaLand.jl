@@ -82,73 +82,37 @@ function MoninObukhovCanopyFluxes(toml_dict, height)
 end
 
 """
-    subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference::SurfaceFluxes.ReferenceAboveSurface)
+    subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference)
 
-Return the height [m] relative to the ground at which the ground 
-below a canopy exchanges heat and
-water vapor with the air: the apparent sink height `displ + z_0m` of the
-canopy, which is where the wind profile above the canopy places the canopy
-air, but at least `z_min` above the ground surface.
-
-The temperature and humidity at this height are taken to be the canopy-air
-values (`p.canopy.turbulent_fluxes.T_sfc` and `q_sfc`) from the canopy
-Monin-Obukhov solve, and the wind is attenuated across the full plant area
-index of the canopy (see [`subcanopy_wind`](@ref) and
-[`subcanopy_forcing`](@ref)).
-
-When the reference is `SurfaceFluxes.ReferenceAboveSurface`, 
-`h_atmos = z_atmos - z_ground`. 
-
-Recall that h_atmos is the height relative to the apparent sink for momentum of the
-canopy,  so `h_atmos + displ + z_0m` is the height relative to the ground. 
-"""
-function subcanopy_reference_height(
-    displ,
-    z_0m,
-    z_min,
-    h_atmos,
-    reference::SurfaceFluxes.ReferenceAboveSurface,
-)
-    return min(max(displ + z_0m, z_min), h_atmos)
-end
-
-"""
-    subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference::SurfaceFluxes.ReferenceAboveApparentSink)
-
-Return the height [m] relative to the ground at which the ground 
-below a canopy exchanges heat and
-water vapor with the air: the apparent sink height `displ + z_0m` of the
-canopy, which is where the wind profile above the canopy places the canopy
-air, but at least `z_min` above the ground surface.
+Return the height [m] above the ground at which the ground below a canopy
+exchanges heat and water vapor with the air: the apparent sink height
+`displ + z_0m` of the canopy, which is where the wind profile above the canopy
+places the canopy air, but at least `z_min` above the ground and no higher than
+the forcing. The forcing height `h_atmos` is measured according to `reference`,
+from the ground (`SurfaceFluxes.ReferenceAboveSurface`) or from the apparent
+sink of the canopy (`SurfaceFluxes.ReferenceAboveApparentSink`); see
+`atmos_elevation_rel_ground`.
 
 The temperature and humidity at this height are taken to be the canopy-air
 values (`p.canopy.turbulent_fluxes.T_sfc` and `q_sfc`) from the canopy
 Monin-Obukhov solve, and the wind is attenuated across the full plant area
 index of the canopy (see [`subcanopy_wind`](@ref) and
 [`subcanopy_forcing`](@ref)).
-
-When the reference is `SurfaceFluxes.ReferenceAboveApparentSink`, 
-`h_atmos` is the height relative to the apparent sink for momentum of the
-canopy,  so `h_atmos + displ + z_0m` is the height relative to the ground. 
 """
-function subcanopy_reference_height(
-    displ,
-    z_0m,
-    z_min,
-    h_atmos,
-    reference::SurfaceFluxes.ReferenceAboveApparentSink,
-)
-    return min(max(displ + z_0m, z_min), h_atmos + displ + z_0m)
+function subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference)
+    z_atmos = atmos_elevation_rel_ground(h_atmos, displ, z_0m, reference)
+    return min(max(displ + z_0m, z_min), z_atmos)
 end
 
 """
     subcanopy_wind(u, gustiness, z_atmos, z, z_canopy, displ, z_0m, PAI, extinction)
 
 Return the wind speed [m/s] driving the turbulent exchange of the ground below
-a canopy of elevation `z_canopy` (relative to the ground), displacement height `displ`, momentum roughness
+a canopy of height `z_canopy`, displacement height `displ`, momentum roughness
 length `z_0m`, and plant area index `PAI` (leaf plus stem area index,
-unitless), evaluated with reference elevation `z` relative to the ground, below the forcing elevation
-`z_atmos` (relative to the ground), given the wind `u` and gustiness `gustiness` at `h_atmos`:
+unitless), evaluated at the reference height `z` below the forcing height
+`z_atmos`, both above the ground, given the wind `u` and gustiness `gustiness`
+at `z_atmos`:
 
     U = max(u, gustiness)
         * log((max(z, z_canopy) - displ) / z_0m) / log((z_atmos - displ) / z_0m)

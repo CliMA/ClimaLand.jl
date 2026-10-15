@@ -3,9 +3,19 @@ ClimaLand.jl Release Notes
 main
 ----
 - ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
-stem/root area indices in global models with a prescribed LAI, by default;
-replace true canopy height in plant hydraulics with a hydraulic height; use
-SurfaceFluxes.jl `ReferenceAboveApparentSink` feature and pass reference convention into all turbulent flux functions. PR [#1907](https://github.com/CliMA/ClimaLand.jl/pull/1907)
+  stem/root area indices in global models with a prescribed LAI, by default;
+  replace true canopy height in plant hydraulics with a hydraulic height,
+  floored at `minimum_hydraulic_height` (1 m); lower
+  `canopy_subcanopy_min_reference_height` to 0.5 m. The atmospheric drivers
+  carry the SurfaceFluxes.jl reference convention of their height
+  (`reference`), which all turbulent flux functions take: ERA5, CRU-JRA, and
+  `CoupledAtmosphere` forcing heights are above the apparent sink for momentum
+  (`ReferenceAboveApparentSink`), and FLUXNET and `PrescribedAtmosphere`
+  heights are above the ground (`ReferenceAboveSurface`) by default.
+  `surface_height` is renamed `surface_elevation`; the old name, and the form
+  of `turbulent_fluxes_at_a_point` without a reference (measured from the
+  ground), are deprecated and kept for ClimaCoupler.
+  PR [#1907](https://github.com/CliMA/ClimaLand.jl/pull/1907)
 - ![][badge-🔥behavioralΔ] Use 0.25° MODIS LAI of the land part of each cell
   (`modis_lai_0.25deg`, `modis_lai_climatology_0.25deg`, and
   `modis_max_lai_0.25deg` artifacts, from
@@ -34,7 +44,7 @@ SurfaceFluxes.jl `ReferenceAboveApparentSink` feature and pass reference convent
 - ![][badge-🔥behavioralΔ] Evaluate the soil and snow turbulent fluxes below a
   canopy at a sub-canopy reference height, the canopy apparent sink height
   `d + z_0m` but at least `canopy_subcanopy_min_reference_height` (default
-  2 m) above the ground, with the wind attenuated by `exp(-α (LAI + SAI))`
+  0.5 m) above the ground, with the wind attenuated by `exp(-α (LAI + SAI))`
   (`canopy_subcanopy_wind_extinction_coefficient`, default 0.5) and the
   temperature and humidity of the canopy air (`Canopy.subcanopy_forcing`);
   the coupling is one-way, without a budget of the canopy air space.

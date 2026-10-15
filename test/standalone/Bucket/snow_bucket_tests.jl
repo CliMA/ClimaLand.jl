@@ -133,6 +133,8 @@ for FT in (Float32, Float64)
         @test all(parent(p.bucket.turbulent_fluxes.vapor_flux) .== FT(0.0))
         # Test that q_sfc is computed as if there was zero snow
         z_sfc = ClimaLand.surface_elevation(model, Y, p)
+        # The deprecated name, which the ClimaCoupler bucket calls
+        @test (@test_deprecated ClimaLand.surface_height(model, Y, p)) == z_sfc
         surface_flux_params =
             LP.surface_fluxes_parameters(model.parameters.earth_param_set)
         @test p.bucket.q_sfc == ClimaLand.Bucket.saturation_specific_humidity.(

@@ -326,10 +326,11 @@ end
         S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
         conductivity_model = PlantHydraulics.Weibull(toml_dict),
         retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
-height = toml_dict["minimum_hydraulic_height"]
+        height = toml_dict["minimum_hydraulic_height"],
     ) where {FT <: AbstractFloat}
 
-Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
+Creates a PlantHydraulicsModel on the provided domain, using parameters from `toml_dict`.
+`height` is the minimum hydraulic height of the canopy (see `hydraulic_height`).
 
 Citation:
 Holtzman, N., Wang, Y., Wood, J. D., Frankenberg, C., & Konings, A. G. (2023).

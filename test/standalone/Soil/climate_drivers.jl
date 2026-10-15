@@ -11,6 +11,19 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 using Dates
 
+# Turbulent fluxes of the soil at its stored skin temperature, from a separate
+# Monin-Obukhov solve through the generic `ClimaLand.turbulent_fluxes!`
+function fluxes_at_skin_temperature(model, Y, p, t)
+    FT = eltype(model.parameters.earth_param_set)
+    names = Val((:lhf, :shf, :vapor_flux, :T_sfc, :Δz_eff))
+    fluxes = ClimaCore.Fields.Field(
+        ClimaLand.flux_tuple_type(names, FT),
+        model.domain.space.surface,
+    )
+    atmos = model.boundary_conditions.top.atmos
+    ClimaLand.turbulent_fluxes!(fluxes, atmos, model, Y, p, t)
+    return fluxes
+end
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
@@ -235,8 +248,7 @@ for FT in (Float32, Float64)
                   parent(T_sfc)
             @test all(parent(T_sfc) .> FT(280.0))
 
-            conditions = copy(p.soil.turbulent_fluxes)
-            ClimaLand.Soil.update_soil_surface_temperature!(model, Y, p, t)
+            conditions = fluxes_at_skin_temperature(model, Y, p, t)
             R_n_copy = copy(p.soil.R_n)
             ClimaLand.net_radiation!(
                 R_n_copy,
@@ -262,11 +274,10 @@ for FT in (Float32, Float64)
             end
             @test all(
                 abs.(
-                    parent(conditions.vapor_flux_liq) .-
+                    parent(conditions.vapor_flux) .-
                     parent(stored.vapor_flux_liq),
                 ) .<
-                FT(0.01) .*
-                (abs.(parent(conditions.vapor_flux_liq)) .+ eps(FT)),
+                FT(0.01) .* (abs.(parent(conditions.vapor_flux)) .+ eps(FT)),
             )
             @test parent(conditions.Δz_eff) == parent(stored.Δz_eff)
             @test all(parent(stored.ustar) .> 0)
@@ -363,9 +374,8 @@ for FT in (Float32, Float64)
             # match a separate solve at it, which holds because the cap is
             # applied within the Monin-Obukhov iterations
             stored_frozen = p_frozen.soil.turbulent_fluxes
-            fresh_frozen = copy(stored_frozen)
-            ClimaLand.Soil.update_soil_surface_temperature!(model, Y, p, t)
-
+            fresh_frozen =
+                fluxes_at_skin_temperature(model, Y_frozen, p_frozen, t)
             for name in (:lhf, :shf)
                 F_fresh = parent(getproperty(fresh_frozen, name))
                 F_stored = parent(getproperty(stored_frozen, name))

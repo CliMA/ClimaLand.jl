@@ -142,11 +142,11 @@ struct PrescribedAtmosphere{
     c_co2::CA
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
-    "Atmospheric height (m), relative to apparent sink of momentum of the canopy (if present) or the ground (no canopy) by default."
+    "Height of the forcing (m), above the ground or above the apparent sink for momentum, according to `reference`"
     h::FT
     "Gustiness model of the effective wind speed (a `SurfaceFluxes.AbstractGustinessSpec`)"
     gustiness::G
-    "Reference level for the atmospheric height; relative to apparent sink for momentum by default"
+    "Convention for the height `h`: `SurfaceFluxes.ReferenceAboveSurface()` (the default) or `SurfaceFluxes.ReferenceAboveApparentSink()`"
     reference::RL
     "Thermodynamic parameters"
     thermo_params::TP
@@ -369,10 +369,17 @@ function solar_noon_zenith_cosine(
 end
 
 """
-    CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <: AbstractAtmosphericDrivers{FT}
+    CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}, RL} <: AbstractAtmosphericDrivers{FT}
+    CoupledAtmosphere{FT, T}(h, gustiness; reference = SurfaceFluxes.ReferenceAboveApparentSink())
 
 To be used when coupling to an atmosphere model. Contains fields that
 are used to compute surface fluxes in the coupled setup.
+
+The height `h` of the atmospheric state is measured according to `reference`:
+by default from the apparent sink for momentum, `d + z_0m` above the ground,
+the convention of an atmosphere model that does not resolve the canopy; pass
+`reference = SurfaceFluxes.ReferenceAboveSurface()` for a height above the
+ground.
 
 When constructed without a space, the struct doesn't contain anything,
 but it still acts as a flag that fluxes have been updated by the coupler
@@ -387,9 +394,9 @@ ClimaLand use it as the floor of a
 """
 struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}, RL} <:
        AbstractAtmosphericDrivers{FT}
-    "Atmospheric height (m), relative to apparent sink for momentum"
+    "Height of the atmospheric state (m), according to `reference`"
     h::T
-    "Reference Convention"
+    "Convention for the height `h` (a `SurfaceFluxes.AbstractReferenceLevel`)"
     reference::RL
     "Minimum wind speed (gustiness; m/s), which is always a spatial constant"
     gustiness::FT
@@ -418,10 +425,11 @@ gustiness_spec(atmos::CoupledAtmosphere) =
 """
     compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
 
-Computes the density of air at the apparent sink of momentum, given the temperature
-at the surface T_sfc, the atmospheric temperature T_air, pressure P_air,
-specific humidity q_air, and height of the atmosphere relative to
-the apparent sink for momentum, using surface_flux_params.
+Computes the density of air at the displacement height, where SurfaceFluxes
+places the surface state, given the temperature at the surface T_sfc, the
+atmospheric temperature T_air, pressure P_air, specific humidity q_air, and the
+height `Δh` of the atmospheric state above the displacement height (see
+`compute_Δz_eff`), using surface_flux_params.
 """
 function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
     T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
@@ -577,7 +585,7 @@ flux_tuple_type(::Val{names}, ::Type{FT}) where {names, FT} =
     turbulent_fluxes_at_a_point(return_extra_fluxes, P_atmos, T_atmos, q_tot_atmos,
                                 u_atmos, h_atmos, T_sfc_guess, q_vap_sfc_guess,
                                 roughness_model, update_T_sfc, update_q_vap_sfc, z_sfc,
-                                displ, update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, reference
+                                displ, update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, reference,
                                 earth_param_set)
     turbulent_fluxes_at_a_point(stored::Val{names}, args...)
 
@@ -605,7 +613,9 @@ liquid water volume flux, and the derivatives of the energy fluxes with respect 
 the component temperature; with `Val(true)`, it also returns the momentum flux
 components in the horizontal directions, `ρτxz` and `ρτyz`, and the buoyancy
 flux `buoyancy_flux` (see `flux_names`). ClimaCoupler evaluates this method
-directly into its flux fields.
+directly into its flux fields, with the `reference` of its `CoupledAtmosphere`.
+The form without `reference` is deprecated; it measures `h_atmos` from the
+ground (`SurfaceFluxes.ReferenceAboveSurface`).
 
 With a `Val` of a tuple of names, it returns the fields `names` of the full
 NamedTuple of `turbulent_fluxes_from_output`, which also holds the surface
@@ -678,6 +688,48 @@ when running with a `CoupledAtmosphere`.
     )
     return select_fluxes(stored, fluxes)
 end
+
+# Deprecated form without `reference`, which predates the reference conventions
+# and is called by the ClimaCoupler bucket: `h_atmos` is the height above the
+# ground, as it was before `reference` was added
+@inline turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Union{Val{true}, Val{false}},
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
+    u_atmos,
+    h_atmos,
+    T_sfc_guess,
+    q_vap_sfc_guess,
+    roughness_model,
+    update_T_sfc::UT,
+    update_q_vap_sfc::UQ,
+    z_sfc,
+    displ,
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
+    gustiness,
+    earth_param_set,
+) where {UT, UQ, UDT, UDQ} = turbulent_fluxes_at_a_point(
+    return_extra_fluxes,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
+    u_atmos,
+    h_atmos,
+    T_sfc_guess,
+    q_vap_sfc_guess,
+    roughness_model,
+    update_T_sfc,
+    update_q_vap_sfc,
+    z_sfc,
+    displ,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
+    gustiness,
+    SurfaceFluxes.ReferenceAboveSurface(),
+    earth_param_set,
+)
 
 """
     surface_flux_config(roughness_model, gustiness, reference)
@@ -1264,6 +1316,12 @@ function surface_elevation(model::AbstractModel, Y, p)
     return FT(0)
 end
 
+# Deprecated name of `surface_elevation`, which the ClimaCoupler bucket calls
+Base.@deprecate(
+    surface_height(model::AbstractModel, Y, p),
+    surface_elevation(model, Y, p),
+    false,
+)
 
 """
     surface_albedo(model::AbstractModel, Y, p)
