@@ -102,7 +102,7 @@ if TEST_GROUP in ("all", "core")
     end
 
     @safetestset "Soil climate drivers tests" begin
-        # include("standalone/Soil/climate_drivers.jl")
+        include("standalone/Soil/climate_drivers.jl")
     end
     @safetestset "Soil runoff tests" begin
         include("standalone/Soil/runoff.jl")
@@ -149,7 +149,7 @@ if TEST_GROUP in ("all", "core")
     end
 
     @safetestset "Canopy helper function tests" begin
-        # include("standalone/Vegetation/test_canopy_helpers.jl")
+        include("standalone/Vegetation/test_canopy_helpers.jl")
     end
     @safetestset "Two Stream model tests" begin
         include("standalone/Vegetation/test_two_stream.jl")

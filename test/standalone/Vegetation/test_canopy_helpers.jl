@@ -55,7 +55,7 @@ for FT in (Float32, Float64)
         α = toml_dict["canopy_subcanopy_wind_extinction_coefficient"]
         z_min = toml_dict["canopy_subcanopy_min_reference_height"]
         @test α == FT(0.5)
-        @test z_min == FT(2)
+        @test z_min == FT(0.5)
         h_atmos = FT(30)
         u = FT(3)
         g = FT(1)
@@ -64,15 +64,28 @@ for FT in (Float32, Float64)
         h = FT(20)
         d = FT(0.67) * h
         z_0m = FT(0.0823) * h + FT(0.01)
-        z_ref = subcanopy_reference_height(d, z_0m, z_min, h_atmos)
+        z_ref = subcanopy_reference_height(
+            d,
+            z_0m,
+            z_min,
+            h_atmos,
+            SurfaceFluxes.ReferenceAboveApparentSink(),
+        )
         @test z_ref == d + z_0m
-        @test subcanopy_reference_height(d, z_0m, z_min, FT(1)) == FT(1)
+        @test subcanopy_reference_height(
+            d,
+            z_0m,
+            z_min,
+            FT(1),
+            SurfaceFluxes.ReferenceAboveSurface(),
+        ) == FT(1)
         # Short canopy: the floor binds
         @test subcanopy_reference_height(
             FT(0.67) * FT(0.5),
             FT(0.0823) * FT(0.5) + FT(0.01),
             z_min,
             h_atmos,
+            SurfaceFluxes.ReferenceAboveApparentSink(),
         ) == z_min
 
         # At the forcing height with zero PAI, the wind is the effective wind

@@ -236,14 +236,7 @@ for FT in (Float32, Float64)
             @test all(parent(T_sfc) .> FT(280.0))
 
             conditions = copy(p.soil.turbulent_fluxes)
-            ClimaLand.turbulent_fluxes!(
-                conditions,
-                model.boundary_conditions.top.atmos,
-                model,
-                Y,
-                p,
-                t,
-            )
+            ClimaLand.Soil.update_soil_surface_temperature!(model, Y, p, t)
             R_n_copy = copy(p.soil.R_n)
             ClimaLand.net_radiation!(
                 R_n_copy,
@@ -371,14 +364,8 @@ for FT in (Float32, Float64)
             # applied within the Monin-Obukhov iterations
             stored_frozen = p_frozen.soil.turbulent_fluxes
             fresh_frozen = copy(stored_frozen)
-            ClimaLand.turbulent_fluxes!(
-                fresh_frozen,
-                model.boundary_conditions.top.atmos,
-                model,
-                Y_frozen,
-                p_frozen,
-                t,
-            )
+            ClimaLand.Soil.update_soil_surface_temperature!(model, Y, p, t)
+
             for name in (:lhf, :shf)
                 F_fresh = parent(getproperty(fresh_frozen, name))
                 F_stored = parent(getproperty(stored_frozen, name))
