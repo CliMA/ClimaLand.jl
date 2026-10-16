@@ -81,17 +81,17 @@ function AtmosDrivenCanopyBC(
     else
         @assert :soil ∈ prognostic_land_components
     end
-    # SurfaceFluxes returns NaN where the forcing lies at or below the apparent
-    # sinks of the canopy, so the configuration is validated here
     if atmos isa PrescribedAtmosphere &&
        turbulent_flux_parameterization isa MoninObukhovCanopyFluxes
         (; displ, z_0m, z_0b) = turbulent_flux_parameterization
-        clearance = minimum(@. atmos.h - displ - max(z_0m, z_0b))
-        clearance > 0 || throw(
-            ArgumentError(
-                "The atmospheric reference height `atmos.h` must exceed the canopy displacement height plus the larger of the roughness lengths for momentum and heat everywhere; the minimum clearance is $clearance m.",
-            ),
-        )
+        if atmos.reference isa SurfaceFluxes.ReferenceAboveSurface
+            clearance = minimum(@. atmos.h - displ - max(z_0m, z_0b))
+            clearance > 0 || throw(
+                ArgumentError(
+                    "The atmospheric height `atmos.h` relative to the surface must exceed the canopy displacement height plus the larger of the roughness lengths for momentum and heat everywhere; the minimum clearance is $clearance m.",
+                ),
+            )
+        end
     end
 
     args = (
@@ -680,20 +680,42 @@ boundary_var_types(
         NTuple{13, FT},
     },
 )
+"""
+    atmos_elevation_rel_ground(h_forcing, displ, z_0m, reference)
+
+Return the height [m] of the forcing above the ground: `h_forcing` under
+`SurfaceFluxes.ReferenceAboveSurface`, and `h_forcing + displ + z_0m` under
+`SurfaceFluxes.ReferenceAboveApparentSink`, with the displacement height
+`displ` and momentum roughness length `z_0m` of the canopy.
+"""
+atmos_elevation_rel_ground(
+    h_forcing,
+    displ,
+    z_0m,
+    reference::SurfaceFluxes.ReferenceAboveSurface,
+) = h_forcing
+atmos_elevation_rel_ground(
+    h_forcing,
+    displ,
+    z_0m,
+    reference::SurfaceFluxes.ReferenceAboveApparentSink,
+) = h_forcing + displ + z_0m
 
 """
-    subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
+    subcanopy_forcing(canopy::CanopyModel, p, Y)
 
-Return the NamedTuple `(; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)` of
-lazy broadcasts of the reference height [m], the wind [m/s], the air
-temperature [K], the specific humidity [kg/kg], and the gustiness model for
-the turbulent fluxes of a ground surface (soil or snow) at height `h_sfc`
+Return the NamedTuple `(; h_atmos, u_atmos, T_atmos, q_atmos, gustiness, reference)`
+of lazy broadcasts of the reference height above the ground [m], the wind
+[m/s], the air temperature [K], the specific humidity [kg/kg], and the
+gustiness model for the turbulent fluxes of a ground surface (soil or snow)
 below the canopy, from the atmospheric forcing in `p.drivers`,
 the canopy height and plant area index in `canopy.biomass` and
 `p.canopy.biomass.area_index`, the canopy-air state in
 `p.canopy.turbulent_fluxes`, and the canopy turbulent flux parameterization;
 see [`subcanopy_reference_height`](@ref), [`subcanopy_wind`](@ref), and
-[`ground_gustiness`](@ref).
+[`ground_gustiness`](@ref). Since `h_atmos` is a height above the ground,
+`reference` is always `SurfaceFluxes.ReferenceAboveSurface()`, whatever the
+reference of the forcing; callers must pass it on to the ground flux solves.
 
 Where plants are present ([`plants_present`](@ref)), the reference height is
 the sub-canopy height, the wind the attenuated wind there, and the gustiness the
@@ -704,9 +726,10 @@ model of the forcing without its floor, which is folded into that wind;
 from the canopy Monin-Obukhov solve, which the integrated models run first,
 so that the ground exchanges heat and water vapor with the canopy air space
 rather than directly with the atmosphere above the canopy (Shuttleworth and
-Wallace, 1985). Where plants are absent, the ground is forced as a standalone
-surface: the forcing height, wind, temperature, humidity, and gustiness model
-of `p.drivers` and the atmospheric driver.
+Wallace, 1985). Where plants are absent, the ground is forced by the
+atmosphere directly: the wind, temperature, humidity, and gustiness model of
+`p.drivers` and the atmospheric driver, at the height of the forcing above the
+ground (`atmos_elevation_rel_ground`).
 
 The coupling is one-way: the canopy solve that sets the canopy-air state
 includes the exchange of the canopy itself only, and the ground fluxes pass to
@@ -714,40 +737,42 @@ the atmosphere without a budget of the canopy air space. The air pressure of
 the forcing, `p.drivers.P`, serves at the sub-canopy height too; the
 hydrostatic difference across a canopy is below 0.1 %.
 """
-function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
+function subcanopy_forcing(canopy::CanopyModel, p, Y)
     atmos = canopy.boundary_conditions.atmos
     sfp = canopy.boundary_conditions.turbulent_flux_parameterization
     (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
         sfp
-    h_forcing = atmos.h
+    h_forcing = atmos.h # measured according to atmos.reference
     atmos_gustiness = ClimaLand.gustiness_spec(atmos)
     surface_flux_params =
         LP.surface_fluxes_parameters(ClimaLand.get_earth_param_set(canopy))
     floor =
         SurfaceFluxes.minimum_wind_speed(atmos_gustiness, surface_flux_params)
-    height = canopy.biomass.height
+    h_canopy = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u
     plants = @. lazy(plants_present(area_index.leaf, area_index.stem))
-    h_subcanopy = @. lazy(
+    z_subcanopy = @. lazy(
         subcanopy_reference_height(
-            h_sfc,
             displ,
             z_0m,
             subcanopy_min_reference_height,
             h_forcing,
+            atmos.reference,
         ),
+    ) # Relative to the ground
+    z_atmos = @. lazy(
+        atmos_elevation_rel_ground(h_forcing, displ, z_0m, atmos.reference),
     )
-    h_atmos = @. lazy(ifelse(plants, h_subcanopy, h_forcing))
     u_atmos = @. lazy(
         ifelse(
             plants,
             subcanopy_wind(
                 u,
                 floor,
-                h_forcing,
-                h_subcanopy,
-                height,
+                z_atmos, # relative to ground
+                z_subcanopy,
+                h_canopy, # elevation of canopy top relative to ground
                 displ,
                 z_0m,
                 area_index.leaf + area_index.stem,
@@ -760,6 +785,14 @@ function subcanopy_forcing(canopy::CanopyModel, p, h_sfc)
     q_ca = p.canopy.turbulent_fluxes.q_sfc
     T_atmos = @. lazy(ifelse(plants, T_ca, p.drivers.T))
     q_atmos = @. lazy(ifelse(plants, q_ca, p.drivers.q))
+    h_atmos = @. lazy(ifelse(plants, z_subcanopy, z_atmos))
     gustiness = ground_gustiness(atmos_gustiness, plants)
-    return (; h_atmos, u_atmos, T_atmos, q_atmos, gustiness)
+    return (;
+        h_atmos,
+        u_atmos,
+        T_atmos,
+        q_atmos,
+        gustiness,
+        reference = SurfaceFluxes.ReferenceAboveSurface(),
+    )
 end

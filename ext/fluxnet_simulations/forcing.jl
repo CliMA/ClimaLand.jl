@@ -9,11 +9,13 @@ import ClimaLand.FluxnetSimulations: FLUXNET_FORCING_COLUMNS
                                 lat,
                                 long,
                                 hour_offset_from_UTC,
-                                start_date,
+                                atmos_h,
+                                start_date, # in UTC
                                 toml_dict::CP.ParamDict,
                                 FT;
+                                split_precip = true,
                                 gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
-                                split_precip= true,
+                                reference = SurfaceFluxes.ReferenceAboveSurface(),
 )
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
@@ -23,7 +25,8 @@ for US-MOz), and the `toml_dict`.
 This requires (1) reading in the data, (2) removing missing values,
  (3) converting units, (4) computing the specific humidity and percent of
 precipitation that is in snow (if split_precip ==true), and (5)
-making the TimeVaryingInput objects.
+making the TimeVaryingInput objects.  All measurements are assumed to be made
+at a height `atmos_h` relative to the surface (`reference`).
 
 Missing values (-9999) are dropped, and the TimeVaryingInput objects linearly
 interpolate in time across the resulting gaps. For the timestamp of the observation, we use
@@ -52,6 +55,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     FT;
     split_precip = true,
     gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+    reference = SurfaceFluxes.ReferenceAboveSurface(),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -195,6 +199,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         atmos_h,
         toml_dict;
         c_co2,
+        reference,
         gustiness,
     )
 

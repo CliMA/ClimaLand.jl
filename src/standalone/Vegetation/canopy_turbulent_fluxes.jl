@@ -82,14 +82,16 @@ function MoninObukhovCanopyFluxes(toml_dict, height)
 end
 
 """
-    subcanopy_reference_height(h_sfc, displ, z_0m, z_min, h_atmos)
+    subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference)
 
-Return the height [m] at which the ground below a canopy exchanges heat and
-water vapor with the air: the apparent sink height `displ + z_0m` of the
-canopy, which is where the wind profile above the canopy places the canopy
-air, but at least `z_min` above the ground surface at height `h_sfc` and no
-higher than the forcing height `h_atmos`. The floor matters for canopies
-shorter than about `z_min`.
+Return the height [m] above the ground at which the ground below a canopy
+exchanges heat and water vapor with the air: the apparent sink height
+`displ + z_0m` of the canopy, which is where the wind profile above the canopy
+places the canopy air, but at least `z_min` above the ground and no higher than
+the forcing. The forcing height `h_atmos` is measured according to `reference`,
+from the ground (`SurfaceFluxes.ReferenceAboveSurface`) or from the apparent
+sink of the canopy (`SurfaceFluxes.ReferenceAboveApparentSink`); see
+`atmos_elevation_rel_ground`.
 
 The temperature and humidity at this height are taken to be the canopy-air
 values (`p.canopy.turbulent_fluxes.T_sfc` and `q_sfc`) from the canopy
@@ -97,32 +99,34 @@ Monin-Obukhov solve, and the wind is attenuated across the full plant area
 index of the canopy (see [`subcanopy_wind`](@ref) and
 [`subcanopy_forcing`](@ref)).
 """
-function subcanopy_reference_height(h_sfc, displ, z_0m, z_min, h_atmos)
-    return min(max(displ + z_0m, h_sfc + z_min), h_atmos)
+function subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference)
+    z_atmos = atmos_elevation_rel_ground(h_atmos, displ, z_0m, reference)
+    return min(max(displ + z_0m, z_min), z_atmos)
 end
 
 """
-    subcanopy_wind(u, gustiness, h_atmos, z, height, displ, z_0m, PAI, extinction)
+    subcanopy_wind(u, gustiness, z_atmos, z, z_canopy, displ, z_0m, PAI, extinction)
 
 Return the wind speed [m/s] driving the turbulent exchange of the ground below
-a canopy of height `height`, displacement height `displ`, momentum roughness
+a canopy of height `z_canopy`, displacement height `displ`, momentum roughness
 length `z_0m`, and plant area index `PAI` (leaf plus stem area index,
-unitless), evaluated with reference height `z` below the forcing height
-`h_atmos`, given the wind `u` and gustiness `gustiness` at `h_atmos`:
+unitless), evaluated at the reference height `z` below the forcing height
+`z_atmos`, both above the ground, given the wind `u` and gustiness `gustiness`
+at `z_atmos`:
 
     U = max(u, gustiness)
-        * log((max(z, height) - displ) / z_0m) / log((h_atmos - displ) / z_0m)
+        * log((max(z, z_canopy) - displ) / z_0m) / log((z_atmos - displ) / z_0m)
         * exp(-extinction * PAI).
 
 Above the canopy the wind follows the neutral logarithmic profile of the
-canopy down to `max(z, height)`; across the canopy it is attenuated
+canopy down to `max(z, z_canopy)`; across the canopy it is attenuated
 exponentially by the full plant area index `PAI` between the canopy top and the
 ground (Inoue, 1963; Cionco, 1965; Brutsaert, 1982; Shuttleworth and Wallace,
 1985; Choudhury and Monteith, 1988), with the extinction coefficient
 `extinction` per unit plant area index. Attenuation by the full `PAI` lets
-dense short canopies (`height < z`, where `z` is floored at
+dense short canopies (`z_canopy < z`, where `z` is floored at
 `subcanopy_min_reference_height`) shelter the ground beneath them. The
-gustiness is folded into the wind at `h_atmos` so that it acts as a floor on
+gustiness is folded into the wind at `z_atmos` so that it acts as a floor on
 the wind speed above the canopy, as in the Monin-Obukhov solve of
 SurfaceFluxes.jl (`SurfaceFluxes.windspeed`); the ground-level solve is
 therefore given the gustiness model without its floor (see
@@ -136,16 +140,16 @@ Called from [`subcanopy_forcing`](@ref).
 function subcanopy_wind(
     u,
     gustiness,
-    h_atmos,
+    z_atmos,
     z,
-    height,
+    z_canopy,
     displ,
     z_0m,
     PAI,
     extinction,
 )
     log_profile =
-        log((max(z, height) - displ) / z_0m) / log((h_atmos - displ) / z_0m)
+        log((max(z, z_canopy) - displ) / z_0m) / log((z_atmos - displ) / z_0m)
     attenuation = exp(-extinction * PAI)
     return max(u, gustiness) * log_profile * attenuation
 end
@@ -153,9 +157,9 @@ end
 function subcanopy_wind(
     u::StaticArrays.SVector{2},
     gustiness,
-    h_atmos,
+    z_atmos,
     z,
-    height,
+    z_canopy,
     displ,
     z_0m,
     PAI,
@@ -165,9 +169,9 @@ function subcanopy_wind(
     ground_speed = subcanopy_wind(
         speed,
         gustiness,
-        h_atmos,
+        z_atmos,
         z,
-        height,
+        z_canopy,
         displ,
         z_0m,
         PAI,

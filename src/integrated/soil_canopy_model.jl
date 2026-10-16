@@ -408,6 +408,7 @@ function lsm_radiant_energy_fluxes!(
         T_atmos = soil_forcing.T_atmos,
         q_atmos = soil_forcing.q_atmos,
         gustiness = soil_forcing.gustiness,
+        reference = soil_forcing.reference,
     )
 
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)

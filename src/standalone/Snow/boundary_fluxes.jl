@@ -61,7 +61,7 @@ updated in `snow_boundary_fluxes` currently. Instead, they are updated in
 in the `snow_boundary_fluxes!` call.
 
 
-This function calls the `turbulent_fluxes!` function,
+This function calls the `update_surf_temp!` function,
 which uses the snow surface conditions as well as the atmos and radiation
 conditions in order to compute the surface fluxes using Monin Obukhov Surface
 Theory. It also accounts for the presence of other components, if run as part of

@@ -11,6 +11,7 @@ TEST_GROUP in ("all", "core", "simulations") || error(
 
 if TEST_GROUP in ("all", "core")
     # Performance and code quality tests
+
     @safetestset "Aqua tests" begin
         include("aqua.jl")
     end
@@ -42,6 +43,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Time integrated variables tests" begin
         include("shared_utilities/time_integrated_variables.jl")
     end
+
     @safetestset "Driver tests" begin
         include("shared_utilities/drivers.jl")
         include("shared_utilities/coupled_fluxes.jl")
@@ -54,6 +56,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Bucket albedo types tests" begin
         include("standalone/Bucket/albedo_types.jl")
     end
+
     @safetestset "Bucket snow tests" begin
         include("standalone/Bucket/snow_bucket_tests.jl")
     end
@@ -76,6 +79,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Neural Snow model tools tests" begin
         include("standalone/Snow/tool_tests.jl")
     end
+
     @safetestset "Snow integrated water and energy content" begin
         include("standalone/Snow/conservation.jl")
     end
@@ -143,6 +147,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Big Leaf model tests" begin
         include("standalone/Vegetation/test_bigleaf_parameterizations.jl")
     end
+
     @safetestset "Canopy helper function tests" begin
         include("standalone/Vegetation/test_canopy_helpers.jl")
     end
@@ -172,6 +177,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Integrated LSM unit tests" begin
         include("integrated/lsms.jl")
     end
+
     @safetestset "Integrated soil/canopy unit tests" begin
         include("integrated/soil_canopy_lsm.jl")
     end
@@ -184,6 +190,7 @@ if TEST_GROUP in ("all", "core")
     @safetestset "Integrated soil and snow" begin
         include("integrated/soil_snow.jl")
     end
+
 end
 
 if TEST_GROUP in ("all", "simulations")

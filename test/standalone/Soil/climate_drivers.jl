@@ -11,6 +11,19 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 using Dates
 
+# Turbulent fluxes of the soil at its stored skin temperature, from a separate
+# Monin-Obukhov solve through the generic `ClimaLand.turbulent_fluxes!`
+function fluxes_at_skin_temperature(model, Y, p, t)
+    FT = eltype(model.parameters.earth_param_set)
+    names = Val((:lhf, :shf, :vapor_flux, :T_sfc, :Δz_eff))
+    fluxes = ClimaCore.Fields.Field(
+        ClimaLand.flux_tuple_type(names, FT),
+        model.domain.space.surface,
+    )
+    atmos = model.boundary_conditions.top.atmos
+    ClimaLand.turbulent_fluxes!(fluxes, atmos, model, Y, p, t)
+    return fluxes
+end
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
@@ -235,15 +248,7 @@ for FT in (Float32, Float64)
                   parent(T_sfc)
             @test all(parent(T_sfc) .> FT(280.0))
 
-            conditions = copy(p.soil.turbulent_fluxes)
-            ClimaLand.turbulent_fluxes!(
-                conditions,
-                model.boundary_conditions.top.atmos,
-                model,
-                Y,
-                p,
-                t,
-            )
+            conditions = fluxes_at_skin_temperature(model, Y, p, t)
             R_n_copy = copy(p.soil.R_n)
             ClimaLand.net_radiation!(
                 R_n_copy,
@@ -269,11 +274,10 @@ for FT in (Float32, Float64)
             end
             @test all(
                 abs.(
-                    parent(conditions.vapor_flux_liq) .-
+                    parent(conditions.vapor_flux) .-
                     parent(stored.vapor_flux_liq),
                 ) .<
-                FT(0.01) .*
-                (abs.(parent(conditions.vapor_flux_liq)) .+ eps(FT)),
+                FT(0.01) .* (abs.(parent(conditions.vapor_flux)) .+ eps(FT)),
             )
             @test parent(conditions.Δz_eff) == parent(stored.Δz_eff)
             @test all(parent(stored.ustar) .> 0)
@@ -370,15 +374,8 @@ for FT in (Float32, Float64)
             # match a separate solve at it, which holds because the cap is
             # applied within the Monin-Obukhov iterations
             stored_frozen = p_frozen.soil.turbulent_fluxes
-            fresh_frozen = copy(stored_frozen)
-            ClimaLand.turbulent_fluxes!(
-                fresh_frozen,
-                model.boundary_conditions.top.atmos,
-                model,
-                Y_frozen,
-                p_frozen,
-                t,
-            )
+            fresh_frozen =
+                fluxes_at_skin_temperature(model, Y_frozen, p_frozen, t)
             for name in (:lhf, :shf)
                 F_fresh = parent(getproperty(fresh_frozen, name))
                 F_stored = parent(getproperty(stored_frozen, name))
@@ -455,4 +452,42 @@ for FT in (Float32, Float64)
             @test issorted(gsoil)
         end
     end
+end
+
+@testset "Soil skin energy balance at a conductance jump" begin
+    # Wet, hot soil below warm canopy air at low wind: the conductance jumps
+    # where the virtual temperatures of the surface and the air cross
+    FT = Float64
+    earth_param_set = LP.LandParameters(LP.create_toml_dict(FT))
+    σ = LP.Stefan(earth_param_set)
+    T_top, r, ϵ = FT(312.58), FT(0.016), FT(0.96)
+    SW_n, LW_d = FT(-250), FT(450)
+    fluxes = Soil.solve_soil_surface_temperature_at_a_point(
+        Val(false),
+        T_top,
+        r,
+        ϵ,
+        SW_n,
+        LW_d,
+        FT(2.08), # g_liq
+        FT(0), # β_ice
+        FT(-3.75), # ψ_sfc
+        FT(273.15), # Tf_depressed
+        FT(0), # z_sfc
+        FT(0), # displ
+        FT(1e5), # P_atmos
+        FT(308.27), # T_atmos
+        FT(0.01956), # q_atmos
+        FT(0.132), # u_atmos
+        SurfaceFluxes.ConstantRoughnessParams{FT}(FT(0.01), FT(0.001)),
+        FT(0.5), # atmos_h
+        SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
+        SurfaceFluxes.ReferenceAboveSurface(),
+        (args...) -> FT(1),
+        (args...) -> FT(0),
+        earth_param_set,
+    )
+    F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
+    @test abs(F - (T_top - fluxes.T_sfc) / r) <
+          Soil.SKIN_ENERGY_BALANCE_TOLERANCE
 end

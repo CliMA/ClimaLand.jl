@@ -179,6 +179,11 @@ description = "Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-co
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters
+["minimum_hydraulic_height"]
+value = 1.0
+type = "float"
+description = "Minimum hydraulic height of the canopy (m): the height used in the plant hydraulics where the canopy is shorter"
+tag = "PlantHydraulicsParameters"
 
 ["plant_nu"]
 value = 0.2
@@ -646,9 +651,9 @@ description = "Extinction coefficient of the wind speed across a plant canopy pe
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_subcanopy_min_reference_height"]
-value = 2.0
+value = 0.5
 type = "float"
-description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 2.7 m. Set to the WMO screen height."
+description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 0.65 m."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters

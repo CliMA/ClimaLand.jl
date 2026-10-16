@@ -52,6 +52,8 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
+    "Minimum height for hydraulics"
+    height::FT
 end
 
 """
@@ -69,6 +71,7 @@ function PlantHydraulicsParameters(;
     S_s::FT,
     conductivity_model,
     retention_model,
+    height,
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
@@ -79,6 +82,7 @@ function PlantHydraulicsParameters(;
         S_s,
         conductivity_model,
         retention_model,
+        height,
     )
 end
 
@@ -88,6 +92,7 @@ function PlantHydraulicsParameters(
     S_s = toml_dict["plant_S_s"],
     conductivity_model,
     retention_model,
+    height = toml_dict["minimum_hydraulic_height"],
 )
     FT = typeof(ν)
     return PlantHydraulicsParameters{
@@ -99,6 +104,7 @@ function PlantHydraulicsParameters(
         S_s,
         conductivity_model,
         retention_model,
+        height,
     )
 end
 
@@ -160,6 +166,26 @@ ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (FT, FT)
 
 ClimaLand.auxiliary_domain_names(model::PlantHydraulicsModel) =
     (:surface, :surface)
+
+"""
+    hydraulic_height(p, Y, hydraulics::PlantHydraulicsModel{FT}, canopy)
+
+Returns a lazy broadcasted field equal to the effective hydraulic
+height of the canopy.
+
+This is equal to the true height of the canopy for canopy heights
+larger than a minimum value, and equal to the minimum value otherwise.
+
+The minimum value prevents very large plant hydraulic tendencies: the height
+appears in the denominator of the tendency as well as in the denominator of
+the Darcy flux.
+"""
+hydraulic_height(
+    p,
+    Y,
+    hydraulics::PlantHydraulicsModel{FT},
+    canopy,
+) where {FT} = @. lazy(max(canopy.biomass.height, hydraulics.parameters.height))
 
 """
     harmonic_mean(x::FT,y::FT) where {FT}
@@ -384,7 +410,7 @@ Below, `fa_roots` denotes the root water flux per unit ground area
 
     ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
 
-where `dz` is the canopy height from the biomass model.
+where `dz` is the hydraulic height of the canopy (see `hydraulic_height`).
 
 Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
 and both fluxes in the numerator are also zero (they are scaled by area indices).
@@ -397,9 +423,9 @@ function make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         LAI = p.canopy.biomass.area_index.leaf
         fa_roots = p.canopy.hydraulics.fa_roots
-        dz = canopy.biomass.height
+        effective_height = hydraulic_height(p, Y, model, canopy)
         @. dY.canopy.hydraulics.ϑ_l =
-            1 / max(LAI * dz, eps(FT)) *
+            1 / max(LAI * effective_height, eps(FT)) *
             (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
     end
     return compute_exp_tendency!
@@ -460,10 +486,11 @@ function root_water_flux_per_ground_area!(
 
     # since rooting_depth is positive by convention, add the sign in here to
     # convert it to a coordinate: z_roots = -rooting_depth
+    effective_height = hydraulic_height(p, Y, model, canopy)
     @. fa =
         water_flux(
             -rooting_depth,
-            canopy.biomass.height / 2,
+            effective_height / 2,
             ψ_soil,
             ψ,
             hydraulic_conductivity(conductivity_model, ψ_soil),
@@ -493,7 +520,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     t,
 )
     LAI = p.canopy.biomass.area_index.leaf
-    dz = canopy.biomass.height
+    dz = hydraulic_height(p, Y, model, canopy)
     @. surface_field = dz * LAI * Y.canopy.hydraulics.ϑ_l
     return nothing
 end

@@ -17,11 +17,13 @@ NVTX.@annotate function update_root_extraction!(p, Y, t, land)
     # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
     # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
     # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
+    effective_height =
+        Canopy.hydraulic_height(p, Y, land.canopy.hydraulics, land.canopy)
     @. p.root_extraction =
         Canopy.harmonic_mean(LAI, RAI) *
         Canopy.water_flux(
             z,
-            land.canopy.biomass.height / 2,
+            effective_height / 2,
             p.soil.ψ,
             p.canopy.hydraulics.ψ,
             p.soil.K,

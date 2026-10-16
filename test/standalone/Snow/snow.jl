@@ -127,11 +127,12 @@ import ClimaLand.Parameters as LP
     # the first time - now we can compare the results:
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     gustiness = model.boundary_conditions.atmos.gustiness
-    h_sfc = ClimaLand.surface_height(model, Y, p)
+    z_sfc = ClimaLand.surface_elevation(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     tsfc_original = copy(p.snow.turbulent_fluxes.T_sfc)
     SW_net = (p.snow.α_snow .- FT(1)) .* p.drivers.SW_d
     tsfc_1 = copy(p.snow.turbulent_fluxes.T_sfc)
+    reference = SurfaceFluxes.ReferenceAboveSurface()
     solution = ClimaLand.Snow.solve_for_surface_temp_at_a_point.(
         Val(false),
         p.snow.turbulent_fluxes.T_sfc,
@@ -143,7 +144,7 @@ import ClimaLand.Parameters as LP
         SW_net,
         p.drivers.LW_d,
         p.snow.q_l,
-        h_sfc,
+        z_sfc,
         displ,
         p.drivers.P,
         p.drivers.T,
@@ -152,6 +153,7 @@ import ClimaLand.Parameters as LP
         roughness_model,
         model.boundary_conditions.atmos.h,
         gustiness,
+        reference,
         ClimaLand.get_∂T_sfc∂T_function(model, Y, p),
         ClimaLand.get_∂q_sfc∂T_function(model, Y, p),
         model.parameters.earth_param_set,
@@ -193,7 +195,7 @@ import ClimaLand.Parameters as LP
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
     surface_flux_params =
         LP.surface_fluxes_parameters(model.parameters.earth_param_set)
-    Δh = model.boundary_conditions.atmos.h # h_sfc = 0
+    Δh = model.boundary_conditions.atmos.h
     ρ_sfc = @. ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         p.drivers.T,

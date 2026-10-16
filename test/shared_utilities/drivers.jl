@@ -180,6 +180,7 @@ end
     # wind speed is at least the floor, so the fluxes exceed those of a solve
     # without gustiness; the solve is a function of its inputs alone
     roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    reference = SurfaceFluxes.ReferenceAboveSurface()
     solve(gustiness) = ClimaLand.surface_fluxes_at_a_point(
         FT(300), # T_sfc
         FT(0.015), # q_sfc
@@ -194,6 +195,7 @@ end
         FT(0), # displ
         roughness_model,
         gustiness,
+        reference,
         earth_param_set,
     )
     with_gust = solve(spec)
@@ -240,6 +242,7 @@ end
     # use it as the floor of a FlooredDeardorffGustinessSpec
     ca = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
     @test ca.gustiness == FT(1)
+    @test ca.reference === SurfaceFluxes.ReferenceAboveApparentSink()
     @test ClimaLand.gustiness_spec(ca) ==
           SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
     @test SurfaceFluxes.without_floor(ClimaLand.gustiness_spec(ca)) ==
@@ -249,8 +252,12 @@ end
 @testset "Turbulent flux selections, FT = $FT" begin
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)
-    roughness_model = SurfaceFluxes.ConstantRoughnessParams(FT(0.01), FT(0.001))
+    z_0m = FT(0.01)
+    z_0b = FT(0.001)
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams(z_0m, z_0b)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    reference = SurfaceFluxes.ReferenceAboveSurface()
+    displ = FT(0)
     fluxes(stored) = ClimaLand.turbulent_fluxes_at_a_point(
         stored,
         FT(101325), # P_atmos
@@ -264,10 +271,11 @@ end
         nothing,
         nothing,
         FT(0), # h_sfc
-        FT(0), # displ
+        displ,
         (args...) -> FT(1),
         (args...) -> FT(1),
         gustiness,
+        reference,
         earth_param_set,
     )
     # The Boolean selections are the contract of ClimaCoupler, which
@@ -293,10 +301,56 @@ end
     @test selected.buoyancy_flux == fluxes(Val(true)).buoyancy_flux
     @test selected.T_sfc == FT(295)
     @test selected.q_sfc == FT(0.015)
-    @test selected.Δz_eff == FT(10)
+    @test selected.Δz_eff == FT(10) - displ
     @test selected.ustar > 0
     @test selected.ζ < 0 # unstable
     @test eltype(values(selected)) == FT
+    # Above the apparent sink, the forcing lies z_0m above the displacement
+    # height in addition
+    above_sink = ClimaLand.turbulent_fluxes_at_a_point(
+        Val((:Δz_eff,)),
+        FT(101325),
+        FT(290),
+        FT(0.005),
+        FT(2),
+        FT(10),
+        FT(295),
+        FT(0.015),
+        roughness_model,
+        nothing,
+        nothing,
+        FT(0),
+        displ,
+        (args...) -> FT(1),
+        (args...) -> FT(1),
+        gustiness,
+        SurfaceFluxes.ReferenceAboveApparentSink(),
+        earth_param_set,
+    )
+    @test above_sink.Δz_eff ≈ FT(10) + z_0m
+    # The deprecated form without a reference, which the ClimaCoupler bucket
+    # calls, measures the forcing height from the ground
+    no_reference(return_extra_fluxes) = ClimaLand.turbulent_fluxes_at_a_point(
+        return_extra_fluxes,
+        FT(101325),
+        FT(290),
+        FT(0.005),
+        FT(2),
+        FT(10),
+        FT(295),
+        FT(0.015),
+        roughness_model,
+        nothing,
+        nothing,
+        FT(0),
+        displ,
+        (args...) -> FT(1),
+        (args...) -> FT(1),
+        gustiness,
+        earth_param_set,
+    )
+    @test no_reference(Val(false)) == fluxes(Val(false))
+    @test no_reference(Val(true)) == fluxes(Val(true))
 end
 
 @testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin

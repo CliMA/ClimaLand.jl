@@ -479,8 +479,14 @@ end
         set_initial_cache!(p, Y, t0)
 
         # Check total
-        area_index = p.canopy.biomass.area_index.leaf
-        h_canopy = land.canopy.biomass.height
+        leaf_area_index = p.canopy.biomass.area_index.leaf
+        stem_area_index = p.canopy.biomass.area_index.stem
+        h_hydr = ClimaLand.Canopy.hydraulic_height(
+            p,
+            Y,
+            land.canopy.hydraulics,
+            land.canopy,
+        )
         ρ_ice = LP.ρ_cloud_ice(earth_param_set)
         ρ_liq = LP.ρ_cloud_liq(earth_param_set)
         int_cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -490,7 +496,7 @@ end
         )
         soil_exp = int_cache
         canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
-        @. canopy_exp = area_index * h_canopy * ϑ0
+        @. canopy_exp = leaf_area_index * h_hydr * ϑ0
         snow_exp = S0
         total_water = ClimaCore.Fields.zeros(domain.space.surface)
         cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -520,7 +526,9 @@ end
         ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
         soil_exp = int_cache
         @. canopy_exp =
-            area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
+            (leaf_area_index + stem_area_index) *
+            land.canopy.energy.parameters.ac_canopy *
+            CTemp0
         snow_exp = U0
         total_energy = ClimaCore.Fields.zeros(domain.space.surface)
         ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
@@ -1001,4 +1009,11 @@ end
         T_soil = Array(parent(soil_screen.T))[:]
         @test Array(parent(t2m))[:][bare] ≈ T_soil[bare]
     end
+    # The soil and snow are forced at heights above the ground, while the
+    # height of the reanalysis forcing is measured from the apparent sink;
+    # neither ground surface has a displacement height
+    ground = ClimaLand.ground_forcing(model, u, p)
+    h_ground = Array(parent(Base.materialize(ground.h_atmos)))[:][land_mask]
+    @test Array(parent(p.soil.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
+    @test Array(parent(p.snow.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
 end

@@ -13,7 +13,8 @@ import Thermodynamics
         @test sfp.ufp isa UF.GryanikParams
         rough = SurfaceFluxes.ConstantRoughnessParams{FT}(FT(1), FT(0.1))
         gust = SurfaceFluxes.ConstantGustinessSpec(FT(1))
-        config = ClimaLand.surface_flux_config(rough, gust)
+        reference = SurfaceFluxes.ReferenceAboveSurface()
+        config = ClimaLand.surface_flux_config(rough, gust, reference)
         @test config.stability_cap isa SurfaceFluxes.MaxHeatFluxStabilityCap
 
         # Strongly stable case (supercritical bulk Richardson number), in
