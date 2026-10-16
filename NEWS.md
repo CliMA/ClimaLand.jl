@@ -2,6 +2,10 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Refine the soil skin temperature by bisection where the
+  Newton updates within the Monin-Obukhov iterations leave the skin energy
+  balance open, which happens at the jump of the conductance between stable
+  and unstable conditions over wet soil at low wind speed.
 - ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
   stem/root area indices in global models with a prescribed LAI, by default;
   replace true canopy height in plant hydraulics with a hydraulic height,

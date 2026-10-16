@@ -16,8 +16,9 @@ temperature T_sfc satisfies the surface energy balance
 
 with all fluxes positive upward. It is solved for within the Monin-Obukhov
 iterations of SurfaceFluxes.jl, in the same way as the snow surface temperature
-(see `Snow.update_surf_temp!`), and the same solve yields the turbulent fluxes
-at T_sfc, which are stored with it in `p.soil.turbulent_fluxes`. The surface
+(see `Snow.update_surf_temp!`), refined by bisection where those iterations do
+not close the balance, and the same solve yields the turbulent fluxes at
+T_sfc, which are stored with it in `p.soil.turbulent_fluxes`. The surface
 humidity and upwelling longwave radiation of the soil are evaluated at T_sfc
 via `component_temperature`. The soil receives the net radiation and turbulent
 fluxes at T_sfc, which equal the conduction (T_top - T_sfc)/r to the tolerance
@@ -339,6 +340,75 @@ function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
 end
 
 """
+    soil_skin_energy_residual(output, T_top, r, ϵ, σ, SW_n, LW_d)
+
+Return the residual `r F + (T_sfc - T_top)` [K] of the soil skin energy balance
+at the skin temperature `T_sfc` of the SurfaceFluxes.jl `output`, with
+`F = SW_n - ϵ (LW_d - σ T_sfc⁴) + lhf + shf` [W/m²] the fluxes leaving the skin
+(positive upward) and `(T_top - T_sfc)/r` the conduction from the top cell.
+The residual increases with `T_sfc`.
+
+Called from [`solve_soil_surface_temperature_at_a_point`](@ref).
+"""
+@inline function soil_skin_energy_residual(output, T_top, r, ϵ, σ, SW_n, LW_d)
+    T_sfc = output.T_sfc
+    F = SW_n - ϵ * (LW_d - σ * T_sfc^4) + output.lhf + output.shf
+    return r * F + (T_sfc - T_top)
+end
+
+"""
+    blend_surface_flux_conditions(a, b, weight)
+
+Return the SurfaceFluxes.jl `SurfaceFluxConditions` whose fields are
+`(1 - weight)` times those of `a` plus `weight` times those of `b`, converged
+where both are.
+
+Called from [`solve_soil_surface_temperature_at_a_point`](@ref).
+"""
+@inline function blend_surface_flux_conditions(
+    a::SurfaceFluxes.SurfaceFluxConditions{FT},
+    b::SurfaceFluxes.SurfaceFluxConditions{FT},
+    weight::FT,
+) where {FT}
+    mix(x, y) = (1 - weight) * x + weight * y
+    return SurfaceFluxes.SurfaceFluxConditions{FT}(
+        mix(a.shf, b.shf),
+        mix(a.lhf, b.lhf),
+        mix(a.evaporation, b.evaporation),
+        mix(a.ρτxz, b.ρτxz),
+        mix(a.ρτyz, b.ρτyz),
+        mix(a.ustar, b.ustar),
+        mix(a.ζ, b.ζ),
+        mix(a.Cd, b.Cd),
+        mix(a.g_h, b.g_h),
+        mix(a.T_sfc, b.T_sfc),
+        mix(a.q_vap_sfc, b.q_vap_sfc),
+        mix(a.L_MO, b.L_MO),
+        mix(a.L_eff, b.L_eff),
+        mix(a.ζ_eff, b.ζ_eff),
+        a.converged && b.converged,
+    )
+end
+
+"""
+    SKIN_ENERGY_BALANCE_TOLERANCE
+
+Imbalance [W/m²] of the soil skin energy balance above which
+[`solve_soil_surface_temperature_at_a_point`](@ref) refines the skin
+temperature by bisection.
+"""
+const SKIN_ENERGY_BALANCE_TOLERANCE = 5
+
+"""
+    SKIN_BISECTION_ITERATIONS
+
+Number of bisection steps of the skin temperature refinement in
+[`solve_soil_surface_temperature_at_a_point`](@ref); each halves the bracket and
+solves the Monin-Obukhov equations at fixed skin temperature.
+"""
+const SKIN_BISECTION_ITERATIONS = 12
+
+"""
     solve_soil_surface_temperature_at_a_point(return_extra_fluxes, T_top, r, ϵ, SW_n, LW_d,
                                               g_liq, β_ice, ψ_sfc, Tf_depressed, z_sfc, displ,
                                               P_atmos, T_atmos, q_atmos, u_atmos,
@@ -349,6 +419,20 @@ end
 Solve the soil skin surface energy balance at a point within the Monin-Obukhov
 iterations of SurfaceFluxes.jl, starting from `T_top`, and return the skin
 temperature with the turbulent fluxes at it.
+
+The Newton updates within the Monin-Obukhov iterations neglect the dependence
+of the heat conductance on the skin temperature. At low wind speed over a wet
+surface, the conductance jumps between its capped stable value and a much
+larger unstable value where the virtual temperatures of the surface and the air
+cross, and these updates alternate between the two regimes. Where the energy
+balance is then left open by more than `SKIN_ENERGY_BALANCE_TOLERANCE`, and the
+skin is not held at the freezing temperature, the skin temperature is refined
+by bisection between the skin temperature of the solve, `T_sfc`, and
+`T_sfc - R`, which bracket the root of the residual `R`
+(`soil_skin_energy_residual`), with the Monin-Obukhov equations solved at each
+fixed skin temperature. At a jump of the conductance the residual changes sign
+without a root, and the solutions at the two ends of the final bracket are
+blended in the proportion that closes the balance.
 
 # Arguments
 - `return_extra_fluxes`: `Val(true)` to also return the momentum and buoyancy
@@ -469,6 +553,52 @@ Called from [`update_soil_surface_temperature!`](@ref).
         reference,
         earth_param_set,
     )
+    fluxes_at(T_sfc) = ClimaLand.surface_fluxes_at_a_point(
+        T_sfc,
+        q_sfc_guess,
+        nothing,
+        update_q,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        u_atmos,
+        atmos_h,
+        z_sfc,
+        displ,
+        roughness_model,
+        gustiness,
+        reference,
+        earth_param_set,
+    )
+    residual(output) =
+        soil_skin_energy_residual(output, T_top, r, ϵ, _σ, SW_n, LW_d)
+    R = residual(output)
+    # At the freezing cap the energy balance is not closed by design
+    frozen_top = β_ice > 0 && T_top < Tf_depressed
+    if !frozen_top && abs(R) > r * FT(SKIN_ENERGY_BALANCE_TOLERANCE)
+        # The residual increases with the skin temperature, so the root lies
+        # between T_sfc and T_sfc - R
+        output_b = fluxes_at(output.T_sfc - R)
+        R_b = residual(output_b)
+        above_root = R > 0
+        output_lo = ifelse(above_root, output_b, output)
+        output_hi = ifelse(above_root, output, output_b)
+        R_lo = ifelse(above_root, R_b, R)
+        R_hi = ifelse(above_root, R, R_b)
+        for _ in 1:SKIN_BISECTION_ITERATIONS
+            output_mid = fluxes_at((output_lo.T_sfc + output_hi.T_sfc) / 2)
+            R_mid = residual(output_mid)
+            above_root = R_mid > 0
+            output_lo = ifelse(above_root, output_lo, output_mid)
+            output_hi = ifelse(above_root, output_mid, output_hi)
+            R_lo = ifelse(above_root, R_lo, R_mid)
+            R_hi = ifelse(above_root, R_mid, R_hi)
+        end
+        # Where the conductance jumps, no single skin temperature closes the
+        # balance; the two sides are combined in the proportion that does
+        weight = clamp(R_lo / min(R_lo - R_hi, -eps(FT)), FT(0), FT(1))
+        output = blend_surface_flux_conditions(output_lo, output_hi, weight)
+    end
     fluxes = ClimaLand.turbulent_fluxes_from_output(
         return_extra_fluxes,
         output,
