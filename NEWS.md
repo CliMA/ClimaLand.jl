@@ -33,6 +33,19 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-🔥behavioralΔ] Temporarily floor the leaf NIR single-scattering albedo of
+  broad leaves and grasses at `leaf_NIR_omega_min = 0.76` (`α = τ = 0.38`) in
+  `TwoStreamParameters` (`Canopy.raised_leaf_nir_optics`); needleleaf shoot
+  values (`ω = 0.45`) are left unchanged and `leaf_NIR_omega_min = 0` restores
+  the previous values. The table and gridded values for broad leaves and
+  grasses (`ω ≈ 0.70`) made humid grass, crop, and broadleaf canopies absorb
+  too much near-infrared radiation, which left as sensible heat; across 24
+  FLUXNET2015 sites, the floor reduces daytime sensible heat |bias| by
+  1.5 W/m² (14 of 24 sites) and RMSE by 1.1 W/m² (14 of 24 sites), and
+  together with `SurfaceFluxes.RaupachRoughnessParams` reduces daytime sensible
+  heat |bias| from 31.0 to 19.9 W/m² (20 of 24 sites) and RMSE from 65.7 to
+  59.3 W/m² (18 of 24 sites). This is a stop-gap until universal leaf optics
+  replace the PFT table values.
 - ![][badge-🔥behavioralΔ] Use `SurfaceFluxes.RaupachRoughnessParams` (SurfaceFluxes
   1.5, ClimaParams 1.3.1) for the canopy momentum roughness length, scalar
   roughness length, and displacement height: `MoninObukhovCanopyFluxes` now
