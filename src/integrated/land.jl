@@ -25,7 +25,7 @@ soil, canopy, snow, soilco2, and optionally a slab lake.
 
 $(DocStringExtensions.FIELDS)
 """
-struct LandModel{
+mutable struct LandModel{
     FT,
     MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
