@@ -33,6 +33,16 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
+  the soil surface diffuses through the pore space of a dry litter layer of
+  thickness `litter_layer_thickness` and porosity `litter_porosity`
+  (`Soil.litter_resistance`, Millington-Quirk tortuosity), in series with the
+  resistance of the dry soil layer. The default thickness is zero, which leaves
+  all results unchanged. With 1–2 cm of litter (500–1000 s/m, as measured under
+  forest canopies by Schaap and Bouten, 1997, and Ogée and Brunet, 2002) the
+  evaporation from the floor of closed forests at FLUXNET sites falls from
+  35–75 % of the evapotranspiration, where the wet mineral soil evaporated like
+  a free water surface, to 5–15 %, as observed.
 - ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
   and stem area indices in the cache are reduced to the part of the canopy
   above the snow surface (`Canopy.exposed_canopy_fraction`,
