@@ -95,14 +95,14 @@ Called from the SurfaceFluxes callbacks [`update_soil_T_sfc_scheme`](@ref) and
 [`update_soil_q_vap_sfc_scheme`](@ref).
 """
 function soil_skin_state(
-    T_sfc::FT,
+    T_sfc,
     inputs,
     thermo_params,
     param_set,
-    ψ_sfc::FT,
-    Tf_depressed::FT,
+    ψ_sfc,
+    Tf_depressed,
     earth_param_set,
-) where {FT}
+)
     ρ_sfc = SurfaceFluxes.surface_density(
         param_set,
         inputs,
@@ -316,28 +316,28 @@ Called from [`update_soil_surface_temperature!`](@ref).
 """
 @inline function solve_soil_surface_temperature_at_a_point(
     return_extra_fluxes::Val,
-    T_top::FT,
-    r::FT,
-    ϵ::FT,
-    SW_n::FT,
-    LW_d::FT,
-    g_liq::FT,
-    β_ice::FT,
-    ψ_sfc::FT,
-    Tf_depressed::FT,
-    h_sfc::FT,
-    displ::FT,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_atmos::FT,
+    T_top,
+    r,
+    ϵ,
+    SW_n,
+    LW_d,
+    g_liq,
+    β_ice,
+    ψ_sfc,
+    Tf_depressed,
+    h_sfc,
+    displ,
+    P_atmos,
+    T_atmos,
+    q_atmos,
     u_atmos,
     roughness_model,
-    atmos_h::FT,
+    atmos_h,
     gustiness,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
     earth_param_set,
-) where {FT, UDT, UDQ}
+) where {UDT, UDQ}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)
     update_T(args...) = update_soil_T_sfc_scheme(

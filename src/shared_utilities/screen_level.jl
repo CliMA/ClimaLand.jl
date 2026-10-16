@@ -85,7 +85,10 @@ function screen_level_values(
         UF.PointValueScheme(),
         rsl,
     )
-    g_h = ifelse(F̂_h_ref > 0, κ * ustar / max(F̂_h_ref, eps(FT)), FT(0))
+    g_h = ifelse(
+        F̂_h_ref > 0,
+        promote(κ * ustar / max(F̂_h_ref, eps(FT)), FT(0))...,
+    )
     # The solve state that the reconstruction reads; the fluxes and drag
     # coefficient it does not read are NaN, and the inputs are built with the
     # SurfaceFluxes constructor so that every field of the container exists

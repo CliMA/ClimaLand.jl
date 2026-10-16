@@ -15,17 +15,12 @@ import ClimaUtilities.TimeManager: ITime, date
 export FTfromY
 
 """
-    partial_q_sat_partial(q_sat::FT, T::FT, phase, earth_param_set) where {FT}
+    partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
 
 Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been
-computed from T and ρ over the correct phase `phase`..
+computed from T and ρ over the correct phase `phase`.
 """
-function partial_q_sat_partial_T(
-    q_sat::FT,
-    T::FT,
-    phase,
-    earth_param_set,
-) where {FT}
+function partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     L = ifelse(
         phase isa Thermodynamics.Liquid,
@@ -76,26 +71,24 @@ end
 
 
 """
-     heaviside(x::FT)::FT where {FT}
+     heaviside(x)
 
 Computes the heaviside function H(x) = 1 (x ≥0), 0 (x < 0)
 """
-function heaviside(x::FT)::FT where {FT}
-    heaviside(x, FT(0))
+function heaviside(x)
+    heaviside(x, zero(x))
 end
 
 """
-     heaviside(x::FT, a::FT)::FT where {FT}
+     heaviside(x, a)
 
-Computes the heaviside function H(y) = 1 (y > eps(FT)), 0 (y ≤ eps(FT)),
-where y = x-a, so that H is zero at and within roundoff of y = 0.
+Computes the heaviside function H(y) = 1 (y > ε), 0 (y ≤ ε), where y = x-a
+and ε is the machine epsilon of the type of y, so that H is zero at and within
+roundoff of y = 0. The result has the type of y.
 """
-function heaviside(x::FT, a::FT)::FT where {FT}
-    if x - a > eps(FT)
-        return FT(1.0)
-    else
-        return FT(0.0)
-    end
+function heaviside(x, a)
+    y = x - a
+    return ifelse(y > eps(typeof(y)), one(y), zero(y))
 end
 
 """
