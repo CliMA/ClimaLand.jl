@@ -31,6 +31,8 @@ import ..Canopy:
     get_GPP,
     MedlynConductanceModel,
     PModelConductance,
+    CorrectedConductance,
+    canopy_correction_features,
     canopy_temperature,
     ZhouOptimalLAIModel
 import ..Domains:

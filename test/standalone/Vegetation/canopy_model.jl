@@ -261,7 +261,12 @@ end
                             leaf = FT(0.0),
                             root = FT(0.0),
                             stem = FT(0.0),
-                        )
+                        ),
+                        unburied_area_index = (
+                            leaf = FT(0.0),
+                            root = FT(0.0),
+                            stem = FT(0.0),
+                        ),
                     )
                 )
             ),
@@ -278,6 +283,9 @@ end
         )
         @test all(Array(parent(p.canopy.biomass.area_index.stem)) .== FT(1.0))
         @test all(Array(parent(p.canopy.biomass.area_index.root)) .== FT(1.0))
+        # Without snow, no plant area is buried
+        @test Array(parent(p.canopy.biomass.unburied_area_index)) ==
+              Array(parent(p.canopy.biomass.area_index))
 
         # Test that LAI is updated
         Canopy.update_biomass!(p, nothing, FT(200), biomass, fake_canopy)

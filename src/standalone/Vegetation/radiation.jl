@@ -143,15 +143,68 @@ end
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
-struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}} <:
+"""
+    TwoStreamModel{FT, TSP, C} <: AbstractRadiationModel{FT}
+
+The two-stream canopy radiative transfer model with parameters `parameters`
+and an optional multiplicative correction `clumping_correction` of the
+clumping index, a [`LogLinearFactor`](@ref) of the canopy correction features
+([`canopy_correction_features`](@ref)) or `nothing`. The corrected clumping
+index `min(1, Ω f)` changes how much radiation reaches the ground through the
+same two-stream solution, so the canopy–ground partition of the absorbed
+radiation stays consistent and conservative.
+"""
+struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}, C} <:
        AbstractRadiationModel{FT}
     parameters::TSP
+    clumping_correction::C
 end
 
 function TwoStreamModel{FT}(
-    parameters::TwoStreamParameters{FT},
+    parameters::TwoStreamParameters{FT};
+    clumping_correction = nothing,
 ) where {FT <: AbstractFloat}
-    return TwoStreamModel{eltype(parameters), typeof(parameters)}(parameters)
+    return TwoStreamModel{
+        eltype(parameters),
+        typeof(parameters),
+        typeof(clumping_correction),
+    }(
+        parameters,
+        clumping_correction,
+    )
+end
+
+TwoStreamModel(
+    parameters::TwoStreamParameters{FT};
+    clumping_correction = nothing,
+) where {FT <: AbstractFloat} =
+    TwoStreamModel{FT}(parameters; clumping_correction)
+
+"""
+    effective_clumping_index(Ω, ::Nothing, p, canopy)
+    effective_clumping_index(Ω, f::LogLinearFactor, p, canopy)
+
+The clumping index used in the shortwave radiative transfer: `Ω` itself, or
+`min(1, Ω f(x))` with the correction factor `f` of the canopy correction
+features `x`.
+"""
+effective_clumping_index(Ω, ::Nothing, p, canopy) = Ω
+function effective_clumping_index(Ω, f::LogLinearFactor, p, canopy)
+    x = canopy_correction_features(p, canopy)
+    return @. lazy(
+        min(
+            1,
+            Ω * f(
+                x.LAI,
+                x.cosθs,
+                x.VPD,
+                x.snow_cover_fraction,
+                x.θ_top,
+                x.βm,
+                x.log_height,
+            ),
+        ),
+    )
 end
 
 """
@@ -304,6 +357,25 @@ end
 ## For interfacing with ClimaParams
 
 """
+    raised_leaf_nir_optics(x, ω, ω_min)
+
+Temporary leaf NIR optics fix. Return the leaf NIR reflectance or
+transmittance `x` of a canopy element whose NIR single-scattering albedo is
+`ω = α + τ`, raised to `ω_min / 2` (`α = τ`) when `0.6 < ω < ω_min`. The
+default table and gridded values for broad leaves (`α = 0.45, τ = 0.25`) and
+grasses (`0.35, 0.34`) have `ω ≈ 0.7`, below leaf-level measurements
+(`α ≈ τ ≈ 0.42`), which makes humid grass, crop and broadleaf canopies too
+dark in the NIR and pushes the absorbed energy into sensible heat; the shoot
+level needleleaf values (`ω = 0.45`) are left unchanged. The default floor
+(`0.76`) stays below the leaf-level value because the latter over-brightens
+closed broadleaf canopies. Set `leaf_NIR_omega_min = 0` to disable. To be
+replaced by the universal leaf optics work.
+"""
+function raised_leaf_nir_optics(x::FT, ω::FT, ω_min::FT) where {FT}
+    return (ω > FT(0.6) && ω < ω_min) ? ω_min / 2 : x
+end
+
+"""
     function TwoStreamParameters(
         toml_dict::CP.ParamDict;
         G_Function,
@@ -350,6 +422,12 @@ function TwoStreamParameters(
     τ_PAR_leaf = FT.(τ_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
     τ_NIR_leaf = FT.(τ_NIR_leaf)
+    # Temporary: raise the leaf NIR single-scattering albedo of broad leaves
+    # and grasses to the leaf-level value (see `leaf_NIR_omega_min`).
+    ω_NIR_min = FT(toml_dict["leaf_NIR_omega_min"])
+    ω_NIR = α_NIR_leaf .+ τ_NIR_leaf
+    α_NIR_leaf = raised_leaf_nir_optics.(α_NIR_leaf, ω_NIR, ω_NIR_min)
+    τ_NIR_leaf = raised_leaf_nir_optics.(τ_NIR_leaf, ω_NIR, ω_NIR_min)
     α_PAR_stem = FT.(α_PAR_stem)
     τ_PAR_stem = FT.(τ_PAR_stem)
     α_NIR_stem = FT.(α_NIR_stem)
@@ -529,6 +607,7 @@ end
         SAI,
         α_soil_PAR,
         α_soil_NIR,
+        canopy,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
@@ -548,6 +627,7 @@ function compute_fractional_absorbances!(
     SAI,
     α_soil_PAR,
     α_soil_NIR,
+    canopy,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
@@ -578,6 +658,7 @@ end
         SAI,
         α_soil_PAR,
         α_soil_NIR,
+        canopy,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
@@ -600,15 +681,17 @@ function compute_fractional_absorbances!(
     SAI,
     α_soil_PAR,
     α_soil_NIR,
+    canopy,
 ) where {FT}
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
     frac_diff = p.drivers.frac_diff
+    Ω = effective_clumping_index(RTP.Ω, RT.clumping_correction, p, canopy)
     # Leaves and stems are treated as randomly mixed canopy elements with
     # plant-area-weighted optical properties (Sellers et al., 1996)
     @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
         RTP.G_Function,
-        RTP.Ω,
+        Ω,
         RTP.n_layers,
         plant_area_weighted(RTP.α_PAR_leaf, RTP.α_PAR_stem, LAI, SAI),
         plant_area_weighted(RTP.τ_PAR_leaf, RTP.τ_PAR_stem, LAI, SAI),
@@ -619,7 +702,7 @@ function compute_fractional_absorbances!(
     )
     @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
         RTP.G_Function,
-        RTP.Ω,
+        Ω,
         RTP.n_layers,
         plant_area_weighted(RTP.α_NIR_leaf, RTP.α_NIR_stem, LAI, SAI),
         plant_area_weighted(RTP.τ_NIR_leaf, RTP.τ_NIR_stem, LAI, SAI),
@@ -959,6 +1042,7 @@ function update_radiative_transfer!(
             p,
             t,
         ),
+        canopy,
     )
 end
 

@@ -219,6 +219,38 @@ function compute_stomatal_conductance!(
     end
 end
 
+# The diagnostic of the wrapped model, scaled by the correction factor as in
+# `update_canopy_conductance!(p, Y, ::CorrectedConductance, canopy)`
+function compute_stomatal_conductance!(
+    out,
+    Y,
+    p,
+    t,
+    canopy,
+    conductance_model::CorrectedConductance,
+)
+    out = compute_stomatal_conductance!(
+        out,
+        Y,
+        p,
+        t,
+        canopy,
+        conductance_model.model,
+    )
+    f = conductance_model.correction
+    x = canopy_correction_features(p, canopy)
+    @. out *= f(
+        x.LAI,
+        x.cosθs,
+        x.VPD,
+        x.snow_cover_fraction,
+        x.θ_top,
+        x.βm,
+        x.log_height,
+    )
+    return out
+end
+
 function compute_canopy_transpiration!(
     out,
     Y,
@@ -1268,11 +1300,13 @@ screen_level_state(model::SnowModel, p) = (;
 )
 function screen_level_state(model::CanopyModel, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    z_0m = ClimaLand.Canopy.canopy_z_0m(model, p)
+    z_0b = @. lazy(ClimaLand.Canopy.canopy_z_0b(sfp.raupach, sfp.z_0b, z_0m))
     return (;
         tf = p.canopy.turbulent_fluxes,
         q_sfc = p.canopy.turbulent_fluxes.q_sfc,
-        sfp.z_0m,
-        sfp.z_0b,
+        z_0m,
+        z_0b,
     )
 end
 

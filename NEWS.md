@@ -33,6 +33,105 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-✨feature] Add bounded, state-dependent multiplicative corrections
+  that carry empirical (e.g. flux-tower regression) error corrections into the
+  flux solves without changing the model structure: `LogLinearFactor`,
+  `f = exp(clamp(b + Σ wᵢ (xᵢ - μᵢ)/σᵢ, -L, L))`, applied to the canopy
+  conductance (`Canopy.CorrectedConductance`, wrapping any stomatal
+  conductance model), to the clumping index of the two-stream scheme
+  (`TwoStreamModel(…; clumping_correction)`, `Ω → min(1, Ω f)`), and to the
+  soil albedo (`CLMTwoBandSoilAlbedo(…; correction)`). The canopy factors are
+  functions of the model state only (leaf area index, cosine of the solar
+  zenith angle, vapor pressure deficit, snow cover fraction, top-layer soil
+  water content, moisture stress factor, and log canopy height), the soil
+  factor of the zenith angle and the surface water content; energy and water
+  remain conserved and the solves restart-reproducible. All defaults are
+  `nothing` (no correction), leaving every result unchanged. Trained on the
+  residuals of 24 FLUXNET2015 sites with GPP and LAI prescribed (year 2 of
+  730-day runs; finite-difference sensitivities from runs with the conductance
+  x1.5) on top of `SurfaceFluxes.RaupachRoughnessParams` and
+  `leaf_NIR_omega_min = 0.76`, a conductance factor of VPD, βm, and log canopy
+  height (`experiments/integrated/fluxnet/conductance_correction_fluxnet2015.toml`,
+  intercept `b = -0.011`) reduces the leave-one-site-out daytime
+  evaporative-fraction |bias| from 0.062 to 0.055 and RMSE from 0.178 to 0.167
+  (leave-one-IGBP-out |bias| 0.048 → 0.045, RMSE 0.172 → 0.163), and in online
+  24-site runs reduces daytime EF |bias| from 0.061 to 0.053 (RMSE 0.180 →
+  0.171, 21 of 24 sites), daytime H RMSE from 59.3 to 58.2 W/m² (21 of 24),
+  and daytime LE RMSE from 52.4 to 50.8 W/m² (20 of 24).
+- ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
+  the soil surface diffuses through the pore space of a dry litter layer of
+  thickness `litter_layer_thickness` and porosity `litter_porosity`
+  (`Soil.litter_resistance`, Millington-Quirk tortuosity), in series with the
+  resistance of the dry soil layer. The default thickness is zero, which leaves
+  all results unchanged. With 1–2 cm of litter (500–1000 s/m, as measured under
+  forest canopies by Schaap and Bouten, 1997, and Ogée and Brunet, 2002) the
+  evaporation from the floor of closed forests at FLUXNET sites falls from
+  35–75 % of the evapotranspiration, where the wet mineral soil evaporated like
+  a free water surface, to 5–15 %, as observed.
+- ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
+  and stem area indices in the cache are reduced to the part of the canopy
+  above the snow surface (`Canopy.exposed_canopy_fraction`,
+  `Canopy.bury_biomass_in_snow!`), with the snow depth and snow cover fraction
+  of the snow model and the canopy height. Over the snow-covered part of the
+  ground the local snow depth is the mean depth divided by the cover
+  fraction; plant area is taken as uniform in height. Short vegetation under a
+  snowpack deeper than its height therefore no longer intercepts radiation or
+  exchanges heat and water vapor, and the land surface takes the albedo of the
+  snow, as observed over snow-covered grassland and cropland while forests
+  stay dark (Betts and Ball, 1997). Forests with heights of tens of meters are
+  almost unaffected.
+- ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
+  at the water content of the permanent wilting point (ψ = -150 m). At sites
+  where the observed water content is below the residual water content of the
+  soil parameters (US-SRG), the soil started outside the domain of the
+  retention curve, where the pressure head is unbounded and its derivative
+  vanishes, and the first rain produced an unbounded flux and NaNs.
+- ![][badge-🔥behavioralΔ] Initialize the soil of FLUXNET simulations with depth-dependent
+  profiles instead of a uniform column. The water content relaxes from the
+  shallow observation at the start date to the record mean of the deepest soil
+  moisture sensor with a 0.5 m e-folding depth, and the temperature from the
+  shallow observation to the record mean with the 2 m annual damping depth. At
+  sites without any soil moisture record, which previously started at 95 % of
+  saturation throughout, the deep water content is estimated from the aridity
+  `P/PET` of the record between the wilting point and field capacity
+  (`climatological_soil_moisture`). The site soil column has a zero-flux bottom
+  and loses water almost only by evapotranspiration, so a uniform wet initial
+  column kept semi-arid sites (e.g. US-Seg, US-Ton) wet for years, with
+  evaporation, ground heat flux, and soil thermal inertia far above the
+  observations. At the four semi-arid sites without soil moisture data
+  (US-Seg, US-Ses, US-Wjs, US-Vcp) the first-year bias of the latent heat
+  flux falls from +11 to +15 W/m² to -1 to +8 W/m²; at sites with soil
+  moisture data the changes are within a few W/m².
+- ![][badge-🔥behavioralΔ] Temporarily floor the leaf NIR single-scattering albedo of
+  broad leaves and grasses at `leaf_NIR_omega_min = 0.76` (`α = τ = 0.38`) in
+  `TwoStreamParameters` (`Canopy.raised_leaf_nir_optics`); needleleaf shoot
+  values (`ω = 0.45`) are left unchanged and `leaf_NIR_omega_min = 0` restores
+  the previous values. The table and gridded values for broad leaves and
+  grasses (`ω ≈ 0.70`) made humid grass, crop, and broadleaf canopies absorb
+  too much near-infrared radiation, which left as sensible heat; across 24
+  FLUXNET2015 sites, the floor reduces daytime sensible heat |bias| by
+  1.5 W/m² (14 of 24 sites) and RMSE by 1.1 W/m² (14 of 24 sites), and
+  together with `SurfaceFluxes.RaupachRoughnessParams` reduces daytime sensible
+  heat |bias| from 31.0 to 19.9 W/m² (20 of 24 sites) and RMSE from 65.7 to
+  59.3 W/m² (18 of 24 sites). This is a stop-gap until universal leaf optics
+  replace the PFT table values.
+- ![][badge-🔥behavioralΔ] Use `SurfaceFluxes.RaupachRoughnessParams` (SurfaceFluxes
+  1.5, ClimaParams 1.3.1) for the canopy momentum roughness length, scalar
+  roughness length, and displacement height: `MoninObukhovCanopyFluxes` now
+  stores `raupach::SurfaceFluxes.RaupachRoughnessParams{FT}` constructed from
+  the parameter dictionary, `canopy_z_0m` and `canopy_displacement` delegate to
+  `SurfaceFluxes.momentum_roughness` (floored at `canopy_z_0min`) and
+  `SurfaceFluxes.displacement_height` when `raupach.frontal_area_ratio > 0`
+  (falling back to the static height-proportional values when
+  `frontal_area_ratio == 0`), and `canopy_z_0b` scales `z_0m` by
+  `raupach.stanton_number = 0.1` (`z_0b / z_0m = exp(-kB⁻¹)` with
+  `kB⁻¹ ≈ 2.30`; Garratt 1992). Removes `canopy_z_0b_coeff`, which previously
+  set `z_0b ≈ 0.9 z_0m` (`kB⁻¹ ≈ 0.1`) and over-coupled short canopies to the
+  atmosphere. Across 24 FLUXNET2015 sites (year 2 of 730-day runs with tower
+  GPP and MODIS LAI prescribed), this reduces the daytime sensible heat flux
+  mean |bias| from 29.5 to 19.9 W/m² and mean RMSE from 64.6 to 59.3 W/m²
+  (improving at 20 and 19 of 24 sites), and the daytime evaporative fraction
+  |bias| from 0.082 to 0.061 (RMSE from 0.192 to 0.180, 18 of 24 sites).
 - ![][badge-🔥behavioralΔ] Cap the stability of the land surface turbulent
   fluxes at the stability of maximum sensible heat flux
   (`SurfaceFluxes.MaxHeatFluxStabilityCap`, set in

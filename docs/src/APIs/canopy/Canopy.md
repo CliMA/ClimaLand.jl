@@ -35,6 +35,9 @@ ClimaLand.Canopy.plants_present
 ClimaLand.Canopy.leaves_present
 ClimaLand.Canopy.series_conductance
 ClimaLand.Canopy.MoninObukhovCanopyFluxes
+ClimaLand.Canopy.canopy_z_0m
+ClimaLand.Canopy.canopy_z_0b
+ClimaLand.Canopy.canopy_displacement
 ClimaLand.Canopy.subcanopy_wind
 ClimaLand.Canopy.subcanopy_reference_height
 ClimaLand.Canopy.subcanopy_forcing

@@ -159,7 +159,8 @@ function make_compute_imp_tendency(
     canopy,
 ) where {FT}
     function compute_imp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.biomass.area_index
+        # The heat capacity includes the plant area buried in snow
+        area_index = p.canopy.biomass.unburied_area_index
         (; ac_canopy, absent_canopy_relaxation_time) = model.parameters
         # Energy Equation:
         # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
@@ -241,6 +242,7 @@ function ClimaLand.make_compute_jacobian(
         t,
     )
         (; matrix) = jacobian
+        area_index = p.canopy.biomass.unburied_area_index
 
         # The derivative of the residual with respect to the prognostic variable
         ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
@@ -248,7 +250,6 @@ function ClimaLand.make_compute_jacobian(
         ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
         ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
         ϵ_c = p.canopy.radiative_transfer.ϵ
-        area_index = p.canopy.biomass.area_index
         (; ac_canopy, absent_canopy_relaxation_time) = model.parameters
         earth_param_set = canopy.earth_param_set
         _σ = LP.Stefan(earth_param_set)
@@ -283,7 +284,8 @@ the big leaf model's energy.
 
 Note that this assumes that there is at most a single canopy and stem
 component, and that the area index for them refers to the integrated
-area index (in height) - not the value per layer.
+area index (in height) - not the value per layer. The area indices include
+the plant area buried in snow.
 """
 function ClimaLand.total_energy_per_area!(
     surface_field,
@@ -293,7 +295,7 @@ function ClimaLand.total_energy_per_area!(
     p,
     t,
 )
-    area_index = p.canopy.biomass.area_index
+    area_index = p.canopy.biomass.unburied_area_index
     @. surface_field .=
         model.parameters.ac_canopy *
         (area_index.leaf + area_index.stem) *

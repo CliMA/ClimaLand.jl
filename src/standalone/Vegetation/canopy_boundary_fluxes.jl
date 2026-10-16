@@ -371,7 +371,16 @@ function ClimaLand.surface_displacement_height(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
-    return sfp.displ
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        canopy_displacement(
+            sfp.raupach,
+            sfp.displ,
+            height,
+            area_index.leaf + area_index.stem,
+        ),
+    )
 end
 
 """
@@ -380,14 +389,36 @@ end
 a helper function which returns the surface roughness model for the canopy
 model.
 """
+function canopy_z_0m(model::CanopyModel, p)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    surface_flux_params =
+        LP.surface_fluxes_parameters(ClimaLand.get_earth_param_set(model))
+    height = model.biomass.height
+    area_index = p.canopy.biomass.area_index
+    return @. lazy(
+        canopy_z_0m(
+            sfp.raupach,
+            sfp.z_0min,
+            sfp.z_0m,
+            height,
+            area_index.leaf + area_index.stem,
+            surface_flux_params,
+        ),
+    )
+end
+
 function ClimaLand.surface_roughness_model(
     model::CanopyModel{FT},
     Y,
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    z_0m = canopy_z_0m(model, p)
     return @. lazy(
-        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
+        SurfaceFluxes.ConstantRoughnessParams{FT}(
+            z_0m,
+            canopy_z_0b(sfp.raupach, sfp.z_0b, z_0m),
+        ),
     )
 end
 
@@ -740,8 +771,7 @@ hydrostatic difference across a canopy is below 0.1 %.
 function subcanopy_forcing(canopy::CanopyModel, p, Y)
     atmos = canopy.boundary_conditions.atmos
     sfp = canopy.boundary_conditions.turbulent_flux_parameterization
-    (; displ, z_0m, subcanopy_min_reference_height, subcanopy_wind_extinction) =
-        sfp
+    (; subcanopy_min_reference_height, subcanopy_wind_extinction) = sfp
     h_forcing = atmos.h # measured according to atmos.reference
     atmos_gustiness = ClimaLand.gustiness_spec(atmos)
     surface_flux_params =
@@ -751,6 +781,8 @@ function subcanopy_forcing(canopy::CanopyModel, p, Y)
     h_canopy = canopy.biomass.height
     area_index = p.canopy.biomass.area_index
     u = p.drivers.u
+    displ = ClimaLand.surface_displacement_height(canopy, nothing, p)
+    z_0m = canopy_z_0m(canopy, p)
     plants = @. lazy(plants_present(area_index.leaf, area_index.stem))
     z_subcanopy = @. lazy(
         subcanopy_reference_height(

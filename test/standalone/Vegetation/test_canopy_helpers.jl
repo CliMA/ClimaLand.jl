@@ -152,10 +152,51 @@ for FT in (Float32, Float64)
               subcanopy_wind(FT(0), g, h_atmos, z_ref, h, d, z_0m, PAI, α)
         @test calm_ground[2] == 0
 
-        # The parameterization reads both parameters from the TOML
+        # The parameterization reads the sub-canopy and Raupach parameters from the TOML
         sf = MoninObukhovCanopyFluxes(toml_dict, FT(10))
         @test sf.subcanopy_wind_extinction == α
         @test sf.subcanopy_min_reference_height == z_min
+        @test sf.raupach == SurfaceFluxes.RaupachRoughnessParams(toml_dict)
+        sfc_params = LP.surface_fluxes_parameters(LP.LandParameters(toml_dict))
+        @test canopy_displacement(sf.raupach, sf.displ, FT(10), FT(2)) ==
+              SurfaceFluxes.displacement_height(
+            sf.raupach,
+            (; h = FT(10), PAI = FT(2)),
+        )
+        z0m_raup = canopy_z_0m(
+            sf.raupach,
+            sf.z_0min,
+            sf.z_0m,
+            FT(10),
+            FT(2),
+            sfc_params,
+        )
+        @test z0m_raup == max(
+            SurfaceFluxes.momentum_roughness(
+                sf.raupach,
+                FT(0),
+                sfc_params,
+                (; h = FT(10), PAI = FT(2)),
+            ),
+            sf.z_0min,
+        )
+        @test canopy_z_0b(sf.raupach, sf.z_0b, z0m_raup) ==
+              z0m_raup * sf.raupach.stanton_number
+        # frontal_area_ratio == 0 selects the static height-proportional values
+        static_raupach = SurfaceFluxes.RaupachRoughnessParams{FT}(;
+            frontal_area_ratio = FT(0),
+        )
+        @test canopy_displacement(static_raupach, sf.displ, FT(10), FT(2)) ==
+              sf.displ
+        @test canopy_z_0b(static_raupach, FT(0.07), FT(1)) == FT(0.07)
+        @test canopy_z_0m(
+            static_raupach,
+            sf.z_0min,
+            sf.z_0m,
+            FT(10),
+            FT(2),
+            sfc_params,
+        ) == sf.z_0m
     end
 
     @testset "Ground gustiness below a canopy, FT = $FT" begin
@@ -173,6 +214,35 @@ for FT in (Float32, Float64)
         @test Base.materialize(ground_gustiness(spec, true)) ==
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(spec, false)) == spec
+    end
+
+    @testset "Canopy fraction exposed above snow, FT = $FT" begin
+        h = FT(0.5)
+        # No snow: the whole canopy is exposed
+        @test Canopy.exposed_canopy_fraction(FT(0), FT(0), h) == FT(1)
+        @test Canopy.exposed_canopy_fraction(FT(0), FT(1), h) == FT(1)
+        # Snow depth below the canopy height under full cover
+        @test Canopy.exposed_canopy_fraction(FT(0.1), FT(1), h) ≈ FT(0.8)
+        # Snow at least as deep as the canopy is tall: nothing exposed
+        @test Canopy.exposed_canopy_fraction(h, FT(1), h) == FT(0)
+        @test Canopy.exposed_canopy_fraction(FT(2) * h, FT(1), h) == FT(0)
+        # Partial cover: local depth is z_snow / scf over the covered part,
+        # and the bare part exposes the whole canopy
+        scf = FT(0.5)
+        @test Canopy.exposed_canopy_fraction(FT(0.1), scf, h) ≈
+              (1 - scf) + scf * (1 - FT(0.1) / (scf * h))
+        @test Canopy.exposed_canopy_fraction(FT(10), scf, h) ≈ 1 - scf
+        # Monotone in snow depth and cover
+        @test Canopy.exposed_canopy_fraction(FT(0.2), FT(1), h) <
+              Canopy.exposed_canopy_fraction(FT(0.1), FT(1), h)
+        @test Canopy.exposed_canopy_fraction(FT(10), FT(0.8), h) <
+              Canopy.exposed_canopy_fraction(FT(10), FT(0.5), h)
+        # A tall canopy is barely affected by a shallow snowpack
+        @test Canopy.exposed_canopy_fraction(FT(0.2), FT(1), FT(20)) ≈ FT(0.99)
+        # Cover fractions outside [0, 1] are clamped
+        @test Canopy.exposed_canopy_fraction(FT(1), FT(1.5), h) == FT(0)
+        @test Canopy.exposed_canopy_fraction(FT(1), FT(-0.5), h) == FT(1)
+        @test typeof(Canopy.exposed_canopy_fraction(FT(0.1), scf, h)) == FT
     end
 end
 

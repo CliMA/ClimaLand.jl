@@ -1,4 +1,7 @@
 export MoninObukhovCanopyFluxes,
+    canopy_z_0m,
+    canopy_z_0b,
+    canopy_displacement,
     subcanopy_wind,
     subcanopy_reference_height,
     subcanopy_forcing,
@@ -21,6 +24,7 @@ You must specify
 - the extinction coefficient of the wind speed within the canopy (unitless)
 - the minimum height above the ground at which the fluxes of the ground
   below the canopy are evaluated (m)
+- the Raupach (1994) roughness parameters (`SurfaceFluxes.RaupachRoughnessParams`)
 """
 struct MoninObukhovCanopyFluxes{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
        AbstractCanopyFluxParameterization{FT}
@@ -38,6 +42,34 @@ struct MoninObukhovCanopyFluxes{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
     subcanopy_wind_extinction::FT
     "Minimum height above the ground of the sub-canopy reference level (m)"
     subcanopy_min_reference_height::FT
+    "Raupach (1994) roughness parameters; `raupach.frontal_area_ratio == 0` selects the static roughness `z_0m`, `z_0b`, `displ`"
+    raupach::SurfaceFluxes.RaupachRoughnessParams{FT}
+end
+
+function MoninObukhovCanopyFluxes{FT, F}(
+    z_0min,
+    z_0m,
+    z_0b,
+    displ,
+    Cd,
+    subcanopy_wind_extinction,
+    subcanopy_min_reference_height,
+    raupach = SurfaceFluxes.RaupachRoughnessParams{FT}(;
+        stanton_number = z_0b isa Number && z_0m isa Number ? FT(z_0b / z_0m) :
+                         FT(0.1),
+        frontal_area_ratio = FT(0),
+    ),
+) where {FT, F}
+    return MoninObukhovCanopyFluxes{FT, F}(
+        FT(z_0min),
+        z_0m,
+        z_0b,
+        displ,
+        FT(Cd),
+        FT(subcanopy_wind_extinction),
+        FT(subcanopy_min_reference_height),
+        raupach,
+    )
 end
 
 """
@@ -45,23 +77,32 @@ end
 
 A constructor for a MoninObukhovCanopyFluxes surface flux theory,
  specifying how to compute vapor fluxes, latent and sensible heat
-fluxes, and momentum fluxes between the atmosphere and the canopy based on Monin-Obukhov Surface Theory, assuming that the roughness lengths
-and displacment height are linear in the canopy height:
+fluxes, and momentum fluxes between the atmosphere and the canopy based on Monin-Obukhov Surface Theory, with the static roughness lengths
+and displacement height linear in the canopy height:
 z_0m = coeff1 * height + z_0min
-z_0b = coeff2 * height + z_0min
-displacement = coeff3*height
+z_0b = stanton_number * z_0m
+displacement = coeff3 * height
 
-where the coefficients are read from the toml_dict. The height can be
-either a float or a field. The leaf drag coefficient, the extinction
-coefficient of the wind speed within the canopy, and the minimum reference
-height of the ground below the canopy are also read from the toml_dict.
+where the coefficients and the Stanton number `stanton_number = z_0b / z_0m = exp(-kB⁻¹)`
+(Garratt 1992, Ch. 4; Brutsaert 1982, Ch. 5) are read from `toml_dict`. The height can be
+either a float or a field.
 
-Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304
+When `raupach_frontal_area_ratio` is positive, the momentum roughness
+length, scalar roughness length, and displacement height used in the flux solves are instead the
+Raupach (1994) functions of canopy height and plant area index from
+`SurfaceFluxes.RaupachRoughnessParams(toml_dict)`
+([`canopy_z_0m`](@ref), [`canopy_z_0b`](@ref), [`canopy_displacement`](@ref)).
+The leaf drag coefficient, the extinction coefficient of the wind speed within
+the canopy, and the minimum reference height of the ground below the canopy are
+also read from `toml_dict`.
+
+Cowan 1968; Brutsaert 1982, pp. 113–116; Garratt 1992, pp. 92–94; Raupach 1994; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304
 """
 function MoninObukhovCanopyFluxes(toml_dict, height)
+    raupach = SurfaceFluxes.RaupachRoughnessParams(toml_dict)
     z_0min = toml_dict["canopy_z_0min"]
     z_0m = toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min
-    z_0b = toml_dict["canopy_z_0b_coeff"] .* height .+ z_0min
+    z_0b = z_0m .* raupach.stanton_number
     displ = toml_dict["canopy_d_coeff"] .* height
     Cd = toml_dict["leaf_Cd"]
     subcanopy_wind_extinction =
@@ -78,8 +119,63 @@ function MoninObukhovCanopyFluxes(toml_dict, height)
         Cd,
         subcanopy_wind_extinction,
         subcanopy_min_reference_height,
+        raupach,
     )
 end
+
+"""
+    canopy_z_0m(raupach::SurfaceFluxes.RaupachRoughnessParams, z_0min, z_0m, height, PAI, surface_flux_params)
+    canopy_displacement(raupach::SurfaceFluxes.RaupachRoughnessParams, displ, height, PAI)
+    canopy_z_0b(raupach::SurfaceFluxes.RaupachRoughnessParams, z_0b, z_0m)
+
+Momentum roughness length, displacement height, and scalar roughness length
+(m) of the canopy at a point, given the `SurfaceFluxes.RaupachRoughnessParams`
+and static values `z_0min`, `z_0m`, `z_0b`, `displ` of the
+[`MoninObukhovCanopyFluxes`](@ref) parameterization, the canopy `height`, and
+the plant area index `PAI`. With `raupach.frontal_area_ratio > 0` the
+`SurfaceFluxes` Raupach (1994) functions of `(; h = height, PAI)` are used,
+floored at `z_0min`, and `z_0b = raupach.stanton_number * z_0m` of that
+`z_0m`; otherwise the static values. The arguments are scalars so that the
+functions broadcast over fields.
+"""
+@inline function canopy_z_0m(
+    raupach::SurfaceFluxes.RaupachRoughnessParams{FT},
+    z_0min,
+    z_0m,
+    height,
+    PAI,
+    surface_flux_params,
+) where {FT}
+    return ifelse(
+        raupach.frontal_area_ratio > 0,
+        max(
+            SurfaceFluxes.momentum_roughness(
+                raupach,
+                zero(FT),
+                surface_flux_params,
+                (; h = height, PAI),
+            ),
+            z_0min,
+        ),
+        z_0m,
+    )
+end
+
+@inline function canopy_displacement(
+    raupach::SurfaceFluxes.RaupachRoughnessParams,
+    displ,
+    height,
+    PAI,
+)
+    return ifelse(
+        raupach.frontal_area_ratio > 0,
+        SurfaceFluxes.displacement_height(raupach, (; h = height, PAI)),
+        displ,
+    )
+end
+
+@inline canopy_z_0b(raupach::SurfaceFluxes.RaupachRoughnessParams, z_0b, z_0m) =
+    ifelse(raupach.frontal_area_ratio > 0, z_0m * raupach.stanton_number, z_0b)
 
 """
     subcanopy_reference_height(displ, z_0m, z_min, h_atmos, reference)

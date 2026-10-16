@@ -414,3 +414,11 @@ end
     @test stop_date - start_date == Day(1)
     @test start_date >= first(FluxnetSimulations.get_data_dates("US-MOz", -6))
 end
+
+@testset "mask_frozen_records" begin
+    ext = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
+    @test ext.mask_frozen_records(nothing, nothing) === nothing
+    @test ext.mask_frozen_records(nothing, [1.0, 2.0]) === nothing
+    @test ext.mask_frozen_records([0.2, 0.3], nothing) == [0.2, 0.3]
+    @test ext.mask_frozen_records([0.2, 0.3], [-1.0, 2.0]) == [-9999.0, 0.3]
+end

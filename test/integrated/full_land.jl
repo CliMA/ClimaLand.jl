@@ -307,9 +307,9 @@ end
         FT;
         nelements = nelements,
         mask_threshold = FT(0.99),
-    );
-    surface_space = domain.space.surface;
-    start_date = DateTime(2008);
+    )
+    surface_space = domain.space.surface
+    start_date = DateTime(2008)
     stop_date = start_date + Second(Δt)
     forcing = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -324,7 +324,7 @@ end
         domain.space.surface,
         start_date,
         stop_date,
-    );
+    )
 
     land = LandModel{FT}(
         forcing,
@@ -333,7 +333,7 @@ end
         domain,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-    );
+    )
 
     @test domain == ClimaLand.get_domain(land)
     @test ClimaComms.context(land) == ClimaComms.context()
@@ -478,9 +478,10 @@ end
         set_initial_cache! = make_set_initial_cache(land)
         set_initial_cache!(p, Y, t0)
 
-        # Check total
-        leaf_area_index = p.canopy.biomass.area_index.leaf
-        stem_area_index = p.canopy.biomass.area_index.stem
+        # Check total; the canopy stores heat and water in its leaves and stems
+        # buried in snow as well
+        leaf_area_index = p.canopy.biomass.unburied_area_index.leaf
+        stem_area_index = p.canopy.biomass.unburied_area_index.stem
         h_hydr = ClimaLand.Canopy.hydraulic_height(
             p,
             Y,
@@ -541,6 +542,69 @@ end
             vec(Array(parent(total_energy)))[oceans] .≈
             vec(Array(parent(expected)))[oceans],
         )
+    end
+
+    @testset "Canopy area indices buried by snow" begin
+        Y, p, cds = initialize(land)
+        Y.soil.ϑ_l .= land.soil.parameters.ν ./ 2
+        Y.soil.θ_i .= 0
+        Y.soil.ρe_int .= 0
+        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= FT(280)
+        t0 = 0.0
+        set_initial_cache! = make_set_initial_cache(land)
+        # Without snow the indices are those of the biomass model
+        Y.snow.S .= 0
+        Y.snow.S_l .= 0
+        Y.snow.U .= 0
+        set_initial_cache!(p, Y, t0)
+        LAI0 = copy(p.canopy.biomass.area_index.leaf)
+        SAI0 = copy(p.canopy.biomass.area_index.stem)
+        @test all(parent(p.snow.z_snow) .== 0)
+        @test all(parent(LAI0) .>= 0)
+        # With a deep snowpack the indices are scaled by the exposed fraction
+        S0 = FT(1)
+        Y.snow.S .= S0
+        Y.snow.S_l .= 0
+        Y.snow.U .= Snow.energy_from_T_and_swe(
+            S0,
+            FT(260),
+            land.snow.parameters.ΔS,
+            land.snow.parameters.earth_param_set,
+        )
+        set_initial_cache!(p, Y, t0)
+        h = land.canopy.biomass.height
+        f_exp = ClimaCore.Fields.zeros(domain.space.surface)
+        @. f_exp = Canopy.exposed_canopy_fraction(
+            p.snow.z_snow,
+            p.snow.snow_cover_fraction,
+            h,
+        )
+        LAI = p.canopy.biomass.area_index.leaf
+        SAI = p.canopy.biomass.area_index.stem
+        continents = Array(parent(domain.space.surface.grid.mask.is_active))[:]
+        @test all(vec(Array(parent(p.snow.z_snow)))[continents] .> 0)
+        @test all(0 .<= parent(f_exp) .<= 1)
+        @test any(parent(f_exp) .< 1)
+        @test all(parent(LAI) .<= parent(LAI0))
+        @test all(parent(SAI) .≈ parent(SAI0) .* parent(f_exp))
+        unburied = p.canopy.biomass.unburied_area_index
+        @test Array(parent(unburied.leaf)) == Array(parent(LAI0))
+        @test Array(parent(unburied.stem)) == Array(parent(SAI0))
+        @test all(
+            parent(LAI) .≈
+            Canopy.clip.(parent(LAI0) .* parent(f_exp), FT(0.05)),
+        )
+        # Fully buried where the snow is deeper than the canopy is tall
+        buried =
+            (parent(p.snow.z_snow) .>= parent(h .+ 0 .* LAI)) .&
+            (parent(p.snow.snow_cover_fraction) .== 1)
+        @test any(buried)
+        @test all(parent(LAI)[buried] .== 0)
+        @test all(parent(SAI)[buried] .== 0)
+        # Unaffected where the canopy is much taller than the snow is deep
+        tall = parent(h .+ 0 .* LAI) .> 50 .* parent(p.snow.z_snow)
+        @test all(parent(LAI)[tall] .>= FT(0.98) .* parent(LAI0)[tall])
     end
 
     @testset "Column integral mask awareness" begin
@@ -1016,4 +1080,156 @@ end
     h_ground = Array(parent(Base.materialize(ground.h_atmos)))[:][land_mask]
     @test Array(parent(p.soil.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
     @test Array(parent(p.snow.turbulent_fluxes.Δz_eff))[:][land_mask] ≈ h_ground
+end
+
+# Burial stops the exchange of the buried plant area with the air but moves
+# none of its heat or water, so the canopy budgets do not change with snow depth
+for FT in (Float32, Float64)
+    @testset "Canopy energy and water budgets under snow burial, FT = $FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Domains.Column(;
+            zlim = (FT(-2), FT(0)),
+            nelements = 10,
+            longlat = (FT(-92.2), FT(38.7)),
+        )
+        surface_domain = Domains.obtain_surface_domain(domain)
+        start_date = DateTime(2005)
+        t0 = ITime(0, Second(1), start_date)
+        radiation = ClimaLand.PrescribedRadiativeFluxes(
+            FT,
+            TimeVaryingInput(t -> 300),
+            TimeVaryingInput(t -> 5.67e-8 * 280.0^4.0),
+            start_date;
+            cosθs = (t, s) -> FT(0.5),
+            toml_dict,
+        )
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(
+            FT;
+            toml_dict,
+            start_date,
+            q_atmos = t -> 0.003,
+            h_atmos = FT(10),
+            radiation,
+        )
+        forcing = (; atmos, radiation)
+        prognostic_land_components = (:canopy, :snow, :soil)
+        LAI = TimeVaryingInput(t -> FT(1.5))
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+        canopy = Canopy.CanopyModel{FT}(
+            surface_domain,
+            (;
+                atmos,
+                radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+            biomass = Canopy.PrescribedBiomassModel{FT}(
+                surface_domain,
+                LAI,
+                toml_dict;
+                height = FT(0.5),
+            ),
+        )
+        land = LandModel{FT}(
+            forcing,
+            LAI,
+            toml_dict,
+            domain,
+            FT(450);
+            prognostic_land_components,
+            soil,
+            canopy,
+        )
+        Y, p, _ = initialize(land)
+        T0 = FT(270)
+        Y.soil.ϑ_l .= land.soil.parameters.ν ./ 2
+        Y.soil.θ_i .= 0
+        ρc_soil = Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            land.soil.parameters.ρc_ds,
+            land.soil.parameters.earth_param_set,
+        )
+        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_soil,
+            T0,
+            land.soil.parameters.earth_param_set,
+        )
+        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν / 2
+        Y.canopy.energy.T .= T0
+        set_initial_cache! = make_set_initial_cache(land)
+        compute_energy_tendency! =
+            ClimaLand.make_compute_imp_tendency(land.canopy.energy, land.canopy)
+        compute_water_tendency! = ClimaLand.make_compute_exp_tendency(
+            land.canopy.hydraulics,
+            land.canopy,
+        )
+        E = ClimaCore.Fields.zeros(surface_domain.space.surface)
+        W = ClimaCore.Fields.zeros(surface_domain.space.surface)
+        dY = similar(Y)
+        value(x) = only(Array(parent(x)))
+        budgets = map((FT(0), FT(0.03), FT(1))) do S
+            # No snow, a canopy partly buried in 0.15 m of snow, and one buried
+            # entirely in 5 m of snow
+            Y.snow.S .= S
+            Y.snow.S_l .= 0
+            Y.snow.U .=
+                S > 0 ?
+                Snow.energy_from_T_and_swe(
+                    S,
+                    FT(265),
+                    land.snow.parameters.ΔS,
+                    land.snow.parameters.earth_param_set,
+                ) : FT(0)
+            set_initial_cache!(p, Y, t0)
+            ClimaLand.total_energy_per_area!(E, land.canopy, Y, p, t0)
+            ClimaLand.total_liq_water_vol_per_area!(W, land.canopy, Y, p, t0)
+            compute_energy_tendency!(dY, Y, p, t0)
+            compute_water_tendency!(dY, Y, p, t0)
+            exposed = p.canopy.biomass.area_index
+            unburied = p.canopy.biomass.unburied_area_index
+            # The heat capacity of all plant area times the tendency is the net
+            # flux of the exposed plant area
+            net_flux = value(
+                p.canopy.radiative_transfer.LW_n .+
+                p.canopy.radiative_transfer.SW_n .-
+                p.canopy.turbulent_fluxes.shf .-
+                p.canopy.turbulent_fluxes.lhf .+
+                p.canopy.energy.fa_energy_roots,
+            )
+            heat_capacity =
+                land.canopy.energy.parameters.ac_canopy *
+                value(unburied.leaf .+ unburied.stem)
+            @test heat_capacity * value(dY.canopy.energy.T) ≈ net_flux
+            (;
+                LAI = value(exposed.leaf),
+                unburied_LAI = value(unburied.leaf),
+                E = value(E),
+                W = value(W),
+                dT = value(dY.canopy.energy.T),
+                dϑ = value(dY.canopy.hydraulics.ϑ_l),
+            )
+        end
+        snow_free, partly_buried, buried = budgets
+        @test snow_free.LAI == snow_free.unburied_LAI == FT(1.5)
+        @test FT(0.05) < partly_buried.LAI < snow_free.LAI
+        @test buried.LAI == 0
+        @test partly_buried.unburied_LAI == buried.unburied_LAI == FT(1.5)
+        # Burial moves no heat or water
+        @test partly_buried.E == buried.E == snow_free.E
+        @test partly_buried.W == buried.W == snow_free.W
+        @test all(isfinite, (snow_free.dT, partly_buried.dT, snow_free.dϑ))
+        # A buried canopy exchanges nothing with the air or the soil
+        @test buried.dT == 0
+        @test buried.dϑ == 0
+    end
 end

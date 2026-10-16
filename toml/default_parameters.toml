@@ -571,6 +571,12 @@ type = "float"
 description = "NIR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
 tag = "AbstractRadiationModel"
 
+[leaf_NIR_omega_min]
+value = 0.76
+type = "float"
+description = "Temporary: minimum leaf NIR single-scattering albedo (reflectance + transmittance, unitless) of broad leaves and grasses in TwoStreamParameters. Elements whose table or gridded value lies between 0.6 and this minimum are set to reflectance = transmittance = leaf_NIR_omega_min / 2, somewhat below the leaf-level value of about 0.42 (Jacquemoud and Baret 1990; Asner 1998), which over-brightens closed broadleaf canopies; needleleaf shoot values (0.45) are unchanged. 0 disables. To be replaced by universal leaf optics."
+tag = "AbstractRadiationModel"
+
 # Farquhar canopy scaling
 ["canopy_nitrogen_extinction_coefficient"]
 value = 0.5
@@ -705,12 +711,6 @@ tag = "MoninObukhovCanopyFluxes"
 value = 0.0823
 type = "float"
 description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Lower than the Brutsaert (1982) value of 0.123 for dense canopies; the leaf boundary layer conductance (leaf_Cd) acts in series with the aerodynamic conductance. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
-tag = "MoninObukhovCanopyFluxes"
-
-["canopy_z_0b_coeff"]
-value = 0.073
-type = "float"
-description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. Kept close to z_0m: the excess resistance to scalar transfer that a smaller scalar roughness length would represent (kB^-1, Brutsaert 1982, Ch. 5) is carried instead by the leaf boundary layer conductance leaf_Cd * u_star * PAI between the plant surfaces and the canopy air, in series with the aerodynamic conductance from the canopy air to the atmosphere"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
@@ -864,6 +864,18 @@ tag = "EnergyHydrologyParameters"
 value = 1.0
 type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
+tag = "EnergyHydrologyParameters"
+
+["litter_layer_thickness"]
+value = 0.0
+type = "float"
+description = "Thickness of the litter layer on the soil surface (m). Water vapor leaving the soil surface diffuses through the pore space of the litter, which adds the resistance of the layer to that of the dry soil layer; zero for no litter. Litter layers under forest canopies are 1-5 cm thick; 2 cm with porosity 0.8 gives about 1000 s/m, in the range measured by Schaap and Bouten (1997) and Ogée and Brunet (2002)."
+tag = "EnergyHydrologyParameters"
+
+["litter_porosity"]
+value = 0.8
+type = "float"
+description = "Porosity of the litter layer (unitless), which sets its Millington-Quirk tortuosity factor for vapor diffusion (Millington and Quirk, 1961)."
 tag = "EnergyHydrologyParameters"
 
 # Slab Lake Model

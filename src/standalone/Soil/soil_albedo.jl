@@ -73,6 +73,7 @@ CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consis
 struct CLMTwoBandSoilAlbedo{
     FT <: AbstractFloat,
     SF <: Union{FT, ClimaCore.Fields.Field},
+    C,
 } <: AbstractSoilAlbedoParameterization
     "Soil PAR Albedo dry"
     PAR_albedo_dry::SF
@@ -84,6 +85,10 @@ struct CLMTwoBandSoilAlbedo{
     NIR_albedo_wet::SF
     "Thickness of top of soil used in albedo calculations (m)"
     albedo_calc_top_thickness::FT
+    """Optional multiplicative correction of both albedos: a `LogLinearFactor`
+    of the cosine of the solar zenith angle and the surface water content, or
+    `nothing`"""
+    correction::C
 end
 
 function CLMTwoBandSoilAlbedo{FT}(;
@@ -92,15 +97,28 @@ function CLMTwoBandSoilAlbedo{FT}(;
     PAR_albedo_wet,
     NIR_albedo_wet,
     albedo_calc_top_thickness = FT(0.02),
+    correction = nothing,
 ) where {FT}
-    return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry)}(
+    return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry), typeof(correction)}(
         PAR_albedo_dry,
         NIR_albedo_dry,
         PAR_albedo_wet,
         NIR_albedo_wet,
         albedo_calc_top_thickness,
+        correction,
     )
 end
+
+"""
+    soil_albedo_correction(::Nothing, p, θ_sfc)
+    soil_albedo_correction(f::LogLinearFactor, p, θ_sfc)
+
+The multiplicative correction of the soil albedo: one, or the factor `f` of
+the cosine of the solar zenith angle and the surface water content `θ_sfc`.
+"""
+soil_albedo_correction(::Nothing, p, θ_sfc) = 1
+soil_albedo_correction(f::LogLinearFactor, p, θ_sfc) =
+    @. lazy(f(p.drivers.cosθs, θ_sfc))
 
 
 """
@@ -190,10 +208,11 @@ function update_albedo!(
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.ν)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.θ_r)
     S_sfc = @. lazy(effective_saturation(ν_sfc, θ_sfc, θ_r_sfc))
+    f = soil_albedo_correction(albedo.correction, p, θ_sfc)
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
+        min(1, albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet) * f)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
+        min(1, albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet) * f)
 end
 
 """

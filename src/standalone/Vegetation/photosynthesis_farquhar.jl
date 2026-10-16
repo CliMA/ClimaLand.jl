@@ -353,7 +353,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     R = LP.gas_constant(earth_param_set)
     thermo_params = earth_param_set.thermo_params
     (; λ_γ_PAR) = canopy.radiative_transfer.parameters
-    (; g1,) = canopy.conductance.parameters
+    (; g1,) = uncorrected_conductance(canopy.conductance).parameters
     par_d = p.canopy.radiative_transfer.par_d
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
