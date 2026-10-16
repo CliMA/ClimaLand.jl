@@ -307,7 +307,8 @@ end
 
 Sets the area indices pertaining to their values at time t.
 
-Note that we clip all values of LAI below 0.05 to zero.
+Note that we clip all values of LAI below 0.05 to zero, and SAI to zero
+where the plant area index is below 0.05 ([`clip_absent_plant_area!`](@ref)).
 This is because we currently run into issues when LAI is
 of order eps(FT) in the SW radiation code.
 Please see Issue #644
@@ -327,7 +328,27 @@ function update_biomass!(
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
+    clip_absent_plant_area!(p.canopy.biomass.area_index)
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+end
+
+"""
+    clip_absent_plant_area!(area_index)
+
+Sets the stem area index in `area_index` to zero where the plants are absent
+([`plants_present`](@ref)), after the leaf area index has been clipped below
+0.05. An absent canopy then neither absorbs radiation nor stores heat, so the
+relaxation of its temperature to the air temperature
+(`make_compute_imp_tendency(::BigLeafEnergyModel, canopy)`) changes no
+energy.
+"""
+function clip_absent_plant_area!(area_index)
+    @. area_index.stem = ifelse(
+        plants_present(area_index.leaf, area_index.stem),
+        area_index.stem,
+        zero(area_index.stem),
+    )
+    return nothing
 end
 
 """
@@ -633,6 +654,7 @@ function update_biomass!(
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
+    clip_absent_plant_area!(p.canopy.biomass.area_index)
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
 end
 

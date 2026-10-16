@@ -285,6 +285,21 @@ end
             Array(parent(p.canopy.biomass.area_index.leaf)) .==
             ClimaLand.Canopy.clip(FT(LAI * sin(200 * 2π / 365)), FT(0.05)),
         )
+
+        # Stems below the plant area threshold are cleared without leaves
+        for (leaf, stem, expected_stem) in (
+            (FT(0), FT(0.03), FT(0)),
+            (FT(0), FT(0.06), FT(0.06)),
+            (FT(1), FT(0.03), FT(0.03)),
+        )
+            area_index = ClimaCore.fill(
+                (; leaf, root = FT(1), stem),
+                domain.space.surface,
+            )
+            Canopy.clip_absent_plant_area!(area_index)
+            @test all(Array(parent(area_index.stem)) .== expected_stem)
+            @test all(Array(parent(area_index.leaf)) .== leaf)
+        end
     end
 end
 
@@ -587,6 +602,17 @@ end
     exp_tend! = make_exp_tendency(canopy)
     exp_tend!(dY, Y, p, FT(0))
     @test all(parent(dY.canopy.hydraulics.ϑ_l) .≈ FT(0.0))
+    # Without plants, the canopy temperature relaxes to the air temperature
+    τ = canopy.energy.parameters.absent_canopy_relaxation_time
+    imp_tend! = ClimaLand.make_compute_imp_tendency(canopy)
+    imp_tend!(dY, Y, p, FT(0))
+    @test all(parent(dY.canopy.energy.T) .≈ (FT(290) - FT(289)) / τ)
+    jac = ClimaLand.initialize_jacobian(Y)
+    compute_jac! = ClimaLand.make_compute_jacobian(canopy)
+    dtγ = FT(120.0)
+    compute_jac!(jac, Y, p, dtγ, FT(0.0))
+    ∂Tres∂T = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
+    @test all(Array(parent(∂Tres∂T)) .≈ -dtγ / τ - 1)
 end
 
 @testset "CanopyModel using convenience constructors" begin

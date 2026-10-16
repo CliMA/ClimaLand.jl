@@ -1324,11 +1324,12 @@ end
 Computes the stomatal conductance of CO2 (`gs_co2`), in units of mol CO2/m^2/s
 via Fick's law. Parameters are the ratio of intercellular to ambient CO2
 concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), and the
-assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of water by a
-factor Drel (default value = 1.6).
+assimilation rate (`A`, mol m^-2 s^-1); a negative `A` gives zero conductance.
+This is related to the conductance of water by a factor Drel (default value =
+1.6).
 """
 function gs_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
-    return A / (ca * (1 - χ) + eps(FT))
+    return max(A, zero(FT)) / (ca * (1 - χ) + eps(FT))
 end
 
 """
@@ -1597,10 +1598,13 @@ end
 """
     c3_compute_mj(args...)
 
-Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants);
+Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants),
+floored at zero where the intercellular CO2 `ci` lies below the compensation
+point `Γstar`, so that the light-limited gross assimilation is non-negative.
 """
 function c3_compute_mj(Γstar::FT, ci::FT) where {FT}
-    mj = (ci - Γstar) / (ci + 2 * Γstar) # eqn 11 in Stocker et al. (2020)
+    # eqn 11 in Stocker et al. (2020)
+    mj = max((ci - Γstar) / (ci + 2 * Γstar), zero(FT))
     return mj
 end
 """
@@ -1616,10 +1620,13 @@ end
 """
     c3_compute_mc(args...)
 
-Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants).
+Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants),
+floored at zero where the intercellular CO2 `ci` lies below the compensation
+point `Γstar`, so that the Rubisco-limited gross assimilation is non-negative.
 """
 function c3_compute_mc(Γstar::FT, ci::FT, Kmm::FT) where {FT}
-    mc = (ci - Γstar) / (ci + Kmm) # eqn 7 in Stocker et al. (2020)
+    # eqn 7 in Stocker et al. (2020)
+    mc = max((ci - Γstar) / (ci + Kmm), zero(FT))
     return mc
 end
 

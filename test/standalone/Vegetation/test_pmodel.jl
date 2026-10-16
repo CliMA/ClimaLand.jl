@@ -425,6 +425,63 @@ end
     @test !isnan(
         ClimaLand.Canopy.electron_transport_pmodel(FT(0.5), FT(0.5), FT(0)),
     )
+    for FT_edge in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT_edge)
+        constants = PModelConstants(toml_dict)
+        parameters = PModelParameters(
+            Dict{String, Any}(
+                "beta" => 146,
+                "kphio" => 0.087,
+                "do_ftemp_kphio" => true,
+            ),
+            FT_edge,
+        )
+        # Canopy temperature at which Γstar exceeds Γ_ratio_max * ca_pp, so
+        # the capped ci lies below Γstar and the unfloored mj and mc are
+        # negative
+        T_hot = FT_edge(355)
+        P_air = FT_edge(95000)
+        VPD = FT_edge(2000)
+        ca = FT_edge(4e-4)
+        opt = compute_optimal_capacities(
+            parameters,
+            constants,
+            T_hot,
+            P_air,
+            VPD,
+            ca,
+            FT_edge(1),
+            FT_edge(1e-3),
+        )
+        @test opt.Vcmax25_c3 >= 0
+        @test opt.Jmax25_c3 >= 0
+        acclim = compute_optimal_capacities(
+            parameters,
+            constants,
+            FT_edge(300),
+            P_air,
+            VPD,
+            ca,
+            FT_edge(1),
+            FT_edge(1e-3),
+        )
+        for APAR in (FT_edge(0), FT_edge(1e-3))
+            inst = ClimaLand.Canopy.compute_blended_pmodel_photosynthesis(
+                acclim,
+                FT_edge(1),
+                P_air,
+                VPD,
+                ca,
+                T_hot,
+                APAR,
+                FT_edge(1),
+                parameters,
+                constants,
+            )
+            @test inst.GPP >= 0
+            @test inst.gs_co2 >= 0
+        end
+    end
 end
 
 function setup_and_initialize_model(

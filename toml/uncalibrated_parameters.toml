@@ -38,6 +38,12 @@ type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"
 
+["absent_canopy_relaxation_time"]
+value = 3600
+type = "float"
+description = "Relaxation time of the temperature of an absent canopy [s]"
+tag = "BigLeafEnergyModel"
+
 # Weibull model
 
 ["K_sat_plant"]

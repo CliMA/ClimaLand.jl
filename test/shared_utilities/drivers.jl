@@ -237,11 +237,13 @@ end
     @test pa2.gustiness == SurfaceFluxes.ConstantGustinessSpec(FT(2))
     @test ClimaLand.gustiness_spec(pa2) === pa2.gustiness
     # A CoupledAtmosphere keeps the number the coupler reads; the flux solves
-    # use it as a constant gustiness
+    # use it as the floor of a FlooredDeardorffGustinessSpec
     ca = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
     @test ca.gustiness == FT(1)
     @test ClimaLand.gustiness_spec(ca) ==
-          SurfaceFluxes.ConstantGustinessSpec(FT(1))
+          SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    @test SurfaceFluxes.without_floor(ClimaLand.gustiness_spec(ca)) ==
+          SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
 end
 
 @testset "Turbulent flux selections, FT = $FT" begin

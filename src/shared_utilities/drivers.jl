@@ -365,10 +365,10 @@ and don't need to be recomputed.
 When constructed with a space, the struct contains the fields needed to compute
 surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
 
-The gustiness is a number, the constant minimum wind speed [m/s] that the
-coupler uses in its flux computation; land models driven by a
-`CoupledAtmosphere` inside ClimaLand use it as a
-`SurfaceFluxes.ConstantGustinessSpec` (see `gustiness_spec`).
+The gustiness is a number, the minimum wind speed [m/s] that the coupler uses
+in its flux computation; land models driven by a `CoupledAtmosphere` inside
+ClimaLand use it as the floor of a
+`SurfaceFluxes.FlooredDeardorffGustinessSpec` (see `gustiness_spec`).
 """
 struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <:
        AbstractAtmosphericDrivers{FT}
@@ -383,12 +383,12 @@ end
 
 Return the gustiness model of an atmospheric driver as a
 `SurfaceFluxes.AbstractGustinessSpec`: the `gustiness` field of a
-`PrescribedAtmosphere`, and a `SurfaceFluxes.ConstantGustinessSpec` with the
-constant minimum wind speed that a `CoupledAtmosphere` holds for the coupler.
+`PrescribedAtmosphere`, and a `SurfaceFluxes.FlooredDeardorffGustinessSpec` with
+the minimum wind speed that a `CoupledAtmosphere` holds for the coupler.
 """
 gustiness_spec(atmos::PrescribedAtmosphere) = atmos.gustiness
 gustiness_spec(atmos::CoupledAtmosphere) =
-    SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
+    SurfaceFluxes.FlooredDeardorffGustinessSpec(atmos.gustiness)
 
 """
     compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
@@ -862,7 +862,7 @@ end
     surface_temperature_newton_update(inputs, param_set, thermo_params, g_h, ρ_sfc, q_sfc,
                                       ∂q_sfc∂T, T_below, r, T_max, ϵ, σ, SW_n, LW_d)
 
-Return the Newton update `min(T + ΔT, T_max)` [K] of the temperature
+Return the Newton update `clamp(T + ΔT, T / 2, T_max)` [K] of the temperature
 `T = inputs.T_sfc_guess` of a surface with zero heat capacity, connected by the
 thermal resistance `r` [m² K/W] to a layer at temperature `T_below` [K], with
 `ΔT = -f(T)/f'(T)` and
@@ -876,7 +876,9 @@ and sensible heat fluxes `L` and `H` are evaluated with the SurfaceFluxes.jl
 derivative `∂q_sfc∂T` [1/K] and neglects those of `g_h` and `ρ_sfc`. The cap
 `T_max` [K] applies within the Monin-Obukhov iterations, so the fluxes of the
 solve are those at the capped temperature; the energy that would warm the
-surface above `T_max` goes into phase change.
+surface above `T_max` goes into phase change. The floor `T / 2` limits a
+downward step to half the current temperature, so that every iterate stays
+positive and the saturation humidity and surface density remain defined.
 
 Called from the SurfaceFluxes.jl `update_T` callbacks of the soil skin and the
 snow surface temperature.
@@ -928,7 +930,7 @@ function surface_temperature_newton_update(
     F = SW_n + LW_n + L + H
     ∂F∂T = 4 * ϵ * σ * T_sfc^3 + ρ_sfc * g_h * (_LH_v0 * ∂q_sfc∂T + cp_d)
     ΔT = -(r * F + (T_sfc - T_below)) / (r * ∂F∂T + 1)
-    return min(T_sfc + ΔT, T_max)
+    return clamp(T_sfc + ΔT, T_sfc / 2, T_max)
 end
 
 """
