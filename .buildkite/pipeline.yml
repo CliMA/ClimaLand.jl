@@ -27,10 +27,24 @@ steps:
 
       - echo "--- Instantiate experiments"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
       - echo "--- Instantiate test"
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
+
+      # Downstream testing: set UPSTREAM_PACKAGES to run CI against those
+      #  package versions. For example, to run CI with the main branch of
+      #  ClimaCore, set `UPSTREAM_PACKAGES="ClimaCore#main`. See
+      #  .buildkite/use_upstream_packages.jl for more information.
+      - |
+        if [ -n "$${UPSTREAM_PACKAGES:-}" ]; then
+          echo "--- Use upstream packages: $${UPSTREAM_PACKAGES}"
+          julia --project=.buildkite .buildkite/use_upstream_packages.jl $${UPSTREAM_PACKAGES}
+        fi
+
+      - echo "--- Precompile experiments"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
+
+      - echo "--- Precompile test"
       - "julia --project=test -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
     agents:
@@ -41,6 +55,8 @@ steps:
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
       JULIA_MAX_NUM_PRECOMPILE_FILES: 50
+      # Okay to use because Pkg.precompile is called explicitly
+      JULIA_PKG_PRECOMPILE_AUTO: 0
 
   - wait
 
