@@ -35,4 +35,7 @@ ClimaLand.Canopy.mask_biomass!(
         Val{(:canopy, :lake, :snow, :soil, :soilco2)},
         Val{(:canopy, :lake, :snow, :soil)},},
 )
+ClimaLand.Canopy.bury_biomass!
+ClimaLand.Canopy.exposed_canopy_fraction
+ClimaLand.Canopy.bury_biomass_in_snow!
 ```

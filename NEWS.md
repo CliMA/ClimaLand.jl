@@ -33,6 +33,18 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-🔥behavioralΔ] Bury the canopy in snow in the integrated land models: the leaf
+  and stem area indices in the cache are reduced to the part of the canopy
+  above the snow surface (`Canopy.exposed_canopy_fraction`,
+  `Canopy.bury_biomass_in_snow!`), with the snow depth and snow cover fraction
+  of the snow model and the canopy height. Over the snow-covered part of the
+  ground the local snow depth is the mean depth divided by the cover
+  fraction; plant area is taken as uniform in height. Short vegetation under a
+  snowpack deeper than its height therefore no longer intercepts radiation or
+  exchanges heat and water vapor, and the land surface takes the albedo of the
+  snow, as observed over snow-covered grassland and cropland while forests
+  stay dark (Betts and Ball, 1997). Forests with heights of tens of meters are
+  almost unaffected.
 - ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
   at the water content of the permanent wilting point (ψ = -150 m). At sites
   where the observed water content is below the residual water content of the

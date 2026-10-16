@@ -410,7 +410,10 @@ Below, `fa_roots` denotes the root water flux per unit ground area
 
     ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
 
-where `dz` is the hydraulic height of the canopy (see `hydraulic_height`).
+where `dz` is the hydraulic height of the canopy (see `hydraulic_height`) and
+`LAI` the leaf area index including leaves buried in snow
+(`p.canopy.biomass.unburied_area_index`), which sets the water storage; the
+fluxes use the exposed leaf area index.
 
 Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
 and both fluxes in the numerator are also zero (they are scaled by area indices).
@@ -421,7 +424,7 @@ function make_compute_exp_tendency(
     canopy,
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        LAI = p.canopy.biomass.area_index.leaf
+        LAI = p.canopy.biomass.unburied_area_index.leaf
         fa_roots = p.canopy.hydraulics.fa_roots
         effective_height = hydraulic_height(p, Y, model, canopy)
         @. dY.canopy.hydraulics.ϑ_l =
@@ -509,7 +512,8 @@ end
 )
 
 A function which updates `surface_field` in place with the value of
-the plant hydraulic models total water volume.
+the plant hydraulic models total water volume, including the water of leaves
+buried in snow.
 """
 function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
@@ -519,7 +523,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     p,
     t,
 )
-    LAI = p.canopy.biomass.area_index.leaf
+    LAI = p.canopy.biomass.unburied_area_index.leaf
     dz = hydraulic_height(p, Y, model, canopy)
     @. surface_field = dz * LAI * Y.canopy.hydraulics.ϑ_l
     return nothing
