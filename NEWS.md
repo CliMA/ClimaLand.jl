@@ -33,6 +33,28 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-🐛bugfix] Bound the initial soil water content of FLUXNET simulations from below
+  at the water content of the permanent wilting point (ψ = -150 m). At sites
+  where the observed water content is below the residual water content of the
+  soil parameters (US-SRG), the soil started outside the domain of the
+  retention curve, where the pressure head is unbounded and its derivative
+  vanishes, and the first rain produced an unbounded flux and NaNs.
+- ![][badge-🔥behavioralΔ] Initialize the soil of FLUXNET simulations with depth-dependent
+  profiles instead of a uniform column. The water content relaxes from the
+  shallow observation at the start date to the record mean of the deepest soil
+  moisture sensor with a 0.5 m e-folding depth, and the temperature from the
+  shallow observation to the record mean with the 2 m annual damping depth. At
+  sites without any soil moisture record, which previously started at 95 % of
+  saturation throughout, the deep water content is estimated from the aridity
+  `P/PET` of the record between the wilting point and field capacity
+  (`climatological_soil_moisture`). The site soil column has a zero-flux bottom
+  and loses water almost only by evapotranspiration, so a uniform wet initial
+  column kept semi-arid sites (e.g. US-Seg, US-Ton) wet for years, with
+  evaporation, ground heat flux, and soil thermal inertia far above the
+  observations. At the four semi-arid sites without soil moisture data
+  (US-Seg, US-Ses, US-Wjs, US-Vcp) the first-year bias of the latent heat
+  flux falls from +11 to +15 W/m² to -1 to +8 W/m²; at sites with soil
+  moisture data the changes are within a few W/m².
 - ![][badge-🔥behavioralΔ] Temporarily floor the leaf NIR single-scattering albedo of
   broad leaves and grasses at `leaf_NIR_omega_min = 0.76` (`α = τ = 0.38`) in
   `TwoStreamParameters` (`Canopy.raised_leaf_nir_optics`); needleleaf shoot

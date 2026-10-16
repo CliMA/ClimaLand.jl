@@ -72,14 +72,22 @@ end
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.EnergyHydrology)
 
 Sets the values of Y.soil in place with:
-- \vartheta_l: observed value of SWC at the surface at the observation date
-  closest to the start date, bounded between the water content at the
-  permanent wilting point (ψ = -150 m) and 95% of the effective saturation
-  range above the residual water content.
+- \vartheta_l: a profile `θ_deep + (θ_sfc - θ_deep) exp(z / z_θ)` (`z ≤ 0`, `z_θ = 0.5 m`)
+  between the observed shallow water content `θ_sfc` at the observation date closest to the
+  start date and a deep value `θ_deep`, the long-term mean of the deepest available soil
+  moisture record (`SWC_F_MDS_2`, else `SWC_F_MDS_1`). The seasonal moisture signal is
+  confined to roughly the top meter of soil, below which the water content is close to its
+  long-term mean; starting the whole column at the shallow value of one date puts, at a
+  semi-arid site, meters of water into a column that only loses water by evapotranspiration.
+  Where the site has no soil moisture record at all, `θ_deep` is estimated from the
+  climate ([`climatological_soil_moisture`](@ref)) and `θ_sfc = θ_deep`. All values are
+  bounded between the permanent wilting point (ψ = -150 m) and 95% of the effective
+  saturation range above the residual water content.
 - θ_i: no ice (θ_i = 0)
-- \rho e_int: an internal energy computed using the above θ_l, θ_i, and the temperature of the soil
-  in the first layer, at the observation date closest to the start date. If the soil
-  temperature is not available, the air temperature is used.
+- \rho e_int: an internal energy computed using the above θ_l, θ_i, and a temperature
+  profile `T_deep + (T_sfc - T_deep) exp(z / z_T)` (`z_T = 2 m`, the annual damping depth)
+  between the shallow soil temperature at the observation date closest to the start date
+  (the air temperature if unavailable) and the record mean of the same column.
 
 Here, `Y` is the prognostic field vector, `data` is the raw data for the site read from
 a CSV file, `columns` is the list of column names,
@@ -95,77 +103,79 @@ function set_fluxnet_ic!(
     model::ClimaLand.Soil.EnergyHydrology;
     val = -9999,
 )
-    # Determine which column index corresponds to which varname
-    varnames = ("SWC_F_MDS_1", "TS_F_MDS_1", "TA_F")
-    column_name_map = Dict(
-        varname => findfirst(columns[:] .== varname) for varname in varnames
-    )
     FT = eltype(Y.soil.ρe_int)
-    tmp_ic = @. model.parameters.θ_r +
-       (model.parameters.ν - model.parameters.θ_r) * FT(0.95)
-    swc_idx = column_name_map["SWC_F_MDS_1"]
-    if isnothing(swc_idx) || all_missing(data[:, swc_idx]; val)
-        θ_l_0 = tmp_ic
-    else
-        swc_col = data[:, column_name_map["SWC_F_MDS_1"]]
-        ts_idx = column_name_map["TS_F_MDS_1"]
-        if !isnothing(ts_idx)
-            ts_col = data[:, ts_idx]
-            # Frozen records are masked with the missing-value marker
-            unfrozen_swc =
-                ifelse.(ts_col .> 0, swc_col, oftype(first(swc_col), val))
-            if any(x -> !var_missing(x; val), unfrozen_swc)
-                swc_col = unfrozen_swc
-            end
-        end
-        θ_l_0 = min.(
-            FT(
-                get_data_at_start_date(
-                    swc_col,
-                    Δ_date;
-                    preprocess_func = x -> x / 100,
-                    val,
-                    varname = "SWC_F_MDS_1",
-                ),
-            ),
-            tmp_ic,
-        )
-    end
-    # The retention curve is defined for ϑ_l > θ_r only. Where the observed
-    # water content lies below the residual water content of the soil
-    # parameters, which happens where the gridded parameters and the site
-    # observations are inconsistent, the soil is initialized at the water
-    # content of the permanent wilting point (ψ = -150 m), the driest state
-    # the hydraulics represent: at ϑ_l ≤ θ_r the pressure head is unbounded
-    # while its derivative vanishes, and the first wetting of the surface
-    # layer then drives an unbounded flux.
     (; θ_r, ν, hydrology_cm) = model.parameters
+    column(name) = fluxnet_column(data, columns, name; val)
+
+    # Soil moisture: shallow sensor at the start date, deepest sensor mean at depth
+    ts_1 = column("TS_F_MDS_1")
+    ts_2 = column("TS_F_MDS_2")
+    swc_1 = mask_frozen_records(column("SWC_F_MDS_1"), ts_1; val)
+    swc_2 = mask_frozen_records(
+        column("SWC_F_MDS_2"),
+        isnothing(ts_2) ? ts_1 : ts_2;
+        val,
+    )
+    swc_sfc = isnothing(swc_1) ? swc_2 : swc_1
+    swc_deep = isnothing(swc_2) ? swc_1 : swc_2
+    # Bounds of the hydraulics: permanent wilting point and 95% of saturation
     θ_wilt = @. θ_r +
        (ν - θ_r) *
        ClimaLand.Soil.inverse_matric_potential(hydrology_cm, FT(-150))
-    θ_l_0 = max.(θ_l_0, θ_wilt)
-    Y.soil.ϑ_l .= θ_l_0
+    θ_max = @. θ_r + (ν - θ_r) * FT(0.95)
+    if isnothing(swc_sfc)
+        θ_fc = @. θ_r +
+           (ν - θ_r) *
+           ClimaLand.Soil.inverse_matric_potential(hydrology_cm, FT(-3.3))
+        data_dt = Dates.value(Second(Δ_date[2] - Δ_date[1]))
+        θ_deep = climatological_soil_moisture(
+            data,
+            columns,
+            data_dt,
+            θ_wilt,
+            θ_fc;
+            val,
+        )
+        θ_sfc = θ_deep
+    else
+        θ_sfc = FT(
+            get_data_at_start_date(
+                swc_sfc,
+                Δ_date;
+                preprocess_func = x -> x / 100,
+                val,
+                varname = "SWC_F_MDS",
+            ),
+        )
+        θ_deep = FT(record_mean(swc_deep; val) / 100)
+    end
+    z = model.domain.fields.z
+    z_θ = FT(0.5)
+    # The retention curve is defined for ϑ_l > θ_r only. Where the observed
+    # water content is below the residual water content of the soil
+    # parameters, the soil is initialized at the water content of the
+    # permanent wilting point (ψ = -150 m), the driest state the hydraulics
+    # represent: at ϑ_l ≤ θ_r the pressure head is unbounded while its
+    # derivative vanishes, and the first wetting of the surface layer then
+    # drives an unbounded flux.
+    @. Y.soil.ϑ_l =
+        clamp(θ_deep + (θ_sfc - θ_deep) * exp(z / z_θ), θ_wilt, θ_max)
     Y.soil.θ_i .= 0
 
-    ts_idx = column_name_map["TS_F_MDS_1"]
-    ta_idx = column_name_map["TA_F"]
-    if !isnothing(ts_idx) && !all_missing(data[:, ts_idx]; val)
-        T_soil_0 = get_data_at_start_date(
-            data[:, ts_idx],
+    # Soil temperature: shallow sensor at the start date, record mean at depth
+    T_col = isnothing(ts_1) ? column("TA_F") : ts_1
+    T_sfc = FT(
+        get_data_at_start_date(
+            T_col,
             Δ_date;
             preprocess_func = x -> x + 273.15,
             val,
-            varname = "TS_F_MDS_1",
-        )
-    else
-        T_soil_0 = get_data_at_start_date(
-            data[:, ta_idx],
-            Δ_date;
-            preprocess_func = x -> x + 273.15,
-            val,
-            varname = "TA_F",
-        )
-    end
+            varname = isnothing(ts_1) ? "TA_F" : "TS_F_MDS_1",
+        ),
+    )
+    T_deep = FT(record_mean(T_col; val) + 273.15)
+    z_T = FT(2)
+    T_soil_0 = @. T_deep + (T_sfc - T_deep) * exp(z / z_T)
 
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
         Y.soil.ϑ_l,
@@ -176,9 +186,96 @@ function set_fluxnet_ic!(
     Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy.(
         Y.soil.θ_i,
         ρc_s,
-        FT(T_soil_0),
+        T_soil_0,
         model.parameters.earth_param_set,
     )
+end
+
+"""
+    fluxnet_column(data, columns, name; val = -9999)
+
+Return the column `name` of the FLUXNET `data` matrix, or `nothing` if the column is
+absent or was never observed at the site (all entries equal to `val`).
+"""
+function fluxnet_column(data, columns, name; val = -9999)
+    idx = findfirst(columns[:] .== name)
+    (isnothing(idx) || all_missing(data[:, idx]; val)) && return nothing
+    return data[:, idx]
+end
+
+"""
+    mask_frozen_records(swc, ts; val = -9999)
+
+Return the soil water content record `swc` with the records at soil
+temperatures `ts` [°C] at or below freezing replaced by the missing-value
+marker `val`, since the sensors measure liquid water only; `swc` itself if no
+temperature record `ts` exists or every record is frozen, and `nothing` if
+`swc` is `nothing`.
+"""
+mask_frozen_records(::Nothing, ::Nothing; val = -9999) = nothing
+mask_frozen_records(::Nothing, ts; val = -9999) = nothing
+mask_frozen_records(swc, ::Nothing; val = -9999) = swc
+function mask_frozen_records(swc, ts; val = -9999)
+    unfrozen_swc = ifelse.(ts .> 0, swc, oftype(first(swc), val))
+    return any(x -> !var_missing(x; val), unfrozen_swc) ? unfrozen_swc : swc
+end
+
+"""
+    record_mean(v; val = -9999)
+
+Return the mean of the FLUXNET record `v` over the entries that are not the
+missing-value marker `val`.
+"""
+record_mean(v; val = -9999) =
+    sum(x for x in v if !var_missing(x; val)) /
+    count(x -> !var_missing(x; val), v)
+
+"""
+    climatological_soil_moisture(
+        data,
+        columns,
+        data_dt,
+        θ_wilt,
+        θ_fc;
+        val = -9999,
+    )
+
+Estimate the long-term soil water content at a site without a soil moisture
+record from its climate, as `θ_wilt + (θ_fc - θ_wilt) min(1, P/PET)`: a wet
+climate (`P ≥ PET`) holds the soil near field capacity `θ_fc`, a dry one near
+the wilting point `θ_wilt`. `P` is the record-mean precipitation rate (`P_F`,
+mm per record interval of `data_dt` seconds) and `PET` the Priestley-Taylor
+potential evaporation `1.26 Δ/(Δ+γ) R_n/λ` with `Δ/(Δ+γ) = 0.65` (about
+15 °C) and the record-mean net radiation (`NETRAD`, or `0.55 SW_IN_F` where
+net radiation was not measured). `θ_wilt` and `θ_fc` and the return value are
+fields on the soil domain.
+"""
+function climatological_soil_moisture(
+    data,
+    columns,
+    data_dt,
+    θ_wilt,
+    θ_fc;
+    val = -9999,
+)
+    FT = eltype(θ_fc)
+    P = fluxnet_column(data, columns, "P_F"; val)
+    isnothing(P) && error(
+        "FLUXNET site has neither soil moisture nor precipitation records, so the \
+         soil initial condition cannot be estimated.",
+    )
+    precip = record_mean(P; val) / data_dt # mm per record interval -> mm/s
+    Rn = fluxnet_column(data, columns, "NETRAD"; val)
+    SW = fluxnet_column(data, columns, "SW_IN_F"; val)
+    # W/m²
+    net_rad = isnothing(Rn) ? 0.55 * record_mean(SW; val) : record_mean(Rn; val)
+    λ = 2.5e6 # J/kg; 1 mm of water is 1 kg/m²
+    pet = max(1.26 * 0.65 * net_rad / λ, eps(Float64)) # mm/s
+    aridity = FT(min(1, precip / pet))
+    @info "Soil moisture initial condition estimated from climate" precip *
+                                                                   86400 pet *
+                                                                         86400 aridity
+    return @. θ_wilt + (θ_fc - θ_wilt) * aridity
 end
 
 """
