@@ -621,6 +621,31 @@ end
     compute_jac!(jac, Y, p, dtγ, FT(0.0))
     ∂Tres∂T = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
     @test all(Array(parent(∂Tres∂T)) .≈ -dtγ / τ - 1)
+
+    # The stem area of a canopy below the plants_present threshold is clipped,
+    # so it is transparent and does not emit
+    sparse_biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        toml_dict;
+        SAI = FT(0.01),
+    )
+    sparse_canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        domain,
+        forcing,
+        LAI,
+        toml_dict;
+        biomass = sparse_biomass,
+    )
+    Y, p, coords = ClimaLand.initialize(sparse_canopy)
+    Y.canopy.hydraulics .= sparse_canopy.hydraulics.parameters.ν
+    Y.canopy.energy.T = FT(289)
+    make_set_initial_cache(sparse_canopy)(p, Y, t0)
+    @test all(Array(parent(p.canopy.radiative_transfer.ϵ)) .== FT(0))
+    @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))
+    @test all(Array(parent(p.canopy.radiative_transfer.nir.abs)) .== FT(0))
+    @test all(Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0))
+    @test all(Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0))
 end
 
 @testset "CanopyModel using convenience constructors" begin
