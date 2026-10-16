@@ -1,0 +1,31 @@
+# Coefficients of the empirical canopy conductance correction
+# (`Canopy.CorrectedConductance` with a `LogLinearFactor`): the stomatal
+# conductance is multiplied by
+#
+#     f = exp(clamp(bias + Σ weights[i] (x[i] - center[i]) / scale[i], -log_fmax, log_fmax))
+#
+# with the seven canopy correction features in the order in which
+# `CorrectedConductance` passes them (`Canopy.canopy_correction_features`):
+# leaf area index, cosine of the solar zenith angle, vapor pressure deficit
+# (kPa), snow cover fraction, top-layer soil water content, moisture stress
+# factor βm, and log of the canopy height (m). The fit uses the vapor pressure
+# deficit, βm, and log canopy height; the other weights are zero. Not used by
+# any default model; construct the factor with
+# `LogLinearFactor{FT}(; weights, center, scale, bias, log_fmax)` from the
+# `[conductance]` table.
+#
+# Fit: residual evaporative fraction of 24 FLUXNET2015 sites (year 2 of
+# 730-day runs with GPP and LAI prescribed, site PFT, 1 cm litter, Stocker
+# 2020 value of beta_c3 via override) against the finite-difference
+# sensitivity dEF/dln f of runs with the conductance x1.5, on top of
+# leaf_NIR_omega_min = 0.76 and SurfaceFluxes.RaupachRoughnessParams (with
+# stanton_number = 0.1). Leave-one-site-out, linearised: EF |bias|
+# 0.062 -> 0.055, EF RMSE 0.178 -> 0.167 (leave-one-IGBP-out EF |bias|
+# 0.048 -> 0.045, RMSE 0.172 -> 0.163).
+[conductance]
+features = ["LAI", "cosθs", "VPD", "snow_cover_fraction", "θ_top", "βm", "log_height"]
+bias = -0.010820106104933275
+weights = [0.0, 0.0, -0.11698470101011037, 0.0, 0.0, 0.13545218398081876, -0.09734762506816545]
+center = [0.0, 0.0, 1.3382038496983188, 0.0, 0.0, 0.865688603591093, 1.2159254094547056]
+scale = [1.0, 1.0, 1.067586996361842, 1.0, 1.0, 0.1476415479403131, 1.965907326624451]
+log_fmax = 1.0986122886681098

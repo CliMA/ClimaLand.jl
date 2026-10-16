@@ -33,6 +33,31 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-✨feature] Add bounded, state-dependent multiplicative corrections
+  that carry empirical (e.g. flux-tower regression) error corrections into the
+  flux solves without changing the model structure: `LogLinearFactor`,
+  `f = exp(clamp(b + Σ wᵢ (xᵢ - μᵢ)/σᵢ, -L, L))`, applied to the canopy
+  conductance (`Canopy.CorrectedConductance`, wrapping any stomatal
+  conductance model), to the clumping index of the two-stream scheme
+  (`TwoStreamModel(…; clumping_correction)`, `Ω → min(1, Ω f)`), and to the
+  soil albedo (`CLMTwoBandSoilAlbedo(…; correction)`). The canopy factors are
+  functions of the model state only (leaf area index, cosine of the solar
+  zenith angle, vapor pressure deficit, snow cover fraction, top-layer soil
+  water content, moisture stress factor, and log canopy height), the soil
+  factor of the zenith angle and the surface water content; energy and water
+  remain conserved and the solves restart-reproducible. All defaults are
+  `nothing` (no correction), leaving every result unchanged. Trained on the
+  residuals of 24 FLUXNET2015 sites with GPP and LAI prescribed (year 2 of
+  730-day runs; finite-difference sensitivities from runs with the conductance
+  x1.5) on top of `SurfaceFluxes.RaupachRoughnessParams` and
+  `leaf_NIR_omega_min = 0.76`, a conductance factor of VPD, βm, and log canopy
+  height (`experiments/integrated/fluxnet/conductance_correction_fluxnet2015.toml`,
+  intercept `b = -0.011`) reduces the leave-one-site-out daytime
+  evaporative-fraction |bias| from 0.062 to 0.055 and RMSE from 0.178 to 0.167
+  (leave-one-IGBP-out |bias| 0.048 → 0.045, RMSE 0.172 → 0.163), and in online
+  24-site runs reduces daytime EF |bias| from 0.061 to 0.053 (RMSE 0.180 →
+  0.171, 21 of 24 sites), daytime H RMSE from 59.3 to 58.2 W/m² (21 of 24),
+  and daytime LE RMSE from 52.4 to 50.8 W/m² (20 of 24).
 - ![][badge-✨feature] Add a litter layer to the soil surface: water vapor leaving
   the soil surface diffuses through the pore space of a dry litter layer of
   thickness `litter_layer_thickness` and porosity `litter_porosity`
