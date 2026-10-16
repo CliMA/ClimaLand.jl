@@ -252,13 +252,13 @@ leaves_present(LAI) = LAI >= MIN_CANOPY_AREA_INDEX
 """
     zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
 
-Set the canopy sensible heat flux and its temperature derivative to zero
-where plants are absent ([`plants_present`](@ref)), and the
-latent heat flux, transpiration, and the latent heat flux derivative to
-zero where leaves are absent ([`leaves_present`](@ref)) or the
-transpiration is not positive (the canopy does not condense water); modify `turbulent_fluxes`
-in place and return `nothing`. The area indices are read from
-`p.canopy.biomass.area_index`.
+Set the canopy sensible heat flux and its temperature derivative, momentum
+fluxes, and buoyancy flux to zero where plants are absent
+([`plants_present`](@ref)), and the latent heat flux, transpiration, and the
+latent heat flux derivative to zero where leaves are absent
+([`leaves_present`](@ref)) or the transpiration is not positive (the canopy
+does not condense water); modify `turbulent_fluxes` in place and return
+`nothing`. The area indices are read from `p.canopy.biomass.area_index`.
 
 Below these area indices the Monin-Obukhov solve exchanges heat with a
 canopy of negligible conductance, and the fluxes it returns are roundoff.
@@ -298,6 +298,27 @@ function zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
         turbulent_fluxes.vapor_flux,
         area_index.leaf,
     )
+    if hasproperty(turbulent_fluxes, :ρτxz)
+        @. turbulent_fluxes.ρτxz = zero_without_plants(
+            turbulent_fluxes.ρτxz,
+            area_index.leaf,
+            area_index.stem,
+        )
+    end
+    if hasproperty(turbulent_fluxes, :ρτyz)
+        @. turbulent_fluxes.ρτyz = zero_without_plants(
+            turbulent_fluxes.ρτyz,
+            area_index.leaf,
+            area_index.stem,
+        )
+    end
+    if hasproperty(turbulent_fluxes, :buoyancy_flux)
+        @. turbulent_fluxes.buoyancy_flux = zero_without_plants(
+            turbulent_fluxes.buoyancy_flux,
+            area_index.leaf,
+            area_index.stem,
+        )
+    end
     return nothing
 end
 
@@ -371,6 +392,16 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
+    series_conductance(g_1, g_2)
+
+Return the conductance `g_1 g_2 / (g_1 + g_2)` of the non-negative
+conductances `g_1` and `g_2` in series, and zero where both vanish, as for the
+stomatal and leaf boundary layer conductances of a leafless canopy at night.
+"""
+series_conductance(g_1, g_2) =
+    ifelse(iszero(g_1 + g_2), zero(g_1 + g_2), g_1 * g_2 / (g_1 + g_2))
+
+"""
     ClimaLand.get_update_surface_humidity_function(model::CanopyModel, Y, p)
 
 a helper function which computes and returns the function which updates the guess 
@@ -402,8 +433,8 @@ function ClimaLand.get_update_surface_humidity_function(
         q_canopy,
     )
         g_leaf = leaf_Cd * u_star * LAI
-        g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        g_stomata = max(1 / r_stomata_canopy, zero(r_stomata_canopy))
+        g_land = series_conductance(g_stomata, g_leaf)
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
@@ -424,8 +455,9 @@ function ClimaLand.get_update_surface_humidity_function(
         # q_sfc = (q_canopy + g_h * r_land * q_atm) / (1 + g_h * r_land)
 
         q_new = (g_land / g_h * q_canopy + q_vap_int) / (1 + g_land / g_h)
-        # Condensation is not modelled, so q_new >= q_vap_int
-        return max(q_new, q_vap_int)
+        # Condensation is not modelled, so the surface is at least as moist
+        # as the air; the conductance-weighted mean stays below q_canopy
+        return clamp(q_new, q_vap_int, max(q_canopy, q_vap_int))
     end
     # Closure
     update_q_vap_sfc_field(Cd, LAI, r, qc) =
@@ -522,8 +554,8 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         q_air,
     )
         g_leaf = leaf_Cd * u_star * LAI
-        g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        g_stomata = max(1 / r_stomata_canopy, zero(r_stomata_canopy))
+        g_land = series_conductance(g_stomata, g_leaf)
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
         ∂q_sfc∂T =
             ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(

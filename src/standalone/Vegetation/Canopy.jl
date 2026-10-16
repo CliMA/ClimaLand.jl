@@ -185,16 +185,25 @@ end
 
 ## Energy models
 """
-    BigLeafEnergyModel{FT}(toml_dict::CP.ParamDict; ac_canopy = toml_dict["ac_canopy"]) where {FT <: AbstractFloat}
+    BigLeafEnergyModel{FT}(
+        toml_dict::CP.ParamDict;
+        ac_canopy = toml_dict["ac_canopy"],
+        absent_canopy_relaxation_time =
+            toml_dict["absent_canopy_relaxation_time"],
+    ) where {FT <: AbstractFloat}
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
 - ac_canopy (J m^-2 K^-1) - canopy specific heat per area
+- absent_canopy_relaxation_time (s) - relaxation time of the temperature of
+  an absent canopy to the air temperature
 """
 function BigLeafEnergyModel{FT}(
     toml_dict::CP.ParamDict;
     ac_canopy::FT = toml_dict["ac_canopy"],
+    absent_canopy_relaxation_time = toml_dict["absent_canopy_relaxation_time"],
 ) where {FT <: AbstractFloat}
-    parameters = BigLeafEnergyParameters{FT}(ac_canopy)
+    parameters =
+        BigLeafEnergyParameters{FT}(ac_canopy, absent_canopy_relaxation_time)
     return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
 end
 

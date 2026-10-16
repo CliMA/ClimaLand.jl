@@ -56,32 +56,45 @@ $(DocStringExtensions.FIELDS)
 struct BigLeafEnergyParameters{FT <: AbstractFloat}
     "Specific heat per emitting area [J/m^2/K]"
     ac_canopy::FT
+    "Relaxation time of the temperature of an absent canopy [s]"
+    absent_canopy_relaxation_time::FT
 end
 
 Base.eltype(::BigLeafEnergyParameters{FT}) where {FT} = FT
 
 """
-    BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
+    BigLeafEnergyParameters{FT}(;
+        ac_canopy = FT(2e3),
+        absent_canopy_relaxation_time = FT(3600),
+    ) where {FT}
 
-Construct `BigLeafEnergyParameters` with the default `ac_canopy = 2e3`.
+Construct `BigLeafEnergyParameters` with the defaults `ac_canopy = 2e3` and
+`absent_canopy_relaxation_time = 3600`.
 """
-function BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
-    return BigLeafEnergyParameters{FT}(ac_canopy)
+function BigLeafEnergyParameters{FT}(;
+    ac_canopy = FT(2e3),
+    absent_canopy_relaxation_time = FT(3600),
+) where {FT}
+    return BigLeafEnergyParameters{FT}(ac_canopy, absent_canopy_relaxation_time)
 end
 
 """
-    BigLeafEnergyParameters(toml_dict::CP.ParamDict;
-                            ac_canopy = toml_dict["ac_canopy"],
-                        )
+    BigLeafEnergyParameters(
+        toml_dict::CP.ParamDict;
+        ac_canopy = toml_dict["ac_canopy"],
+        absent_canopy_relaxation_time =
+            toml_dict["absent_canopy_relaxation_time"],
+    )
 
 Construct `BigLeafEnergyParameters` from a TOML dict.
 """
 function BigLeafEnergyParameters(
     toml_dict::CP.ParamDict;
     ac_canopy = toml_dict["ac_canopy"],
+    absent_canopy_relaxation_time = toml_dict["absent_canopy_relaxation_time"],
 )
     FT = CP.float_type(toml_dict)
-    return BigLeafEnergyParameters{FT}(ac_canopy)
+    return BigLeafEnergyParameters{FT}(ac_canopy, absent_canopy_relaxation_time)
 end
 
 
@@ -147,7 +160,7 @@ function make_compute_imp_tendency(
 ) where {FT}
     function compute_imp_tendency!(dY, Y, p, t)
         area_index = p.canopy.biomass.area_index
-        ac_canopy = model.parameters.ac_canopy
+        (; ac_canopy, absent_canopy_relaxation_time) = model.parameters
         # Energy Equation:
         # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
         # or( ac_canopy AI)∂T∂t = -∑F
@@ -160,16 +173,21 @@ function make_compute_imp_tendency(
         # is per unit area plant.
 
         # d(energy.T) = - net_energy_flux / specific_heat_capacity
-        # To prevent dividing by zero, change AI" to
-        # "max(AI, eps(FT))"
-
-        @. dY.canopy.energy.T =
+        # An absent canopy (plants_present) has no plant area and stores no
+        # heat; its temperature relaxes to the air temperature, so that a
+        # regrowing canopy starts near it
+        @. dY.canopy.energy.T = ifelse(
+            plants_present(area_index.leaf, area_index.stem),
             -(
                 -p.canopy.radiative_transfer.LW_n -
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
-                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+                p.canopy.turbulent_fluxes.lhf -
+                p.canopy.energy.fa_energy_roots
+            ) /
+            (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
+            (p.drivers.T - Y.canopy.energy.T) / absent_canopy_relaxation_time,
+        )
     end
     return compute_imp_tendency!
 end
@@ -231,14 +249,20 @@ function ClimaLand.make_compute_jacobian(
         ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
         ϵ_c = p.canopy.radiative_transfer.ϵ
         area_index = p.canopy.biomass.area_index
-        ac_canopy = model.parameters.ac_canopy
+        (; ac_canopy, absent_canopy_relaxation_time) = model.parameters
         earth_param_set = canopy.earth_param_set
         _σ = LP.Stefan(earth_param_set)
         @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
-                (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
+                ifelse(
+                    plants_present(area_index.leaf, area_index.stem),
+                    (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) / (
+                        ac_canopy *
+                        max(area_index.leaf + area_index.stem, eps(FT))
+                    ),
+                    -1 / absent_canopy_relaxation_time,
+                ),
             ) - (I,)
     end
     return compute_jacobian!

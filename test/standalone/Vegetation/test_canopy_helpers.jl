@@ -15,6 +15,10 @@ for FT in (Float32, Float64)
         @test Canopy.stem_area_fraction(LAI, FT(0)) == FT(0)
         @test Canopy.stem_area_fraction(FT(0), FT(0)) == FT(0)
         @test Canopy.stem_area_fraction(FT(0), SAI) == FT(1)
+        # Conductances in series, zero for a leafless canopy at night
+        @test Canopy.series_conductance(FT(2), FT(2)) == FT(1)
+        @test Canopy.series_conductance(FT(0), FT(2)) == FT(0)
+        @test Canopy.series_conductance(FT(0), FT(0)) == FT(0)
 
         x_leaf = FT(0.1)
         x_stem = FT(0.4)

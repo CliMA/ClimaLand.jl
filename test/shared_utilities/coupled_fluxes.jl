@@ -98,6 +98,17 @@ using ClimaUtilities.TimeManager: ITime
                 for field in (:lhf, :shf, :vapor_flux_ice, :vapor_flux_liq)
                     @test sum(isnan.(parent(getproperty(cache, field)))) == 0
                 end
+            elseif component == :canopy
+                for field in
+                    (:lhf, :shf, :vapor_flux, :ρτxz, :ρτyz, :buoyancy_flux)
+                    @test sum(isnan.(parent(getproperty(cache, field)))) == 0
+                end
+                leaf = parent(p.canopy.biomass.area_index.leaf)
+                stem = parent(p.canopy.biomass.area_index.stem)
+                no_plants = .!ClimaLand.Canopy.plants_present.(leaf, stem)
+                @test all(parent(cache.ρτxz)[no_plants] .== FT(0))
+                @test all(parent(cache.ρτyz)[no_plants] .== FT(0))
+                @test all(parent(cache.buoyancy_flux)[no_plants] .== FT(0))
             else
                 for field in (:lhf, :shf, :vapor_flux)
                     @test sum(isnan.(parent(getproperty(cache, field)))) == 0
