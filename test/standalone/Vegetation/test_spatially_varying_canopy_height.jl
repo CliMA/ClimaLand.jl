@@ -189,6 +189,7 @@ end
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0m ==
           toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0b ==
-          toml_dict["canopy_z_0b_coeff"] .* height .+ z_0min
+          (toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min) .*
+          toml_dict["stanton_number"]
 
 end

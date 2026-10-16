@@ -33,6 +33,23 @@ main
   northern and southern hemisphere means (solid and dashed) instead of the
   global mean, which is dominated by the northern hemisphere.
   PR [#1909](https://github.com/CliMA/ClimaLand.jl/pull/1909)
+- ![][badge-🔥behavioralΔ] Use `SurfaceFluxes.RaupachRoughnessParams` (SurfaceFluxes
+  1.5, ClimaParams 1.3.1) for the canopy momentum roughness length, scalar
+  roughness length, and displacement height: `MoninObukhovCanopyFluxes` now
+  stores `raupach::SurfaceFluxes.RaupachRoughnessParams{FT}` constructed from
+  the parameter dictionary, `canopy_z_0m` and `canopy_displacement` delegate to
+  `SurfaceFluxes.momentum_roughness` (floored at `canopy_z_0min`) and
+  `SurfaceFluxes.displacement_height` when `raupach.frontal_area_ratio > 0`
+  (falling back to the static height-proportional values when
+  `frontal_area_ratio == 0`), and `canopy_z_0b` scales `z_0m` by
+  `raupach.stanton_number = 0.1` (`z_0b / z_0m = exp(-kB⁻¹)` with
+  `kB⁻¹ ≈ 2.30`; Garratt 1992). Removes `canopy_z_0b_coeff`, which previously
+  set `z_0b ≈ 0.9 z_0m` (`kB⁻¹ ≈ 0.1`) and over-coupled short canopies to the
+  atmosphere. Across 24 FLUXNET2015 sites (year 2 of 730-day runs with tower
+  GPP and MODIS LAI prescribed), this reduces the daytime sensible heat flux
+  mean |bias| from 29.5 to 19.9 W/m² and mean RMSE from 64.6 to 59.3 W/m²
+  (improving at 20 and 19 of 24 sites), and the daytime evaporative fraction
+  |bias| from 0.082 to 0.061 (RMSE from 0.192 to 0.180, 18 of 24 sites).
 - ![][badge-🔥behavioralΔ] Cap the stability of the land surface turbulent
   fluxes at the stability of maximum sensible heat flux
   (`SurfaceFluxes.MaxHeatFluxStabilityCap`, set in

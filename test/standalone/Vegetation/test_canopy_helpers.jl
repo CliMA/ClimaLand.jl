@@ -152,10 +152,51 @@ for FT in (Float32, Float64)
               subcanopy_wind(FT(0), g, h_atmos, z_ref, h, d, z_0m, PAI, α)
         @test calm_ground[2] == 0
 
-        # The parameterization reads both parameters from the TOML
+        # The parameterization reads the sub-canopy and Raupach parameters from the TOML
         sf = MoninObukhovCanopyFluxes(toml_dict, FT(10))
         @test sf.subcanopy_wind_extinction == α
         @test sf.subcanopy_min_reference_height == z_min
+        @test sf.raupach == SurfaceFluxes.RaupachRoughnessParams(toml_dict)
+        sfc_params = LP.surface_fluxes_parameters(LP.LandParameters(toml_dict))
+        @test canopy_displacement(sf.raupach, sf.displ, FT(10), FT(2)) ==
+              SurfaceFluxes.displacement_height(
+            sf.raupach,
+            (; h = FT(10), PAI = FT(2)),
+        )
+        z0m_raup = canopy_z_0m(
+            sf.raupach,
+            sf.z_0min,
+            sf.z_0m,
+            FT(10),
+            FT(2),
+            sfc_params,
+        )
+        @test z0m_raup == max(
+            SurfaceFluxes.momentum_roughness(
+                sf.raupach,
+                FT(0),
+                sfc_params,
+                (; h = FT(10), PAI = FT(2)),
+            ),
+            sf.z_0min,
+        )
+        @test canopy_z_0b(sf.raupach, sf.z_0b, z0m_raup) ==
+              z0m_raup * sf.raupach.stanton_number
+        # frontal_area_ratio == 0 selects the static height-proportional values
+        static_raupach = SurfaceFluxes.RaupachRoughnessParams{FT}(;
+            frontal_area_ratio = FT(0),
+        )
+        @test canopy_displacement(static_raupach, sf.displ, FT(10), FT(2)) ==
+              sf.displ
+        @test canopy_z_0b(static_raupach, FT(0.07), FT(1)) == FT(0.07)
+        @test canopy_z_0m(
+            static_raupach,
+            sf.z_0min,
+            sf.z_0m,
+            FT(10),
+            FT(2),
+            sfc_params,
+        ) == sf.z_0m
     end
 
     @testset "Ground gustiness below a canopy, FT = $FT" begin
@@ -174,6 +215,7 @@ for FT in (Float32, Float64)
               SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0))
         @test Base.materialize(ground_gustiness(spec, false)) == spec
     end
+
 end
 
 for FT in (Float32, Float64)

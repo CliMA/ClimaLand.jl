@@ -1268,11 +1268,13 @@ screen_level_state(model::SnowModel, p) = (;
 )
 function screen_level_state(model::CanopyModel, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    z_0m = ClimaLand.Canopy.canopy_z_0m(model, p)
+    z_0b = @. lazy(ClimaLand.Canopy.canopy_z_0b(sfp.raupach, sfp.z_0b, z_0m))
     return (;
         tf = p.canopy.turbulent_fluxes,
         q_sfc = p.canopy.turbulent_fluxes.q_sfc,
-        sfp.z_0m,
-        sfp.z_0b,
+        z_0m,
+        z_0b,
     )
 end
 

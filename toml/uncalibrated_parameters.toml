@@ -626,12 +626,6 @@ type = "float"
 description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
 tag = "MoninObukhovCanopyFluxes"
 
-["canopy_z_0b_coeff"]
-value = 0.0175
-type = "float"
-description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. The excess resistance to scalar transfer is carried by the leaf boundary layer conductance leaf_Cd * u_star * PAI between the plant surfaces and the canopy air, in series with the aerodynamic conductance"
-tag = "MoninObukhovCanopyFluxes"
-
 ["canopy_d_coeff"]
 value = 0.67
 type = "float"
