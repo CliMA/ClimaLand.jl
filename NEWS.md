@@ -10,6 +10,7 @@ main
   iterations, each forward run a Slurm job with one GPU). It runs on Buildkite
   when a PR has the `calibrate ERA5` label and uploads the calibrated
   parameters as `era5_parameters.toml`. See `experiments/calibration/era5_columns`.
+  PR [#1924](https://github.com/CliMA/ClimaLand.jl/pull/1924)
 - ![][badge-🐛bugfix] Treat a canopy with a plant area index below
   `MIN_CANOPY_AREA_INDEX` as transparent to radiation with zero emissivity, as
   it already exchanges no heat with the air; a sparse desert canopy otherwise
