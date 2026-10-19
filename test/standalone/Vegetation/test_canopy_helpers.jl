@@ -54,8 +54,8 @@ for FT in (Float32, Float64)
         toml_dict = LP.create_toml_dict(FT)
         α = toml_dict["canopy_subcanopy_wind_extinction_coefficient"]
         z_min = toml_dict["canopy_subcanopy_min_reference_height"]
-        @test α == FT(0.5)
-        @test z_min == FT(0.5)
+        @test α == FT(0.0556)
+        @test z_min == FT(2.86)
         h_atmos = FT(30)
         u = FT(3)
         g = FT(1)
