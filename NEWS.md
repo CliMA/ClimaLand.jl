@@ -2,6 +2,18 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
+  P-model land model against seasonal ERA5 latent and sensible heat fluxes and
+  upwelling longwave radiation, and GOSIF GPP (Dec 2003 - Nov 2019, prescribed
+  MODIS LAI): the P-model costs and acclimation rate, `moisture_stress_c`, the
+  canopy roughness, `leaf_Cd`, `canopy_K_lw`, `SAI_coeff`, `RAI_coeff`, the
+  stem reflectances, the sub-canopy wind extinction and minimum reference
+  height, and the bare-soil `maximum_dry_soil_layer_depth` and
+  `soil_scalar_roughness_length`, now set in `default_parameters.toml`. Over
+  Dec 2017 - Nov 2019, the annual-mean RMSE drops from 16.2 to 11.3 W m⁻² for
+  the latent heat flux, from 16.5 to 10.9 W m⁻² for the sensible heat flux,
+  from 4.6 to 4.0 W m⁻² for the upwelling longwave radiation, and from 1.21 to
+  1.13 g C m⁻² day⁻¹ for GPP.
 - ![][badge-🐛bugfix] Refine the soil skin temperature by bisection where the
   Newton updates within the Monin-Obukhov iterations leave the skin energy
   balance open, which happens at the jump of the conductance between stable

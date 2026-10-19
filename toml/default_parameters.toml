@@ -1,8 +1,8 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.591
+value = 0.759
 type = "float"
-description = "unitless"
+description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
 
 [moisture_stress_sc]
@@ -87,15 +87,15 @@ description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
 ["SAI_coeff"]
-value = 0.16
+value = 0.158
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI."
+description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PrescribedAreaIndices"
 
 ["RAI_coeff"]
-value = 1.0
+value = 0.22
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI."
+description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PrescribedAreaIndices"
 
 [canopy_height]
@@ -355,21 +355,21 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.366
+value = 0.463
 type = "float"
-description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
+description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 24.9
+value = 112.0
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
+description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 8.89
+value = 1.76
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
+description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c3"]
@@ -421,9 +421,9 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.0251
+value = 0.0113
 type = "float"
-description = "1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
+description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 # P Model constants (see Stocker et al. (2020) Table A2 and references within for more information)
@@ -536,9 +536,9 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 1.16
+value = 0.999
 type = "float"
-description = "The long wave extinction coeff"
+description = "The long wave extinction coeff. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "AbstractRadiationModel"
 
 [canopy_emissivity]
@@ -548,9 +548,9 @@ description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
 [stem_PAR_reflectance]
-value = 0.16
+value = 0.32
 type = "float"
-description = "PAR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+description = "PAR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
 tag = "AbstractRadiationModel"
 
 [stem_PAR_transmittance]
@@ -560,9 +560,9 @@ description = "PAR transmittance of stems (unitless); woody-plant value. Dorman 
 tag = "AbstractRadiationModel"
 
 [stem_NIR_reflectance]
-value = 0.39
+value = 0.78
 type = "float"
-description = "NIR reflectance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+description = "NIR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
 tag = "AbstractRadiationModel"
 
 [stem_NIR_transmittance]
@@ -696,21 +696,21 @@ tag = "SIFParameters"
 
 # Canopy roughness
 ["canopy_z_0min"]
-value = 0.01
+value = 0.0257
 type = "float"
-description = "Minimum roughness"
+description = "Minimum roughness. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.0823
+value = 3.26e-6
 type = "float"
-description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Lower than the Brutsaert (1982) value of 0.123 for dense canopies; the leaf boundary layer conductance (leaf_Cd) acts in series with the aerodynamic conductance. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71"
+description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Lower than the Brutsaert (1982) value of 0.123 for dense canopies; the leaf boundary layer conductance (leaf_Cd) acts in series with the aerodynamic conductance. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.073
+value = 0.00157
 type = "float"
-description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. Kept close to z_0m: the excess resistance to scalar transfer that a smaller scalar roughness length would represent (kB^-1, Brutsaert 1982, Ch. 5) is carried instead by the leaf boundary layer conductance leaf_Cd * u_star * PAI between the plant surfaces and the canopy air, in series with the aerodynamic conductance from the canopy air to the atmosphere"
+description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. The excess resistance to scalar transfer that a scalar roughness length below z_0m would represent (kB^-1, Brutsaert 1982, Ch. 5) is carried instead by the leaf boundary layer conductance leaf_Cd * u_star * PAI between the plant surfaces and the canopy air, in series with the aerodynamic conductance from the canopy air to the atmosphere. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
@@ -720,21 +720,21 @@ description = "Ratio of the canopy displacement height to the canopy height (uni
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.07
+value = 1.17
 type = "float"
-description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the plant surfaces and the canopy air is Cd * u_star * PAI (m/s), in series with the aerodynamic conductance from the canopy air to the atmosphere. Equal to the laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2) with C_v = 0.01 m s^(-1/2) and leaf dimension d_leaf = 0.04 m at u_star = 0.5 m/s; Choudhury and Monteith 1988; Jones 2014, Ch. 3"
+description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the plant surfaces and the canopy air is Cd * u_star * PAI (m/s), in series with the aerodynamic conductance from the canopy air to the atmosphere. The laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2), with C_v = 0.01 m s^(-1/2) and leaf dimension d_leaf = 0.04 m at u_star = 0.5 m/s, gives 0.07; Choudhury and Monteith 1988; Jones 2014, Ch. 3. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_subcanopy_wind_extinction_coefficient"]
-value = 0.5
+value = 0.0556
 type = "float"
-description = "Extinction coefficient of the wind speed across a plant canopy per unit plant area index (LAI + SAI), unitless: the wind driving the ground below the canopy is the neutral log-profile wind at max(z_ref, height) times exp(-coefficient * PAI). Inoue (1963); Cionco (1965); Brutsaert (1982); Shuttleworth and Wallace (1985); Choudhury and Monteith (1988)."
+description = "Extinction coefficient of the wind speed across a plant canopy per unit plant area index (LAI + SAI), unitless: the wind driving the ground below the canopy is the neutral log-profile wind at max(z_ref, height) times exp(-coefficient * PAI). Inoue (1963); Cionco (1965); Brutsaert (1982); Shuttleworth and Wallace (1985); Choudhury and Monteith (1988). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_subcanopy_min_reference_height"]
-value = 0.5
+value = 2.86
 type = "float"
-description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 0.65 m."
+description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 4.2 m. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "MoninObukhovCanopyFluxes"
 
 # Soil CO2 biogeochemistry parameters
@@ -854,6 +854,18 @@ description = "Temperature exponent for the free-air gas diffusivity correction 
 tag = "SoilCO2Parameters"
 
 # Soil Parameters
+["maximum_dry_soil_layer_depth"]
+value = 0.00296
+type = "float"
+description = "Maximum depth of the dry soil layer that can develop under evaporation (m); Shokri and Or (2011), DOI: 10.1029/2010WR010284. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+tag = "EnergyHydrologyParameters"
+
+["soil_scalar_roughness_length"]
+value = 0.00302
+type = "float"
+description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+tag = "EnergyHydrologyParameters"
+
 ["evaporation_exponent"]
 value = 2.0
 type = "float"
