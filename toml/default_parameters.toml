@@ -382,19 +382,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.463
+value = 0.41
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 112.0
+value = 146.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 1.76
+value = 16.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
