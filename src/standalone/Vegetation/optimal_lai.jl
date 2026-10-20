@@ -18,8 +18,12 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Light extinction coefficient (dimensionless), typically 0.5"""
     k::FT
-    """Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1), globally fitted as 12.227 mol m^-2 yr^-1"""
-    z::FT
+    """Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1): the leaf
+    cost `z` of Zhou et al. (2025), fitted as 12.227 mol m^-2 yr^-1. See `leaf_cost`."""
+    z_tree::FT
+    """Unit cost of grass leaves (mol m^-2 yr^-1), above that of trees: `z` includes the
+    below-ground allocation that supplies the leaves, which is larger for grasses."""
+    z_grass::FT
     """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
@@ -50,6 +54,28 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation:
     `tc(g)/tc(tc_gpp_ref)`, clamped to [0, 1], is the C3 tree proportion."""
     tc_gpp_ref::FT
+    """P-model unit cost ratio β of C3 plants (dimensionless) with which the model
+    computes its potential GPP and ci/ca ratio, independent of the β used for GPP."""
+    β_c3::FT
+    """The same unit cost ratio for C4 plants (dimensionless)."""
+    β_c4::FT
+    """Intercept of the logistic of the climate tree share (dimensionless); see
+    `climate_tree_share`."""
+    tree_b0::FT
+    """Coefficient of the LAI_max of a tree canopy in that logistic (m^-2 m^2)."""
+    tree_b_lai::FT
+    """Coefficient of the number of dry months in that logistic (month^-1)."""
+    tree_b_dry::FT
+    """Coefficient of the growing-season air temperature in that logistic (°C^-1)."""
+    tree_b_temp::FT
+    """Fraction of their LAI_max that trees keep through the unfavourable season
+    (dimensionless): the evergreen and semi-evergreen part of their canopy."""
+    tree_retention::FT
+    """Share of the leaf cost that is maintenance, which accrues while the air is above
+    freezing and with its temperature (dimensionless); see `leaf_cost_scale`."""
+    maintenance_share::FT
+    """Temperature sensitivity of that maintenance (dimensionless Q10)."""
+    maintenance_q10::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -65,7 +91,8 @@ Creates an `OptimalLAIParameters` object from a TOML parameter dictionary.
 function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     return OptimalLAIParameters{FT}(
         k = FT(toml_dict["optimal_lai_k"]),
-        z = FT(toml_dict["optimal_lai_z"]),
+        z_tree = FT(toml_dict["optimal_lai_z_tree"]),
+        z_grass = FT(toml_dict["optimal_lai_z_grass"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
         f0_max = FT(toml_dict["optimal_lai_f0_max"]),
@@ -76,7 +103,113 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tc_b = FT(toml_dict["optimal_lai_tc_b"]),
         tc_c = FT(toml_dict["optimal_lai_tc_c"]),
         tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
+        β_c3 = FT(toml_dict["optimal_lai_β_c3"]),
+        β_c4 = FT(toml_dict["optimal_lai_β_c4"]),
+        tree_b0 = FT(toml_dict["optimal_lai_tree_b0"]),
+        tree_b_lai = FT(toml_dict["optimal_lai_tree_b_lai"]),
+        tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
+        tree_b_temp = FT(toml_dict["optimal_lai_tree_b_temp"]),
+        tree_retention = FT(toml_dict["optimal_lai_tree_retention"]),
+        maintenance_share = FT(toml_dict["optimal_lai_maintenance_share"]),
+        maintenance_q10 = FT(toml_dict["optimal_lai_maintenance_q10"]),
     )
+end
+
+"""
+    PrognosticTreeShare()
+
+Tree share of `ZhouOptimalLAIModel` computed from the simulated climate
+(`climate_tree_share`) rather than prescribed by a map.
+"""
+struct PrognosticTreeShare end
+
+"""
+    leaf_cost(tree_share, z_tree, z_grass)
+
+Unit cost of leaves `z` (mol m^-2 yr^-1) of a canopy whose share of trees is
+`tree_share`: `exp(tree_share·ln z_tree + (1 − tree_share)·ln z_grass)`, the tree and
+grass costs averaged geometrically.
+"""
+leaf_cost(tree_share, z_tree, z_grass) =
+    exp(tree_share * log(z_tree) + (1 - tree_share) * log(z_grass))
+
+"""
+    maintenance_rate(T, T_freeze, q10)
+
+Relative rate of leaf maintenance at air temperature `T` (K): `q10^((T - T_freeze - 25)/10)`
+above freezing (1 at 25 °C), zero below.
+"""
+maintenance_rate(T, T_freeze, q10) =
+    ifelse(T > T_freeze, q10^((T - T_freeze - 25) / 10), zero(T))
+
+"""
+    leaf_cost_scale(maintenance_days, maintenance_share)
+
+Scale of the leaf cost `z` with the season: its construction share is fixed, and its
+maintenance share `maintenance_share` scales with the yearly maintenance load, the
+days above freezing weighted by `maintenance_rate` (`maintenance_days`, 365 for a
+year-round 25 °C season). Leaves of short, cold seasons are cheaper to hold.
+"""
+leaf_cost_scale(maintenance_days, maintenance_share) =
+    1 - maintenance_share + maintenance_share * maintenance_days / 365
+
+"""
+    climate_tree_share(L_tree, dry_months, T_growing, parameters)
+
+Share of trees in the vegetation from the climate: a logistic of the LAI_max a tree
+canopy would reach (`L_tree`, m^2 m^-2), the number of dry months of the growing season
+(`dry_months`, warm months whose trailing precipitation is below half the potential
+evaporation) and the mean air temperature of the growing season (`T_growing`, °C),
+with coefficients fitted to the tree share of the natural vegetation in the CLM5
+surface data. Trees need water through the dry season and enough productivity to
+pay for their canopy; grasses take over where the dry season is long.
+"""
+function climate_tree_share(
+    L_tree::FT,
+    dry_months::FT,
+    T_growing::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    (; tree_b0, tree_b_lai, tree_b_dry, tree_b_temp) = parameters
+    x =
+        tree_b0 +
+        tree_b_lai * L_tree +
+        tree_b_dry * dry_months +
+        tree_b_temp * T_growing
+    return 1 / (1 + exp(-x))
+end
+
+"""
+    optimal_chi(T, P_air, ca, vpd, β, constants)
+
+Optimal ratio of intercellular to ambient CO2 in the P-model with unit cost ratio `β`
+(the C3 or C4 one) at air temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing
+ratio `ca` (mol mol^-1) and vapour pressure deficit `vpd` (Pa).
+"""
+function optimal_chi(
+    T::FT,
+    P_air::FT,
+    ca::FT,
+    vpd::FT,
+    β::FT,
+    constants,
+) where {FT}
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi) = constants
+    (; vpd_ratio_min, Γ_ratio_max) = constants
+    ca_pp = ca * P_air
+    Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T, To)
+    Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(
+        ξ,
+        ca_pp,
+        Γstar,
+        vpd,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    return ci / ca_pp
 end
 
 """
@@ -92,7 +225,7 @@ LAI_max is determined by the minimum of energy-limited and water-limited fAPAR:
 # Arguments
 - `Ao_annual::FT`: Annual total potential GPP (mol CO2 m^-2 yr^-1).
 - `k::FT`: Light extinction coefficient (dimensionless), typically 0.5
-- `z::FT`: Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1), 12.227
+- `z::FT`: Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1); see `leaf_cost`
 - `precip_annual::FT`: Mean annual precipitation (mol H2O m^-2 yr^-1)
 - `f0::FT`: Fraction of precipitation available for transpiration (dimensionless), 0.65
 - `ca_pa::FT`: Ambient CO2 partial pressure (Pa), typically ~40 Pa at 400 ppm
@@ -427,19 +560,39 @@ function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
 end
 
 """
-    canopy_composition_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
+    optimal_lai_pmodel_parameters(pmodel_parameters, parameters::OptimalLAIParameters)
+
+The P-model parameters `pmodel_parameters` with the unit cost ratios β of C3 and C4
+plants of the optimal-LAI model (`β_c3`, `β_c4`), with which it computes its potential
+GPP, ci/ca ratio and per-pathway potential GPP.
+"""
+function optimal_lai_pmodel_parameters(
+    pmodel_parameters,
+    parameters::OptimalLAIParameters,
+)
+    names = fieldnames(typeof(pmodel_parameters))
+    values = merge(
+        NamedTuple{names}(getfield.(Ref(pmodel_parameters), names)),
+        (; β_c3 = parameters.β_c3, β_c4 = parameters.β_c4),
+    )
+    return typeof(pmodel_parameters)(values...)
+end
+
+"""
+    canopy_composition_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, GSL, Mc, parameters)
 
 Partition of the canopy into C3 trees, C3 grasses and C4 grasses from the C3/C4
 competition of Lavergne et al. (2022), as implemented in pyrealm, on the trailing
 per-pathway potential GPP `A0c3_annual`/`A0c4_annual` and the trailing realized C3
-GPP `GPPc3_annual` (the potential scaled by fAPAR; all mol CO2 m^-2 yr^-1); `Mc` is
-the molar mass of carbon (kg mol^-1). Returns a `NamedTuple`
-`(; tree, c3_grass, c4_grass)` summing to one.
+GPP `GPPc3_annual` (the potential scaled by fAPAR and soil-moisture stress; all
+mol CO2 m^-2 yr^-1), with `GSL` the growing-season length (days); `Mc` is the molar mass
+of carbon (kg mol^-1). Returns a `NamedTuple` `(; tree, c3_grass, c4_grass)` summing to
+one.
 
 The fractions are shares of productivity, not of ground area: the proportional C4 GPP
 advantage `(A0c4 − A0c3)/A0c3` goes through a logistic to an expected C4 share of
-the open canopy, and the tree share is the C3 tree cover estimated from the annual
-realized C3 GPP, normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses
+the open canopy, and the tree share is the C3 tree cover estimated from the realized C3
+GPP (`tree_share_from_gpp`), normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses
 are shaded out under trees, so the C4 and C3 grass shares are the open-canopy split
 scaled by `1 − tree`.
 """
@@ -447,7 +600,27 @@ function canopy_composition_from_competition(
     A0c3_annual::FT,
     A0c4_annual::FT,
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
+    parameters::OptimalLAIParameters{FT},
+) where {FT}
+    tree = tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
+    return canopy_composition(
+        tree,
+        open_canopy_c4_share(A0c3_annual, A0c4_annual, parameters),
+    )
+end
+
+"""
+    open_canopy_c4_share(A0c3_annual, A0c4_annual, parameters)
+
+Expected C4 share of the open (non-tree) canopy in the C3/C4 competition of Lavergne
+et al. (2022): a logistic of the proportional C4 advantage in potential GPP,
+`(A0c4 − A0c3)/A0c3`.
+"""
+function open_canopy_c4_share(
+    A0c3_annual::FT,
+    A0c4_annual::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
     (; c3c4_k, c3c4_q) = parameters
@@ -455,15 +628,24 @@ function canopy_composition_from_competition(
     adv = (A0c4_annual - a0c3) / a0c3
     # pyrealm scales the advantage by exp(1/(1+TC)) with TC the observed tree
     # cover; with no such input, TC = 0 leaves the divisor ℯ.
-    open_c4 = 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
-    tree = tree_share_from_gpp(GPPc3_annual, Mc, parameters)
-    c4_grass = open_c4 * (1 - tree)
-    c3_grass = (1 - open_c4) * (1 - tree)
-    return (; tree, c3_grass, c4_grass)
+    return 1 / (1 + exp(-c3c4_k * (adv / FT(ℯ) - c3c4_q)))
 end
 
 """
-    c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, Mc, parameters)
+    canopy_composition(tree, open_c4)
+
+Shares of C3 trees, C3 grasses and C4 grasses, `(; tree, c3_grass, c4_grass)`, from the
+tree share `tree` and the C4 share of the open canopy `open_c4`: C4 grasses are shaded
+out under trees.
+"""
+canopy_composition(tree, open_c4) = (;
+    tree,
+    c3_grass = (1 - open_c4) * (1 - tree),
+    c4_grass = open_c4 * (1 - tree),
+)
+
+"""
+    c3_fraction_from_competition(A0c3_annual, A0c4_annual, GPPc3_annual, GSL, Mc, parameters)
 
 C3 fraction of the canopy, `1 − c4_grass` of
 `canopy_composition_from_competition` (trees are all C3).
@@ -472,6 +654,7 @@ function c3_fraction_from_competition(
     A0c3_annual::FT,
     A0c4_annual::FT,
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
@@ -479,6 +662,7 @@ function c3_fraction_from_competition(
         A0c3_annual,
         A0c4_annual,
         GPPc3_annual,
+        GSL,
         Mc,
         parameters,
     )
@@ -486,21 +670,27 @@ function c3_fraction_from_competition(
 end
 
 """
-    tree_share_from_gpp(GPPc3_annual, Mc, parameters)
+    tree_share_from_gpp(GPPc3_annual, GSL, Mc, parameters)
 
 C3 tree share of the canopy in `canopy_composition_from_competition`: the Lavergne
-et al. (2022) tree cover `tc(g) = a·g^b + c` at the annual realized C3 GPP
-`GPPc3_annual` (mol CO2 m^-2 yr^-1, converted with the molar mass of carbon `Mc`),
-relative to the cover at canopy closure `tc_gpp_ref`, clamped to [0, 1].
+et al. (2022) tree cover `tc(g) = a·g^b + c`, relative to the cover at canopy closure
+`tc_gpp_ref` and clamped to [0, 1], at the realized C3 GPP `GPPc3_annual`
+(mol CO2 m^-2 yr^-1, converted with the molar mass of carbon `Mc`) scaled to a year-long
+growing season, `g = GPPc3_annual·365/GSL` with `GSL` in days.
+
+The relation was fitted where the growing season lasts all year; scaling by the season
+length lets boreal forests, whose annual GPP is low only because their season is
+short, keep the tree cover of their productivity during it.
 """
 function tree_share_from_gpp(
     GPPc3_annual::FT,
+    GSL::FT,
     Mc::FT,
     parameters::OptimalLAIParameters{FT},
 ) where {FT}
     (; tc_a, tc_b, tc_c, tc_gpp_ref) = parameters
     # The tree-cover relation is fitted to annual realized GPP in kg C m^-2 yr^-1.
-    gppc3 = max(GPPc3_annual, FT(0)) * Mc
+    gppc3 = max(GPPc3_annual, FT(0)) * Mc * 365 / max(GSL, one(FT))
     tc(g) = tc_a * g^tc_b + tc_c
     return clamp(tc(gppc3) / tc(tc_gpp_ref), FT(0), FT(1))
 end
@@ -529,61 +719,40 @@ function c4_advantage_for_c3_fraction(
     return max(adv, -one(FT))
 end
 
-# FAO-56 (Allen et al., 1998) reference crop, which defines the PET that f0(AI) was
-# fitted with: albedo, bulk surface resistance (s m^-1), the aerodynamic resistance
-# numerator (r_a = FAO56_RA_WIND / u_2 in s m^-1), and the log-profile coefficients of
-# their Eq. 47 mapping wind at height h to 2 m, u_2 = u·a / ln(b·h − c).
-const FAO56_ALBEDO = 0.23
-const FAO56_SURFACE_RESISTANCE = 70
-const FAO56_RA_WIND = 208
-const FAO56_WIND_A = 4.87
-const FAO56_WIND_B = 67.8
-const FAO56_WIND_C = 5.42
+# SPLASH v1.0 (Davis et al., 2017), whose potential evapotranspiration Zhou et al.
+# (2025) built the aridity index behind f0(AI) from: the Priestley-Taylor coefficient,
+# and the albedo of the SPLASH reference surface.
+const PRIESTLEY_TAYLOR_COEFFICIENT = 1.26
+const SPLASH_ALBEDO = 0.17
 
 """
-    potential_evaporation(
-        SW_d, LW_d, T_air, P_air, q_air, u_air, h_atmos, ϵ_sfc, σ, M_w, thermo_params,
-    )
+    potential_evaporation(SW_d, LW_d, T_air, P_air, ϵ_sfc, σ, M_w, thermo_params)
 
-FAO-56 Penman-Monteith reference evapotranspiration (mol H2O m^-2 s^-1), the
-numerator of the aridity index `AI = PET_annual/precip_annual` behind `f0`. The
-`f0(AI)` relation of Zhou et al. (2025) was fitted with this definition of PET:
+Priestley-Taylor potential evapotranspiration (mol H2O m^-2 s^-1), the numerator of
+the aridity index `AI = PET_annual/precip_annual` behind `f0`. Zhou et al. (2025)
+computed `AI` with the PET of SPLASH v1.0 (Davis et al., 2017):
 
-    λE = [Δ Rn + ρ_a c_p D / r_a] / [Δ + γ (1 + r_s/r_a)],
-    Rn = (1 - α_ref) SW_d + ϵ_sfc (LW_d - σ T^4),
+    λE = 1.26 Δ/(Δ + γ) max(Rn, 0),
+    Rn = (1 - α) SW_d + ϵ_sfc (LW_d - σ T^4),
 
 with `Δ` the slope of the saturation vapour pressure curve, `γ` the psychrometric
-constant, `D` the vapour pressure deficit, and `r_a = 208/u_2`, `r_s = 70 s m^-1` the
-resistances of the 0.12 m reference crop; `u_2` is the wind speed adjusted to 2 m.
-`α_ref = 0.23` and `r_s` define that reference surface, so they are not taken from the
-simulated canopy.
-
-The ground heat flux is zero (the FAO-56 daily convention; this feeds a yearly total),
-and `λE` rather than `Rn` is clipped at zero, so a negative night-time radiative term
-offsets the aerodynamic term instead of being dropped.
+constant and `α = 0.17` the albedo of the SPLASH reference surface, not of the
+simulated canopy. As in SPLASH, negative (night-time) net radiation does not count,
+and the ground heat flux is neglected.
 """
 function potential_evaporation(
     SW_d::FT,
     LW_d::FT,
     T_air::FT,
     P_air::FT,
-    q_air::FT,
-    u_air::FT,
-    h_atmos::FT,
     ϵ_sfc::FT,
     σ::FT,
     M_w::FT,
     thermo_params,
 ) where {FT}
-    α_ref = FT(FAO56_ALBEDO)
-    r_s = FT(FAO56_SURFACE_RESISTANCE)
-    Rn = (1 - α_ref) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
-
+    Rn = (1 - FT(SPLASH_ALBEDO)) * SW_d + ϵ_sfc * (LW_d - σ * T_air^4)
     λv = TP.LH_v0(thermo_params)
     R_v = TP.R_v(thermo_params)
-    q = max(q_air, zero(FT))
-    c_p = TP.cp_d(thermo_params) * (1 - q) + TP.cp_v(thermo_params) * q
-
     # Clausius-Clapeyron slope de_sat/dT, and the psychrometric constant with the
     # dry-to-vapour gas constant ratio standing in for the molar mass ratio.
     e_sat = Thermodynamics.saturation_vapor_pressure(
@@ -592,23 +761,7 @@ function potential_evaporation(
         Thermodynamics.Liquid(),
     )
     Δ = e_sat * λv / (R_v * T_air^2)
-    γ = c_p * P_air * R_v / (TP.R_d(thermo_params) * λv)
-
-    D = Thermodynamics.vapor_pressure_deficit(
-        thermo_params,
-        T_air,
-        P_air,
-        q_air,
-    )
-    ρ_a = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
-
-    # Wind at the reference 2 m (FAO-56 Eq. 47); the relation is anchored on the
-    # reference crop, so heights below it are held at 2 m rather than extrapolated.
-    u_2 =
-        u_air * FT(FAO56_WIND_A) /
-        log(FT(FAO56_WIND_B) * max(h_atmos, FT(2)) - FT(FAO56_WIND_C))
-    r_a = FT(FAO56_RA_WIND) / max(u_2, sqrt(eps(FT)))
-
-    λE = (Δ * Rn + ρ_a * c_p * D / r_a) / (Δ + γ * (1 + r_s / r_a))
-    return max(λE, zero(FT)) / (λv * M_w)
+    γ = TP.cp_d(thermo_params) * P_air * R_v / (TP.R_d(thermo_params) * λv)
+    λE = FT(PRIESTLEY_TAYLOR_COEFFICIENT) * Δ / (Δ + γ) * max(Rn, zero(FT))
+    return λE / (λv * M_w)
 end

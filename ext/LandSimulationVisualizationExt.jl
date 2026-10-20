@@ -20,16 +20,17 @@ include("land_sim_vis/leaderboard/leaderboard.jl")
 include("land_sim_vis/leaderboard/partitioning.jl")
 include("land_sim_vis/leaderboard/rmse_boxplots.jl")
 """
-    make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"])
+    make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"], spin_up_months = 12)
 
 
 Uses the diagnostic output of the `sim` to create leaderboard plots, comparing the output of the simulation to the ``observations"
-from ERA5 or ILAMB. 
+from ERA5 or ILAMB, excluding the first `spin_up_months` months of the simulation.
 """
 function LandSimVis.make_leaderboard_plots(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
+    spin_up_months = 12,
 )
     model = sim.model
     LandSimVis.make_leaderboard_plots(
@@ -38,6 +39,7 @@ function LandSimVis.make_leaderboard_plots(
         sim.diagnostics;
         savedir,
         leaderboard_data_sources,
+        spin_up_months,
     )
 end
 
@@ -57,11 +59,12 @@ end
         diagnostics;
         savedir,
         leaderboard_data_sources = ["ERA5", "ILAMB"],
+        spin_up_months = 12,
 )
 
 Creates the leaderboard plots a global LandModel simulations with diagnostics output
-as defined by `diagnostics` using `leaderboard_data_sources` as the source of truth;
-saves the output to files in `savedir`.
+as defined by `diagnostics` using `leaderboard_data_sources` as the source of truth,
+excluding the first `spin_up_months` months; saves the output to files in `savedir`.
 
 The first two arguments are used for dispatch only.
 """
@@ -74,6 +77,7 @@ function LandSimVis.make_leaderboard_plots(
     diagnostics;
     savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
+    spin_up_months = 12,
 )
     # assert that data spans multiple years and is monthly output?
     # check that the short_names include the appropriate variables for the data source?
@@ -84,18 +88,21 @@ function LandSimVis.make_leaderboard_plots(
         compute_monthly_leaderboard(
             leaderboard_base_path,
             diagnostics_folder_path,
-            data_source,
+            data_source;
+            spin_up_months,
         )
         compute_seasonal_leaderboard(
             leaderboard_base_path,
             diagnostics_folder_path,
-            data_source,
+            data_source;
+            spin_up_months,
         )
     end
     compute_rmse_boxplots(leaderboard_base_path, diagnostics_folder_path)
     compute_partitioning_leaderboard(
         leaderboard_base_path,
-        diagnostics_folder_path,
+        diagnostics_folder_path;
+        spin_up_months,
     )
 end
 
