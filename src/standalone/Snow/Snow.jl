@@ -1,4 +1,4 @@
-module Snow
+1module Snow
 import ClimaParams as CP
 using DocStringExtensions
 import ...Parameters as LP
@@ -7,7 +7,6 @@ using LazyBroadcast: lazy
 using Thermodynamics
 using SurfaceFluxes
 using NVTX
-using SpecialFunctions
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
