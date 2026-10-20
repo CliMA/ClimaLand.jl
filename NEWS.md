@@ -14,10 +14,11 @@ main
   the latent heat flux, from 16.5 to 10.9 W m⁻² for the sensible heat flux,
   from 4.6 to 4.0 W m⁻² for the upwelling longwave radiation, and from 1.21 to
   1.13 g C m⁻² day⁻¹ for GPP.
-- ![][badge-🐛bugfix] Refine the soil skin temperature by bisection where the
-  Newton updates within the Monin-Obukhov iterations leave the skin energy
-  balance open, which happens at the jump of the conductance between stable
-  and unstable conditions over wet soil at low wind speed.
+- ![][badge-🐛bugfix] Close the soil skin energy balance within the
+  Monin-Obukhov iterations of SurfaceFluxes 1.6, which prevent surface-callback
+  oscillations at low wind speed under buoyancy-dependent gustiness, and return
+  one from `soil_evaporation_beta` when the aerodynamic and soil vapor
+  conductances both vanish.
 - ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
   stem/root area indices in global models with a prescribed LAI, by default;
   replace true canopy height in plant hydraulics with a hydraulic height,
