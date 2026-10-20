@@ -1,0 +1,73 @@
+# Default values of the parameters recalibrated in #1926, under which the
+# P-model long run of #1907 (build 5113) produced NaNs at (14°N, 8°W)
+["RAI_coeff"]
+value = 1.0
+type = "float"
+
+["SAI_coeff"]
+value = 0.16
+type = "float"
+
+["canopy_K_lw"]
+value = 1.16
+type = "float"
+
+["canopy_subcanopy_min_reference_height"]
+value = 0.5
+type = "float"
+
+["canopy_subcanopy_wind_extinction_coefficient"]
+value = 0.5
+type = "float"
+
+["canopy_z_0b_coeff"]
+value = 0.073
+type = "float"
+
+["canopy_z_0m_coeff"]
+value = 0.0823
+type = "float"
+
+["canopy_z_0min"]
+value = 0.01
+type = "float"
+
+["leaf_Cd"]
+value = 0.07
+type = "float"
+
+["maximum_dry_soil_layer_depth"]
+value = 0.015
+type = "float"
+
+["moisture_stress_c"]
+value = 0.591
+type = "float"
+
+["pmodel_cstar"]
+value = 0.366
+type = "float"
+
+["pmodel_α"]
+value = 0.0251
+type = "float"
+
+["pmodel_β_c3"]
+value = 24.9
+type = "float"
+
+["pmodel_β_c4"]
+value = 8.89
+type = "float"
+
+["soil_scalar_roughness_length"]
+value = 0.007
+type = "float"
+
+["stem_NIR_reflectance"]
+value = 0.39
+type = "float"
+
+["stem_PAR_reflectance"]
+value = 0.16
+type = "float"
