@@ -381,6 +381,41 @@ function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
     return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
 end
 
+"""
+    area_index_from_max_lai(max_LAI, tree_share, coeff_tree, coeff_grass)
+
+Stem or root area index (m^2 m^-2) proportional to the maximum LAI `max_LAI`, with
+the area index per unit of maximum LAI weighted between that of trees (`coeff_tree`)
+and grasses (`coeff_grass`) by the tree share `tree_share`.
+"""
+area_index_from_max_lai(max_LAI, tree_share, coeff_tree, coeff_grass) =
+    (tree_share * coeff_tree + (1 - tree_share) * coeff_grass) * max_LAI
+
+"""
+    AreaIndexFromMaxLAI{FT}(tree, grass)
+    AreaIndexFromMaxLAI{FT}(toml_dict, name)
+
+A stem or root area index of the `ZhouOptimalLAIModel` that follows the model's own
+seasonal maximum LAI (`LAI_max`) and the tree share that sets the unit cost of leaves
+(`area_index_from_max_lai`): `tree` and `grass` are the area index per unit of
+`LAI_max` of trees and grasses. From `toml_dict`, they are the parameters
+`"\$(name)_coeff_tree"` and `"\$(name)_coeff_grass"`, with `name` `"SAI"` or `"RAI"`.
+"""
+struct AreaIndexFromMaxLAI{FT <: AbstractFloat}
+    "Area index per unit of maximum LAI of trees"
+    tree::FT
+    "Area index per unit of maximum LAI of grasses"
+    grass::FT
+end
+
+AreaIndexFromMaxLAI{FT}(
+    toml_dict::CP.ParamDict,
+    name,
+) where {FT <: AbstractFloat} = AreaIndexFromMaxLAI{FT}(
+    toml_dict["$(name)_coeff_tree"],
+    toml_dict["$(name)_coeff_grass"],
+)
+
 #####################################################################
 # ZhouOptimalLAIModel - Optimal LAI model based on Zhou et al. (2025)
 #####################################################################
@@ -397,8 +432,9 @@ water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
-- `SAI`: Prescribed stem area index (m^2 m^-2)
-- `RAI`: Prescribed root area index (m^2 m^-2)
+- `SAI`: Stem area index (m^2 m^-2): prescribed (scalar or Field), or
+  `AreaIndexFromMaxLAI` to follow the model's seasonal maximum LAI and tree share
+- `RAI`: Root area index (m^2 m^-2), prescribed or `AreaIndexFromMaxLAI` like `SAI`
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
 - `height`: Canopy height (m) - can be scalar (uniform) or spatially-varying Field
 - `tree_share`: Tree share of the vegetation (dimensionless), which sets the unit cost of
@@ -412,7 +448,8 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 struct ZhouOptimalLAIModel{
     FT,
     OLPT <: OptimalLAIParameters{FT},
-    FS <: Union{FT, ClimaCore.Fields.Field},
+    SA <: Union{FT, ClimaCore.Fields.Field, AreaIndexFromMaxLAI{FT}},
+    RA <: Union{FT, ClimaCore.Fields.Field, AreaIndexFromMaxLAI{FT}},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
     TSH <: Union{FT, ClimaCore.Fields.Field, PrognosticTreeShare},
@@ -420,10 +457,10 @@ struct ZhouOptimalLAIModel{
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
-    "Prescribed stem area index (m^2 m^-2), scalar or Field"
-    SAI::FS
-    "Prescribed root area index (m^2 m^-2), scalar or Field"
-    RAI::FS
+    "Stem area index (m^2 m^-2): a scalar or Field, or `AreaIndexFromMaxLAI`"
+    SAI::SA
+    "Root area index (m^2 m^-2): a scalar or Field, or `AreaIndexFromMaxLAI`"
+    RAI::RA
     "Rooting depth parameter (m)"
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
@@ -450,8 +487,10 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 
 # Arguments
 - `parameters`: OptimalLAIParameters for the model
-- `SAI`: Prescribed stem area index (m^2 m^-2); scalar or spatially-varying Field
-- `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
+- `SAI`: Stem area index (m^2 m^-2); scalar or spatially-varying Field, or
+  `AreaIndexFromMaxLAI` to follow the model's seasonal maximum LAI and tree share
+- `RAI`: Root area index (m^2 m^-2); scalar or spatially-varying Field, or
+  `AreaIndexFromMaxLAI`
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
 - `tree_share`: Tree share of the vegetation (dimensionless), which weights the unit
@@ -619,6 +658,7 @@ function ZhouOptimalLAIModel{FT}(
         FT,
         typeof(parameters),
         typeof(SAI),
+        typeof(RAI),
         typeof(rooting_depth),
         typeof(height),
         typeof(tree_share),
@@ -650,12 +690,14 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `composition.tree, composition.c3_grass, composition.c4_grass`: shares of the canopy
   from the C3/C4 competition (dimensionless, summing to one); see
   `canopy_composition_from_competition`
+- `LAI_max`: seasonal maximum LAI (m^2 m^-2) of Zhou et al. (2025), which caps the
+  steady-state LAI and sets the stem and root area indices of `AreaIndexFromMaxLAI`
 
-`GSL`, `vpd_gs`, `f0` and `composition` are derived in `update_biomass!` from the
-trailing totals in `Y`.
+`GSL`, `vpd_gs`, `f0`, `composition` and `LAI_max` are derived in `update_biomass!`
+from the trailing totals in `Y`.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition)
+    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition, :LAI_max)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
     NamedTuple{(:A0, :A0_c3, :A0_c4, :χ), NTuple{4, FT}},
@@ -664,9 +706,18 @@ ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:tree, :c3_grass, :c4_grass), NTuple{3, FT}},
+    FT,
 )
-ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)
 
 ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
     ClimaLand.time_integrated_prognostic_vars(m.time_integrated_vars)
@@ -684,15 +735,17 @@ ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
         canopy,
     ) where {FT}
 
-Updates the optimal-LAI cache from the prognostic state in `Y`: sets SAI and RAI to
-their prescribed values; derives `f0`, `vpd_gs` and `GSL` from the trailing climate
-totals; sets the canopy `composition` (tree, C3 grass, C4 grass shares) from the
-C3/C4 competition on the trailing per-pathway potential GPP (`A0c3_annual`,
-`A0c4_annual`) and realized C3 GPP (`GPPc3_annual`), or the climate tree share; and
-sets the leaf area index used by the rest of the canopy from the prognostic `LAI` and
-the canopy trees retain (`set_leaf_area_index!`), clipped below 0.05 and zeroed where
-a lake is present (`mask_biomass!`). This runs first in `update_aux`,
-before radiative transfer and photosynthesis read the area index and C3 fraction.
+Updates the optimal-LAI cache from the prognostic state in `Y`: derives `f0`, `vpd_gs`
+and `GSL` from the trailing climate totals; sets the canopy `composition` (tree, C3
+grass, C4 grass shares) from the C3/C4 competition on the trailing per-pathway
+potential GPP (`A0c3_annual`, `A0c4_annual`) and realized C3 GPP (`GPPc3_annual`), or
+the climate tree share; sets the seasonal maximum LAI `LAI_max`
+(`set_max_leaf_area_index!`); sets the leaf area index used by the rest of the canopy
+from the prognostic `LAI` and the canopy trees retain (`set_leaf_area_index!`),
+clipped below 0.05; and sets SAI and RAI (`set_area_index!`), zeroing SAI where plants
+are absent (`clip_absent_plant_area!`) and all area indices where a lake is present
+(`mask_biomass!`). This runs first in `update_aux`, before radiative transfer and
+photosynthesis read the area index and C3 fraction.
 """
 function update_biomass!(
     p,
@@ -702,8 +755,6 @@ function update_biomass!(
     canopy,
 ) where {FT}
     (; SAI, RAI, parameters) = component
-    @. p.canopy.biomass.area_index.stem = SAI
-    @. p.canopy.biomass.area_index.root = RAI
     @. p.canopy.biomass.f0 = f0_from_aridity(
         Y.canopy.biomass.PET_annual,
         Y.canopy.biomass.precip_annual,
@@ -720,11 +771,16 @@ function update_biomass!(
     )
     @. p.canopy.biomass.GSL = b.growing_days
     update_composition!(p, Y, component.tree_share, component, canopy)
-    set_leaf_area_index!(p, Y, component, canopy)
+    set_max_leaf_area_index!(p, Y, component, canopy)
+    set_leaf_area_index!(p, Y, component)
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
-    clip_absent_plant_area!(p.canopy.biomass.area_index)
+    tree = leaf_cost_tree_share(component.tree_share, p)
+    (; area_index, LAI_max) = p.canopy.biomass
+    set_area_index!(area_index.stem, SAI, LAI_max, tree)
+    set_area_index!(area_index.root, RAI, LAI_max, tree)
+    clip_absent_plant_area!(area_index)
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
 end
 
@@ -782,13 +838,12 @@ leaf_cost_tree_share(::PrognosticTreeShare, p) =
     p.canopy.biomass.composition.tree
 
 """
-    set_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel, canopy)
+    set_max_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel, canopy)
 
-Sets the leaf area index from the prognostic `LAI`, which follows the seasonal optimum,
-and the canopy trees keep through the unfavourable season: the tree share keeps at
-least `tree_retention` of LAI_max, with the χ of the growing-season temperature and VPD.
+Sets the seasonal maximum LAI `p.canopy.biomass.LAI_max` from the trailing totals in
+`Y`, with the χ of the growing-season temperature and VPD.
 """
-function set_leaf_area_index!(
+function set_max_leaf_area_index!(
     p,
     Y,
     component::ZhouOptimalLAIModel{FT},
@@ -823,22 +878,46 @@ function set_leaf_area_index!(
             constants,
         ),
     )
-    LAI_max = @. lazy(
-        compute_L_max(
-            b.A0_annual,
-            parameters.k,
-            leaf_cost(tree, parameters.z_tree, parameters.z_grass) *
-            leaf_cost_scale(b.maintenance_days, parameters.maintenance_share),
-            b.precip_annual,
-            p.canopy.biomass.f0,
-            p.drivers.c_co2 * p.drivers.P,
-            χ_growing,
-            p.canopy.biomass.vpd_gs,
-        ),
+    @. p.canopy.biomass.LAI_max = compute_L_max(
+        b.A0_annual,
+        parameters.k,
+        leaf_cost(tree, parameters.z_tree, parameters.z_grass) *
+        leaf_cost_scale(b.maintenance_days, parameters.maintenance_share),
+        b.precip_annual,
+        p.canopy.biomass.f0,
+        p.drivers.c_co2 * p.drivers.P,
+        χ_growing,
+        p.canopy.biomass.vpd_gs,
     )
-    @. p.canopy.biomass.area_index.leaf =
-        b.LAI + tree * max(parameters.tree_retention * LAI_max - b.LAI, 0)
 end
+
+"""
+    set_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel)
+
+Sets the leaf area index from the prognostic `LAI`, which follows the seasonal optimum,
+and the canopy trees keep through the unfavourable season: the tree share keeps at
+least `tree_retention` of `LAI_max`.
+"""
+function set_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel)
+    tree = leaf_cost_tree_share(component.tree_share, p)
+    LAI = Y.canopy.biomass.LAI
+    retained_LAI =
+        @. lazy(component.parameters.tree_retention * p.canopy.biomass.LAI_max)
+    @. p.canopy.biomass.area_index.leaf =
+        LAI + tree * max(retained_LAI - LAI, 0)
+end
+
+"""
+    set_area_index!(area_index, value, LAI_max, tree_share)
+
+Sets a stem or root `area_index` to its prescribed `value` (scalar or Field), or, for
+an `AreaIndexFromMaxLAI`, to its multiple of the seasonal maximum LAI `LAI_max` for
+the tree share `tree_share`.
+"""
+set_area_index!(area_index, value, LAI_max, tree_share) = (area_index .= value)
+set_area_index!(area_index, value::AreaIndexFromMaxLAI, LAI_max, tree_share) =
+    @. area_index =
+        area_index_from_max_lai(LAI_max, tree_share, value.tree, value.grass)
 
 """
     update_composition!(p, Y, tree_share, component::ZhouOptimalLAIModel, canopy)

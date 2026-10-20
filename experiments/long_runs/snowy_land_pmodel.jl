@@ -124,6 +124,7 @@ function setup_model(
                 soil_params = (;
                     ν = soil.parameters.ν,
                     θ_r = soil.parameters.θ_r,
+                    hydrology_cm = soil.parameters.hydrology_cm,
                 ),
             ),
             biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(

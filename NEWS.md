@@ -2,6 +2,17 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The stem and root area indices are proportional to the
+  maximum LAI with factors that the tree share weights between trees and grasses, which
+  have little stem area (no wood) but more root area per unit of leaf area:
+  `SAI_coeff_tree` (0.26), `SAI_coeff_grass` (0.05), `RAI_coeff_tree` (0.11) and
+  `RAI_coeff_grass` (0.34) replace `SAI_coeff` and `RAI_coeff`, keeping their land means
+  for prescribed LAI. Prescribed-LAI models weight the MODIS maximum LAI by the tree
+  share of the CLM surface data; `ZhouOptimalLAIModel`, which had a constant SAI of 0
+  and RAI of 1, by default follows its own seasonal maximum LAI (`LAI_max`, now in
+  the cache) and tree share (`AreaIndexFromMaxLAI`), and takes the canopy height of the
+  CLM surface data instead of a constant 1 m. New `sai` diagnostic.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its potential GPP and ci/ca
   ratio, and the per-pathway potential GPP of the C3/C4 competition, with its own P-model
   unit cost ratios (`optimal_lai_β_c3`, `optimal_lai_β_c4`: the pyrealm defaults Zhou et

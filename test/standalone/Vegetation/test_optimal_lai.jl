@@ -8,6 +8,7 @@ import ClimaLand.Parameters as LP
 import ClimaParams
 using ClimaCore
 import NCDatasets
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 @testset "Optimal LAI Model Tests" begin
     for FT in (Float32, Float64)
@@ -253,6 +254,81 @@ import NCDatasets
                 tree_share = Canopy.PrognosticTreeShare(),
             )
             @test Canopy.prognostic_vars(prognostic_tree) == optlai_prog
+        end
+
+        @testset "Area indices from the maximum LAI for FT = $FT" begin
+            max_LAI = FT(4)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(1),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.8)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(0),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.2)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(0.5),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.5)
+
+            stem = Canopy.AreaIndexFromMaxLAI{FT}(toml_dict, "SAI")
+            @test stem.tree == toml_dict["SAI_coeff_tree"]
+            @test stem.grass == toml_dict["SAI_coeff_grass"]
+            # grasses have no wood, but more roots per unit of leaf area
+            @test stem.grass < stem.tree
+            root = Canopy.AreaIndexFromMaxLAI{FT}(toml_dict, "RAI")
+            @test root.grass > root.tree
+
+            area_index = zeros(FT, 3)
+            Canopy.set_area_index!(
+                area_index,
+                Canopy.AreaIndexFromMaxLAI{FT}(FT(0.2), FT(0.05)),
+                FT[1, 2, 4],
+                FT[1, 0, 0.5],
+            )
+            @test area_index ≈ FT[0.2, 0.1, 0.5]
+            Canopy.set_area_index!(area_index, FT(0.7), FT[1, 2, 4], FT(1))
+            @test all(area_index .== FT(0.7))
+
+            # By default, the optimal-LAI model's stems and roots follow its own
+            # maximum LAI, and its height is that of the CLM surface data
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            model = Canopy.ZhouOptimalLAIModel{FT}(domain, toml_dict)
+            @test model.SAI == stem
+            @test model.RAI == root
+            @test model.height isa ClimaCore.Fields.Field
+
+            # The prescribed-LAI model weights the same factors by the CLM tree share
+            LAI = TimeVaryingInput((t) -> FT(2))
+            biomass = Canopy.PrescribedBiomassModel{FT}(
+                domain,
+                LAI,
+                max_LAI,
+                toml_dict,
+            )
+            tree = Canopy.clm_tree_share(domain.space.surface)
+            scalar(x) = Array(parent(x))[1]
+            @test scalar(biomass.plant_area_index.SAI) ≈
+                  Canopy.area_index_from_max_lai(
+                max_LAI,
+                scalar(tree),
+                stem.tree,
+                stem.grass,
+            )
+            @test scalar(biomass.plant_area_index.RAI) ≈
+                  Canopy.area_index_from_max_lai(
+                max_LAI,
+                scalar(tree),
+                root.tree,
+                root.grass,
+            )
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin

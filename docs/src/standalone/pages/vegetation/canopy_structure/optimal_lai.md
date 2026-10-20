@@ -104,6 +104,16 @@ This LAI follows the seasonal optimum, so it falls to zero when the potential GP
 
 with LAI$_{max}$ evaluated with the χ of the growing-season temperature and VPD. The evergreen share of trees is not modelled: it depends on biogeography and history more than on climate (spruce in boreal Canada, larch in eastern Siberia), and a share predicted from climate did not improve LAI over a constant one.
 
+## Stems and Roots
+
+The stem and root area indices follow LAI$_{max}$ (`AreaIndexFromMaxLAI`, the default), with a factor per unit of LAI$_{max}$ that the tree share $t$ weights between trees and grasses:
+
+```math
+\text{SAI} = [t \, c_{tree} + (1 - t) \, c_{grass}] \, \text{LAI}_{max},
+```
+
+and likewise for RAI, with the factors `SAI_coeff_tree`, `SAI_coeff_grass`, `RAI_coeff_tree` and `RAI_coeff_grass`. Grasses have little stem area, as they have no wood, but more root area per unit of leaf area than trees. The prescribed-LAI models use the same factors with the MODIS maximum LAI and the tree share of the CLM surface data. The canopy height is that of the CLM surface data, as for prescribed LAI.
+
 ## Model Assumptions
 
 1. **Water limitation enters once**: The potential GPP $A_0$ carries no soil moisture stress, so water availability acts only through the $f_0 P / A_0$ term of LAI$_{max}$ rather than being counted twice.
@@ -197,6 +207,8 @@ that they are averages of their whole history until then.
 | Output | Symbol | Unit | Typical Range |
 | :--- | :---: | :---: | :---: |
 | Leaf Area Index | LAI | m² m⁻² | 0-10 |
+| Seasonal maximum LAI | LAI$_{max}$ | m² m⁻² | 0-10 |
+| Stem Area Index | SAI | m² m⁻² | 0-3 |
 
 ## Implementation Notes
 

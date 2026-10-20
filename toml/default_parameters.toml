@@ -86,16 +86,28 @@ type = "float"
 description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
-["SAI_coeff"]
-value = 0.158
+["SAI_coeff_tree"]
+value = 0.26
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with SAI_coeff_grass by the tree share. With the CLM tree share and the MODIS maximum LAI, the land mean of the SAI equals that of SAI_coeff = 0.158 calibrated against ERA5 surface fluxes and GOSIF GPP, with grasses (no wood) at 0.05."
 tag = "PrescribedAreaIndices"
 
-["RAI_coeff"]
-value = 0.22
+["SAI_coeff_grass"]
+value = 0.05
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with SAI_coeff_tree by the tree share."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff_tree"]
+value = 0.11
+type = "float"
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with RAI_coeff_grass by the tree share. With the CLM tree share and the MODIS maximum LAI, the land mean of the RAI equals that of RAI_coeff = 0.22 calibrated against ERA5 surface fluxes and GOSIF GPP, with grasses at 3 times the value of trees (the CLM2 root-to-shoot ratios)."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff_grass"]
+value = 0.34
+type = "float"
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with RAI_coeff_tree by the tree share."
 tag = "PrescribedAreaIndices"
 
 [canopy_height]
