@@ -8,7 +8,7 @@ using Dates
 using Flux
 using CairoMakie
 using ClimaAnalysis
-using Functors
+
 
 FT = Float32
 toml_dict = LP.create_toml_dict(FT)
@@ -19,9 +19,9 @@ topo_data_path = "topographic_data.nc"
 tair_data_path = "../ClimaArtifacts/optimal_lai_inputs/tair_gs.nc"
 #Read in base data and regrid the others to that resolution
 ds = NCDataset(lai_data_path)
-maxLAI = ds["lai"][:,:]
-lat = ds["lat"][:]
-lon = ds["lon"][:]
+maxLAI = ds["lai"][1:4:end,1:4:end]
+lat = ds["lat"][:][1:4:end]
+lon = ds["lon"][:][1:4:end]
 close(ds)
 
 
@@ -49,14 +49,14 @@ albedo_path = "/Users/katherinedeck/Downloads/albedo.nc"
 α_var = shift_longitude(α_var, -180.0, 180.0)
 α = α_var.data[:,:,11:22];
 times = α_var.dims["time"][11:22];
-@assert α_var.dims["lon"][:] == lon
-@assert α_var.dims["lat"][:] == lat
+data_lon = α_var.dims["lon"][:]
+data_lat = α_var.dims["lat"][:]
 #Lai times do not coinicide exactly with albedo times. can refine later
 ds = NCDataset(Artifacts.modis_lai_single_year_path(;year = Dates.year(DateTime(2001))))
-lai = ds["lai"][:,:,:];
+lai = ds["lai"][1:4:end,1:4:end,:];
 lai_time = ds["time"][:];
-@assert ds["lat"][:] == lat
-@assert ds["lon"][:] == lon
+@assert ds["lat"][:][1:4:end] == lat
+@assert ds["lon"][:][1:4:end] == lon
 close(ds)
 
 gridded_longitude = repeat(Float32.(lon),1,180);
@@ -74,20 +74,26 @@ gs_tair_itp = Interpolations.linear_interpolation((lon_env,lat_env), tair_env;ex
 gs_tair = gs_tair_itp.(gridded_longitude, gridded_latitude)
 ann_p_itp = Interpolations.linear_interpolation((lon_env,lat_env), ann_p_env;extrapolation_bc = Interpolations.Flat())
 ann_p = ann_p_itp.(gridded_longitude, gridded_latitude)
+α_obs = zeros(length(lon), length(lat), length(times));
+α[ismissing.(α)] .= -1000
 
+for i in 1:length(times)
+    α_itp = Interpolations.linear_interpolation((data_lon,data_lat), Float32.(α[:,:,i]);extrapolation_bc = Interpolations.Flat())
+    α_obs[:,:,i] .= α_itp.(gridded_longitude, gridded_latitude)
+end
 
 zenith_only = (args...) -> Insolation.insolation(args...).μ
 
 # Restrict model to areas with LAI > 1 make sure no ocean points accidentally included
-id = 6
-mask = mask = (.~isnan.(gsl)) .&& (lai[:,:,id] .> 2) .&& (α[:,:,id] .< 0.7) .&& (gridded_latitude .>-50)
+id = 1
+mask = mask = (.~isnan.(gsl)) .&& (lai[:,:,id] .> 2) .&& (α_obs[:,:,id] .< 0.7) .&& (α_obs[:,:,id] .> 0.00) .&& (gridded_latitude .>-50)
 # Normalize static data
 x = permutedims(cat(maxLAI[mask], gsl[mask], gs_tair[mask], log10.(gs_vpd[mask]), elevation[mask], log10.(ann_p[mask]), log10.(μ[mask]), dims = 2),(2,1));
 x̄ = mean(x, dims = (2))
 σ = std(x, dims = (2))
 x̂ = @. Float32.((x-x̄)/σ)
 xLAI = Float32.(reshape(lai[mask,id], (1,sum(mask)))) ;
-obs = Float32.(reshape(α[mask, id], (1, sum(mask))))
+obs = Float32.(reshape(α_obs[mask, id], (1, sum(mask))))
 
 # Create data batches
 date = times[id]
@@ -95,28 +101,28 @@ correct_format_date = DateTime(year(date)) + Month(month(date)-1) + Day(day(date
 hod = correct_format_date .+ Hour.(0:2:22)
 cosθs = zeros(360,180, length(hod));
 for i in 1:length(hod)
-    cosθs[:,:,i] .= zenith_only.(hod[i], gridded_latitude, gridded_longitude, insol_params)
+    cosθs[:,:,i] .= max.(zenith_only.(hod[i], gridded_latitude, gridded_longitude, insol_params), eps(Float32))
 end
 cosθs = cosθs[mask, :];
 xcos = reshape(cosθs, (1,sum(mask),length(hod)));
-
-struct LandRT2
+α_soil = Float32(0.2)
+struct LandRT
     GW
     Gb
     Aw
     Ac
     Ab
 end
-Flux.@layer LandRT2
+Flux.@layer LandRT
 
-function (m::LandRT2)(x̂,xcos, xLAI, α_soil)
+function (m::LandRT)(x̂,xcos, xLAI, α_soil)
     χ = sigmoid(m.GW * x̂ .+ m.Gb) .- Float32(0.4) # restricted to -0.4, 0.6
     ϕ1 = Float32(0.5) .- Float32(0.633) .*χ  .+ Float32(0.33) .* χ.^2
     ϕ2 = Float32(0.877) .*( 1 .- 2 .* ϕ1)
     
-    G = ϕ1 .+ ϕ2 .* max.(xcos, Float32(0.001))
-    K = min.(G ./ max.(xcos, Float32(0.01)), 1e3)
-    α =  sigmoid(m.Aw * x̂ .+ m.Ab .+ m.Ac .* max.(xcos, Float32(0.001)))
+    G = ϕ1 .+ ϕ2 .* xcos
+    K = min.(G ./ xcos, 1e3)
+    α =  sigmoid(m.Aw * x̂ .+ m.Ab .+ m.Ac .* xcos)
     transmitted_fraction = @. exp(-K * xLAI);
     reflected_downwards_pass = @. α * (1 - transmitted_fraction);
     upwelling_from_soil = @. α_soil * transmitted_fraction;
@@ -124,15 +130,15 @@ function (m::LandRT2)(x̂,xcos, xLAI, α_soil)
         @. upwelling_from_soil * (1 - transmitted_fraction) * α;
     transmitted_upwards_pass = @. upwelling_from_soil * transmitted_fraction;
     upwelling_from_land = @. reflected_downwards_pass + reflected_upwards_pass + transmitted_upwards_pass;
-    return mean(upwelling_from_land, dims = 3)[:,:,1]
+    return mean(upwelling_from_land .* xcos, dims = 3)[:,:,1] ./  mean(xcos, dims = 3)[:,:,1]
 end
 
-mRT = LandRT2(zeros(Float32, (1,7)), zeros(Float32, 1),  zeros(Float32, (1,7)),zeros(Float32, 1) .+0.01, zeros(Float32, 1) .+0.5)
+mRT = LandRT(randn(Float32, (1,7)), randn(Float32, 1), randn(Float32, (1,7)),randn(Float32, 1) .+0.01, randn(Float32, 1) .+0.5)
 opt = Flux.setup(Adam(FT(0.005),FT.((0.9,0.99)),FT(1e-8)), mRT)
 loss(model, x, obs; xcos=xcos, xLAI=xLAI,α_soil = α_soil) = Flux.mse(model(x, xcos, xLAI,α_soil), obs)
 @show loss(mRT, x̂, obs)
 
-for i in 1:500
+for i in 1:1000
     Flux.train!(loss, mRT, [(x̂,obs)], opt)
     if i %10 == 0
         @show loss(mRT, x̂, obs)
