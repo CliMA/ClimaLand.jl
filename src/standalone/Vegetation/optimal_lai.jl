@@ -59,6 +59,9 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     β_c3::FT
     """The same unit cost ratio for C4 plants (dimensionless)."""
     β_c4::FT
+    """P-model marginal cost of Jmax `c*` (dimensionless) with which the model computes
+    its potential GPP, independent of the `c*` used for GPP."""
+    cstar::FT
     """Intercept of the logistic of the climate tree share (dimensionless); see
     `climate_tree_share`."""
     tree_b0::FT
@@ -105,6 +108,7 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
         β_c3 = FT(toml_dict["optimal_lai_β_c3"]),
         β_c4 = FT(toml_dict["optimal_lai_β_c4"]),
+        cstar = FT(toml_dict["optimal_lai_cstar"]),
         tree_b0 = FT(toml_dict["optimal_lai_tree_b0"]),
         tree_b_lai = FT(toml_dict["optimal_lai_tree_b_lai"]),
         tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
@@ -563,8 +567,8 @@ end
     optimal_lai_pmodel_parameters(pmodel_parameters, parameters::OptimalLAIParameters)
 
 The P-model parameters `pmodel_parameters` with the unit cost ratios β of C3 and C4
-plants of the optimal-LAI model (`β_c3`, `β_c4`), with which it computes its potential
-GPP, ci/ca ratio and per-pathway potential GPP.
+plants and the cost of Jmax `c*` of the optimal-LAI model (`β_c3`, `β_c4`, `cstar`),
+with which it computes its potential GPP, ci/ca ratio and per-pathway potential GPP.
 """
 function optimal_lai_pmodel_parameters(
     pmodel_parameters,
@@ -573,7 +577,11 @@ function optimal_lai_pmodel_parameters(
     names = fieldnames(typeof(pmodel_parameters))
     values = merge(
         NamedTuple{names}(getfield.(Ref(pmodel_parameters), names)),
-        (; β_c3 = parameters.β_c3, β_c4 = parameters.β_c4),
+        (;
+            β_c3 = parameters.β_c3,
+            β_c4 = parameters.β_c4,
+            cstar = parameters.cstar,
+        ),
     )
     return typeof(pmodel_parameters)(values...)
 end

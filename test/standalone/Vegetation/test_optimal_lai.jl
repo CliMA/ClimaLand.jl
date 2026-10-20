@@ -46,6 +46,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             # The model's own P-model unit cost ratios (pyrealm defaults)
             @test params.β_c3 ≈ FT(146)
             @test params.β_c4 ≈ FT(146 / 9) rtol = 1e-4
+            @test params.cstar ≈ FT(0.41)
             pmodel = Canopy.PModel{FT}(
                 ClimaLand.Domains.Point(;
                     z_sfc = FT(0),
@@ -57,7 +58,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 Canopy.optimal_lai_pmodel_parameters(pmodel.parameters, params)
             @test lai_pmodel.β_c3 == params.β_c3
             @test lai_pmodel.β_c4 == params.β_c4
-            @test lai_pmodel.cstar == pmodel.parameters.cstar
+            @test lai_pmodel.cstar == params.cstar
+            @test lai_pmodel.ϕ0_c3 == pmodel.parameters.ϕ0_c3
 
             # logistic of the climate tree share, and the canopy trees retain
             @test params.tree_b0 ≈ FT(-1.07)

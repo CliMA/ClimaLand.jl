@@ -15,9 +15,10 @@ main
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its potential GPP and ci/ca
   ratio, and the per-pathway potential GPP of the C3/C4 competition, with its own P-model
-  unit cost ratios (`optimal_lai_β_c3`, `optimal_lai_β_c4`: the pyrealm defaults Zhou et
-  al. (2025) and the competition were fitted with) rather than the calibrated ones used
-  for GPP, which favoured C4 in tropical forests. It also follows Zhou et al. (2025) for
+  unit cost ratios and cost of Jmax (`optimal_lai_β_c3`, `optimal_lai_β_c4`,
+  `optimal_lai_cstar`: the pyrealm defaults Zhou et al. (2025) and the competition were
+  fitted with) rather than the calibrated ones used for GPP, which favoured C4 in
+  tropical forests and, with the c* of #1926, lowered the potential GPP by 12–20%. It also follows Zhou et al. (2025) for
   the growing-season VPD, now the mean VPD while the air is above freezing rather than an
   A0-weighted mean, and for the PET of the aridity index behind `f0`, now the
   Priestley-Taylor PET of SPLASH rather than FAO-56. The unit cost of leaves `z` is

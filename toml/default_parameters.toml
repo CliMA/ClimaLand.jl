@@ -208,6 +208,12 @@ type = "float"
 description = "Unit cost ratio β of C4 plants (dimensionless) of the optimal-LAI model: the pyrealm default, 146/9, independent of pmodel_β_c4 used for GPP."
 tag = "OptimalLAIModel"
 
+["optimal_lai_cstar"]
+value = 0.41
+type = "float"
+description = "Marginal cost of Jmax c* (dimensionless) with which the optimal-LAI model computes its potential GPP: the pyrealm default (Wang et al., 2017; Stocker et al., 2020), with which Zhou et al. (2025) and the competition were fitted, independent of pmodel_cstar used for GPP."
+tag = "OptimalLAIModel"
+
 ["optimal_lai_tree_b0"]
 value = -1.07
 type = "float"

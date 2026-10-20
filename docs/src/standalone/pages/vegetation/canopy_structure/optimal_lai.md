@@ -145,9 +145,9 @@ C4 is suppressed where C3 trees would shade it. With this
 biomass model, the C3 fraction used by photosynthesis comes from the competition rather
 than from the photosynthesis model's static map, so it requires the P-model. The
 model computes its potential GPP and χ, and the per-pathway potential GPP the competition
-compares, with its own P-model unit cost ratios, the pyrealm defaults with which Zhou et
-al. (2025) and the competition were fitted, so that recalibrating the P-model's β for GPP
-does not shift LAI or the C3/C4 balance.
+compares, with its own P-model unit cost ratios and cost of Jmax, the pyrealm defaults
+with which Zhou et al. (2025) and the competition were fitted, so that recalibrating the
+P-model's β or c* for GPP does not shift LAI or the C3/C4 balance.
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
@@ -158,6 +158,7 @@ does not shift LAI or the C3/C4 balance.
 | Tree-cover offset | $c$ | - | -7.72 | Offset, so tree cover vanishes below a threshold GPP |
 | Tree-cover reference GPP | $g_{ref}$ | kg C m⁻² yr⁻¹ | 2.8 | Normalizes the tree-cover relation to a proportion in [0, 1] |
 | Unit cost ratio, C3 / C4 | $\beta_{C3}$, $\beta_{C4}$ | - | 146, 16.2 | P-model β of the model's potential GPP |
+| Cost of Jmax | $c^*$ | - | 0.41 | P-model c* of the model's potential GPP (`optimal_lai_cstar`) |
 
 ## Climate Tree Share
 
@@ -218,7 +219,7 @@ The optimal LAI model is implemented as a `ZhouOptimalLAIModel`, a subtype of `A
 
 ### Potential GPP Calculation
 
-The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1, the model's own unit cost ratios β, and no soil-moisture stress:
+The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1, the model's own unit cost ratios β and cost of Jmax c*, and no soil-moisture stress:
 
 ```math
 A_0 = \text{PPFD} \times \text{LUE}
