@@ -1,4 +1,4 @@
-module Snow
+1module Snow
 import ClimaParams as CP
 using DocStringExtensions
 import ...Parameters as LP
@@ -14,6 +14,9 @@ using ClimaLand:
     net_radiation!,
     AbstractModel,
     heaviside
+using Interpolations
+import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 
 import ClimaLand:
     AbstractBC,
@@ -42,6 +45,7 @@ export SnowParameters,
     ConstantAlbedoModel,
     ZenithAngleAlbedoModel,
     WuWuSnowCoverFractionModel,
+    TopoSnowCoverFractionModel,
     SturmSnowConductivityModel,
     JordanSnowConductivityModel,
     maximum_snow_cover_fraction!
@@ -249,6 +253,39 @@ function WuWuSnowCoverFractionModel(
 )
     return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0)
 end
+
+
+struct TopoSnowCoverFractionModel{FT, F} <: AbstractSnowCoverFractionModel{FT}
+    ""
+    z0::FT
+    ""
+    μ_exp::FT
+    "ξ_exp"
+    ξ_exp::FT
+    ""
+    ξ::F
+    ""
+    μ::F
+end
+
+function TopoSnowCoverFractionModel(
+    toml_dict::CP.ParamDict,
+    domain;
+    z0 = toml_dict["topo_scf_z0"],
+    μ_exp = toml_dict["topo_scf_mu_exp"],
+    ξ_exp = toml_dict["topo_scf_xi_exp"],
+    μ = SpaceVaryingInput("topographic_data.nc", "mean_slope", domain.space.surface; regridder_type = :InterpolationsRegridder, regridder_kwargs = (; interpolation_method = Interpolations.Constant(),
+                                                                                                                                                    extrapolation_bc = (Interpolations.Periodic(),Interpolations.Flat(),Interpolations.Flat(),),
+                                                                                                                                                    )),
+    ξ=  SpaceVaryingInput("topographic_data.nc", "norm_stdz", domain.space.surface; regridder_type = :InterpolationsRegridder, regridder_kwargs = (;interpolation_method = Interpolations.Constant(),extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ))),
+)
+    return TopoSnowCoverFractionModel(z0, μ_exp, ξ_exp, μ, ξ)
+end
+
 
 """
     AbstractSnowSurfaceTemperatureModel{FT}
@@ -601,10 +638,9 @@ function SnowModel(
     α_snow = ZenithAngleAlbedoModel(toml_dict),
     density = MinimumDensityModel(toml_dict["snow_density"]),
     κ_snow = SturmSnowConductivityModel(toml_dict),
-    scf = WuWuSnowCoverFractionModel(
+    scf = TopoSnowCoverFractionModel(
         toml_dict,
-        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) /
-        2,
+        domain,
     ),
     surf_temp = EquilibriumGradientTemperatureModel{CP.float_type(toml_dict)}(),
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],

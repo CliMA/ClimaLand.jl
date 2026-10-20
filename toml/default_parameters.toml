@@ -300,6 +300,24 @@ type = "float"
 description = "Hydraulic conductivity of wet snow (m s⁻¹)."
 # WuWuSnowCoverFractionModel parameters
 
+["topo_scf_z0"]
+value = 0.5
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
+["topo_scf_mu_exp"]
+value = 0.3
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
+["topo_scf_xi_exp"]
+value = 2.0
+type = "float"
+description = ""
+tag = "TopoSnowCoverFractionModel"
+
 ["gamma"]
 value = 0.001
 type = "float"
