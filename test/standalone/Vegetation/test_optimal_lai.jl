@@ -246,16 +246,16 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             @test Canopy.prognostic_domain_names(model) ==
                   ntuple(_ -> :surface, length(optlai_prog))
 
-            # A prognostic tree share uses the same climate totals
-            prognostic_tree = Canopy.ZhouOptimalLAIModel{FT}(
+            # A climate tree share uses the same climate totals
+            climate_tree = Canopy.ZhouOptimalLAIModel{FT}(
                 params;
                 SAI = FT(0.0),
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
                 height = FT(10.0),
-                tree_share = Canopy.PrognosticTreeShare(),
+                tree_share = Canopy.ClimateTreeShare(),
             )
-            @test Canopy.prognostic_vars(prognostic_tree) == optlai_prog
+            @test Canopy.prognostic_vars(climate_tree) == optlai_prog
         end
 
         @testset "Area indices from the maximum LAI for FT = $FT" begin
@@ -886,7 +886,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                     RAI = FT(1.0),
                     rooting_depth = FT(1.0),
                     height = FT(1.0),
-                    tree_share = Canopy.PrognosticTreeShare(),
+                    tree_share = Canopy.ClimateTreeShare(),
                 )
                 new_state() = ClimaCore.Fields.FieldVector(;
                     canopy = (;

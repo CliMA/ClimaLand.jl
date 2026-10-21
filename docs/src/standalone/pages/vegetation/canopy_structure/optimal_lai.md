@@ -110,7 +110,7 @@ where we have:
 - the maintenance share of the cost, $f_m$, the rest, $1 - f_m$, being the cost of construction, which does not depend on the season
 - the yearly maintenance load, $M$ (days), the running yearly total of the time above freezing, weighted by $Q_{10}^{(T - T_f - 25)/10}$ with the air and freezing temperatures $T$ and $T_f$ (K)
 
-The maintenance load is 365 days for a year-round season at 25 °C, so the leaves of short, cold seasons are cheaper. The tree share is diagnosed from the simulated climate by default (`tree_share = PrognosticTreeShare()`, see Climate Tree Share), or prescribed as a scalar or a field, e.g. from the natural vegetation of the CLM surface data (`tree_share = clm_tree_share(surface_space)`).
+The maintenance load is 365 days for a year-round season at 25 °C, so the leaves of short, cold seasons are cheaper. The tree share is diagnosed from the simulated climate by default (`tree_share = ClimateTreeShare()`, see Climate Tree Share), or prescribed as a scalar or a field, e.g. from the natural vegetation of the CLM surface data (`tree_share = clm_tree_share(surface_space)`).
 
 ## Steady-State LAI
 
@@ -193,7 +193,7 @@ with the degree-day factor $F_{\mathrm{dd}}$ = 3 mm K⁻¹ day⁻¹. The climate
 
 ## Climate Tree Share
 
-By default (`tree_share = PrognosticTreeShare()`), the tree share is diagnosed from the simulated climate rather than prescribed by a map, so that it changes with the climate:
+By default (`tree_share = ClimateTreeShare()`), the tree share is diagnosed from the simulated climate rather than prescribed by a map, so that it changes with the climate:
 
 ```math
 f_{\mathrm{tree}} = \frac{1}{1 + \exp\left[-\left(b_0 + b_L \, L_{\mathrm{tree}} + b_d \, n_{\mathrm{dry}} + b_T \, T_{\mathrm{gs}}\right)\right]}

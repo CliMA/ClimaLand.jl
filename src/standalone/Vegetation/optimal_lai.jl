@@ -120,12 +120,12 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
 end
 
 """
-    PrognosticTreeShare()
+    ClimateTreeShare()
 
 Tree share of `ZhouOptimalLAIModel` computed from the simulated climate
 (`climate_tree_share`) rather than prescribed by a map.
 """
-struct PrognosticTreeShare end
+struct ClimateTreeShare end
 
 """
     leaf_cost(tree_share, z_tree, z_grass)

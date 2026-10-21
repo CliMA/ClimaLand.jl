@@ -438,7 +438,7 @@ water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
 - `height`: Canopy height (m) - can be scalar (uniform) or spatially-varying Field
 - `tree_share`: Tree share of the vegetation (dimensionless), which sets the unit cost of
-  leaves (`leaf_cost`): prescribed (scalar or Field), or `PrognosticTreeShare()` to
+  leaves (`leaf_cost`): prescribed (scalar or Field), or `ClimateTreeShare()` to
   compute it from the simulated climate (`climate_tree_share`)
 
 # References
@@ -452,7 +452,7 @@ struct ZhouOptimalLAIModel{
     RA <: Union{FT, ClimaCore.Fields.Field, AreaIndexFromMaxLAI{FT}},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
-    TSH <: Union{FT, ClimaCore.Fields.Field, PrognosticTreeShare},
+    TSH <: Union{FT, ClimaCore.Fields.Field, ClimateTreeShare},
     T,
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
@@ -465,7 +465,7 @@ struct ZhouOptimalLAIModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
-    "Tree share of the vegetation (dimensionless): a scalar or Field, or `PrognosticTreeShare()`"
+    "Tree share of the vegetation (dimensionless): a scalar or Field, or `ClimateTreeShare()`"
     tree_share::TSH
     "Time integrated prognostic vars"
     time_integrated_vars::T
@@ -495,7 +495,7 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
 - `tree_share`: Tree share of the vegetation (dimensionless), which weights the unit
   cost of leaves between `z_tree` and `z_grass`; scalar or spatially-varying Field, or
-  `PrognosticTreeShare()` to compute it from the simulated climate
+  `ClimateTreeShare()` to compute it from the simulated climate
 
 Declares the prognostic time integrated variables: the 1-day potential-GPP total
 `A0_daily`, the 1-year totals `A0_annual` and `precip_annual` as `RunningSum`s of
@@ -831,11 +831,10 @@ end
     leaf_cost_tree_share(tree_share, p)
 
 Tree share that sets the leaf cost `z`: the prescribed one, or the climate tree share
-of the canopy composition with `PrognosticTreeShare()`.
+of the canopy composition with `ClimateTreeShare()`.
 """
 leaf_cost_tree_share(tree_share, p) = tree_share
-leaf_cost_tree_share(::PrognosticTreeShare, p) =
-    p.canopy.biomass.composition.tree
+leaf_cost_tree_share(::ClimateTreeShare, p) = p.canopy.biomass.composition.tree
 
 """
     set_max_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel, canopy)
@@ -924,7 +923,7 @@ set_area_index!(area_index, value::AreaIndexFromMaxLAI, LAI_max, tree_share) =
 
 Sets the canopy `composition` from the C3/C4 competition. With a prescribed tree share,
 the competition's tree share is estimated from the realized C3 GPP
-(`canopy_composition_from_competition`); with `PrognosticTreeShare()`, it is the climate
+(`canopy_composition_from_competition`); with `ClimateTreeShare()`, it is the climate
 tree share (`climate_tree_share`) that also sets the leaf cost, from the LAI_max of a
 tree canopy, the number of dry months of the growing season (its warm days that are not
 moist) and the growing-season temperature.
@@ -943,7 +942,7 @@ end
 function update_composition!(
     p,
     Y,
-    ::PrognosticTreeShare,
+    ::ClimateTreeShare,
     component::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}

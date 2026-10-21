@@ -33,7 +33,7 @@ main
   is short, are taken for forest.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its tree share from the simulated
-  climate by default (`tree_share = PrognosticTreeShare()`) rather than from a map: a
+  climate by default (`tree_share = ClimateTreeShare()`) rather than from a map: a
   logistic of the LAI_max of a tree canopy, the number of dry months of the growing
   season and the growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`,
   `_b_temp`), which also sets the tree share of the C3/C4 competition. The tree share of
