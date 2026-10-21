@@ -41,7 +41,9 @@ main
   `_b_temp`), which also sets the tree share of the C3/C4 competition. The tree share of
   the natural vegetation in the CLM surface data remains an option
   (`tree_share = clm_tree_share(surface_space)`), which the optimal-LAI long run
-  compares in a second step (`CLM_TREE_SHARE`).
+  compares in a second step (`CLM_TREE_SHARE`). The prognostic-LAI `LandModel`
+  constructor takes its biomass model as a `biomass` keyword, e.g. a
+  `ZhouOptimalLAIModel` with such a tree share.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The water limit of `ZhouOptimalLAIModel` uses the VPD of the
   moist growing season (above freezing, and the 30-day water input of rain and snowmelt at

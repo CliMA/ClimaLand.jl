@@ -69,8 +69,9 @@ function ClimaCalibrate.observation_map(
         end
     end
 
-    # A member that dies late writes valid but truncated NetCDF files, so its
-    # column is left partly filled without an error above: mark it failed.
+    # A member that crashes partway through its run leaves NetCDF files that end at
+    # the crash; they read without error but leave its column partly filled, so
+    # mark it failed.
     for m in 1:ensemble_size
         missing_names = EnsembleBuilder.missing_short_names(g_ens_builder, m)
         if !isempty(missing_names)
@@ -94,10 +95,11 @@ end
 Set the rows of `g_ensemble` that are NaN for every member to the observations
 `obs`, so that they do not contribute to the misfit. Such rows are cells where the
 simulation output is NaN whatever the parameters (e.g. coastal cells that the
-interpolated diagnostics leave NaN but the observation mask keeps); left NaN, they
-would make every member fail. Rows that are NaN only for some members are left to
-EKP's failure handling, and nothing is done if more than `max_fraction` of the rows
-are NaN for every member, as when the whole ensemble failed.
+interpolated diagnostics leave NaN but the observation mask keeps). EKP counts a member
+as failed if any entry of its column is NaN, so a single such row would fail every
+member. Rows that are NaN only for some members are left to EKP's failure handling,
+and nothing is done if more than `max_fraction` of the rows are NaN for every member,
+as when the whole ensemble failed.
 """
 function fill_structural_nans!(g_ensemble, obs; max_fraction = 0.05)
     rows = findall(r -> all(isnan, view(g_ensemble, r, :)), axes(g_ensemble, 1))

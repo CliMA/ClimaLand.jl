@@ -304,6 +304,10 @@ end
             ),
             toml_dict,
         ) : nothing,
+        biomass = Canopy.ZhouOptimalLAIModel{FT}(
+            Domains.obtain_surface_domain(domain),
+            toml_dict,
+        ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
             (;
@@ -314,6 +318,7 @@ end
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            biomass,
         ),
         snow = Snow.SnowModel(
             FT,
@@ -337,6 +342,8 @@ A convenience constructor for setting up the default LandModel using prognostic 
 via the `ZhouOptimalLAIModel`. This is identical to the LAI-prescribing constructor, except
 that `LAI` is not a required argument and the default canopy model does not take an LAI as input.
 Instead it uses `ZhouOptimalLAIModel` for the biomass component instead of `PrescribedBiomassModel`.
+A different biomass model, e.g. a `ZhouOptimalLAIModel` with a prescribed tree share, can be
+passed as `biomass`, which the default canopy then uses.
 
 See also the constructor `LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; ...)` for
 the version that uses prescribed LAI from a `TimeVaryingInput`.
@@ -367,6 +374,10 @@ function LandModel{FT}(
         ),
         toml_dict,
     ) : nothing,
+    biomass = Canopy.ZhouOptimalLAIModel{FT}(
+        Domains.obtain_surface_domain(domain),
+        toml_dict,
+    ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
         (;
@@ -385,6 +396,7 @@ function LandModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        biomass,
     ),
     snow = Snow.SnowModel(
         FT,

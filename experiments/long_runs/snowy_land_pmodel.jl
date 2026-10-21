@@ -98,61 +98,24 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    if prognostic_lai && use_clm_tree_share
-        soil = ClimaLand.Soil.EnergyHydrology{FT}(
-            domain,
-            forcing,
-            toml_dict;
-            prognostic_land_components,
-            additional_sources = (ClimaLand.RootExtraction{FT}(),),
-        )
-        surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
-        canopy = ClimaLand.Canopy.CanopyModel{FT}(
-            surface_domain,
-            (;
-                atmos,
-                radiation,
-                ground = ClimaLand.PrognosticGroundConditions{FT}(),
-            ),
-            toml_dict;
-            prognostic_land_components,
-            soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{
-                FT,
-            }(
-                domain,
-                toml_dict;
-                soil_params = (;
-                    ν = soil.parameters.ν,
-                    θ_r = soil.parameters.θ_r,
-                    hydrology_cm = soil.parameters.hydrology_cm,
-                ),
-            ),
-            biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
-                surface_domain,
-                toml_dict;
-                tree_share = ClimaLand.Canopy.clm_tree_share(
-                    surface_domain.space.surface,
-                ),
-            ),
-        )
-        land = LandModel{FT}(
-            forcing,
-            toml_dict,
-            domain,
-            Δt;
-            prognostic_land_components,
-            soil,
-            canopy,
-        )
-    elseif prognostic_lai
+    if prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.
+        tree_share =
+            use_clm_tree_share ?
+            ClimaLand.Canopy.clm_tree_share(surface_space) :
+            ClimaLand.Canopy.ClimateTreeShare()
         land = LandModel{FT}(
             forcing,
             toml_dict,
             domain,
             Δt;
             prognostic_land_components,
+            biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                ClimaLand.Domains.obtain_surface_domain(domain),
+                toml_dict;
+                tree_share,
+            ),
         )
     else
         # Prescribed LAI (default): read LAI from MODIS data.
