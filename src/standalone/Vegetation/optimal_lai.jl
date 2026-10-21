@@ -26,7 +26,7 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     z_grass::FT
     """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
     sigma::FT
-    """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
+    """Smoothing factor for exponential moving average (dimensionless, 0-1): LAI relaxes toward its steady state over 1/alpha days. Zhou et al. (2025) use 0.067, ~15 days of memory"""
     alpha::FT
     """Peak fraction of annual precipitation available for transpiration (dimensionless,
     0-1), reached at the energy-water limitation transition. The fraction actually used,
@@ -231,7 +231,7 @@ LAI_max is determined by the minimum of energy-limited and water-limited fAPAR:
 - `k::FT`: Light extinction coefficient (dimensionless), typically 0.5
 - `z::FT`: Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1); see `leaf_cost`
 - `precip_annual::FT`: Mean annual precipitation (mol H2O m^-2 yr^-1)
-- `f0::FT`: Fraction of precipitation available for transpiration (dimensionless), 0.65
+- `f0::FT`: Fraction of precipitation available for transpiration (dimensionless); see `f0_from_aridity`
 - `ca_pa::FT`: Ambient CO2 partial pressure (Pa), typically ~40 Pa at 400 ppm
 - `chi::FT`: Optimal ratio of intercellular to ambient CO2 (dimensionless), typically 0.7-0.8
 - `vpd_gs::FT`: Mean vapor pressure deficit during growing season (Pa)
@@ -310,8 +310,9 @@ dynamics depart from a "square wave" (where maximum LAI would be maintained thro
 the growing season).
 
 # Arguments
-- `GSL::FT`: Growing season length (days). Defined as the length of continuous period
-  above 0C longer than 5 days.
+- `GSL::FT`: Growing season length (days). `ZhouOptimalLAIModel` uses the trailing-year
+  count of days above freezing; Zhou et al. (2025) use the continuous period above 0C
+  longer than 5 days.
 - `LAI_max::FT`: Seasonal maximum leaf area index (m^2 m^-2, dimensionless)
 - `Ao_annual::FT`: Annual total potential GPP (mol m^-2 yr^-1). This is the integral of daily
   A0 over the year.
