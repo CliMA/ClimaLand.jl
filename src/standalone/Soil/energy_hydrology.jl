@@ -1279,8 +1279,12 @@ Swenson et al (2012)/Sakaguchi and Zeng (2009).
 
 Note that S_l ∈ (0,1].
 """
-function dry_soil_layer_thickness(S_l, αS_c, d_ds, p)
-    αS_c = clamp(αS_c, zero(αS_c), one(αS_c))
-    return S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p :
-           zero(d_ds * (αS_c - S_l) / S_l * p)
+function dry_soil_layer_thickness(
+    S_l::FT,
+    αS_c::FT,
+    d_ds::FT,
+    p::FT,
+)::FT where {FT}
+    αS_c = clamp(αS_c, FT(0), FT(1)) # this must be between zero and one
+    return d_ds*exp(-(S_l-αS_c)/(αS_c/10))#S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p : FT(0)
 end

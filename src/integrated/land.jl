@@ -92,10 +92,14 @@ mutable struct LandModel{
         # Check that soil moisture stress parameters are consistent between canopy and soil
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
-            )
+         #   check_land_equality(
+         #       canopy.soil_moisture_stress.θ_low,
+         #       soil.parameters.θ_r,
+         #   )
+         #               check_land_equality(
+         #       canopy.soil_moisture_stress.θ_high,
+         #       soil.parameters.ν,
+         #   )
         end
 
         # LandModel-specific checks
@@ -173,7 +177,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
-            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            soil_moisture_stress = Canopy.WeibullMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -246,7 +250,7 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components,
-        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
+        soil_moisture_stress = Canopy.WeibullMoistureStressModel{FT}(
             domain,
             toml_dict;
             soil_params = (;

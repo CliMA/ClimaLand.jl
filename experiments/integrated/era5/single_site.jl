@@ -30,7 +30,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_single_site"
+root_path = "snowy_land_pmodel_congo"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -53,7 +53,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -68,9 +67,9 @@ function setup_model(
 end
 
 start_date = DateTime("2008-03-01")
-stop_date = DateTime("2010-03-01")
+stop_date = DateTime("2011-03-01")
 Δt = 900.0
-longlat = FT.((-77.0, 0.1))
+longlat = FT.((24.6, -3.6))
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
@@ -99,6 +98,11 @@ diagnostics = ClimaLand.default_diagnostics(
         "precip",
         "et",
         "lai",
+        "soilshf",
+        "soillhf",
+        "lwp",
+        "swp","msf",
+        "swc", "gs", "gleaf","qsfc_air","qsfc_air_ratio","vpd", "qat", "tair"
     ],
 );
 simulation =
@@ -115,7 +119,55 @@ ClimaLand.Simulations.solve!(simulation);
 LandSimVis.make_timeseries(
     simulation;
     savedir = root_path,
-    short_names = ["lai"],
+    short_names = [
+        "shf",
+        "lhf",
+        "trans",
+        "swu",
+        "lwu",
+        "sr",
+        "ssr",
+        "precip",
+        "et",
+        "lai",
+        "soilshf",
+        "soillhf",
+        "lwp",
+        "swp","msf",
+        "swc", "gs", "gleaf","qsfc_air","qsfc_air_ratio", "vpd", "qat", "tair"
+    ]
+)
+
+LandSimVis.make_timeseries(
+    simulation;
+    savedir = root_path,
+    short_names = [
+        "swc",
+    ],
+    layer = 13,
+        plot_stem_name = "timeseries_13",
+
+)
+
+LandSimVis.make_timeseries(
+    simulation;
+    savedir = root_path,
+    short_names = [
+        "swc",
+    ],
+    layer = 11,
+        plot_stem_name = "timeseries_11",
+
+)
+
+LandSimVis.make_timeseries(
+    simulation;
+    savedir = root_path,
+    short_names = [
+        "swc",
+    ],
+        plot_stem_name = "timeseries_9",
+    layer = 9
 )
 LandSimVis.make_leaderboard_plots(
     model,

@@ -143,16 +143,41 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = if :hydrology_cm in propertynames(soil_params)
-        (; θ_r, ν, hydrology_cm) = soil_params
-        S_fc = Soil.field_capacity_saturation(hydrology_cm)
-        @. θ_r + S_fc * (ν - θ_r)
-    else
-        copy(soil_params.ν)
-    end
+    n = soil_params.hydrology_cm.n
+    m = 1 .- 1 ./n
+    α = soil_params.hydrology_cm.α
+    S_c =  soil_params.hydrology_cm.S_c
+    ψ_c = (S_c .^((-1) ./m) .-1).^(1 ./n) ./α
+    θ_high = ψ_c
+    #if :hydrology_cm in propertynames(soil_params)
+    #    (; θ_r, ν, hydrology_cm) = soil_params
+    #    S_fc = Soil.field_capacity_saturation(hydrology_cm)
+    #    @. θ_r + S_fc * (ν - θ_r)
+    #else
+    #    copy(soil_params.ν)
+    #end
     θ_low = copy(soil_params.θ_r)
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
+end
+
+
+function WeibullMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    c::FT = toml_dict["weibull_moisture_stress_c"],
+    a::FT = toml_dict["weibull_moisture_stress_a"],
+    soil_params = Soil.soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+) where {FT <: AbstractFloat}
+    n = soil_params.hydrology_cm.n
+    m = 1 .- 1 ./n
+    α = soil_params.hydrology_cm.α
+    S_c =  soil_params.hydrology_cm.S_c
+    ψ_c = (S_c .^((-1) ./m) .-1).^(1 ./n) ./α
+    return WeibullMoistureStressModel{FT}(; ψ_c, a, c)
 end
 
 """

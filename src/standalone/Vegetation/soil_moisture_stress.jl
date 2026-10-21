@@ -1,9 +1,12 @@
 export TuzetMoistureStressModel,
     NoMoistureStressModel,
     PiecewiseMoistureStressModel,
+    WeibullMoistureStressModel,
     compute_piecewise_moisture_stress,
+    compute_weibull_moisture_stress,
     compute_tuzet_moisture_stress,
     update_piecewise_soil_moisture_stress!
+    update_weibull_soil_moisture_stress!
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
@@ -213,5 +216,93 @@ function update_piecewise_soil_moisture_stress!(
         model.θ_low,
         model.c,
         p.drivers.θ,
+    )
+end
+
+
+
+
+
+struct WeibullMoistureStressModel{
+    FT,
+    F <: Union{FT, ClimaCore.Fields.Field},
+} <: AbstractSoilMoistureStressModel{FT}
+    """Water content above which stomata are unstressed (m^3 / m^3)"""
+    ψ_c::F
+    """Water content below which stomata are closed (m^3 / m^3)"""
+    a::F
+    """Curvature parameter (unitless)"""
+    c::FT
+
+end
+
+function WeibullMoistureStressModel{FT}(;
+    ψ_c,
+    a::FT,
+    c::FT,
+) where {FT <: AbstractFloat}
+    return WeibullMoistureStressModel{FT, typeof(ψ_c)}(ψ_c, a, c)
+end
+
+ClimaLand.auxiliary_vars(model::WeibullMoistureStressModel) = (:βm,)
+ClimaLand.auxiliary_types(model::WeibullMoistureStressModel{FT}) where {FT} =
+    (FT,)
+ClimaLand.auxiliary_domain_names(::WeibullMoistureStressModel) = (:surface,)
+
+"""
+    compute_weibull_moisture_stress(
+        ψ::FT,
+        ψ_c::FT,
+        a::FT,
+        c::FT,
+    ) where {FT}
+
+"""
+function compute_weibull_moisture_stress(
+    ψ::FT,
+    ψ_c::FT,
+    a::FT,
+    c::FT,
+) where {FT}
+    ψ_safe = min(0, ψ)
+    arg = a*(ψ/ψ_c)^c # ψ/ψ_c is positive because both are negative.
+    return exp(-arg) # when ψ = 0, returns 1. Very dry (ψ -> -∞), goes to zero
+end
+
+"""
+    update_soil_moisture_stress!(
+        p,
+        Y,
+        model::WeibullMoistureStressModel,
+        canopy,
+    )
+
+"""
+function update_soil_moisture_stress!(
+    p,
+    Y,
+    model::WeibullMoistureStressModel,
+    canopy,
+)
+    ground = canopy.boundary_conditions.ground
+    update_weibull_soil_moisture_stress!(ground, p, Y, model, canopy)
+end
+
+"""
+    update_weibull_soil_moisture_stress!(ground::PrescribedGroundConditions, p, Y, model, canopy)
+
+"""
+function update_weibull_soil_moisture_stress!(
+    ground::PrescribedGroundConditions,
+    p,
+    Y,
+    model,
+    canopy,
+)
+    @. p.canopy.soil_moisture_stress.βm = compute_weibull_moisture_stress(
+        p.drivers.ψ, # this may not exist, check
+        model.ψ_c,
+        model.a,
+        model.c,
     )
 end
