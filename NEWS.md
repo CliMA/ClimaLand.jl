@@ -4,7 +4,8 @@ main
 ----
 - ![][badge-✨feature] Add a pipeline that calibrates 18 parameters of the
   default land model on the FLUXNET2015 sites, run as a `ColumnEnsemble` with
-  each column forced by the meteorology of its tower, against monthly means of
+  each column forced by the meteorology of its tower and with the canopy
+  height of its site, against monthly means of
   the observed LHF, SHF, SWU, LWU and GPP (5 TransformUnscented EKI
   iterations, each forward run a Slurm job with one GPU). It runs on Buildkite
   when a PR has the `calibrate fluxnet` label and uploads the calibrated

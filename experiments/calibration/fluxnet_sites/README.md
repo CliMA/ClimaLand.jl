@@ -1,8 +1,8 @@
 # Calibration on FLUXNET sites
 
 This experiment calibrates the land model of the default long run (soil,
-canopy with the P-model, prescribed MODIS LAI, and spatially varying canopy
-height, snow, slab lake, soil CO2) on the FLUXNET2015 sites. The sites run
+canopy with the P-model and prescribed MODIS LAI, snow, slab lake, soil CO2)
+on the FLUXNET2015 sites. The sites run
 together as a `ColumnEnsemble`, one column per site, and each column is forced
 by the meteorology measured at its tower.
 
@@ -41,10 +41,13 @@ measures CO2 for less than half of its years is forced by the annual mean at
 Mauna Loa instead. Since the years of a site differ from the simulated years
 and FLUXNET2015 mostly predates MODIS, the LAI is the MODIS climatology.
 
+The canopy height of each column is that of its site: the height in the
+site's configuration in `FluxnetSimulations` for US-MOz, US-NR1, US-Ha1 and
+US-Var, or else in the FLUXNET2015 metadata. Where a site has none, it is the
+CLM canopy height of the default model, which, at the scale of a grid cell,
+can be far from the vegetation around a tower (0.5 m at the US-MOz forest).
 The forcing height of each column is the height of its tower above the ground,
-raised to `MIN_CANOPY_CLEARANCE` above the canopy height of the column if
-needed: the canopy height comes from a map, which can exceed the height of a
-tower over short vegetation in a forested grid cell.
+or `MIN_CANOPY_CLEARANCE` above the canopy where the tower is not above it.
 
 ## Running on Buildkite
 
@@ -63,7 +66,8 @@ build annotation:
 - `seasonal_cycle.png`: the mean seasonal cycle over the sites of each
   hemisphere, observed and simulated.
 - `sites.png`: the sites, colored by how the calibration changed their error.
-- `sites.csv`: the sites, their tower height, and their simulated years.
+- `sites.csv`: the sites, their tower and canopy heights (`NaN` where the
+  CLM height is used), and their simulated years.
 - `summary.md`: the tables of the annotation.
 
 To use the calibrated parameters, copy `fluxnet_parameters.toml` to

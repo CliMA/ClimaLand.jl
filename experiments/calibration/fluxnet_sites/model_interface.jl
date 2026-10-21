@@ -79,21 +79,45 @@ function column_field(values, surface_space)
 end
 
 """
-    site_forcing(times, forcing, tower_height, surface_space, toml_dict)
+    canopy_height_field(canopy_height, surface_space)
+
+Return the canopy height of the columns of `surface_space`: the site
+`canopy_height` (one per column), or the CLM canopy height of the column where
+it is `NaN`.
+"""
+function canopy_height_field(canopy_height, surface_space)
+    site = column_field(canopy_height, surface_space)
+    clm = ClimaLand.Canopy.clm_canopy_height(surface_space)
+    return @. ifelse(isnan(site), clm, site)
+end
+
+"""
+    site_forcing(times, forcing, tower_height, canopy_height, surface_space, toml_dict)
 
 Return the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` of the
 columns of `surface_space`, one per site, from the `forcing` matrices (one row
 per column) at `times` (s since `SPINUP_START`) saved by `build_site_data`.
 
-The forcing is at the height of the tower above the ground, raised to
-`MIN_CANOPY_CLEARANCE` above the CLM canopy height of the column if needed.
+The forcing is at the height of the tower above the ground, or
+`MIN_CANOPY_CLEARANCE` above the `canopy_height` field where the tower is not
+above it.
 """
-function site_forcing(times, forcing, tower_height, surface_space, toml_dict)
+function site_forcing(
+    times,
+    forcing,
+    tower_height,
+    canopy_height,
+    surface_space,
+    toml_dict,
+)
     column_input(name) =
         TimeVaryingInput(times, getproperty(forcing, name), surface_space)
-    canopy_height = ClimaLand.Canopy.clm_canopy_height(surface_space)
     tower = column_field(tower_height, surface_space)
-    atmos_h = @. max(tower, canopy_height + FT(MIN_CANOPY_CLEARANCE))
+    atmos_h = @. ifelse(
+        tower > canopy_height,
+        tower,
+        canopy_height + FT(MIN_CANOPY_CLEARANCE),
+    )
     atmos = ClimaLand.PrescribedAtmosphere(
         column_input(:P_liq),
         column_input(:P_snow),
@@ -134,7 +158,8 @@ end
 Return the simulation of the default land model on one column per site of
 `sites` (see `read_sites`), forced by the site data loaded from
 `SITE_DATA_FILE`, and the `DictWriter` collecting the monthly means of
-`SHORT_NAMES`.
+`SHORT_NAMES`. The canopy height is that of the site, or of the CLM map where
+the site has none (see `canopy_height_field`).
 """
 function setup_simulation(toml_dict, sites, site_data; stop_date = STOP_DATE)
     start_date = SPINUP_START
@@ -147,22 +172,64 @@ function setup_simulation(toml_dict, sites, site_data; stop_date = STOP_DATE)
     surface_space = domain.space.surface
     check_column_order(surface_space, sites.longlat)
 
+    canopy_height = canopy_height_field(sites.canopy_height, surface_space)
     forcing = site_forcing(
         site_data.times,
         site_data.forcing,
         sites.tower_height,
+        canopy_height,
         surface_space,
         toml_dict,
     )
     # The sites' own years precede MODIS and differ between sites
     LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
+
+    # The default soil and canopy of `LandModel`, except for the canopy height
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+    )
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        surface_domain,
+        (;
+            atmos = forcing.atmos,
+            radiation = forcing.radiation,
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
+        ),
+        LAI,
+        toml_dict;
+        prognostic_land_components,
+        soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict;
+            soil_params = (;
+                ν = soil.parameters.ν,
+                θ_r = soil.parameters.θ_r,
+                hydrology_cm = soil.parameters.hydrology_cm,
+            ),
+        ),
+        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+            surface_domain,
+            LAI,
+            ClimaLand.Canopy.modis_max_lai(surface_space),
+            toml_dict;
+            height = canopy_height,
+        ),
+    )
     model = ClimaLand.LandModel{FT}(
         forcing,
         LAI,
         toml_dict,
         domain,
         Δt;
-        prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2),
+        prognostic_land_components,
+        soil,
+        canopy,
     )
 
     writer = ClimaDiagnostics.Writers.DictWriter()

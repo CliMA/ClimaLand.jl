@@ -56,9 +56,10 @@ const MIN_GOOD_FRACTION = 0.5
 mean to be compared."""
 const MIN_COVERAGE = 0.9
 
-"""Minimum height (m) of the forcing above the CLM canopy height of a column.
-The canopy height of the column comes from a map, which can exceed the height
-of a tower over short vegetation in a forested grid cell."""
+"""Height (m) of the forcing above the canopy of a column whose tower is not
+above it. Where a site has no canopy height, that of the column comes from the
+CLM map, which can exceed the height of a tower over short vegetation in a
+forested grid cell."""
 const MIN_CANOPY_CLEARANCE = 2.0
 
 """Calibrated factor that multiplies the default PAR and NIR reflectances of

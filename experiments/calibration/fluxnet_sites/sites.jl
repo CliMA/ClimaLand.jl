@@ -293,13 +293,32 @@ mauna_loa_co2(t) = only(
 )
 
 """
+    site_canopy_height(site_ID)
+
+Return the canopy height (m) of `site_ID`: that of its configuration in
+`FluxnetSimulations` for US-MOz, US-NR1, US-Ha1 and US-Var, or else that of the
+FLUXNET2015 metadata. Return `NaN` if it is missing or not positive.
+"""
+function site_canopy_height(site_ID)
+    site_val = Val(FluxnetSimulations.replace_hyphen(site_ID))
+    configured = hasmethod(
+        FluxnetSimulations.get_parameters,
+        Tuple{Type{FT}, typeof(site_val)},
+    )
+    height =
+        configured ? FluxnetSimulations.get_parameters(FT, site_val).h_canopy :
+        FluxnetSimulations.get_canopy_height(site_ID)
+    return height > 0 ? Float64(height) : NaN
+end
+
+"""
     read_site(site_ID, path, thermo_params)
 
 Return the site `site_ID`, from its FLUXNET CSV file at `path`: its location,
-tower height, simulated years, forcing at `forcing_times()` in model units, and
-observed monthly means over `CALIBRATION_YEARS` (`NaN` where not compared). Return
-`nothing` if no year of the site has complete forcing and an observed monthly
-mean.
+tower and canopy heights, simulated years, forcing at `forcing_times()` in
+model units, and observed monthly means over `CALIBRATION_YEARS` (`NaN` where
+not compared). Return `nothing` if no year of the site has complete forcing and
+an observed monthly mean.
 """
 function read_site(site_ID, path, thermo_params)
     site_val = FluxnetSimulations.replace_hyphen(site_ID)
@@ -397,6 +416,7 @@ function read_site(site_ID, path, thermo_params)
         lat,
         time_offset,
         atmos_h,
+        canopy_height = site_canopy_height(site_ID),
         data_dt_minutes = Dates.value(Dates.Minute(data_dt)),
         years,
         measures_co2,
@@ -472,6 +492,7 @@ function write_sites(path, sites)
             latitude = [site.lat for site in sites],
             utc_offset = [site.time_offset for site in sites],
             tower_height = [site.atmos_h for site in sites],
+            canopy_height = [site.canopy_height for site in sites],
             time_step_minutes = [site.data_dt_minutes for site in sites],
             first_year = [first(site.years) for site in sites],
             last_year = [last(site.years) for site in sites],
@@ -484,8 +505,8 @@ end
 """
     read_sites(path)
 
-Return the site IDs, locations (`(long, lat)`), and tower heights in the CSV
-file at `path` written by `write_sites`.
+Return the site IDs, locations (`(long, lat)`), and tower and canopy heights
+(`NaN` where missing) in the CSV file at `path` written by `write_sites`.
 """
 function read_sites(path)
     table = CSV.File(path)
@@ -495,6 +516,7 @@ function read_sites(path)
             zip(Float64.(table.longitude), Float64.(table.latitude)),
         ),
         tower_height = Float64.(table.tower_height),
+        canopy_height = Float64.(table.canopy_height),
     )
 end
 
