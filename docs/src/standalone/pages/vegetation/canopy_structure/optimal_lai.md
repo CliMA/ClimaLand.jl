@@ -270,7 +270,7 @@ The diagnostics `a0d`, `a0a`, `a0c3`, `a0c4` and `pra` output `A0_daily`, `A0_an
 
 ### Initial Conditions
 
-LAI and the running totals of the potential GPP, the precipitation, the PET, and the days and VPD above freezing start from the final state of a spin-up of the model (`experiments/long_runs/optimal_lai_spinup.jl`, at `ClimaLand.Artifacts.optimal_lai_state_path()`) or, where it has no data, from a climatology (`ClimaLand.Artifacts.optimal_lai_initial_conditions_path()`), with LAI from MODIS. The 30-day totals start at 30/365 of the yearly ones, and the snow store and the sums with a growing memory start at zero. See `ClimaLand.Simulations.set_canopy_component_initial_conditions!` for the details.
+The state of the model starts from a climatology (`ClimaLand.Artifacts.optimal_lai_initial_conditions_path()`), with LAI from MODIS, the 30-day totals at 30/365 of the yearly ones, and the snow store and the sums with a growing memory at zero. Where it has data, a state of the model written by a spin-up (`experiments/long_runs/optimal_lai_spinup.jl`, by default `ClimaLand.Artifacts.optimal_lai_state_path()`) then replaces every variable it holds. The spin-up writes the states of the first day of each month of a calendar year, and a run starts from the state of the day of the year of its start date, interpolated between months; on Buildkite, it runs before the optimal-LAI long run, which starts from its states. See `ClimaLand.Simulations.set_canopy_component_initial_conditions!` for the details.
 
 ## Model Assumptions
 

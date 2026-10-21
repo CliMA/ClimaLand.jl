@@ -1,4 +1,5 @@
 using Test
+using Dates
 using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -775,8 +776,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
                 max_lai_field,
                 fractional_c3,
-                Mc,
-                nothing,
+                Mc;
+                state_path = nothing,
             )
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
@@ -855,8 +856,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                     ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
                     Canopy.modis_max_lai(surface_space),
                     FT(1),
-                    FT(0.0120107),
-                    nothing,
+                    FT(0.0120107);
+                    state_path = nothing,
                 )
                 for var in Canopy.prognostic_vars(model)
                     @test isfinite(scalar(getproperty(Y.canopy.biomass, var)))
@@ -906,8 +907,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                         ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
                         Canopy.modis_max_lai(surface_space),
                         FT(1),
-                        FT(0.0120107),
-                        path,
+                        FT(0.0120107);
+                        state_path = path,
                     )
                 Y = new_state()
                 set_ic!(Y, state_path)
@@ -917,7 +918,10 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 ds = NCDatasets.NCDataset(state_path)
                 i = argmin(abs.(ds["lon"][:] .- longlat[1]))
                 j = argmin(abs.(ds["lat"][:] .- longlat[2]))
-                for name in ClimaLand.Simulations.OPTIMAL_LAI_STATE_NAMES
+                for name in filter(
+                    name -> haskey(ds, String(name)),
+                    Canopy.prognostic_vars(model),
+                )
                     value = scalar(getproperty(Y.canopy.biomass, name))
                     state = ds[String(name)][i, j]
                     @test isfinite(value)
@@ -951,6 +955,92 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                     @test scalar(getproperty(Y.canopy.biomass, name)) == 0
                 end
             end
+        end
+
+        @testset "set_canopy_component_initial_conditions! from monthly states for FT = $FT" begin
+            # The states of the first day of each month of 2008, as the spin-up
+            # writes them: LAI is the month, the snow store a hundred times it.
+            path = joinpath(mktempdir(), "optimal_lai_state.nc")
+            lon = collect(-180.0:10.0:170.0)
+            lat = collect(-90.0:10.0:80.0)
+            months = 1:12
+            NCDatasets.NCDataset(path, "c") do ds
+                NCDatasets.defVar(ds, "lon", lon, ("lon",))
+                NCDatasets.defVar(ds, "lat", lat, ("lat",))
+                NCDatasets.defVar(
+                    ds,
+                    "time",
+                    [DateTime(2008, month, 1) for month in months],
+                    ("time",);
+                    attrib = ["units" => "days since 2000-01-01 00:00:00"],
+                )
+                state(f) =
+                    Float32[f(month) for _ in lon, _ in lat, month in months]
+                NCDatasets.defVar(
+                    ds,
+                    "LAI",
+                    state(identity),
+                    ("lon", "lat", "time"),
+                )
+                NCDatasets.defVar(
+                    ds,
+                    "snow_store",
+                    state(month -> 100month),
+                    ("lon", "lat", "time"),
+                )
+            end
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            surface_space = domain.space.surface
+            model = Canopy.ZhouOptimalLAIModel{FT}(
+                domain,
+                toml_dict;
+                SAI = FT(0.0),
+                RAI = FT(1.0),
+                rooting_depth = FT(1.0),
+                height = FT(1.0),
+                tree_share = Canopy.ClimateTreeShare(),
+            )
+            scalar(field) = Array(parent(field))[1]
+            function initial_state(start_date)
+                Y = ClimaCore.Fields.FieldVector(;
+                    canopy = (;
+                        biomass = NamedTuple(
+                            var => ClimaCore.Fields.zeros(surface_space) for
+                            var in Canopy.prognostic_vars(model)
+                        )
+                    ),
+                )
+                ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+                    Y,
+                    nothing,
+                    model,
+                    nothing,
+                    ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
+                    Canopy.modis_max_lai(surface_space),
+                    FT(1),
+                    FT(0.0120107);
+                    state_path = path,
+                    start_date,
+                )
+                return Y.canopy.biomass
+            end
+            # the state of the start date, interpolated between months and from
+            # December to January
+            state = initial_state(DateTime(2008, 3, 1))
+            @test scalar(state.LAI) ≈ 3
+            @test scalar(state.snow_store) ≈ 300
+            @test scalar(initial_state(DateTime(2008, 3, 16, 12)).LAI) ≈ 3.5
+            @test scalar(initial_state(DateTime(2008, 12, 16, 12)).LAI) ≈ 6.5
+            # in other years, that of the day of the year, to within the day a year
+            # by which the periodic calendar of ClimaUtilities, of 366 days for 2008,
+            # drifts
+            @test scalar(initial_state(DateTime(2010, 3, 1)).LAI) ≈ 3 atol = 0.1
+            # variables the file does not hold keep their seeds
+            @test scalar(state.water_30d) ≈
+                  scalar(state.precip_annual) * 30 / 365
+            # monthly states need the start date
+            @test_throws ErrorException initial_state(nothing)
         end
     end
 end

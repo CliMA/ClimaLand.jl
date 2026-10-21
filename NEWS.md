@@ -7,6 +7,15 @@ main
   (2020) and pyrealm, 146, 146/9 and 0.41, those of the optimal-LAI model, rather than
   the 112, 1.76 and 0.463 calibrated in #1926.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] The initial state of `ZhouOptimalLAIModel` can hold the states of
+  the first day of each month of a calendar year, which runs read at the day of the year
+  of their start date, and replaces the climatological seed of every variable it holds.
+  `set_canopy_component_initial_conditions!` takes the state file and the start date as
+  the keywords `state_path` and `start_date`, and `make_set_initial_state_from_file` for
+  a `LandModel` takes an `optimal_lai_state_path`. On Buildkite, the optimal-LAI long run starts from the
+  monthly states of 2008 of a spin-up that runs before it (`optimal_lai_spinup.jl`,
+  a Buildkite artifact).
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The stem and root area indices are proportional to the
   maximum LAI with factors that the tree share weights between trees and grasses, which
   have little stem area (no wood) but more root area per unit of leaf area:
@@ -45,8 +54,8 @@ main
   season and the growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`,
   `_b_temp`), which also sets the tree share of the C3/C4 competition. The tree share of
   the natural vegetation in the CLM surface data remains an option
-  (`tree_share = clm_tree_share(surface_space)`), which the optimal-LAI long run
-  compares in a second step (`CLM_TREE_SHARE`). The prognostic-LAI `LandModel`
+  (`tree_share = clm_tree_share(surface_space)`, or `CLM_TREE_SHARE` for the optimal-LAI
+  long run). The prognostic-LAI `LandModel`
   constructor takes its biomass model as a `biomass` keyword, e.g. a
   `ZhouOptimalLAIModel` with such a tree share.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)

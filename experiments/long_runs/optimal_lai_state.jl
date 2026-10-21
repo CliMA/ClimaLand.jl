@@ -1,5 +1,5 @@
-# Writes the state of `ZhouOptimalLAIModel` at the end of a simulation, to start later
-# runs from it rather than from the climatology of the `optimal_lai_inputs` artifact.
+# Writes states of `ZhouOptimalLAIModel` during a simulation, to start later runs from
+# them rather than from the climatology of the `optimal_lai_inputs` artifact.
 
 import ClimaCore
 import ClimaUtilities
@@ -27,51 +27,93 @@ const OPTIMAL_LAI_STATE_UNITS = Dict(
     :maintenance_days => "days",
     :age => "s",
 )
+const OPTIMAL_LAI_STATE_LON = collect(-180.0:1.0:179.0)
+const OPTIMAL_LAI_STATE_LAT = collect(-90.0:1.0:89.0)
 
 """
-    write_optimal_lai_state(path, simulation)
+    optimal_lai_state_snapshot(simulation)
 
-Write the prognostic variables of the `ZhouOptimalLAIModel` of `simulation` at its
-current time to the NetCDF file `path`, on a 1° lon-lat grid, NaN over ocean.
+The prognostic variables of the `ZhouOptimalLAIModel` of `simulation` at its current
+time, on a 1° lon-lat grid, NaN over ocean, with their date: `(; date, fields)`.
 """
-function write_optimal_lai_state(path, simulation)
+function optimal_lai_state_snapshot(simulation)
     model = simulation.model
     Y = simulation._integrator.u
-    lon = collect(-180.0:1.0:179.0)
-    lat = collect(-90.0:1.0:89.0)
     remapper = ClimaCore.Remapping.Remapper(
         axes(Y.canopy.biomass.LAI),
-        [ClimaCore.Geometry.LatLongPoint(φ, λ) for λ in lon, φ in lat],
+        [
+            ClimaCore.Geometry.LatLongPoint(φ, λ) for
+            λ in OPTIMAL_LAI_STATE_LON, φ in OPTIMAL_LAI_STATE_LAT
+        ],
     )
     remap(field) = Array(ClimaCore.Remapping.interpolate(remapper, field))
     mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
     land =
-        isnothing(mask) ? trues(length(lon), length(lat)) : remap(mask) .> 0.5
+        isnothing(mask) ?
+        trues(length(OPTIMAL_LAI_STATE_LON), length(OPTIMAL_LAI_STATE_LAT)) :
+        remap(mask) .> 0.5
+    fields = NamedTuple(
+        name => Float32.(
+            ifelse.(land, remap(getproperty(Y.canopy.biomass, name)), NaN),
+        ) for name in ClimaLand.prognostic_vars(model.canopy.biomass)
+    )
     date = ClimaUtilities.TimeManager.date(simulation._integrator.t)
+    return (; date, fields)
+end
+
+"""
+    write_optimal_lai_state(path, snapshots)
+    write_optimal_lai_state(path, simulation)
+
+Write the states of `ZhouOptimalLAIModel` in `snapshots` (see
+`optimal_lai_state_snapshot`) to the NetCDF file `path`, on a (lon, lat) grid: one
+state, or several along a `time` dimension, e.g. the first day of each month of a
+calendar year, which runs start from at the day of the year of their start date. With
+a `simulation`, write its current state.
+"""
+function write_optimal_lai_state(path, snapshots::AbstractVector)
+    names = keys(first(snapshots).fields)
     NCDatasets.NCDataset(path, "c") do ds
-        ds.attrib["title"] = "State of ZhouOptimalLAIModel at the end of a simulation"
-        ds.attrib["date"] = string(date)
+        ds.attrib["title"] = "State of ZhouOptimalLAIModel"
         NCDatasets.defVar(
             ds,
             "lon",
-            lon,
+            OPTIMAL_LAI_STATE_LON,
             ("lon",);
             attrib = ["units" => "degrees_east"],
         )
         NCDatasets.defVar(
             ds,
             "lat",
-            lat,
+            OPTIMAL_LAI_STATE_LAT,
             ("lat",);
             attrib = ["units" => "degrees_north"],
         )
-        for name in ClimaLand.prognostic_vars(model.canopy.biomass)
-            data = remap(getproperty(Y.canopy.biomass, name))
+        if length(snapshots) == 1
+            ds.attrib["date"] = string(only(snapshots).date)
+            dims = ("lon", "lat")
+            data = name -> only(snapshots).fields[name]
+        else
+            NCDatasets.defVar(
+                ds,
+                "time",
+                [snapshot.date for snapshot in snapshots],
+                ("time",);
+                attrib = ["units" => "days since 2000-01-01 00:00:00"],
+            )
+            dims = ("lon", "lat", "time")
+            data =
+                name -> cat(
+                    (snapshot.fields[name] for snapshot in snapshots)...;
+                    dims = 3,
+                )
+        end
+        for name in names
             NCDatasets.defVar(
                 ds,
                 String(name),
-                Float32.(ifelse.(land, data, NaN)),
-                ("lon", "lat");
+                data(name),
+                dims;
                 deflatelevel = 5,
                 attrib = ["units" => OPTIMAL_LAI_STATE_UNITS[name]],
             )
@@ -79,3 +121,6 @@ function write_optimal_lai_state(path, simulation)
     end
     return nothing
 end
+
+write_optimal_lai_state(path, simulation) =
+    write_optimal_lai_state(path, [optimal_lai_state_snapshot(simulation)])

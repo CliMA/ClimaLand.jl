@@ -63,6 +63,11 @@ const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
 # simulated climate by default; set `CLM_TREE_SHARE=""` to prescribe it from the
 # natural vegetation of the CLM surface data instead.
 const CLM_TREE_SHARE = haskey(ENV, "CLM_TREE_SHARE") ? true : false
+# With prognostic LAI, the optimal-LAI model starts from its state in the file
+# `OPTIMAL_LAI_STATE` if set (on Buildkite, the output of `optimal_lai_spinup.jl`), and
+# otherwise from `ClimaLand.Artifacts.optimal_lai_state_path()`.
+const OPTIMAL_LAI_STATE =
+    get(ENV, "OPTIMAL_LAI_STATE", ClimaLand.Artifacts.optimal_lai_state_path())
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -168,7 +173,12 @@ model = setup_model(
     prognostic_lai = PROGNOSTIC_LAI,
     use_clm_tree_share = CLM_TREE_SHARE,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+    ClimaLand.Artifacts.rosetta_spunup_ic_path(; context),
+    model;
+    optimal_lai_state_path = OPTIMAL_LAI_STATE,
+)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"

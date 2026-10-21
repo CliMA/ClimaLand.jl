@@ -94,8 +94,25 @@ steps:
     if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null && (build.source == "schedule" || build.pull_request.labels includes "long run opt lai")
     steps:
 
+      # Spin-up of the optimal-LAI model, whose monthly states of 2008 (a Buildkite
+      # artifact) are the initial state of the optimal-LAI long run.
+      - label: ":seedling: Optimal LAI spin-up"
+        key: "optimal_lai_spinup"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/optimal_lai_spinup.jl
+        artifact_paths:
+          - "optimal_lai_spinup_gpu/optimal_lai_state.nc"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 5:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
+      # The steps of a build share its directory, so the long run reads the state
+      # the spin-up wrote.
       - label: ":seedling: Snowy Land + P Model (Optimal LAI)"
         key: "snowy_land_pmodel_opt_lai_run"
+        depends_on: "optimal_lai_spinup"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
@@ -108,21 +125,7 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           PROGNOSTIC_LAI: ""
-
-      - label: ":seedling: Snowy Land + P Model (Optimal LAI, CLM tree share)"
-        key: "snowy_land_pmodel_opt_lai_clm_tree_run"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
-        artifact_paths:
-          - "snowy_land_pmodel_opt_lai_clm_tree_longrun_gpu/*png"
-          - "snowy_land_pmodel_opt_lai_clm_tree_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          PROGNOSTIC_LAI: ""
-          CLM_TREE_SHARE: ""
+          OPTIMAL_LAI_STATE: "optimal_lai_spinup_gpu/optimal_lai_state.nc"
 
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null
