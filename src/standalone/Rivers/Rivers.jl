@@ -87,6 +87,49 @@ end
 function check_containment(x,y; geom)
     pt = ArchGDAL.createpoint(x,y); return ArchGDAL.contains(geom, pt)
 end
+
+using ConservativeRegridding, ClimaCore
+using ConservativeRegridding: Regridder, regrid!
+using ClimaCore: CommonSpaces
+using GeometryOps, GeometryInterface
+FT = Float32
+domain = ClimaLand.Domains.global_box_domain(FT);
+# land_space_cpu = domain.space.surface;
+land_space_cpu = CommonSpaces.CubedSphereSpace(; radius = 6.371e6, n_quad_points = 4, h_elem = 16)
+# coords = []
+#for key in keys(basin_dict)
+#       push!(coords,  GeoInterface.coordinates(basin_dict[key].geom))
+#       end
+# #basin_polys_cpu = coords
+southern_geom = ArchGDAL.createpolygon([(-181.0, 0.0), (181.0, 0.0), (180.0, -91.0), (-181.0, -91.0), (-181.0, 0.0)])
+northern_geom = ArchGDAL.createpolygon([(-181.0, 0.0), (181.0, 0.0), (180.0, 91.0), (-181.0, 91.0), (-181.0, 0.0)])
+box_geom = ArchGDAL.createpolygon([(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0), (-10.0, 10.0), (-10.0, -10.0)])
+
+basin_polys_cpu = [southern_geom,    # basin 1
+                   northern_geom]
+#basin_polys_cpu = [[(-181.0, 0.0), (181.0, 0.0), (180.0, -91.0), (-181.0, -91.0), (-181.0, 0.0)],
+                   [(-181.0, 0.0), (181.0, 0.0), (180.0, 91.0), (-181.0, 91.0), (-181.0, 0.0)]]
+
+R = 6371000.0# Float64(CC.Spaces.topology(land_space_cpu).mesh.domain.radius)
+manifold = CR.Spherical(; radius = R)
+
+land_tree = CR.Trees.treeify(manifold, land_space_cpu)
+basin_tree = CR.Trees.treeify(manifold, basin_polys_cpu)
+intersections = CR.intersection_areas(
+    manifold,
+    CR.False(),
+    basin_tree,
+    land_tree;
+    intersection_operator = CR.IntersectionGridOperator(manifold),
+)
+
+regridder = CR.Regridder(
+     manifold,
+     basin_polys_cpu,
+     land_space_cpu;
+     normalize = false,
+     threaded = false,
+ )
 function make_grid_to_basin_map(grid, basin_dict)
     (;x,y) = grid
     npixels = length(x)
@@ -95,7 +138,7 @@ function make_grid_to_basin_map(grid, basin_dict)
     nzvals = []
     colptrs = []
     nbasins = length(keys(basin_dict))
-    pixel_area = 1.0 # need to generalize - how?
+    pixel_area = 1.0 # in square degrees; need to generalize - how?
     R_earth = 6371000.0/1000.0# in km
     for (idx,key) in enumerate(keys(basin_dict))
         @show idx
@@ -169,7 +212,7 @@ function make_update_boundary_fluxes(model::InstantaneousRouting)
     function update_boundary_fluxes(p,Y,t)
         R_tot_grid = p.rivers.R_tot_grid 
         R_tot_grid .= parent(p.soil.R_s)[:][mask] .+ parent(p.soil.R_ss)[:][mask]
-        p.rivers.R_basin .= reshape(R_tot_grid, (1,length(R_tot_grid)) * regrid_matrix # Takes 0.00006 seconds for 1 degree land
+        p.rivers.R_basin .= reshape(R_tot_grid, (1,length(R_tot_grid))) * regrid_matrix # Takes 0.00006 seconds for 1 degree land
     end
     return update_boundary_fluxes
 end
