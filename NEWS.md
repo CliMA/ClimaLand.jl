@@ -2,6 +2,15 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add a pipeline that calibrates 18 parameters of the
+  default land model on the FLUXNET2015 sites, run as a `ColumnEnsemble` with
+  each column forced by the meteorology of its tower, against monthly means of
+  the observed LHF, SHF, SWU, LWU and GPP (5 TransformUnscented EKI
+  iterations, each forward run a Slurm job with one GPU). It runs on Buildkite
+  when a PR has the `calibrate fluxnet` label and uploads the calibrated
+  parameters as `fluxnet_parameters.toml`. See
+  `experiments/calibration/fluxnet_sites`. `PrescribedAtmosphere` accepts a
+  height that varies in space (a surface field).
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
   P-model land model against seasonal ERA5 latent and sensible heat fluxes and
   upwelling longwave radiation, and GOSIF GPP (Dec 2003 - Nov 2019, prescribed

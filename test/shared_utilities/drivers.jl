@@ -42,6 +42,20 @@ FT = Float32
     all_papr_vals = (pa_vals..., pr_vals...)
     @test ClimaLand.initialize_drivers((pa, pr), coords) ==
           NamedTuple{all_papr_keys}(all_papr_vals)
+
+    # The height of the forcing can vary in space
+    f = TimeVaryingInput((t) -> 10.0)
+    h = zero_instance .+ FT(3)
+    pa_h = ClimaLand.PrescribedAtmosphere(f, f, f, f, f, f, f, h, toml_dict)
+    @test pa_h isa ClimaLand.PrescribedAtmosphere{FT}
+    @test pa_h.h === h
+    @test pa_h.gustiness == SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1))
+    @test ClimaLand.initialize_drivers((pa_h,), coords) ==
+          NamedTuple{all_pa_keys}(all_pa_vals)
+    @test occursin(
+        "reference height: spatially varying",
+        sprint(show, MIME"text/plain"(), pa_h),
+    )
 end
 
 @testset "Driver update functions" begin

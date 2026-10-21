@@ -5,6 +5,10 @@ land model or bucket model. The observations are seasonal averages of `lhf`,
 `shf`, `lwu`, and `swu` spanning twenty years (1979-3 to 2024-8)  with a
 latitude-weighted scalar covariance matrix.
 
+To calibrate on the FLUXNET2015 sites, each forced by its own meteorology,
+against the observed energy fluxes and GPP, see
+[`fluxnet_sites`](fluxnet_sites/README.md).
+
 # How do I run a calibration?
 
 1. Pick (or create) a configuration file under

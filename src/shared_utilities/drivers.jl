@@ -84,7 +84,7 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
-    PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosphere{FT, H, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
@@ -104,6 +104,8 @@ and `z_0m` is the roughness length for momentum. If a canopy is present,
 these refer to the canopy, but if only bare ground is present, the
 displacement height and roughness are that of the bare ground. In that case,
 one must change the reference to be `ReferenceAboveApparentSink`.
+The height is a number, or a surface field where it varies in space, such as
+the tower heights of sites simulated as a `ColumnEnsemble`.
 
 The keyword `gustiness` is a SurfaceFluxes gustiness model, or a number,
 which is stored as a `SurfaceFluxes.ConstantGustinessSpec` with that 
@@ -114,6 +116,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAtmosphere{
     FT,
+    H <: Union{FT, ClimaCore.Fields.Field},
     LP <: AbstractTimeVaryingInput,
     SP <: AbstractTimeVaryingInput,
     TA <: AbstractTimeVaryingInput,
@@ -143,7 +146,7 @@ struct PrescribedAtmosphere{
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
     "Height of the forcing (m), above the ground or above the apparent sink for momentum, according to `reference`"
-    h::FT
+    h::H
     "Gustiness model of the effective wind speed (a `SurfaceFluxes.AbstractGustinessSpec`)"
     gustiness::G
     "Convention for the height `h`: `SurfaceFluxes.ReferenceAboveSurface()` (the default) or `SurfaceFluxes.ReferenceAboveApparentSink()`"
@@ -158,18 +161,20 @@ struct PrescribedAtmosphere{
         q,
         P,
         start_date,
-        h::FT,
+        h::Union{Real, ClimaCore.Fields.Field},
         toml_dict::CP.ParamDict;
-        gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
+        gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(eltype(h)(1)),
         reference = SurfaceFluxes.ReferenceAboveSurface(),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    ) where {FT}
+    )
+        FT = eltype(h)
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
         gustiness isa Number &&
             (gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(gustiness)))
         return new{
+            FT,
             typeof(h),
             typeof.(args)...,
             typeof(gustiness),
