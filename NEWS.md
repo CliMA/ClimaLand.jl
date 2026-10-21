@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The unit cost ratios and cost of Jmax of the P-model for GPP
+  (`pmodel_β_c3`, `pmodel_β_c4`, `pmodel_cstar`) default to the values of Stocker et al.
+  (2020) and pyrealm, 146, 146/9 and 0.41, those of the optimal-LAI model, rather than
+  the 112, 1.76 and 0.463 calibrated in #1926.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The stem and root area indices are proportional to the
   maximum LAI with factors that the tree share weights between trees and grasses, which
   have little stem area (no wood) but more root area per unit of leaf area:

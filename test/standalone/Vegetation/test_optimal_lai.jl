@@ -116,7 +116,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             @test χ(298, 2000) < χ(298, 1000) < χ(298, 500)
             # a larger cost ratio β keeps the stomata more open; C4 plants are
             # more conservative
-            @test χ(298, 1000) > χ(298, 1000, pmodel.parameters.β_c3)
+            @test χ(298, 1000) > χ(298, 1000, lai_pmodel.β_c3 / 2)
             @test χ(298, 1000, lai_pmodel.β_c4) < χ(298, 1000)
         end
 

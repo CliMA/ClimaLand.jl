@@ -433,21 +433,21 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.463
+value = 0.41
 type = "float"
-description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "4 * dA/dJmax, assumed to be a constant marginal cost: the value of Wang et al. (2017) and Stocker et al. (2020), the pyrealm default, also that of the optimal-LAI model (optimal_lai_cstar). The calibration against ERA5 surface fluxes and GOSIF GPP of #1926 gave 0.463."
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 112.0
+value = 146.0
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "Unit cost ratio of Vcmax to transpiration for C3 plants: the value of Stocker et al. (2020), the pyrealm default, also that of the optimal-LAI model (optimal_lai_β_c3). The calibration against ERA5 surface fluxes and GOSIF GPP of #1926 gave 112."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 1.76
+value = 16.222
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "Unit cost ratio of Vcmax to transpiration for C4 plants: the pyrealm default, 146/9, also that of the optimal-LAI model (optimal_lai_β_c4). The calibration against ERA5 surface fluxes and GOSIF GPP of #1926 gave 1.76."
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c3"]
