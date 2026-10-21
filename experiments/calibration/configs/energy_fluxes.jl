@@ -21,6 +21,9 @@ Calibrates one parameter: soil emissivity. True value is near 0.96.
 """
 function get_calibration_prior()
     priors = [
+        EKP.constrained_gaussian("topo_scf_z0", 0.5, 0.2, 0.01, 2.0),
+        EKP.constrained_gaussian("topo_scf_mu_exp", 0.3, 0.1, 0.01, 0.9),
+        EKP.constrained_gaussian("stem_scf_xi_exp", 2.0, 0.3, 0.01, 4.0),
         EKP.constrained_gaussian("moisture_stress_c", 0.591, 0.2, 0.05, 2.0),
         EKP.constrained_gaussian("stem_PAR_reflectance", 0.3, 0.1, 0.01, 0.9),
         EKP.constrained_gaussian("stem_NIR_reflectance", 0.3, 0.1, 0.01, 0.9),

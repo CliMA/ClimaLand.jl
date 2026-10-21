@@ -1,4 +1,4 @@
-1module Snow
+module Snow
 import ClimaParams as CP
 using DocStringExtensions
 import ...Parameters as LP
