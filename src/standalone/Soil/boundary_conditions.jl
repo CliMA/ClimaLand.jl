@@ -996,9 +996,8 @@ liquid water from the soil, which would have a different energy. To accomodate
 this, the runoff is passed as an argument and this can be used for dispatch in the
 future.
 
-Furthermore, in coupled simulations, the energy flux may be provided directly,
-rather than having the land model compute it. To accomodate this, a new method
-can be defined which dispatches off of the `atmos` type.
+In coupled simulations, the energy of the liquid precipitation is provided by
+the atmosphere; see [`volumetric_energy_liquid_precipitation`](@ref).
 """
 function compute_infiltration_energy_flux(
     p,
@@ -1011,11 +1010,39 @@ function compute_infiltration_energy_flux(
     t,
 )
     earth_param_set = model.parameters.earth_param_set
-    return @. lazy(
-        p.soil.infiltration *
-        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set),
-    )
+    ρe_rain = volumetric_energy_liquid_precipitation(atmos, p, earth_param_set)
+    return @. lazy(p.soil.infiltration * ρe_rain)
 end
+
+"""
+    volumetric_energy_liquid_precipitation(atmos, p, earth_param_set)
+
+Returns the energy per unit volume of liquid precipitation [J m^-3], approximated
+as the volumetric internal energy of liquid water at the air temperature.
+"""
+volumetric_energy_liquid_precipitation(atmos, p, earth_param_set) =
+    @. lazy(volumetric_internal_energy_liq(p.drivers.T, earth_param_set))
+
+"""
+    volumetric_energy_liquid_precipitation(atmos::CoupledAtmosphere, p, earth_param_set)
+
+Returns the energy per unit volume of liquid precipitation [J m^-3] computed by
+the atmosphere model, `E_liq / P_liq`, where the energy flux `E_liq` [W m^-2] and
+the volume flux `P_liq` [m s^-1] are provided by the coupler. Where there is no
+liquid precipitation, the volumetric internal energy of liquid water at the air
+temperature is returned instead (it then multiplies a zero flux).
+"""
+volumetric_energy_liquid_precipitation(
+    atmos::ClimaLand.CoupledAtmosphere,
+    p,
+    earth_param_set,
+) = @. lazy(
+    ifelse(
+        iszero(p.drivers.P_liq),
+        volumetric_internal_energy_liq(p.drivers.T, earth_param_set),
+        p.drivers.E_liq / p.drivers.P_liq,
+    ),
+)
 
 """
     compute_infiltration_fraction(infiltration::FT, influx::FT) where {FT}
