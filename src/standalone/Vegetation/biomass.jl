@@ -681,17 +681,18 @@ end
 
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
-- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio computed using the optimal values from the PModel, with the model's own unit cost ratios (`β_c3`, `β_c4`)
+- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio at the growing-season VPD (`compute_A0_and_χ`), from the PModel with the model's own unit cost ratios and cost of Jmax (`β_c3`, `β_c4`, `cstar`); `LAI_max` uses the ci/ca ratio of the growing-season temperature instead
 - `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
-- `L_opt`: Optimal LAI predicted by Zhou et al.
+- `L_opt`: steady-state LAI of Zhou et al. (2025), capped by `LAI_max`, toward which the prognostic `LAI` relaxes
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
 - `vpd_gs`: mean VPD of the moist growing season (Pa), for the water-limitation term of LAI_max (`moist_season_vpd`)
 - `f0`: fraction of precipitation available for transpiration (dimensionless), from the aridity index
 - `composition.tree, composition.c3_grass, composition.c4_grass`: shares of the canopy
   from the C3/C4 competition (dimensionless, summing to one); see
   `canopy_composition_from_competition`
-- `LAI_max`: seasonal maximum LAI (m^2 m^-2) of Zhou et al. (2025), which caps the
-  steady-state LAI and sets the stem and root area indices of `AreaIndexFromMaxLAI`
+- `LAI_max`: seasonal maximum LAI (m^2 m^-2) of Zhou et al. (2025), which sets and caps
+  the steady-state LAI, the leaf area trees retain and the stem and root area indices
+  of `AreaIndexFromMaxLAI`
 
 `GSL`, `vpd_gs`, `f0`, `composition` and `LAI_max` are derived in `update_biomass!`
 from the trailing totals in `Y`.
@@ -1035,14 +1036,6 @@ function ClimaLand.make_compute_exp_tendency(
     )
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
-        tree = leaf_cost_tree_share(component.tree_share, p)
-        z = @. lazy(
-            leaf_cost(tree, parameters.z_tree, parameters.z_grass) *
-            leaf_cost_scale(
-                Y.canopy.biomass.maintenance_days,
-                parameters.maintenance_share,
-            ),
-        )
         fractional_c3 = get_fractional_c3(p, canopy)
         # Supersaturated forcing gives a negative VPD.
         VPD = @. lazy(
@@ -1079,18 +1072,18 @@ function ClimaLand.make_compute_exp_tendency(
             p.canopy.biomass.vpd_gs,
         )
 
-        @. p.canopy.biomass.L_opt = compute_L_steady_target(
+        (; GSL, LAI_max) = p.canopy.biomass
+        @. p.canopy.biomass.L_opt = compute_steady_state_LAI(
             Y.canopy.biomass.A0_daily,
+            compute_m(
+                GSL,
+                LAI_max,
+                Y.canopy.biomass.A0_annual,
+                parameters.sigma,
+                parameters.k,
+            ),
             parameters.k,
-            Y.canopy.biomass.A0_annual,
-            z,
-            p.canopy.biomass.GSL,
-            parameters.sigma,
-            Y.canopy.biomass.precip_annual,
-            p.canopy.biomass.f0,
-            p.drivers.c_co2 * p.drivers.P,  # ca_pa: CO2 partial pressure (Pa)
-            p.canopy.biomass.OptVars.χ,
-            p.canopy.biomass.vpd_gs,
+            LAI_max,
         )
 
         @. dY.canopy.biomass.A0_daily = apply_time_reduction(

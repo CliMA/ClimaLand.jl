@@ -43,7 +43,7 @@ The ratio of leaf-internal to ambient CO₂, $\chi$, is the optimum of the P-mod
 \chi = \frac{\xi + \sqrt{D} \, \Gamma^* / c_a}{\xi + \sqrt{D}}, \qquad \xi = \sqrt{\frac{\beta \, (K + \Gamma^*)}{1.6 \, \eta^*}}
 ```
 
-with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the Michaelis-Menten coefficient of Rubisco $K$, and the viscosity of water relative to 25 °C, $\eta^*$ (see the [P-model](../photosynthesis/pmodel.md) page). The potential GPP and $\chi$ of the canopy blend those of pure C3 and pure C4 canopies with the C3 fraction $f_{\mathrm{C3}}$ of the canopy (see C3/C4 Competition): $A_0 = f_{\mathrm{C3}} A_{0,\mathrm{C3}} + (1 - f_{\mathrm{C3}}) A_{0,\mathrm{C4}}$. The potential GPP uses the current VPD, while the $\chi$ of the seasonal maximum LAI (below) is evaluated at the growing-season VPD.
+with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the Michaelis-Menten coefficient of Rubisco $K$, and the viscosity of water relative to 25 °C, $\eta^*$ (see the [P-model](../photosynthesis/pmodel.md) page). The potential GPP and $\chi$ of the canopy blend those of pure C3 and pure C4 canopies with the C3 fraction $f_{\mathrm{C3}}$ of the canopy (see C3/C4 Competition): $A_0 = f_{\mathrm{C3}} A_{0,\mathrm{C3}} + (1 - f_{\mathrm{C3}}) A_{0,\mathrm{C4}}$. The potential GPP uses the current air temperature and VPD, while the seasonal maximum LAI (below) uses the $\chi$ of the growing season.
 
 ### Parameters of the Potential GPP
 
@@ -72,7 +72,7 @@ with $\text{fAPAR}_{\max}$ clamped to [0, 1), and where we have:
 - the unit cost of building and maintaining leaves, $z$ (mol CO₂ m⁻² yr⁻¹), see Leaf Cost
 - the ambient CO₂ partial pressure, $c_a$ (Pa), the CO₂ mixing ratio times the air pressure (400 ppm at 101325 Pa ≈ 40.5 Pa)
 - the growing-season VPD, $D_{\mathrm{gs}}$ (Pa), see Growing-Season Climate
-- the ratio of leaf-internal to ambient CO₂, $\chi$, at the VPD $D_{\mathrm{gs}}$: at the current air temperature in the steady-state LAI, and at the mean air temperature of the growing season, $T_{\mathrm{gs}}$, in the $\text{LAI}_{\max}$ that sets the tree retention and the stem and root area indices
+- the ratio of leaf-internal to ambient CO₂ in the growing season, $\chi$, the optimum of the P-model at the mean air temperature of the growing season, $T_{\mathrm{gs}}$, and at the VPD $D_{\mathrm{gs}}$, blended between C3 and C4 plants like $A_0$: a seasonal value, like the growing-season mean of $\chi$ in pyrealm
 - the fraction of the precipitation available for transpiration, $f_0$
 
 The energy-limited fAPAR maximizes the net carbon profit of the canopy, $A_0 \, \text{fAPAR} - z \, \text{LAI}$ (Equations 7 to 10): leaves are added until the last one no longer gains more carbon than it costs, so a high leaf cost relative to the potential GPP reduces it. The water-limited fAPAR is the one at which the canopy transpires the fraction $f_0$ of the precipitation: transpiration, $1.6 \, G_s D$, and GPP, $G_s c_a (1 - \chi)$, share the stomatal conductance $G_s$ (Equations 4 and 5), so transpiring $f_0 P$ supports a GPP of $f_0 P \, c_a (1 - \chi) / (1.6 \, D)$.
@@ -150,7 +150,7 @@ LAI follows the seasonal optimum, so it falls to zero with the steady-state LAI 
 \text{LAI}_{\mathrm{canopy}} = \text{LAI} + f_{\mathrm{tree}} \max\left(f_r \, \text{LAI}_{\max} - \text{LAI},\ 0\right)
 ```
 
-where $\text{LAI}_{\max}$ is evaluated with the $\chi$ of the mean air temperature of the growing season. As for prescribed LAI, values of $\text{LAI}_{\mathrm{canopy}}$ below 0.05 are set to zero. The evergreen share of trees is not modelled: it depends on biogeography and history more than on climate (spruce in boreal Canada, larch in eastern Siberia), and a share predicted from climate did not improve LAI over a constant one.
+As for prescribed LAI, values of $\text{LAI}_{\mathrm{canopy}}$ below 0.05 are set to zero. The evergreen share of trees is not modelled: it depends on biogeography and history more than on climate (spruce in boreal Canada, larch in eastern Siberia), and a share predicted from climate did not improve LAI over a constant one.
 
 ## Stem and Root Area Indices
 
@@ -340,7 +340,6 @@ The fields are in `p.canopy.biomass`.
 | Seasonal maximum LAI | $\text{LAI}_{\max}$ | m² m⁻² | `LAI_max` | - |
 | Steady-state LAI | $L_s$ | m² m⁻² | `L_opt` | - |
 | Potential GPP of the canopy, and of pure C3 and C4 canopies | $A_0$, $A_{0,\mathrm{C3}}$, $A_{0,\mathrm{C4}}$ | mol CO₂ m⁻² s⁻¹ | `OptVars.A0`, `OptVars.A0_c3`, `OptVars.A0_c4` | - |
-| Ratio of leaf-internal to ambient CO₂ | $\chi$ | - | `OptVars.χ` | - |
 | Fraction of the precipitation available for transpiration | $f_0$ | - | `f0` | - |
 | Growing-season length | GSL | days | `GSL` | - |
 | Growing-season VPD | $D_{\mathrm{gs}}$ | Pa | `vpd_gs` | - |

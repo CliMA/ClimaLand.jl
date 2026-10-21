@@ -159,10 +159,9 @@ function emulate(
         Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, LAIPM.β_c3, PC) +
         (1 - fc3) *
         Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, LAIPM.β_c4, PC)
-    Lfloor =
-        cfg.ever_floor * tree * ever > 0 ?
-        cfg.ever_floor *
-        Canopy.compute_L_max(A0a, k, z, f.Pa, f0, ca, χgs, f.vpd_gs) : 0.0
+    Lmax = Canopy.compute_L_max(A0a, k, z, f.Pa, f0, ca, χgs, f.vpd_gs)
+    m_steady = Canopy.compute_m(f.gd, Lmax, A0a, cfg.sigma, k)
+    Lfloor = cfg.ever_floor * Lmax
     E = tree * ever
     A0d = A0a / 365;
     L = NaN
@@ -170,21 +169,8 @@ function emulate(
     cnt = zeros(Int, 12)
     for (pass, hs) in ((1, (nh - 60 * 24 + 1):nh), (2, 1:nh)), h in hs
         A0 = fc3 * c.A0c3[h] + (1 - fc3) * c.A0c4[h]
-        χ = fc3 * c.χc3[h] + (1 - fc3) * c.χc4[h]
         A0d = A0d * e3 + DAY * A0 * (1 - e3)
-        Lopt = Canopy.compute_L_steady_target(
-            A0d,
-            k,
-            A0a,
-            z,
-            f.gd,
-            cfg.sigma,
-            f.Pa,
-            f0,
-            ca,
-            χ,
-            f.vpd_gs,
-        )
+        Lopt = Canopy.compute_steady_state_LAI(A0d, m_steady, k, Lmax)
         isnan(L) && (L = Lopt)
         L = L * elai + Lopt * (1 - elai)
         if pass == 2

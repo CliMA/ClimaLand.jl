@@ -11,7 +11,9 @@ main
   share of the CLM surface data; `ZhouOptimalLAIModel`, which had a constant SAI of 0
   and RAI of 1, by default follows its own seasonal maximum LAI (`LAI_max`, now in
   the cache) and tree share (`AreaIndexFromMaxLAI`), and takes the canopy height of the
-  CLM surface data instead of a constant 1 m. New `sai` diagnostic.
+  CLM surface data instead of a constant 1 m. Its steady-state LAI is capped by the same
+  `LAI_max`, with the ci/ca ratio of the growing-season temperature rather than of the
+  current air temperature. New `sai` diagnostic.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its potential GPP and ci/ca
   ratio, and the per-pathway potential GPP of the C3/C4 competition, with its own P-model
@@ -55,7 +57,7 @@ main
   calibrated against MODIS LAI and the CLM tree share in an offline emulator of the model
   (`experiments/calibration/optimal_lai_emulator`). Nine time-integrated variables carry
   this climate. In the emulator, the annual-mean LAI RMSE falls from 0.82 to 0.73, the
-  global bias from −0.21 to −0.01, and the JJA LAI north of 30°N rises from 1.21 to 1.55
+  global bias from −0.21 to −0.04, and the JJA LAI north of 30°N rises from 1.21 to 1.47
   (MODIS 1.68).
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] A calibration configuration (`experiments/calibration/configs/lai_and_trees.jl`)

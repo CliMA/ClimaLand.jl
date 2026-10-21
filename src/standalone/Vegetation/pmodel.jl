@@ -1386,10 +1386,11 @@ This function computes the potential GPP assuming fAPAR = 1 (full light absorpti
 which represents the maximum carbon assimilation possible under given environmental
 conditions.
 
-`A0` responds to the instantaneous vapor pressure deficit, while `χ` is the
-growing-season value the water-limitation term of `LAI_max` calls for, and so is
-evaluated at the growing-season mean VPD `vpd_gs`. Both share the same optimal `ξ`,
-which depends on temperature and pressure only.
+`A0` responds to the instantaneous vapor pressure deficit, while `χ` is evaluated
+at the growing-season mean VPD `vpd_gs`. Both share the same optimal `ξ`, which
+depends on the current temperature and pressure only; the `LAI_max` of
+`ZhouOptimalLAIModel` uses the `χ` of the growing-season temperature instead
+(`optimal_chi`).
 
 # Arguments
 - `fractional_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)

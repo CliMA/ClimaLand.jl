@@ -507,8 +507,10 @@ end
 
 Compute the steady-state LAI target `L_steady` (Zhou et al. 2025 Eqs. 11-15) from
 the daily and annual potential GPP and the water-limitation inputs, without the
-Eq. 16 acclimation lag. The prognostic `LAI` relaxes toward this target in the
-biomass tendency, so the acclimation `alpha` is applied there rather than here.
+Eq. 16 acclimation lag: `compute_L_max`, `compute_m` and `compute_steady_state_LAI`
+in turn. `ZhouOptimalLAIModel` computes the same target from its cached `LAI_max`,
+and its prognostic `LAI` relaxes toward it, so the acclimation `alpha` is applied
+there rather than here.
 """
 function compute_L_steady_target(
     A0_daily::FT,
