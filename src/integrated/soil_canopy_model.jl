@@ -342,11 +342,11 @@ when the Canopy is run in standalone mode.
 """
 function lsm_radiant_energy_fluxes!(
     p,
-    land::SoilCanopyModel{FT},
-    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    land::SoilCanopyModel,
+    canopy_radiation::Canopy.AbstractRadiationModel,
     Y,
     t,
-) where {FT}
+)
     canopy = land.canopy
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
@@ -403,12 +403,7 @@ function lsm_radiant_energy_fluxes!(
         Y,
         p,
         t;
-        h_atmos = soil_forcing.h_atmos,
-        u_atmos = soil_forcing.u_atmos,
-        T_atmos = soil_forcing.T_atmos,
-        q_atmos = soil_forcing.q_atmos,
-        gustiness = soil_forcing.gustiness,
-        reference = soil_forcing.reference,
+        soil_forcing...,
     )
 
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)

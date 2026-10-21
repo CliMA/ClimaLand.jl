@@ -187,6 +187,12 @@ import ClimaParams
         t0 = FT(0.0)
         dY = similar(Y)
         set_initial_cache!(p, Y, t0)
+        # The vcmax25 diagnostic of the Farquhar model
+        Vcmax25_canopy = Base.materialize(
+            Canopy.get_Vcmax25_canopy(Y, p, canopy.photosynthesis, canopy),
+        )
+        @test Vcmax25_canopy isa ClimaCore.Fields.Field
+        @test all(x -> x >= 0, parent(Vcmax25_canopy))
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)

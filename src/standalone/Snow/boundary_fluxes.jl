@@ -155,29 +155,18 @@ end
 
 Return, as a `Val`, the names of the quantities of
 `ClimaLand.turbulent_fluxes_at_a_point` stored in `p.snow.turbulent_fluxes`:
-the energy and vapor fluxes and their temperature derivatives, the momentum
-and buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs),
+the energy and vapor fluxes, the momentum and buoyancy fluxes if
+`return_extra_fluxes` is `Val(true)` (coupled runs),
 the surface temperature `T_sfc` at which the fluxes are evaluated, and the
 similarity scales `ustar`, `ζ`, `Δz_eff` of the solve, which the screen-level
 diagnostics use.
 """
-snow_flux_names(::Val{false}) = Val((
-    :lhf,
-    :shf,
-    :vapor_flux,
-    :∂lhf∂T,
-    :∂shf∂T,
-    :T_sfc,
-    :ustar,
-    :ζ,
-    :Δz_eff,
-))
+snow_flux_names(::Val{false}) =
+    Val((:lhf, :shf, :vapor_flux, :T_sfc, :ustar, :ζ, :Δz_eff))
 snow_flux_names(::Val{true}) = Val((
     :lhf,
     :shf,
     :vapor_flux,
-    :∂lhf∂T,
-    :∂shf∂T,
     :ρτxz,
     :ρτyz,
     :buoyancy_flux,

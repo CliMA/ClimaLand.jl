@@ -180,7 +180,7 @@ function subcanopy_wind(
     return ifelse(
         speed > 0,
         (ground_speed / speed) * u,
-        typeof(u)(ground_speed, zero(ground_speed)),
+        StaticArrays.SVector(ground_speed, zero(ground_speed)),
     )
 end
 

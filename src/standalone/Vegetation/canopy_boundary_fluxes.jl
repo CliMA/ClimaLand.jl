@@ -250,6 +250,37 @@ not transpire, so this test uses the leaf area index alone. Called from
 leaves_present(LAI) = LAI >= MIN_CANOPY_AREA_INDEX
 
 """
+    zero_canopy_fluxes_without_plants(tf::NamedTuple, lai, sai)
+
+Return the canopy turbulent fluxes `tf` at a point with the fluxes of absent
+plants and leaves set to zero, as in
+[`zero_canopy_fluxes_without_plants!`](@ref), at leaf and stem area indices
+`lai` and `sai`.
+"""
+function zero_canopy_fluxes_without_plants(tf::NamedTuple, lai, sai)
+    has_plants = plants_present(lai, sai)
+    # A NaN flux is kept, so that the NaN check reports it
+    has_transpiration = leaves_present(lai) && !(tf.vapor_flux <= 0)
+    zero_plant(x) = ifelse(has_plants, x, zero(x))
+    zero_leaf(x) = ifelse(has_transpiration, x, zero(x))
+    base = (;
+        lhf = zero_leaf(tf.lhf),
+        shf = zero_plant(tf.shf),
+        vapor_flux = zero_leaf(tf.vapor_flux),
+        ∂lhf∂T = zero_leaf(tf.∂lhf∂T),
+        ∂shf∂T = zero_plant(tf.∂shf∂T),
+    )
+    extra =
+        hasproperty(tf, :ρτxz) ?
+        (;
+            ρτxz = zero_plant(tf.ρτxz),
+            ρτyz = zero_plant(tf.ρτyz),
+            buoyancy_flux = zero_plant(tf.buoyancy_flux),
+        ) : (;)
+    return merge(tf, base, extra)
+end
+
+"""
     zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
 
 Set the canopy sensible heat flux and its temperature derivative, momentum
@@ -268,57 +299,12 @@ update of the canopy energy model, so that the explicit and implicit
 fluxes agree.
 """
 function zero_canopy_fluxes_without_plants!(turbulent_fluxes, p)
-    zero_without_plants(X, lai, sai) =
-        ifelse(plants_present(lai, sai), X, zero(X))
-    zero_below_lai(X, vapor_flux, lai) =
-        ifelse(!leaves_present(lai) || vapor_flux <= 0, zero(X), X)
     area_index = p.canopy.biomass.area_index
-    @. turbulent_fluxes.shf = zero_without_plants(
-        turbulent_fluxes.shf,
+    @. turbulent_fluxes = zero_canopy_fluxes_without_plants(
+        turbulent_fluxes,
         area_index.leaf,
         area_index.stem,
     )
-    @. turbulent_fluxes.∂shf∂T = zero_without_plants(
-        turbulent_fluxes.∂shf∂T,
-        area_index.leaf,
-        area_index.stem,
-    )
-    @. turbulent_fluxes.∂lhf∂T = zero_below_lai(
-        turbulent_fluxes.∂lhf∂T,
-        turbulent_fluxes.vapor_flux,
-        area_index.leaf,
-    )
-    @. turbulent_fluxes.lhf = zero_below_lai(
-        turbulent_fluxes.lhf,
-        turbulent_fluxes.vapor_flux,
-        area_index.leaf,
-    )
-    @. turbulent_fluxes.vapor_flux = zero_below_lai(
-        turbulent_fluxes.vapor_flux,
-        turbulent_fluxes.vapor_flux,
-        area_index.leaf,
-    )
-    if hasproperty(turbulent_fluxes, :ρτxz)
-        @. turbulent_fluxes.ρτxz = zero_without_plants(
-            turbulent_fluxes.ρτxz,
-            area_index.leaf,
-            area_index.stem,
-        )
-    end
-    if hasproperty(turbulent_fluxes, :ρτyz)
-        @. turbulent_fluxes.ρτyz = zero_without_plants(
-            turbulent_fluxes.ρτyz,
-            area_index.leaf,
-            area_index.stem,
-        )
-    end
-    if hasproperty(turbulent_fluxes, :buoyancy_flux)
-        @. turbulent_fluxes.buoyancy_flux = zero_without_plants(
-            turbulent_fluxes.buoyancy_flux,
-            area_index.leaf,
-            area_index.stem,
-        )
-    end
     return nothing
 end
 
@@ -365,11 +351,7 @@ end
 a helper function which returns the displacement height for the canopy
 model.
 """
-function ClimaLand.surface_displacement_height(
-    model::CanopyModel{FT},
-    Y,
-    p,
-) where {FT}
+function ClimaLand.surface_displacement_height(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     return sfp.displ
 end
@@ -608,9 +590,47 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
 end
 
 """
+    canopy_flux_names(return_extra_fluxes::Val)
+
+Return, as a `Val`, the names of the quantities of
+`ClimaLand.turbulent_fluxes_at_a_point` stored in `p.canopy.turbulent_fluxes`:
+the energy and vapor fluxes and their temperature derivatives, the momentum
+and buoyancy fluxes if `return_extra_fluxes` is `Val(true)` (coupled runs),
+the canopy-air temperature `T_sfc` and specific humidity `q_sfc`, and the
+similarity scales `ustar`, `ζ`, `Δz_eff` of the solve.
+"""
+canopy_flux_names(::Val{false}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :T_sfc,
+    :q_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+canopy_flux_names(::Val{true}) = Val((
+    :lhf,
+    :shf,
+    :vapor_flux,
+    :∂lhf∂T,
+    :∂shf∂T,
+    :ρτxz,
+    :ρτyz,
+    :buoyancy_flux,
+    :T_sfc,
+    :q_sfc,
+    :ustar,
+    :ζ,
+    :Δz_eff,
+))
+
+"""
     boundary_vars(bc, ::ClimaLand.TopBoundary)
     boundary_var_domain_names(bc, ::ClimaLand.TopBoundary)
-    boundary_var_types(::AbstractCanopyEnergyModel, bc, ::ClimaLand.TopBoundary)
+    boundary_var_types(::CanopyModel, bc, ::ClimaLand.TopBoundary)
 
 Fallbacks for the boundary conditions methods which add the turbulent
 fluxes to the auxiliary variables.
@@ -618,23 +638,7 @@ fluxes to the auxiliary variables.
 boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
 boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
-    (
-        NamedTuple{
-            (
-                :lhf,
-                :shf,
-                :vapor_flux,
-                :∂lhf∂T,
-                :∂shf∂T,
-                :T_sfc,
-                :q_sfc,
-                :ustar,
-                :ζ,
-                :Δz_eff,
-            ),
-            NTuple{10, FT},
-        },
-    )
+    (ClimaLand.flux_tuple_type(canopy_flux_names(Val(false)), FT),)
 
 """
     boundary_var_types(
@@ -660,26 +664,7 @@ boundary_var_types(
     ::CanopyModel{FT},
     ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
     ::ClimaLand.TopBoundary,
-) where {FT} = (
-    NamedTuple{
-        (
-            :lhf,
-            :shf,
-            :vapor_flux,
-            :∂lhf∂T,
-            :∂shf∂T,
-            :ρτxz,
-            :ρτyz,
-            :buoyancy_flux,
-            :T_sfc,
-            :q_sfc,
-            :ustar,
-            :ζ,
-            :Δz_eff,
-        ),
-        NTuple{13, FT},
-    },
-)
+) where {FT} = (ClimaLand.flux_tuple_type(canopy_flux_names(Val(true)), FT),)
 """
     atmos_elevation_rel_ground(h_forcing, displ, z_0m, reference)
 

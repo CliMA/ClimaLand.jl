@@ -267,17 +267,27 @@ function ClimaLand.auxiliary_vars(::SlabLakeModel)
         :R_n,
     )
 end
-get_turb_fluxes_type(FT, ::AtmosDrivenLakeBC) = NamedTuple{
-    (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-    Tuple{FT, FT, FT, FT, FT},
-}
+get_turb_fluxes_type(FT, ::AtmosDrivenLakeBC) =
+    NamedTuple{(:lhf, :shf, :vapor_flux), Tuple{FT, FT, FT}}
 get_turb_fluxes_type(
     FT,
     ::AtmosDrivenLakeBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
 ) = NamedTuple{
-    (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T, :ρτxz, :ρτyz, :buoyancy_flux),
-    Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+    (:lhf, :shf, :vapor_flux, :ρτxz, :ρτyz, :buoyancy_flux),
+    Tuple{FT, FT, FT, FT, FT, FT},
 }
+
+"""
+    ClimaLand.get_∂T_sfc∂T_function(model::SlabLakeModel, Y, p)
+    ClimaLand.get_∂q_sfc∂T_function(model::SlabLakeModel, Y, p)
+
+Return `nothing`: `p.lake.turbulent_fluxes` stores no derivatives of the
+fluxes with respect to the lake temperature, so
+`ClimaLand.turbulent_fluxes_from_output` omits them and the surface density
+extrapolation they need.
+"""
+ClimaLand.get_∂T_sfc∂T_function(model::SlabLakeModel, Y, p) = nothing
+ClimaLand.get_∂q_sfc∂T_function(model::SlabLakeModel, Y, p) = nothing
 
 function ClimaLand.auxiliary_types(m::SlabLakeModel{FT}) where {FT}
     turb_fluxes_type = get_turb_fluxes_type(FT, m.boundary_conditions)

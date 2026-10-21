@@ -484,8 +484,8 @@ end
             FT(0.5), # atmos_h
             SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
             SurfaceFluxes.ReferenceAboveSurface(),
-            (args...) -> FT(1),
-            (args...) -> FT(0),
+            nothing, # update_∂T_sfc∂T
+            nothing, # update_∂q_sfc∂T
             earth_param_set,
         )
         F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
