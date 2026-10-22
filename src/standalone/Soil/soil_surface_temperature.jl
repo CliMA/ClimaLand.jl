@@ -27,6 +27,11 @@ temperature), T_sfc is capped at the depressed freezing temperature. The
 atmospheric fluxes at the cap then exceed the conduction, and the excess energy
 warms the top cell; its ice melts through the soil phase change once the cell
 reaches the freezing temperature, which also releases the cap.
+The same condition sets the phase of the surface for the whole solve: the
+saturation humidity, latent heat, and evaporation weight are those of ice over
+a frozen top cell and of liquid water otherwise (see `frozen_soil_surface`), so
+nothing switches as the skin temperature iterates across the freezing
+temperature and the energy balance keeps a root.
 Conduction between the soil and a snowpack or lake sediment is unaffected and
 uses the top cell temperature.
 =#
@@ -64,6 +69,25 @@ Called from `update_soil_surface_temperature!` and
 frozen_soil_vapor_weight(θ_i, ν) = (θ_i / ν)^4
 
 """
+    frozen_soil_surface(θ_i, T_top, Tf_depressed)
+
+Return whether the soil surface is frozen: the top cell contains ice
+(`θ_i > 0`) and is below the depressed freezing temperature `Tf_depressed`.
+The phase is decided once per skin temperature solve from the top cell, so the
+saturation humidity, latent heat, and evaporation weight of the surface hold
+while the skin temperature iterates, and the energy balance keeps a root when
+the skin crosses `Tf_depressed`. The same condition caps the skin temperature
+at `Tf_depressed` (see `update_soil_T_sfc_scheme`); a skin below
+`Tf_depressed` over an unfrozen cell evaporates liquid water, and sublimation
+draws only on ice that is present.
+
+Called from `update_soil_surface_temperature!`,
+`component_specific_humidity(::EnergyHydrology, Y, p)`, and
+`get_update_surface_humidity_function(::EnergyHydrology)`.
+"""
+frozen_soil_surface(θ_i, T_top, Tf_depressed) = θ_i > 0 && T_top < Tf_depressed
+
+"""
     soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
 
 Return the β factor [-] of the β approach to soil evaporation (Mahfouf and
@@ -82,13 +106,13 @@ function soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen::Bool)
 end
 
 """
-    soil_skin_state(T_sfc, inputs, thermo_params, param_set, ψ_sfc, Tf_depressed, earth_param_set) -> NamedTuple
+    soil_skin_state(T_sfc, inputs, thermo_params, param_set, ψ_sfc, frozen, earth_param_set) -> NamedTuple
 
-Return `(; ρ_sfc, qsat, ∂qsat∂T, frozen)`: the surface air density
-[kg/m³], extrapolated over the effective height with the current surface
-humidity guess of the solve, the saturation specific humidity at `T_sfc` adjusted for the soil
-water potential [kg/kg], its derivative with respect to temperature [1/K],
-and whether the surface is frozen.
+Return `(; ρ_sfc, qsat, ∂qsat∂T)`: the surface air density [kg/m³],
+extrapolated over the effective height with the current surface humidity guess
+of the solve, the saturation specific humidity at `T_sfc` [kg/kg], over ice
+for a `frozen` surface and over liquid water adjusted for the soil water
+potential otherwise, and its derivative with respect to temperature [1/K].
 
 Called from the SurfaceFluxes callbacks [`update_soil_T_sfc_scheme`](@ref) and
 [`update_soil_q_vap_sfc_scheme`](@ref).
@@ -99,7 +123,7 @@ function soil_skin_state(
     thermo_params,
     param_set,
     ψ_sfc,
-    Tf_depressed,
+    frozen::Bool,
     earth_param_set,
 )
     ρ_sfc = SurfaceFluxes.surface_density(
@@ -108,36 +132,26 @@ function soil_skin_state(
         T_sfc,
         inputs.q_vap_sfc_guess,
     )
-    qsat = soil_specific_humidity(
-        T_sfc,
-        ρ_sfc,
-        ψ_sfc,
-        Tf_depressed,
-        earth_param_set,
-    )
-    # At T_sfc = Tf_depressed (the cap below), qsat is over ice, so the surface
-    # is frozen there as well
-    frozen = T_sfc <= Tf_depressed
+    qsat = soil_specific_humidity(T_sfc, ρ_sfc, ψ_sfc, frozen, earth_param_set)
     LH =
         frozen ? Thermodynamics.latent_heat_sublim(thermo_params, T_sfc) :
         Thermodynamics.latent_heat_vapor(thermo_params, T_sfc)
     # The weak temperature dependence of the water potential factor is neglected
     ∂qsat∂T =
         Thermodynamics.∂q_vap_sat_∂T_from_L(thermo_params, qsat, LH, T_sfc)
-    return (; ρ_sfc, qsat, ∂qsat∂T, frozen)
+    return (; ρ_sfc, qsat, ∂qsat∂T)
 end
 
 """
     update_soil_T_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, u_star, z_0m, z_0b,
                              T_top, r, ϵ, σ, SW_n, LW_d, g_liq, β_ice, ψ_sfc, Tf_depressed,
-                             earth_param_set)
+                             frozen, earth_param_set)
 
 Return the Newton update of the soil skin temperature [K] from
 `ClimaLand.surface_temperature_newton_update`, with the layer below at `T_top`,
-capped at the depressed freezing temperature `Tf_depressed` when the top cell
-is frozen (contains ice, `β_ice > 0`, and `T_top < Tf_depressed`). Used as the
-`update_T` callback of `SurfaceFluxes.surface_fluxes`, which passes the first
-eight arguments.
+capped at the depressed freezing temperature `Tf_depressed` when the surface is
+`frozen` (see `frozen_soil_surface`). Used as the `update_T` callback of
+`SurfaceFluxes.surface_fluxes`, which passes the first eight arguments.
 
 # Arguments
 - `ζ`, `param_set`, `thermo_params`, `inputs`, `scheme`, `u_star`, `z_0m`,
@@ -151,6 +165,7 @@ eight arguments.
 - `g_liq`, `β_ice`, `ψ_sfc`, `Tf_depressed`: Dry-soil-layer vapor conductance
   [m/s], ice weight of the surface humidity [-], soil water potential [m], and
   depressed freezing temperature [K] at the surface.
+- `frozen`: Whether the surface is frozen (`frozen_soil_surface`).
 - `earth_param_set`: Land parameters.
 
 Called from [`solve_soil_surface_temperature_at_a_point`](@ref).
@@ -174,17 +189,18 @@ function update_soil_T_sfc_scheme(
     β_ice,
     ψ_sfc,
     Tf_depressed,
+    frozen,
     earth_param_set,
 )
     T_sfc = inputs.T_sfc_guess
     q_air = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
-    (; ρ_sfc, qsat, ∂qsat∂T, frozen) = soil_skin_state(
+    (; ρ_sfc, qsat, ∂qsat∂T) = soil_skin_state(
         T_sfc,
         inputs,
         thermo_params,
         param_set,
         ψ_sfc,
-        Tf_depressed,
+        frozen,
         earth_param_set,
     )
     g_h = SurfaceFluxes.heat_conductance(
@@ -197,10 +213,7 @@ function update_soil_T_sfc_scheme(
         scheme,
     )
     w = soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen)
-    # Keyed on T_top, so trace ice in a cell above the melting point does not
-    # pin the skin
-    frozen_top = β_ice > 0 && T_top < Tf_depressed
-    T_max = frozen_top ? Tf_depressed : oftype(T_sfc, Inf)
+    T_max = frozen ? Tf_depressed : oftype(T_sfc, Inf)
     return ClimaLand.surface_temperature_newton_update(
         inputs,
         param_set,
@@ -221,10 +234,11 @@ end
 
 """
     update_soil_q_vap_sfc_scheme(ζ, param_set, thermo_params, inputs, scheme, T_sfc, u_star,
-                                 z_0m, z_0b, g_liq, β_ice, ψ_sfc, Tf_depressed, earth_param_set)
+                                 z_0m, z_0b, g_liq, β_ice, ψ_sfc, frozen, earth_param_set)
 
 Return the surface specific humidity [kg/kg] of the soil at the skin
-temperature `T_sfc`. Used as the `update_q` callback of
+temperature `T_sfc`, over ice where the surface is `frozen`
+(`frozen_soil_surface`). Used as the `update_q` callback of
 `SurfaceFluxes.surface_fluxes` in the skin temperature solve, which passes the
 first nine arguments.
 
@@ -243,17 +257,17 @@ function update_soil_q_vap_sfc_scheme(
     g_liq,
     β_ice,
     ψ_sfc,
-    Tf_depressed,
+    frozen,
     earth_param_set,
 )
     q_air = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
-    (; qsat, frozen) = soil_skin_state(
+    (; qsat) = soil_skin_state(
         T_sfc,
         inputs,
         thermo_params,
         param_set,
         ψ_sfc,
-        Tf_depressed,
+        frozen,
         earth_param_set,
     )
     g_h = SurfaceFluxes.heat_conductance(
@@ -307,52 +321,28 @@ soil_flux_names(::Val{true}) = Val((
 
 
 """
-    soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
+    soil_turbulent_fluxes(stored::Val{names}, fluxes, frozen)
 
-Return the NamedTuple stored in `p.soil.turbulent_fluxes` from the NamedTuple
-`fluxes` of `ClimaLand.turbulent_fluxes_at_a_point` at the surface temperature
-`T_sfc` [K]: the vapor flux is attributed to liquid water evaporating above the
-depressed freezing temperature `Tf_depressed` [K] and to ice sublimating at
-and below it, the temperature derivatives are dropped, and `T_sfc`, the
-effective surface humidity `q_sfc` of the solve (which includes the dry soil
-layer resistance, see `soil_evaporation_beta`), and the similarity scales
-`ustar`, `ζ`, `Δz_eff` of the solve are appended after the momentum and
-buoyancy fluxes, if present.
+Return the NamedTuple stored in `p.soil.turbulent_fluxes`, with the fields
+`names` (`soil_flux_names`), from the NamedTuple `fluxes` of
+`ClimaLand.turbulent_fluxes_from_output`: the vapor flux is attributed to ice
+sublimating where the surface is `frozen` (`frozen_soil_surface`) and to
+liquid water evaporating otherwise. The surface humidity `q_sfc` of `fluxes`
+is the effective one of the solve, which includes the dry soil layer
+resistance (see `soil_evaporation_beta`).
 """
-function soil_turbulent_fluxes(fluxes, T_sfc, Tf_depressed)
-    is_liquid = ClimaLand.heaviside(T_sfc, Tf_depressed)
-    extra_fluxes = Base.structdiff(
-        fluxes,
-        NamedTuple{(
-            :lhf,
-            :shf,
-            :vapor_flux,
-            :∂lhf∂T,
-            :∂shf∂T,
-            :T_sfc,
-            :q_sfc,
-            :ustar,
-            :ζ,
-            :Δz_eff,
-        )},
+function soil_turbulent_fluxes(stored::Val, fluxes, frozen::Bool)
+    (; vapor_flux) = fluxes
+    split = (;
+        vapor_flux_liq = ifelse(frozen, zero(vapor_flux), vapor_flux),
+        vapor_flux_ice = ifelse(frozen, vapor_flux, zero(vapor_flux)),
     )
-    return (;
-        lhf = fluxes.lhf,
-        shf = fluxes.shf,
-        vapor_flux_liq = fluxes.vapor_flux * is_liquid,
-        vapor_flux_ice = fluxes.vapor_flux * (1 - is_liquid),
-        extra_fluxes...,
-        T_sfc,
-        q_sfc = fluxes.q_sfc,
-        ustar = fluxes.ustar,
-        ζ = fluxes.ζ,
-        Δz_eff = fluxes.Δz_eff,
-    )
+    return ClimaLand.select_fluxes(stored, merge(fluxes, split))
 end
 
 """
     solve_soil_surface_temperature_at_a_point(return_extra_fluxes, T_top, r, ϵ, SW_n, LW_d,
-                                              g_liq, β_ice, ψ_sfc, Tf_depressed, z_sfc, displ,
+                                              g_liq, β_ice, ψ_sfc, Tf_depressed, frozen, z_sfc, displ,
                                               P_atmos, T_atmos, q_atmos, u_atmos,
                                               roughness_model, atmos_h, gustiness, reference,
                                               update_∂T_sfc∂T, update_∂q_sfc∂T,
@@ -374,6 +364,9 @@ temperature with the turbulent fluxes at it.
 - `β_ice`: Ice fraction weighting the surface humidity when frozen [-].
 - `ψ_sfc`: Soil water potential at the surface [m].
 - `Tf_depressed`: Depressed freezing temperature at the surface [K].
+- `frozen`: Whether the surface is frozen (`frozen_soil_surface`), which
+  selects the phase of the surface humidity and the vapor flux and caps the
+  skin temperature at `Tf_depressed`.
 - `z_sfc`, `displ`: Surface elevation and displacement height [m].
 - `P_atmos`, `T_atmos`, `q_atmos`, `u_atmos`: Atmospheric pressure [Pa],
   temperature [K], specific humidity [kg/kg], and wind (a speed or a
@@ -403,6 +396,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
     β_ice,
     ψ_sfc,
     Tf_depressed,
+    frozen::Bool,
     z_sfc,
     displ,
     P_atmos,
@@ -431,6 +425,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
         β_ice,
         ψ_sfc,
         Tf_depressed,
+        frozen,
         earth_param_set,
     )
     update_q(args...) = update_soil_q_vap_sfc_scheme(
@@ -438,7 +433,7 @@ Called from [`update_soil_surface_temperature!`](@ref).
         g_liq,
         β_ice,
         ψ_sfc,
-        Tf_depressed,
+        frozen,
         earth_param_set,
     )
     z_0m = SurfaceFluxes.momentum_roughness(
@@ -456,13 +451,8 @@ Called from [`update_soil_surface_temperature!`](@ref).
         Δz_eff,
         T_top,
     )
-    q_sfc_guess = soil_specific_humidity(
-        T_top,
-        ρ_sfc,
-        ψ_sfc,
-        Tf_depressed,
-        earth_param_set,
-    )
+    q_sfc_guess =
+        soil_specific_humidity(T_top, ρ_sfc, ψ_sfc, frozen, earth_param_set)
     output = ClimaLand.surface_fluxes_at_a_point(
         T_top,
         q_sfc_guess,
@@ -496,7 +486,11 @@ Called from [`update_soil_surface_temperature!`](@ref).
         reference,
         earth_param_set,
     )
-    return soil_turbulent_fluxes(fluxes, output.T_sfc, Tf_depressed)
+    return soil_turbulent_fluxes(
+        soil_flux_names(return_extra_fluxes),
+        fluxes,
+        frozen,
+    )
 end
 
 """
@@ -626,6 +620,7 @@ function update_soil_surface_temperature!(
     displ = ClimaLand.surface_displacement_height(model, Y, p)
     r = @. lazy(Δz_top / κ_top)
     β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
+    frozen = @. lazy(frozen_soil_surface(θ_i_sfc, T_top, Tf_depressed_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))
     update_∂T_sfc∂T = ClimaLand.get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = ClimaLand.get_∂q_sfc∂T_function(model, Y, p)
@@ -640,6 +635,7 @@ function update_soil_surface_temperature!(
         β_ice,
         ψ_sfc,
         Tf_depressed_sfc,
+        frozen,
         z_sfc,
         displ,
         p.drivers.P,

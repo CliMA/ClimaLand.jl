@@ -111,6 +111,7 @@ ClimaLand.Soil.update_soil_surface_temperature!
 ClimaLand.Soil.soil_turbulent_fluxes
 ClimaLand.Soil.soil_evaporation_beta
 ClimaLand.Soil.frozen_soil_vapor_weight
+ClimaLand.Soil.frozen_soil_surface
 ClimaLand.Soil.soil_skin_state
 ClimaLand.Soil.update_soil_T_sfc_scheme
 ClimaLand.Soil.update_soil_q_vap_sfc_scheme

@@ -1023,6 +1023,9 @@ function ClimaLand.component_specific_humidity(
     T_sfc = component_temperature(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    T_top = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    frozen = @. lazy(frozen_soil_surface(θ_i_sfc, T_top, Tf_depressed_sfc))
     ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     z_sfc = ClimaLand.surface_elevation(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
@@ -1037,29 +1040,38 @@ function ClimaLand.component_specific_humidity(
             T_sfc,
         ),
     )
-    @. p.soil.q_sfc = soil_specific_humidity(
-        T_sfc,
-        ρ_sfc,
-        ψ_sfc,
-        Tf_depressed_sfc,
-        earth_param_set,
-    )
+    @. p.soil.q_sfc =
+        soil_specific_humidity(T_sfc, ρ_sfc, ψ_sfc, frozen, earth_param_set)
     return p.soil.q_sfc
 end
 
+"""
+    soil_specific_humidity(T_sfc, ρ_sfc, ψ_sfc, frozen, earth_param_set)
+
+Return the saturation specific humidity [kg/kg] of the soil surface at
+temperature `T_sfc` [K] and air density `ρ_sfc` [kg/m³]: over ice where the
+surface is `frozen` (`frozen_soil_surface`), and over liquid water, lowered by
+the soil water potential `ψ_sfc` [m] (Kelvin equation), otherwise.
+"""
 function soil_specific_humidity(
     T_sfc,
     ρ_sfc,
     ψ_sfc,
-    Tf_depressed_sfc,
+    frozen::Bool,
     earth_param_set,
 )
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     g = LP.grav(earth_param_set)
     R = LP.gas_constant(earth_param_set)
     M_w = LP.molar_mass_water(earth_param_set)
-    # Compute q_soil using ice or liquid as appropriate
-    if T_sfc > Tf_depressed_sfc # liquid water evaporation
+    if frozen
+        q_sfc = Thermodynamics.q_vap_saturation(
+            thermo_params,
+            T_sfc,
+            ρ_sfc,
+            Thermodynamics.Ice(),
+        )
+    else
         q_sfc =
             Thermodynamics.q_vap_saturation(
                 thermo_params,
@@ -1067,13 +1079,6 @@ function soil_specific_humidity(
                 ρ_sfc,
                 Thermodynamics.Liquid(),
             ) * exp(g * min(ψ_sfc, zero(ψ_sfc)) * M_w / (R * T_sfc))
-    else
-        q_sfc = Thermodynamics.q_vap_saturation(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Ice(),
-        )
     end
     return q_sfc
 end
@@ -1095,7 +1100,7 @@ function ClimaLand.get_update_surface_humidity_function(
         z_0b,
         g_liq,
         β_ice,
-        Tf_depressed,
+        frozen,
         qsat_sfc,
     )
         g_h = SurfaceFluxes.heat_conductance(
@@ -1108,8 +1113,6 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
         q_air = SurfaceFluxes.interior_vapor_specific_humidity(inputs)
-        # Sublimation; at T_sfc = Tf_depressed, qsat_sfc is over ice
-        frozen = inputs.T_sfc_guess <= Tf_depressed
         w = soil_evaporation_beta(q_air, qsat_sfc, g_liq, g_h, β_ice, frozen)
         return w * qsat_sfc + (1 - w) * q_air
     end
@@ -1117,23 +1120,19 @@ function ClimaLand.get_update_surface_humidity_function(
     qsat_sfc = p.soil.q_sfc
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
+    T_top = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     g_soil_sfc =
         soil_surface_vapor_conductance!(p.soil.sfc_scratch, model, Y, p)
-    update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
-        (args...) -> update_q_vap_sfc_at_a_point(
-            args...,
-            g_liq,
-            β_ice,
-            Tf_depressed,
-            qsat_sfc,
-        )
+    update_q_vap_sfc_field(g_liq, β_ice, frozen, qsat_sfc) =
+        (args...) ->
+            update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, frozen, qsat_sfc)
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,
             frozen_soil_vapor_weight(θ_i_sfc, ν_sfc),
-            Tf_depressed_sfc,
+            frozen_soil_surface(θ_i_sfc, T_top, Tf_depressed_sfc),
             qsat_sfc,
         ),
     )
