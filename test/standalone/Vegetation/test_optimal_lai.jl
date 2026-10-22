@@ -854,6 +854,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
         @testset "set_canopy_component_initial_conditions! from the spin-up state for FT = $FT" begin
             state_path = ClimaLand.Artifacts.optimal_lai_state_path()
+            start_date = DateTime(2008, 3, 1)
             # a forest in Missouri, where the state has data, and the ocean, where
             # the climatology is kept
             for (longlat, from_state) in
@@ -889,50 +890,56 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                         FT(1),
                         FT(0.0120107);
                         state_path = path,
+                        start_date,
                     )
                 Y = new_state()
                 set_ic!(Y, state_path)
                 Y_climatology = new_state()
                 set_ic!(Y_climatology, nothing)
-                # the nearest cell of the file
+                # the nearest cell of the file, on the start date
                 ds = NCDatasets.NCDataset(state_path)
                 i = argmin(abs.(ds["lon"][:] .- longlat[1]))
                 j = argmin(abs.(ds["lat"][:] .- longlat[2]))
-                for name in filter(
+                k = findfirst(==(start_date), ds["time"][:])
+                @test all(
                     name -> haskey(ds, String(name)),
                     Canopy.prognostic_vars(model),
                 )
+                for name in Canopy.prognostic_vars(model)
                     value = scalar(getproperty(Y.canopy.biomass, name))
-                    state = ds[String(name)][i, j]
-                    @test isfinite(value)
+                    state = ds[String(name)][i, j, k]
                     climatology =
                         scalar(getproperty(Y_climatology.canopy.biomass, name))
-                    @test (value == climatology) == !from_state
+                    @test isfinite(value)
                     @test isnan(state) == !from_state
-                    from_state && @test value ≈ state
+                    @test from_state ? value ≈ state : value == climatology
                 end
                 close(ds)
                 if from_state
-                    # PET is that of a humid climate, not the arid-branch seed
+                    # PET is that of a humid climate, not the arid-branch seed,
+                    # and the sums with a growing memory are six years old
                     @test scalar(Y.canopy.biomass.PET_annual) <
                           scalar(Y_climatology.canopy.biomass.PET_annual)
-                end
-                # the 30-day totals start from the annual ones, the yearly sums of
-                # the moist and warm seasons from zero
-                @test scalar(Y.canopy.biomass.water_30d) ≈
-                      scalar(Y.canopy.biomass.precip_annual) * 30 / 365
-                @test scalar(Y.canopy.biomass.PET_30d) ≈
-                      scalar(Y.canopy.biomass.PET_annual) * 30 / 365
-                for name in (
-                    :snow_store,
-                    :VPD_moist_annual,
-                    :moist_days,
-                    :degree_days,
-                    :warm_days,
-                    :maintenance_days,
-                    :age,
-                )
-                    @test scalar(getproperty(Y.canopy.biomass, name)) == 0
+                    @test scalar(Y.canopy.biomass.age) ≈
+                          Dates.value(start_date - DateTime(2002, 3, 1)) / 1000
+                else
+                    # the 30-day totals start from the annual ones, the yearly
+                    # sums of the moist and warm seasons from zero
+                    @test scalar(Y.canopy.biomass.water_30d) ≈
+                          scalar(Y.canopy.biomass.precip_annual) * 30 / 365
+                    @test scalar(Y.canopy.biomass.PET_30d) ≈
+                          scalar(Y.canopy.biomass.PET_annual) * 30 / 365
+                    for name in (
+                        :snow_store,
+                        :VPD_moist_annual,
+                        :moist_days,
+                        :degree_days,
+                        :warm_days,
+                        :maintenance_days,
+                        :age,
+                    )
+                        @test scalar(getproperty(Y.canopy.biomass, name)) == 0
+                    end
                 end
             end
         end

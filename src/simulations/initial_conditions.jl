@@ -482,7 +482,9 @@ end
         max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
         fractional_c3 = ClimaLand.Canopy.static_fractional_c3(canopy.photosynthesis),
         Mc = canopy.photosynthesis.constants.Mc;
-        state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
+        state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+            context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+        ),
         start_date = nothing,
     ) where {FT}
 
@@ -543,7 +545,9 @@ function set_canopy_component_initial_conditions!(
         canopy.photosynthesis,
     ),
     Mc = canopy.photosynthesis.constants.Mc;
-    state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
+    state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+        context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+    ),
     start_date = nothing,
 ) where {FT}
     ic = optimal_lai_initial_conditions(axes(Y.canopy.biomass.LAI), ic_path)
@@ -733,7 +737,9 @@ end
         ic_path,
         land::LandModel{FT};
         enforce_constraints = false,
-        optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
+        optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+            context = ClimaComms.context(ClimaLand.get_domain(land).space.surface),
+        ),
     ) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
@@ -763,7 +769,9 @@ function make_set_initial_state_from_file(
     ic_path,
     land::LandModel{FT};
     enforce_constraints = false,
-    optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(),
+    optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+        context = ClimaComms.context(ClimaLand.get_domain(land).space.surface),
+    ),
 ) where {FT}
     function set_land_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos

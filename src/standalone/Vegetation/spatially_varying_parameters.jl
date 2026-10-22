@@ -396,7 +396,9 @@ function clm_tree_share(
     interpolation_method = Interpolations.Constant(),
 )
     tree_share = SpaceVaryingInput(
-        Artifacts.clm_tree_share_path(),
+        Artifacts.clm_tree_share_path(;
+            context = ClimaComms.context(surface_space),
+        ),
         "tree_share",
         surface_space;
         regridder_type,

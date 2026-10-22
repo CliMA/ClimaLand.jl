@@ -709,8 +709,8 @@ const CROPLAND_THRESHOLD = 0.5
     get_clm_crop_fraction_var()
 
 The fraction of the land in the crop land unit of the CLM5 surface data for the year
-2000 (`PCT_CROP` on its 0.9°×1.25° grid; see
-`artifacts/clm_crop_fraction/create_clm_crop_fraction.jl`) as a static `OutputVar`,
+2000 (`PCT_CROP` on its 0.9°×1.25° grid; see the `optimal_lai_state_and_clm_maps`
+artifact of ClimaArtifacts) as a static `OutputVar`,
 NaN over ocean. Latitude is sorted ascending and longitude shifted to [-180, 180].
 """
 function get_clm_crop_fraction_var()
@@ -779,8 +779,8 @@ end
     get_clm_tree_share_obs_var()
 
 The tree share of the natural vegetation in the CLM surface data (the cover of the
-tree PFTs over that of all vegetated PFTs, on its 0.9°×1.25° grid; see
-`artifacts/clm_tree_share/create_clm_tree_share.jl`) as a static `OutputVar` keyed
+tree PFTs over that of all vegetated PFTs, on its 0.9°×1.25° grid; see the
+`optimal_lai_state_and_clm_maps` artifact of ClimaArtifacts) as a static `OutputVar` keyed
 `ftr`, NaN where there is no vegetation. It is a share of cover, which the model's
 share of productivity is compared with. Latitude is sorted ascending and longitude
 shifted to [-180, 180].

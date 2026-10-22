@@ -39,19 +39,25 @@ time, on a 1° lon-lat grid, NaN over ocean, with their date: `(; date, fields)`
 function optimal_lai_state_snapshot(simulation)
     model = simulation.model
     Y = simulation._integrator.u
+    space = axes(Y.canopy.biomass.LAI)
     remapper = ClimaCore.Remapping.Remapper(
-        axes(Y.canopy.biomass.LAI),
+        space,
         [
             ClimaCore.Geometry.LatLongPoint(φ, λ) for
             λ in OPTIMAL_LAI_STATE_LON, φ in OPTIMAL_LAI_STATE_LAT
         ],
     )
     remap(field) = Array(ClimaCore.Remapping.interpolate(remapper, field))
-    mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
-    land =
-        isnothing(mask) ?
-        trues(length(OPTIMAL_LAI_STATE_LON), length(OPTIMAL_LAI_STATE_LAT)) :
-        remap(mask) .> 0.5
+    mask = ClimaCore.Spaces.get_mask(space)
+    # A broadcast over a masked space leaves its ocean nodes unset, so the land cells
+    # come from the active nodes, copied into every node of a field.
+    land = if mask isa ClimaCore.DataLayouts.NoMask
+        trues(length(OPTIMAL_LAI_STATE_LON), length(OPTIMAL_LAI_STATE_LAT))
+    else
+        active = ClimaCore.Fields.zeros(space)
+        parent(active) .= parent(mask.is_active)
+        remap(active) .> 0.5
+    end
     fields = NamedTuple(
         name => Float32.(
             ifelse.(land, remap(getproperty(Y.canopy.biomass, name)), NaN),

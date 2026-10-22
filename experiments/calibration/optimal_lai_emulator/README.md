@@ -23,7 +23,7 @@ CLM_SURFDATA=/path/to/surfdata_0.9x1.25_16pfts__CMIP6_simyr2000_c170616.nc \
     julia --project=.buildkite -i experiments/calibration/optimal_lai_emulator/run.jl
 ```
 
-The surface data is the file that `artifacts/clm_tree_share/create_clm_tree_share.jl`
-downloads. With the defaults, the emulator gives an annual-mean LAI RMSE of 0.73, a
+The surface data is the file from which the `optimal_lai_state_and_clm_maps` artifact of
+ClimaArtifacts derives the CLM5 tree share and crop fraction. With the defaults, the emulator gives an annual-mean LAI RMSE of 0.73, a
 monthly RMSE of 0.85 and a bias of −0.04; with the same structure, global long runs have
 had RMSEs about 0.83 times those of the emulator.

@@ -276,49 +276,39 @@ function optimal_lai_initial_conditions_path(; context = nothing)
 end
 
 """
-    clm_tree_share_path()
+    clm_tree_share_path(; context = nothing)
 
 Return the path to the tree share of the natural vegetation in the CLM5 surface data
-for the year 2000 (0.9°×1.25°), NaN where there is no vegetation. This is a copy in
-the repository until it becomes a ClimaArtifacts artifact; see
-`artifacts/clm_tree_share/create_clm_tree_share.jl`.
+for the year 2000 (0.9°×1.25°), NaN where there is no vegetation.
 """
-clm_tree_share_path() = joinpath(
-    pkgdir(@__MODULE__),
-    "artifacts",
-    "clm_tree_share",
-    "clm_tree_share.nc",
-)
+function clm_tree_share_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "clm_tree_share.nc")
+end
 
 """
-    optimal_lai_state_path()
+    optimal_lai_state_path(; context = nothing)
 
-Return the path to the state of `ZhouOptimalLAIModel` on March 1 2008, the final state
-of its spin-up (`experiments/long_runs/optimal_lai_spinup.jl`, run in Buildkite build
-5071 of `climaland-long-runs`), on a 1° grid, NaN over ocean. This is a copy in the
-repository until it becomes a ClimaArtifacts artifact.
+Return the path to the states of `ZhouOptimalLAIModel` on the first day of each month
+of 2008, on a 1° grid, NaN over ocean: those of its spin-up
+(`experiments/long_runs/optimal_lai_spinup.jl`, run in Buildkite build 5127 of
+`climaland-long-runs`).
 """
-optimal_lai_state_path() = joinpath(
-    pkgdir(@__MODULE__),
-    "artifacts",
-    "optimal_lai_state",
-    "optimal_lai_state.nc",
-)
+function optimal_lai_state_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "optimal_lai_state.nc")
+end
 
 """
-    clm_crop_fraction_path()
+    clm_crop_fraction_path(; context = nothing)
 
 Return the path to the fraction of the land in the crop land unit of the CLM5 surface
-data for the year 2000 (0.9°×1.25°), NaN over ocean. This is a copy in the repository
-until it becomes a ClimaArtifacts artifact; see
-`artifacts/clm_crop_fraction/create_clm_crop_fraction.jl`.
+data for the year 2000 (0.9°×1.25°), NaN over ocean.
 """
-clm_crop_fraction_path() = joinpath(
-    pkgdir(@__MODULE__),
-    "artifacts",
-    "clm_crop_fraction",
-    "clm_crop_fraction.nc",
-)
+function clm_crop_fraction_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "clm_crop_fraction.nc")
+end
 
 
 """

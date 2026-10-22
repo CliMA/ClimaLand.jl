@@ -11,10 +11,8 @@ const ERA5_FILE = joinpath(
     "fd826542e6ab1758c8d5a2cc6dbf1f67b47aadee/era5_2008_1.0x1.0_lowres.nc",
 )
 const MODIS_DIR = joinpath(ART, "81d4bc1b22e94d66eec3d80a2d21b5dd5303bf8f")
-const REPO = pkgdir(ClimaLand)
-const TREE_FILE = joinpath(REPO, "artifacts/clm_tree_share/clm_tree_share.nc")
-const CROP_FILE =
-    joinpath(REPO, "artifacts/clm_crop_fraction/clm_crop_fraction.nc")
+const TREE_FILE = ClimaLand.Artifacts.clm_tree_share_path()
+const CROP_FILE = ClimaLand.Artifacts.clm_crop_fraction_path()
 const SURFDATA = get(ENV, "CLM_SURFDATA", joinpath(@__DIR__, "surfdata.nc"))
 
 const TOML = LP.create_toml_dict(FT)

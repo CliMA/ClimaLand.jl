@@ -79,9 +79,12 @@ main
   `CalibrateConfig` takes `prognostic_lai`.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
-  final state of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from
-  `experiments/long_runs/optimal_lai_spinup.jl`) where it has data, and from the
-  climatology of the `optimal_lai_inputs` artifact elsewhere. This removes the transient
+  states of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from
+  `experiments/long_runs/optimal_lai_spinup.jl`) where they have data, and from the
+  climatology of the `optimal_lai_inputs` artifact elsewhere. The states, and the CLM5
+  tree share and crop fraction (`Artifacts.clm_tree_share_path`,
+  `Artifacts.clm_crop_fraction_path`), are in the new `optimal_lai_state_and_clm_maps`
+  artifact. This removes the transient
   of the potential evaporation, whose seed was far too high where the climate is humid.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
