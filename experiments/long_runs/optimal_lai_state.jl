@@ -69,13 +69,11 @@ end
 
 """
     write_optimal_lai_state(path, snapshots)
-    write_optimal_lai_state(path, simulation)
 
 Write the states of `ZhouOptimalLAIModel` in `snapshots` (see
 `optimal_lai_state_snapshot`) to the NetCDF file `path`, on a (lon, lat) grid: one
 state, or several along a `time` dimension, e.g. the first day of each month of a
-calendar year, which runs start from at the day of the year of their start date. With
-a `simulation`, write its current state.
+calendar year, which runs start from at the day of the year of their start date.
 """
 function write_optimal_lai_state(path, snapshots::AbstractVector)
     names = keys(first(snapshots).fields)
@@ -127,6 +125,3 @@ function write_optimal_lai_state(path, snapshots::AbstractVector)
     end
     return nothing
 end
-
-write_optimal_lai_state(path, simulation) =
-    write_optimal_lai_state(path, [optimal_lai_state_snapshot(simulation)])

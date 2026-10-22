@@ -8,8 +8,8 @@
 # March 2008. The states of the first day of each month of 2008 are written to
 # `optimal_lai_spinup_<device>/optimal_lai_state.nc`; a run starts from the state of
 # the day of the year of its start date (`set_canopy_component_initial_conditions!`).
-# It takes about two and a half hours on a GPU, and runs in the optimal-LAI group of the
-# long runs, before the optimal-LAI long run.
+# It takes about two and a half hours on a GPU. Its output is the state of the
+# `optimal_lai_state_and_clm_maps` artifact, to recreate when the model changes.
 
 import ClimaComms
 ClimaComms.@import_required_backends

@@ -14,9 +14,9 @@ main
   of their start date, and replaces the climatological seed of every variable it holds.
   `set_canopy_component_initial_conditions!` takes the state file and the start date as
   the keywords `state_path` and `start_date`, and `make_set_initial_state_from_file` for
-  a `LandModel` takes an `optimal_lai_state_path`. On Buildkite, the optimal-LAI long run starts from the
-  monthly states of 2008 of a spin-up that runs before it (`optimal_lai_spinup.jl`,
-  a Buildkite artifact).
+  a `LandModel` takes an `optimal_lai_state_path`. The optimal-LAI long run starts from
+  the monthly states of 2008 of the spin-up (`optimal_lai_spinup.jl`) in the
+  `optimal_lai_state_and_clm_maps` artifact.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The stem and root area indices are proportional to the
   maximum LAI with factors that the tree share weights between trees and grasses, which
@@ -99,10 +99,9 @@ main
   CLM surface data are left out. The optimal-LAI long run plots it, and LAI moves out of
   `FlagshipCarbonMetrics`. Static
   observations are compared with every simulated month. `make_leaderboard_plots` takes a
-  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years, compares the
-  last, and saves its final optimal-LAI state (`optimal_lai_state.nc`).
-  `optimal_lai_spinup.jl` runs six years with a 1-year memory of the annual totals,
-  ending when the long runs start, and saves its final state to start them from.
+  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years and compares the
+  last. `optimal_lai_spinup.jl` runs six years with a 1-year memory of the annual
+  totals, and saves the monthly states of 2008 to start runs from.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
   with several components per point (such as the P-model acclimated capacities), which

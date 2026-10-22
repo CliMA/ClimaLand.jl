@@ -64,8 +64,8 @@ const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
 # natural vegetation of the CLM surface data instead.
 const CLM_TREE_SHARE = haskey(ENV, "CLM_TREE_SHARE") ? true : false
 # With prognostic LAI, the optimal-LAI model starts from its state in the file
-# `OPTIMAL_LAI_STATE` if set (on Buildkite, the output of `optimal_lai_spinup.jl`), and
-# otherwise from `ClimaLand.Artifacts.optimal_lai_state_path()`.
+# `OPTIMAL_LAI_STATE` if set, and otherwise from
+# `ClimaLand.Artifacts.optimal_lai_state_path()`.
 const OPTIMAL_LAI_STATE =
     get(ENV, "OPTIMAL_LAI_STATE", ClimaLand.Artifacts.optimal_lai_state_path())
 context = ClimaComms.context()
@@ -187,15 +187,6 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
-
-# The final optimal-LAI state, to start later runs from it
-if PROGNOSTIC_LAI
-    include("optimal_lai_state.jl")
-    write_optimal_lai_state(
-        joinpath(root_path, "optimal_lai_state.nc"),
-        simulation,
-    )
-end
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
