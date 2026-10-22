@@ -23,7 +23,12 @@ export LandModel
 A concrete type of land model used for simulating systems with
 soil, canopy, snow, soilco2, and optionally a slab lake.
 
-$(DocStringExtensions.FIELDS)
+# Fields
+- `soilco2`: The soil CO2 model (can be nothing)
+- `soil`: The soil model
+- `canopy`: The canopy model
+- `snow`: The snow model
+- `lake`: The lake model (can be nothing)
 """
 mutable struct LandModel{
     FT,
@@ -33,16 +38,11 @@ mutable struct LandModel{
     SnM <: Snow.SnowModel{FT},
     LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
 } <: AbstractLandModel{FT}
-    "The soil CO2 model (can be nothing)"
-    soilco2::MM
-    "The soil model"
-    soil::SM
-    "The canopy model"
-    canopy::VM
-    "The snow model"
-    snow::SnM
-    "The lake model (can be nothing)"
-    lake::LM
+    const soilco2::MM
+    const soil::SM
+    const canopy::VM
+    const snow::SnM
+    const lake::LM
     function LandModel{FT}(
         canopy::VM,
         snow::SnM,

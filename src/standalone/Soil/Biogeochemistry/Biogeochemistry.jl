@@ -160,20 +160,21 @@ abstract type AbstractSoilBiogeochemistryModel{FT} <:
 
 A model for simulating the production and transport of CO₂ and O₂ in the soil with dynamic
 source and diffusion terms.
-$(DocStringExtensions.FIELDS)
+
+# Fields
+- `parameters`: the parameter set
+- `domain`: the soil domain, using ClimaCore.Domains
+- `boundary_conditions`: the boundary conditions, of type NamedTuple
+- `sources`: A tuple of sources, each of type AbstractSource
+- `drivers`: Drivers
 """
 mutable struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
                AbstractSoilBiogeochemistryModel{FT}
-    "the parameter set"
-    parameters::PS
-    "the soil domain, using ClimaCore.Domains"
-    domain::D
-    "the boundary conditions, of type NamedTuple"
-    boundary_conditions::BC
-    "A tuple of sources, each of type AbstractSource"
-    sources::S
-    "Drivers"
-    drivers::DT
+    const parameters::PS
+    const domain::D
+    const boundary_conditions::BC
+    const sources::S
+    const drivers::DT
 end
 
 

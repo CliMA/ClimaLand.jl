@@ -165,17 +165,17 @@ end
 
 A slab lake model for inland water points.
 
-$(DocStringExtensions.FIELDS)
+# Fields
+- `parameters`: Lake parameters
+- `domain`: The lake domain (surface only)
+- `boundary_conditions`: Boundary conditions
+- `inland_water_mask`: Inland water mask on the surface space (fraction 0–1)
 """
 mutable struct SlabLakeModel{FT, PS, D, BC, M} <: AbstractInlandWaterModel{FT}
-    "Lake parameters"
-    parameters::PS
-    "The lake domain (surface only)"
-    domain::D
-    "Boundary conditions"
-    boundary_conditions::BC
-    "Inland water mask on the surface space (fraction 0–1)"
-    inland_water_mask::M
+    const parameters::PS
+    const domain::D
+    const boundary_conditions::BC
+    const inland_water_mask::M
 end
 
 """
