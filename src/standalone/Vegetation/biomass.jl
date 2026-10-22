@@ -681,7 +681,7 @@ end
 
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
-- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio at the growing-season VPD (`compute_A0_and_χ`), from the PModel with the model's own unit cost ratios and cost of Jmax (`β_c3`, `β_c4`, `cstar`); `LAI_max` uses the ci/ca ratio of the growing-season temperature instead
+- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio at the growing-season VPD (`compute_A0_and_χ`), from the parameters of the photosynthesis model (a `PModel`); `LAI_max` uses the ci/ca ratio of the growing-season temperature instead
 - `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
 - `L_opt`: steady-state LAI of Zhou et al. (2025), capped by `LAI_max`, toward which the prognostic `LAI` relaxes
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
@@ -850,10 +850,7 @@ function set_max_leaf_area_index!(
     canopy,
 ) where {FT}
     parameters = component.parameters
-    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
-        canopy.photosynthesis.parameters,
-        parameters,
-    )
+    pmodel_parameters = canopy.photosynthesis.parameters
     constants = canopy.photosynthesis.constants
     T_freeze = LP.T_freeze(canopy.earth_param_set)
     b = Y.canopy.biomass
@@ -866,7 +863,7 @@ function set_max_leaf_area_index!(
             p.drivers.P,
             p.drivers.c_co2,
             p.canopy.biomass.vpd_gs,
-            lai_pmodel_parameters.β_c3,
+            pmodel_parameters.β_c3,
             constants,
         ) +
         (1 - fractional_c3) * optimal_chi(
@@ -874,7 +871,7 @@ function set_max_leaf_area_index!(
             p.drivers.P,
             p.drivers.c_co2,
             p.canopy.biomass.vpd_gs,
-            lai_pmodel_parameters.β_c4,
+            pmodel_parameters.β_c4,
             constants,
         ),
     )
@@ -948,10 +945,7 @@ function update_composition!(
     canopy,
 ) where {FT}
     parameters = component.parameters
-    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
-        canopy.photosynthesis.parameters,
-        parameters,
-    )
+    pmodel_parameters = canopy.photosynthesis.parameters
     constants = canopy.photosynthesis.constants
     T_freeze = LP.T_freeze(canopy.earth_param_set)
     b = Y.canopy.biomass
@@ -963,7 +957,7 @@ function update_composition!(
             p.drivers.P,
             p.drivers.c_co2,
             p.canopy.biomass.vpd_gs,
-            lai_pmodel_parameters.β_c3,
+            pmodel_parameters.β_c3,
             constants,
         ),
     )
@@ -1030,10 +1024,7 @@ function ClimaLand.make_compute_exp_tendency(
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ϵ_sfc = canopy.radiative_transfer.parameters.ϵ_canopy
     parameters = component.parameters
-    lai_pmodel_parameters = optimal_lai_pmodel_parameters(
-        canopy.photosynthesis.parameters,
-        parameters,
-    )
+    pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
     function compute_exp_tendency!(dY, Y, p, t)
         fractional_c3 = get_fractional_c3(p, canopy)
@@ -1054,7 +1045,7 @@ function ClimaLand.make_compute_exp_tendency(
         # the f0·P/A0 term of LAI_max.
         @. p.canopy.biomass.OptVars = compute_A0_and_χ(
             fractional_c3,
-            lai_pmodel_parameters,
+            pmodel_parameters,
             pmodel_constants,
             earth_param_set,
             p.drivers.T,

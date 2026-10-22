@@ -2,10 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- ![][badge-🔥behavioralΔ] The unit cost ratios and cost of Jmax of the P-model for GPP
-  (`pmodel_β_c3`, `pmodel_β_c4`, `pmodel_cstar`) default to the values of Stocker et al.
-  (2020) and pyrealm, 146, 146/9 and 0.41, those of the optimal-LAI model, rather than
-  the 112, 1.76 and 0.463 calibrated in #1926.
+- ![][badge-🔥behavioralΔ] The unit cost ratios and cost of Jmax of the P-model
+  (`pmodel_β_c3`, `pmodel_β_c4`, `pmodel_cstar`) default to the default P-model values of
+  pyrealm, 146, 146/9 and 0.41, rather than the 112, 1.76 and 0.463 calibrated in #1926.
+  They set both GPP and the potential GPP of `ZhouOptimalLAIModel`, with which Zhou et al.
+  (2025) and the C3/C4 competition were fitted; the calibrated values favoured C4 in
+  tropical forests and lowered the potential GPP by 12–20%.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-✨feature] The initial state of `ZhouOptimalLAIModel` can hold the states of
   the first day of each month of a calendar year, which runs read at the day of the year
@@ -29,12 +31,7 @@ main
   `LAI_max`, with the ci/ca ratio of the growing-season temperature rather than of the
   current air temperature. New `sai` diagnostic.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
-- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its potential GPP and ci/ca
-  ratio, and the per-pathway potential GPP of the C3/C4 competition, with its own P-model
-  unit cost ratios and cost of Jmax (`optimal_lai_β_c3`, `optimal_lai_β_c4`,
-  `optimal_lai_cstar`: the pyrealm defaults Zhou et al. (2025) and the competition were
-  fitted with) rather than the calibrated ones used for GPP, which favoured C4 in
-  tropical forests and, with the c* of #1926, lowered the potential GPP by 12–20%. It also follows Zhou et al. (2025) for
+- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` follows Zhou et al. (2025) for
   the growing-season VPD, now the mean VPD while the air is above freezing rather than an
   A0-weighted mean, and for the PET of the aridity index behind `f0`, now the
   Priestley-Taylor PET of SPLASH rather than FAO-56. The unit cost of leaves `z` is
@@ -88,9 +85,8 @@ main
   of the potential evaporation, whose seed was far too high where the climate is humid.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
-  `optimal_lai_z_grass`, `optimal_lai_c3c4_β_c3`/`_c4` are renamed `optimal_lai_β_c3`/`_c4`,
-  the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is renamed `VPDgs_annual`,
-  `potential_evaporation` drops its humidity, wind and height arguments, and
+  `optimal_lai_z_grass`, the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is
+  renamed `VPDgs_annual`, `potential_evaporation` drops its humidity, wind and height arguments, and
   `ZhouOptimalLAIModel{FT}(parameters; ...)` requires a `tree_share`; the competition
   functions take the growing-season length.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)

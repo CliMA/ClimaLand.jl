@@ -118,7 +118,7 @@ function tree_lai_max(
     f0 = f0_curve(f.AI, cfg),
     zs = cost_scale(c, cfg),
 )
-    χ = Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, LAIPM.β_c3, PC)
+    χ = Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c3, PC)
     return Canopy.compute_L_max(
         f.A0c3a,
         LPAR.k,
@@ -156,9 +156,9 @@ function emulate(
     ca = C_CO2 * c.P
     χgs =
         fc3 *
-        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, LAIPM.β_c3, PC) +
+        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c3, PC) +
         (1 - fc3) *
-        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, LAIPM.β_c4, PC)
+        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c4, PC)
     Lmax = Canopy.compute_L_max(A0a, k, z, f.Pa, f0, ca, χgs, f.vpd_gs)
     m_steady = Canopy.compute_m(f.gd, Lmax, A0a, cfg.sigma, k)
     Lfloor = cfg.ever_floor * Lmax

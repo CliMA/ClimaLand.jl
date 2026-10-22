@@ -24,8 +24,8 @@ const PM = Canopy.PModel{FT}(
     TOML,
 )
 const PC = PM.constants
+const PMP = PM.parameters
 const LPAR = Canopy.OptimalLAIParameters{FT}(TOML)
-const LAIPM = Canopy.optimal_lai_pmodel_parameters(PM.parameters, LPAR)
 const ϵC = FT(TOML["canopy_emissivity"])
 const λγ = FT(TOML["wavelength_per_PAR_photon"])
 const THERMO = LP.thermodynamic_parameters(EARTH)
@@ -156,7 +156,7 @@ function point_climates(points)
         p3 = [
             Canopy.compute_A0_and_χ(
                 one(FT),
-                LAIPM,
+                PMP,
                 PC,
                 EARTH,
                 T[h],
@@ -171,7 +171,7 @@ function point_climates(points)
         p4 = [
             Canopy.compute_A0_and_χ(
                 zero(FT),
-                LAIPM,
+                PMP,
                 PC,
                 EARTH,
                 T[h],

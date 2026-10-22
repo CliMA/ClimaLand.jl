@@ -73,10 +73,10 @@ CLIM = point_climates(PTS)
 FEAT = [features(c) for c in CLIM]
 
 # ---- moist growing season: warm, and the 30-day water input ≥ PET/2 ----
-const C4P = LAIPM.β_c4
+const C4P = PMP.β_c4
 function with_vpd(c::PointClimate, f::Features, vpd)
     χ3 = [
-        Canopy.optimal_chi(c.T[h], c.P, C_CO2, vpd, LAIPM.β_c3, PC) for
+        Canopy.optimal_chi(c.T[h], c.P, C_CO2, vpd, PMP.β_c3, PC) for
         h in eachindex(c.T)
     ]
     χ4 = [

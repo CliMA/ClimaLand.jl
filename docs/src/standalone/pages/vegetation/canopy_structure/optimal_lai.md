@@ -47,7 +47,7 @@ with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the
 
 ### Parameters of the Potential GPP
 
-The potential GPP and $\chi$ use the unit cost ratios $\beta$ and the cost of electron transport $c^*$ of the optimal-LAI model (`optimal_lai_β_c3`, `optimal_lai_β_c4` and `optimal_lai_cstar`); the other P-model parameters, such as the quantum yield, are those of the photosynthesis model. The defaults, $\beta$ = 146 for C3 plants, 146/9 for C4 plants, and $c^*$ = 0.41, are those of pyrealm, with which Zhou et al. (2025) fitted their model and Lavergne et al. (2022) the C3/C4 competition, and also the defaults of the photosynthesis model (`pmodel_β_c3`, `pmodel_β_c4` and `pmodel_cstar`). These fits, and the LAI parameters calibrated here (see Climate Tree Share), hold for the potential GPP and $\chi$ that these values give. The two sets are not different plant traits: they are separate so that a calibration of the photosynthesis model against GPP and surface fluxes does not shift LAI and the C3/C4 balance, which have not been refitted to other values.
+The potential GPP and $\chi$ use the parameters of the photosynthesis model, among them the unit cost ratios $\beta$ and the cost of electron transport $c^*$ (`pmodel_β_c3`, `pmodel_β_c4` and `pmodel_cstar`). Their defaults, $\beta$ = 146 for C3 plants, 146/9 for C4 plants, and $c^*$ = 0.41, are the default P-model values of pyrealm, with which Zhou et al. (2025) fitted their model and Lavergne et al. (2022) the C3/C4 competition. These fits, and the LAI parameters calibrated here (see Climate Tree Share), hold for the potential GPP and $\chi$ that these values give, so a calibration of $\beta$ or $c^*$ against GPP and surface fluxes also shifts LAI and the C3/C4 balance.
 
 ### No Soil-Moisture Stress
 
@@ -296,8 +296,6 @@ The default values are in `toml/default_parameters.toml`.
 | Fraction of the precipitation available for transpiration at the energy–water transition | $f_{0,\max}$ | `optimal_lai_f0_max` | - | 0.65 |
 | Fraction of $\text{LAI}_{\max}$ that trees keep through the unfavourable season | $f_r$ | `optimal_lai_tree_retention` | - | 0.5 |
 | Smoothing timescale of the yearly running totals (2 years) | $\tau_{\mathrm{long}}$ | `optimal_lai_tau_long_term` | s | 6.3072 × 10⁷ |
-| Unit cost ratios of the potential GPP, C3 and C4 | $\beta$ | `optimal_lai_β_c3`, `optimal_lai_β_c4` | - | 146, 16.2 |
-| Cost of Jmax of the potential GPP | $c^*$ | `optimal_lai_cstar` | - | 0.41 |
 
 The stem and root area indices per unit of $\text{LAI}_{\max}$, shared with the prescribed-LAI biomass model:
 

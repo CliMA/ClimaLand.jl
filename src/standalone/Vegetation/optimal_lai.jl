@@ -54,14 +54,6 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     """Reference annual C3 GPP (kg C m^-2 yr^-1) normalizing the tree-cover relation:
     `tc(g)/tc(tc_gpp_ref)`, clamped to [0, 1], is the C3 tree proportion."""
     tc_gpp_ref::FT
-    """P-model unit cost ratio β of C3 plants (dimensionless) with which the model
-    computes its potential GPP and ci/ca ratio, independent of the β used for GPP."""
-    β_c3::FT
-    """The same unit cost ratio for C4 plants (dimensionless)."""
-    β_c4::FT
-    """P-model marginal cost of Jmax `c*` (dimensionless) with which the model computes
-    its potential GPP, independent of the `c*` used for GPP."""
-    cstar::FT
     """Intercept of the logistic of the climate tree share (dimensionless); see
     `climate_tree_share`."""
     tree_b0::FT
@@ -106,9 +98,6 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
         tc_b = FT(toml_dict["optimal_lai_tc_b"]),
         tc_c = FT(toml_dict["optimal_lai_tc_c"]),
         tc_gpp_ref = FT(toml_dict["optimal_lai_tc_gpp_ref"]),
-        β_c3 = FT(toml_dict["optimal_lai_β_c3"]),
-        β_c4 = FT(toml_dict["optimal_lai_β_c4"]),
-        cstar = FT(toml_dict["optimal_lai_cstar"]),
         tree_b0 = FT(toml_dict["optimal_lai_tree_b0"]),
         tree_b_lai = FT(toml_dict["optimal_lai_tree_b_lai"]),
         tree_b_dry = FT(toml_dict["optimal_lai_tree_b_dry"]),
@@ -564,29 +553,6 @@ above `f0_max` has no preimage and returns the peak `1.9`.
 function aridity_from_f0(f0::FT, f0_max::FT) where {FT}
     f0 = clamp(f0, eps(FT), f0_max)
     return FT(AI_PEAK) * exp(sqrt(log(f0_max / f0) / FT(AI_WIDTH)))
-end
-
-"""
-    optimal_lai_pmodel_parameters(pmodel_parameters, parameters::OptimalLAIParameters)
-
-The P-model parameters `pmodel_parameters` with the unit cost ratios β of C3 and C4
-plants and the cost of Jmax `c*` of the optimal-LAI model (`β_c3`, `β_c4`, `cstar`),
-with which it computes its potential GPP, ci/ca ratio and per-pathway potential GPP.
-"""
-function optimal_lai_pmodel_parameters(
-    pmodel_parameters,
-    parameters::OptimalLAIParameters,
-)
-    names = fieldnames(typeof(pmodel_parameters))
-    values = merge(
-        NamedTuple{names}(getfield.(Ref(pmodel_parameters), names)),
-        (;
-            β_c3 = parameters.β_c3,
-            β_c4 = parameters.β_c4,
-            cstar = parameters.cstar,
-        ),
-    )
-    return typeof(pmodel_parameters)(values...)
 end
 
 """

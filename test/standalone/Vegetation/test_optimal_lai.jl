@@ -44,24 +44,6 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             @test params.tc_c ≈ FT(-7.72)
             @test params.tc_gpp_ref ≈ FT(2.8)
 
-            # The model's own P-model unit cost ratios (pyrealm defaults)
-            @test params.β_c3 ≈ FT(146)
-            @test params.β_c4 ≈ FT(146 / 9) rtol = 1e-4
-            @test params.cstar ≈ FT(0.41)
-            pmodel = Canopy.PModel{FT}(
-                ClimaLand.Domains.Point(;
-                    z_sfc = FT(0),
-                    longlat = FT.((-60, -3)),
-                ),
-                toml_dict,
-            )
-            lai_pmodel =
-                Canopy.optimal_lai_pmodel_parameters(pmodel.parameters, params)
-            @test lai_pmodel.β_c3 == params.β_c3
-            @test lai_pmodel.β_c4 == params.β_c4
-            @test lai_pmodel.cstar == params.cstar
-            @test lai_pmodel.ϕ0_c3 == pmodel.parameters.ϕ0_c3
-
             # logistic of the climate tree share, and the canopy trees retain
             @test params.tree_b0 ≈ FT(-1.07)
             @test params.tree_b_lai ≈ FT(0.0254)
@@ -100,10 +82,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 ),
                 toml_dict,
             )
-            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
-            lai_pmodel =
-                Canopy.optimal_lai_pmodel_parameters(pmodel.parameters, params)
-            χ(T, vpd, β = lai_pmodel.β_c3) = Canopy.optimal_chi(
+            (; β_c3, β_c4) = pmodel.parameters
+            χ(T, vpd, β = β_c3) = Canopy.optimal_chi(
                 FT(T),
                 FT(101325),
                 FT(4.2e-4),
@@ -117,8 +97,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             @test χ(298, 2000) < χ(298, 1000) < χ(298, 500)
             # a larger cost ratio β keeps the stomata more open; C4 plants are
             # more conservative
-            @test χ(298, 1000) > χ(298, 1000, lai_pmodel.β_c3 / 2)
-            @test χ(298, 1000, lai_pmodel.β_c4) < χ(298, 1000)
+            @test χ(298, 1000) > χ(298, 1000, β_c3 / 2)
+            @test χ(298, 1000, β_c4) < χ(298, 1000)
         end
 
         @testset "moist_season_vpd for FT = $FT" begin
