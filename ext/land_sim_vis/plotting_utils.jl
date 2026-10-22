@@ -673,12 +673,12 @@ function compare_monthly_fluxes_with_data(
     stop_date,
     longlat;
     data_source = "ERA5",
-    plot_stem_name = "ERA5",
+    plot_stem_name = "ERA",
     spinup_date = start_date,
     short_names = ["lwu", "swu", "shf", "lhf"],
 )
     if data_source == "ERA5"
-        data_loader = ERA5DataLoader()
+        data_loader = EnergyWaterMetricsDataLoader()
     else
         @error(
             "compare_monthly_fluxes_with_data is currently only configured for ERA5 data."
@@ -772,7 +772,7 @@ function create_partitioning_plots(
     fractions = PARTITION_FRACTIONS,
     era5_to_clima_names = ERA5_PARTITION_TO_CLIMA_NAMES,
 )
-    data_loader = ERA5DataLoader(; era5_to_clima_names)
+    data_loader = EnergyWaterMetricsDataLoader(; era5_to_clima_names)
     available = [d.variable.short_name for d in diagnostics]
     source = site_source(diagnostics)
 
@@ -851,7 +851,7 @@ end
     _site_component(dates, values, units, short_name)
 
 Put a site diagnostic on the same footing as the gridded leaderboard: water
-fluxes in `mm / day`, the units the ERA5 loader reports them in, and
+fluxes in `mm / day`, the units the EnergyWater loader reports them in, and
 precipitation as a magnitude. Energy fluxes, and anything already in those
 units, pass through untouched.
 

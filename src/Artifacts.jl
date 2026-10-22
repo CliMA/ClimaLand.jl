@@ -110,6 +110,15 @@ function era5_land_forcing_data_forty_years_folder_path(; context = nothing)
 end
 
 """
+    grace_twsa_data(; context = nothing)
+
+Return the path to the net cdf file containing the TWSA computed from GRACE data. GRACE land are available at http://grace.jpl.nasa.gov, supported by the NASA MEaSUREs Program.
+"""
+function grace_twsa_data(; context = nothing)
+    joinpath(@clima_artifact("grace", context), "twsa_0.5x0.5.nc")
+end
+
+"""
     find_era5_year_paths(start_date, stop_date; context = nothing)
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on

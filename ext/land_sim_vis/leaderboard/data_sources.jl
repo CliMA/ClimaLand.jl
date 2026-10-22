@@ -75,8 +75,21 @@ function _preprocess_sim_var(var, ::Val{:hr})
 end
 
 """
-    _water_mass_flux_to_mm_per_day(var)
+    _convert_to_monthly(var)
+"""
+function _convert_to_monthly(var)
+    @assert ClimaAnalysis.units(var) == "kg m^-2 s^-1"
+    for (i, date) in enumerate(ClimaAnalysis.dates(var))
+        slice =
+            ClimaAnalysis.view_select(var; by = ClimaAnalysis.Index(), time = i)
+        slice.data .*= Dates.daysinmonth(date) * 86400
+    end
+    ClimaAnalysis.set_units!(var, "kg m-2")
+    return var
+end
 
+"""
+    _water_mass_flux_to_mm_per_day(var)
 Convert a simulation water mass flux (`kg m^-2 s^-1`) to `mm / day`.
 """
 _water_mass_flux_to_mm_per_day(var) =
@@ -116,9 +129,14 @@ end
 # magnitude.
 function _preprocess_sim_var(var, ::Val{:precip})
     var = _water_mass_flux_to_mm_per_day(var)
-    return ClimaAnalysis.remake(var; data = abs.(var.data))
+    replace!(val -> -val, var)
+    return var
 end
 
+function _preprocess_sim_var(var, ::Val{:twsa})
+    var = _convert_to_monthly(var)
+    return var
+end
 _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
@@ -175,11 +193,11 @@ function preprocess(
 end
 
 """
-    ERA5DataLoader
+    EnergyWaterMetricsDataLoader
 
-A struct for loading preprocessed ERA5 data as `OutputVar`s.
+A struct for loading preprocessed ENERGYWATER_DL data as `OutputVar`s.
 """
-struct ERA5DataLoader <: AbstractDataLoader
+struct EnergyWaterMetricsDataLoader <: AbstractDataLoader
     """A catalog built from NetCDF files, designed to initialize `OutputVar`s.
     See ClimaAnalysis documentation for more information about NCCatalog."""
     catalog::NCCatalog
@@ -200,7 +218,7 @@ const ERA5_TO_CLIMA_NAMES = [
 leaderboard needs; the default `era5_to_clima_names` of
 `compute_partitioning_leaderboard` and `create_partitioning_plots`.
 
-These are kept out of `ERA5_TO_CLIMA_NAMES` because the standard ERA5
+These are kept out of `ERA_TO_CLIMA_NAMES` because the standard ENERGYWATER_DL
 leaderboard draws a row per loaded variable the simulation also has, so adding
 them there would add rows to it.
 """
@@ -211,12 +229,17 @@ const ERA5_PARTITION_TO_CLIMA_NAMES = [
     "mer" => "et"
 ]
 
-const STANDARD_UNITS = Dict("W m**-2" => "W m^-2", "W m-2" => "W m^-2")
+const STANDARD_UNITS = Dict(
+    "W m**-2" => "W m^-2",
+    "W m-2" => "W m^-2",
+    "kg m-2" => "kg m^-2",
+    "kg/m2" => "kg m^-2",
+)
 
 """
-    ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
+    EnergyWaterMetricsDataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
 
-Construct a data loader that can be used to load preprocessed ERA5 monthly
+Construct a data loader that can be used to load preprocessed ENERGYWATER_DL monthly
 time-averaged data in `OutputVar`, where
 - the short name, sign of the data, and units match CliMA conventions
 - the latitudes are shifted to be -180 to 180 degrees,
@@ -224,37 +247,45 @@ time-averaged data in `OutputVar`, where
   January is on the first of January instead of January 15th),
 - units match the variables in the output of the CliMA diagnostics.
 
-The ERA5 data comes from the
+The ENERGYWATER_DL data comes from the
 `era5_monthly_averages_surface_single_level_1979_2024` artifact. See
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/era5_monthly_averages_single_level_1979_2024)
 for more information about this artifact.
 
-The keyword argument `era5_to_clima_names` is a vector of pairs mapping
+The keyword argument `ERA5_to_clima_names` is a vector of pairs mapping
 ERA5 name to CliMA name.
 """
-function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
+function EnergyWaterMetricsDataLoader(;
+    era5_to_clima_names = ERA5_TO_CLIMA_NAMES,
+    grace_to_clima_names = ["twsa" => "twsa"],
+)
     artifact_dir =
         @clima_artifact"era5_monthly_averages_surface_single_level_1979_2024"
     flux_file = joinpath(
         artifact_dir,
         "era5_monthly_averages_surface_single_level_197901-202410.nc",
     )
-
+    twsa_file = ClimaLand.Artifacts.grace_twsa_data()
     catalog = NCCatalog()
     ClimaAnalysis.add_file!(catalog, flux_file, era5_to_clima_names...)
-    return ERA5DataLoader(catalog, Set(last.(era5_to_clima_names)))
+    ClimaAnalysis.add_file!(catalog, twsa_file, grace_to_clima_names...)
+
+    return EnergyWaterMetricsDataLoader(
+        catalog,
+        Set([last.(era5_to_clima_names)..., last.(grace_to_clima_names)...]),
+    )
 end
 
 """
-    get(loader::ERA5DataLoader, short_name::String)
+    get(loader::EnergyWaterMetricsDataLoader, short_name::String)
 
-Get the preprocessed `OutputVar` with the name `short_name` from the ERA5
+Get the preprocessed `OutputVar` with the name `short_name` from the ENERGYWATER_DL
 dataset.
 """
-function Base.get(loader::ERA5DataLoader, short_name::String)
+function Base.get(loader::EnergyWaterMetricsDataLoader, short_name::String)
     (; catalog, available_vars) = loader
     short_name in available_vars || error(
-        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
+        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES or another name map, as a pair mapping ERA5/GRACE name to CliMA name and create a new EnergyWaterMetricsDataLoader",
     )
     var = get(catalog, short_name;)
     ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
@@ -262,22 +293,28 @@ function Base.get(loader::ERA5DataLoader, short_name::String)
 end
 
 """
-    preprocess(::ERA5DataLoader, var, ::Val{varname}) where {varname}
+    preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{varname}) where {varname}
 
 Preprocess `var` with short name `varname`.
 """
-preprocess(::ERA5DataLoader, var, ::Val{:shf}) =
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:shf}) =
     _preprocess_var(var; flip_sign = true)
-preprocess(::ERA5DataLoader, var, ::Val{:lhf}) =
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:lhf}) =
     _preprocess_var(var; flip_sign = true)
-preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
-preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
-preprocess(::ERA5DataLoader, var, ::Val{:sr}) =
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:lwu}) =
+    _preprocess_var(var)
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:swu}) =
+    _preprocess_var(var)
+function preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:twsa})
+    replace!(var, missing => NaN)
+    return _preprocess_var(var, flip_sign = true)
+end
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:sr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
-preprocess(::ERA5DataLoader, var, ::Val{:ssr}) =
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:ssr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
 # ERA5 evaporation is negative downward-positive; CliMA reports it positive.
-preprocess(::ERA5DataLoader, var, ::Val{:et}) =
+preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:et}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var); flip_sign = true)
 
 """
@@ -481,6 +518,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "lhf" => (-40.0, 40.0) .* factor,
         "swu" => (-50.0, 50.0) .* factor,
         "lai" => (-3.0, 3.0) .* factor,
+        "twsa" => (-200.0, 200.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -741,12 +779,12 @@ the MODIS LAI file load is skipped unless `lai` is requested).
 function get_calibration_obs_var_dict(; short_names = nothing)
     obs_var_dict = Dict{String, Any}()
     # ERA5 energy fluxes
-    era5_data_loader = ERA5DataLoader()
+    energywater_dl_data_loader = EnergyWaterMetricsDataLoader()
     # ILAMB GPP, ecosystem respiration (FLUXCOM reco), and NEE
     ilamb_data_loader = ILAMBDataLoader()
 
-    for short_name in available_vars(era5_data_loader)
-        obs_var_dict[short_name] = get(era5_data_loader, short_name)
+    for short_name in available_vars(energywater_dl_data_loader)
+        obs_var_dict[short_name] = get(energywater_dl_data_loader, short_name)
     end
 
     # Add more variables to obs_var_dict
