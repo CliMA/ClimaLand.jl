@@ -14,11 +14,13 @@ export default_diagnostics
                                 output_writer,
                                 start_date,
                                 short_names...;
+                                date_last = start_date,
                                 pre_output_hook! = nothing,
                                )
 
 For each variable specified in `short_names`, create a `ClimaDiagnostics.ScheduledDiagnostic`.
 Diagnostics are computed at every step, and output at the specified period with the provided reduction.
+The first output period starts at `date_last`.
 
 The type of `output_writer` determines where the output will be saved to.
 This must be a `ClimaDiagnostics.AbstractWriter` object: concrete options include
@@ -35,6 +37,7 @@ function common_diagnostics(
     start_date,
     short_names...;
     dt = nothing,
+    date_last = start_date,
     pre_output_hook! = nothing,
 )
     # Convert the provided period and reduction to the appropriate types
@@ -46,7 +49,7 @@ function common_diagnostics(
     return vcat(
         map(short_names) do short_name
             output_schedule_func =
-                EveryCalendarDtSchedule(period; start_date)
+                EveryCalendarDtSchedule(period; start_date, date_last)
             return ScheduledDiagnostic(
                 variable = get_diagnostic_variable(short_name),
                 compute_schedule_func = EveryStepSchedule(),
@@ -209,7 +212,8 @@ end
                         output_vars = :short,
                         reduction_period = :monthly,
                         reduction_type = :average,
-                        dt = nothing)
+                        dt = nothing,
+                        date_last = start_date)
 
 Construct a list of `ScheduledDiagnostics` that outputs the given variables at the specified average period.
 
@@ -226,6 +230,9 @@ Please see the method `get_possible_diagnostics` for the list of available diagn
 `reduction_type` specifies the type of reduction to apply.
 Please see the docstring of `get_period` for the list of available periods,
 and the docstring of `get_reduction` for the list of available reduction types.
+
+`start_date` is the date at `t = 0`, and the first output period starts at `date_last`. When
+restarting a simulation, set `date_last` to the date of the restart.
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
 Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
@@ -249,6 +256,7 @@ function default_diagnostics(
     reduction_period = :monthly,
     reduction_type = :average,
     dt = nothing,
+    date_last = start_date,
 ) where {FT}
     possible_diags = get_possible_diagnostics(model)
 
@@ -270,6 +278,7 @@ function default_diagnostics(
         start_date,
         diagnostics...;
         dt,
+        date_last,
         pre_output_hook! = nothing,
     )
 
@@ -288,6 +297,7 @@ end
         conservation = false,
         conservation_period = Day(10),
         dt = nothing,
+        date_last = start_date,
     ) where {FT}
 
 Define a method specific to the EnergyHydrology model so that we can
@@ -305,6 +315,9 @@ valid short names of diagnostics for the model.
 `reduction_type` specifies the type of reduction to apply.
 Please see the docstring of `get_period` for the list of available periods,
 and the docstring of `get_reduction` for the list of available reduction types.
+
+`start_date` is the date at `t = 0`, and the first output period starts at `date_last`. When
+restarting a simulation, set `date_last` to the date of the restart.
 
 Conservation diagnostics should not be provided as part of the `output_vars` argument,
 but rather included by providing `conservation = true`.
@@ -325,6 +338,7 @@ function default_diagnostics(
     conservation = false,
     conservation_period = Day(10),
     dt = nothing,
+    date_last = start_date,
 ) where {FT}
 
     possible_diags = get_possible_diagnostics(land_model)
@@ -347,6 +361,7 @@ function default_diagnostics(
         start_date,
         diagnostics...;
         dt,
+        date_last,
         pre_output_hook! = nothing,
     )
 
@@ -357,7 +372,11 @@ function default_diagnostics(
             map(additional_diags) do short_name
                 output_schedule_func =
                     conservation_period isa Period ?
-                    EveryCalendarDtSchedule(conservation_period; start_date) : EveryDtSchedule(conservation_period)
+                    EveryCalendarDtSchedule(
+                        conservation_period;
+                        start_date,
+                        date_last,
+                    ) : EveryDtSchedule(conservation_period)
                 return ScheduledDiagnostic(
                     variable = get_diagnostic_variable(short_name),
                     compute_schedule_func = EveryStepSchedule(),

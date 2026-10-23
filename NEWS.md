@@ -71,6 +71,8 @@ main
   a `spin_up_months` keyword. The optimal-LAI long run plots the new source, and runs for
   3 years, comparing the last.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] Diagnostics are reproducible when restarting a
+  simulation.
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
   P-model land model against seasonal ERA5 latent and sensible heat fluxes and
   upwelling longwave radiation, and GOSIF GPP (Dec 2003 - Nov 2019, prescribed
