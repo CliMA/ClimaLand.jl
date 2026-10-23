@@ -15,7 +15,8 @@ ClimaLand.Canopy.OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
 ## Methods
 
 ```@docs
-ClimaLand.Canopy.compute_A0_and_χ
+ClimaLand.Canopy.compute_A0
+ClimaLand.Canopy.potential_gpp_transpiration
 ClimaLand.Canopy.compute_L_steady_target
 ClimaLand.Canopy.compute_L_max
 ClimaLand.Canopy.compute_m

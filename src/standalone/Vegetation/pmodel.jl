@@ -3,7 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     compute_optimal_capacities,
-    compute_A0_and_χ
+    compute_A0
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -228,7 +228,7 @@ struct PModel{
     parameters::OPFT
     "Constants for the P-model"
     constants::OPCT
-    "C3 fraction of the canopy (1 = C3, 0 = C4), constant in time; with `ZhouOptimalLAIModel` it only seeds the initial composition (see `get_fractional_c3`)"
+    "C3 fraction of the canopy (1 = C3, 0 = C4), constant in time: the weight of the fluxes (GPP, SIF, stomatal conductance) of a pure C3 canopy, blended with those of a pure C4 canopy of the same LAI, not a split of the LAI; with `ZhouOptimalLAIModel` it only seeds the initial composition (see `get_fractional_c3`)"
     fractional_c3::F
     "Time integrated prognostic vars"
     time_integrated_vars::T
@@ -1366,32 +1366,28 @@ function compute_LUE(ϕ0::FT, βm::FT, mprime::FT, Mc::FT) where {FT}
 end
 
 """
-    compute_A0_and_χ(
+    compute_A0(
         fractional_c3::FT,
         parameters::PModelParameters{FT},
         constants::PModelConstants{FT},
+        earth_param_set,
         T_air::FT,
         P_air::FT,
-        VPD::FT,
+        q_air::FT,
         ca::FT,
         PPFD::FT,
         βm::FT,
-        vpd_gs::FT,
     ) where {FT}
 
-Compute potential GPP (A0) and ci/ca ratio used in the optimal LAI model (Zhou et al. 2025).
+Compute the potential GPP (A0) used in the optimal LAI model (Zhou et al. 2025).
 
 This function computes the potential GPP assuming fAPAR = 1 (full light absorption),
 which represents the maximum carbon assimilation possible under given environmental
-conditions.
-
-`A0` responds to the instantaneous vapor pressure deficit, while `χ` is the
-growing-season value the water-limitation term of `LAI_max` calls for, and so is
-evaluated at the growing-season mean VPD `vpd_gs`. Both share the same optimal `ξ`,
-which depends on temperature and pressure only.
+conditions, at the instantaneous vapor pressure deficit.
 
 # Arguments
-- `fractional_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `fractional_c3::FT`: C3 fraction, the weight of the pure-C3 potential GPP in the blend
+  with the pure-C4 one (1 = all C3, 0 = all C4)
 - `parameters`: PModelParameters containing cstar, beta, etc.
 - `constants`: PModelConstants containing physical constants
 - `earth_param_set`: Additional physical constants
@@ -1401,14 +1397,13 @@ which depends on temperature and pressure only.
 - `ca::FT`: Ambient CO2 concentration (mol/mol)
 - `PPFD::FT`: Downwelling radiative flux in PAR band at the surface (moles photons/m^2/s)
 - `βm::FT`: Soil moisture stress factor (dimensionless, 0-1)
-- `vpd_gs::FT`: Growing-season mean vapor pressure deficit (Pa)
 
 # Returns
-- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), the
+- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), and the
   pure-C3 and pure-C4 potential GPP `A0_c3`/`A0_c4` that the C3/C4 competition
-  compares, and `χ = ci/ca` at the growing-season VPD (unitless)
+  compares
 """
-function compute_A0_and_χ(
+function compute_A0(
     fractional_c3::FT,
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
@@ -1419,7 +1414,6 @@ function compute_A0_and_χ(
     ca::FT,
     PPFD::FT,
     βm::FT,
-    vpd_gs::FT,
 ) where {FT}
     (; cstar, β_c3, β_c4) = parameters
     (;
@@ -1480,31 +1474,12 @@ function compute_A0_and_χ(
     LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mj_c3*L_c3, Mc)
     LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mj_c4*L_c4, Mc)
 
-    # χ = ci/ca at the growing-season VPD, as the LAI_max water limitation requires
-    ci_gs_c3 = intercellular_co2_pmodel(
-        ξ_opt_c3,
-        ca_pp,
-        Γstar,
-        vpd_gs,
-        vpd_ratio_min,
-        Γ_ratio_max,
-    )
-    ci_gs_c4 = intercellular_co2_pmodel(
-        ξ_opt_c4,
-        ca_pp,
-        Γstar,
-        vpd_gs,
-        vpd_ratio_min,
-        Γ_ratio_max,
-    )
-
     # Potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD); LUE is
     # in kg C per mol photon, so dividing by Mc returns it in mol C m^-2 s^-1.
     return (;
         A0 = PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3) / Mc,
         A0_c3 = PPFD * LUE_daily_c3 / Mc,
         A0_c4 = PPFD * LUE_daily_c4 / Mc,
-        χ = blend(ci_gs_c3, ci_gs_c4, fractional_c3) / ca_pp,
     )
 end
 

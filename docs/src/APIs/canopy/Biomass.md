@@ -23,6 +23,8 @@ ClimaLand.Canopy.PrescribedAreaIndices(
     SAI,
     RAI,
 )
+ClimaLand.Canopy.area_index_from_max_lai
+ClimaLand.Canopy.AreaIndexFromMaxLAI
 ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
 ClimaLand.Canopy.prescribed_climatological_lai_modis

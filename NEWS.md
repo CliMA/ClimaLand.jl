@@ -2,6 +2,122 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-💥breaking] The water limit of the seasonal maximum LAI of
+  `ZhouOptimalLAIModel` is the precipitation available for transpiration over the
+  transpiration of the potential GPP, which blends those of the C3 and C4 pathways, each
+  with its own ci/ca ratio, as the canopy blends their GPP and stomatal conductance,
+  rather than a ci/ca ratio blended with the C3 fraction. `compute_L_max` takes that
+  transpiration (`potential_gpp_transpiration`) in place of `ca_pa`, `chi` and `vpd_gs`,
+  and so does `compute_L_steady_target`; `compute_A0_and_χ`, whose χ was unused, is
+  replaced by `compute_A0`. LAI_max falls by about 4% where the water limit binds and C4
+  grasses grow; in the offline emulator, the LAI RMSE is unchanged.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The unit cost ratios and cost of Jmax of the P-model
+  (`pmodel_β_c3`, `pmodel_β_c4`, `pmodel_cstar`) default to the default P-model values of
+  pyrealm, 146, 146/9 and 0.41, rather than the 112, 1.76 and 0.463 calibrated in #1926.
+  They set both GPP and the potential GPP of `ZhouOptimalLAIModel`, with which Zhou et al.
+  (2025) and the C3/C4 competition were fitted; the calibrated values favoured C4 in
+  tropical forests and lowered the potential GPP by 12–20%.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] The initial state of `ZhouOptimalLAIModel` can hold the states of
+  the first day of each month of a calendar year, which runs read at the day of the year
+  of their start date, and replaces the climatological seed of every variable it holds.
+  `set_canopy_component_initial_conditions!` takes the state file and the start date as
+  the keywords `state_path` and `start_date`, and `make_set_initial_state_from_file` for
+  a `LandModel` takes an `optimal_lai_state_path`. The optimal-LAI long run starts from
+  the monthly states of 2008 of the spin-up (`optimal_lai_spinup.jl`) in the
+  `optimal_lai_state_and_clm_maps` artifact.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The stem and root area indices are proportional to the
+  maximum LAI with factors that the tree share weights between trees and grasses, which
+  have little stem area (no wood) but more root area per unit of leaf area:
+  `SAI_coeff_tree` (0.26), `SAI_coeff_grass` (0.05), `RAI_coeff_tree` (0.11) and
+  `RAI_coeff_grass` (0.34) replace `SAI_coeff` and `RAI_coeff`, keeping their land means
+  for prescribed LAI. Prescribed-LAI models weight the MODIS maximum LAI by the tree
+  share of the CLM surface data; `ZhouOptimalLAIModel`, which had a constant SAI of 0
+  and RAI of 1, by default follows its own seasonal maximum LAI (`LAI_max`, now in
+  the cache) and tree share (`AreaIndexFromMaxLAI`), and takes the canopy height of the
+  CLM surface data instead of a constant 1 m. Its steady-state LAI is capped by the same
+  `LAI_max`, with the ci/ca ratio of the growing-season temperature rather than of the
+  current air temperature. New `sai` diagnostic.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` follows Zhou et al. (2025) for
+  the growing-season VPD, now the mean VPD while the air is above freezing rather than an
+  A0-weighted mean, and for the PET of the aridity index behind `f0`, now the
+  Priestley-Taylor PET of SPLASH rather than FAO-56. The unit cost of leaves `z` is
+  averaged between trees (`optimal_lai_z_tree`, Zhou's 12.227) and grasses
+  (`optimal_lai_z_grass`, 100) with a prescribed tree share, by default that of the
+  natural vegetation in the CLM surface data. At 35 sites this halves the RMSE of annual
+  LAI against MODIS, raising tropical forests and lowering savannas and grasslands. The
+  realized C3 GPP from which the competition estimates tree cover includes the
+  soil-moisture stress `βm`, as the GPP the tree-cover relation was fitted to does, so
+  that water-limited savannas are not taken for forest, and is scaled to a year-long
+  growing season, so that boreal forests, whose annual GPP is low because their season
+  is short, are taken for forest.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] `ZhouOptimalLAIModel` computes its tree share from the simulated
+  climate by default (`tree_share = ClimateTreeShare()`) rather than from a map: a
+  logistic of the LAI_max of a tree canopy, the number of dry months of the growing
+  season and the growing-season temperature (`optimal_lai_tree_b0`, `_b_lai`, `_b_dry`,
+  `_b_temp`), which also sets the tree share of the C3/C4 competition. The tree share of
+  the natural vegetation in the CLM surface data remains an option
+  (`tree_share = clm_tree_share(surface_space)`, or `CLM_TREE_SHARE` for the optimal-LAI
+  long run). The prognostic-LAI `LandModel`
+  constructor takes its biomass model as a `biomass` keyword, e.g. a
+  `ZhouOptimalLAIModel` with such a tree share.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The water limit of `ZhouOptimalLAIModel` uses the VPD of the
+  moist growing season (above freezing, and the 30-day water input of rain and snowmelt at
+  least half the PET) rather than of the whole season above freezing, whose dry-season
+  VPD made the limit too tight in the seasonally dry tropics; in a land model with snow,
+  the water input is that of the soil, which includes the melt of the snowpack. Trees keep
+  half of their LAI_max through the unfavourable season (`optimal_lai_tree_retention`),
+  the evergreen and semi-evergreen part of their canopy, so winter LAI north of 30°N is
+  no longer zero. The maintenance share of the leaf cost
+  (`optimal_lai_maintenance_share`, with `optimal_lai_maintenance_q10`) scales with the
+  days and temperature above freezing, so leaves of short, cold seasons are cheaper,
+  which raises the boreal summer LAI. The leaf costs (`optimal_lai_z_tree` 9.92,
+  `optimal_lai_z_grass` 154), `optimal_lai_sigma` (1.09) and the climate tree share are
+  calibrated against MODIS LAI and the CLM tree share in an offline emulator of the model
+  (`experiments/calibration/optimal_lai_emulator`). Eight time-integrated variables carry
+  this climate. In the emulator, the annual-mean LAI RMSE falls from 0.82 to 0.73, the
+  global bias from −0.21 to −0.04, and the JJA LAI north of 30°N rises from 1.21 to 1.47
+  (MODIS 1.68).
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] A calibration configuration (`experiments/calibration/configs/lai_and_trees.jl`)
+  calibrates the optimal-LAI model against MODIS LAI and the CLM tree share (`ftr`, a new
+  calibration target), over natural vegetation as in the vegetation leaderboard;
+  `CalibrateConfig` takes `prognostic_lai`.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] The initial conditions of `ZhouOptimalLAIModel` come from the
+  states of a spin-up of the model (`Artifacts.optimal_lai_state_path`, from
+  `experiments/long_runs/optimal_lai_spinup.jl`) where they have data, and from the
+  climatology of the `optimal_lai_inputs` artifact elsewhere. The states, and the CLM5
+  tree share and crop fraction (`Artifacts.clm_tree_share_path`,
+  `Artifacts.clm_crop_fraction_path`), are in the new `optimal_lai_state_and_clm_maps`
+  artifact. This removes the transient
+  of the potential evaporation, whose seed was far too high where the climate is humid.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-💥breaking] `optimal_lai_z` is replaced by `optimal_lai_z_tree` and
+  `optimal_lai_z_grass`, the prognostic `VPDA0_annual` of `ZhouOptimalLAIModel` is
+  renamed `VPDgs_annual`, `potential_evaporation` drops its humidity, wind and height arguments, and
+  `ZhouOptimalLAIModel{FT}(parameters; ...)` requires a `tree_share`; the competition
+  functions take the growing-season length.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-✨feature] A `FlagshipVegetationMetrics` leaderboard source compares LAI with
+  MODIS, and the C3 fraction and the tree share with static maps of the CLM surface data,
+  over natural vegetation: cells where cropland covers more than 50% of the land in the
+  CLM surface data are left out. The optimal-LAI long run plots it, and LAI moves out of
+  `FlagshipCarbonMetrics`. Static
+  observations are compared with every simulated month. `make_leaderboard_plots` takes a
+  `spin_up_months` keyword; the optimal-LAI long run runs for 3 years and compares the
+  last. `optimal_lai_spinup.jl` runs six years with a 1-year memory of the annual
+  totals, and saves the monthly states of 2008 to start runs from.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🐛bugfix] The masked NaN check no longer crashes on CPU for state variables
+  with several components per point (such as the P-model acclimated capacities), which
+  stopped CPU global runs at their first NaN check.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
   P-model land model against seasonal ERA5 latent and sensible heat fluxes and
   upwelling longwave radiation, and GOSIF GPP (Dec 2003 - Nov 2019, prescribed

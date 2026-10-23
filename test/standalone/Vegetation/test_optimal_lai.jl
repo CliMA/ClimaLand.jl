@@ -1,4 +1,5 @@
 using Test
+using Dates
 using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -7,6 +8,8 @@ using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
 using ClimaCore
+import NCDatasets
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 @testset "Optimal LAI Model Tests" begin
     for FT in (Float32, Float64)
@@ -17,16 +20,18 @@ using ClimaCore
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
 
             @test params.k isa FT
-            @test params.z isa FT
+            @test params.z_tree isa FT
+            @test params.z_grass isa FT
             @test params.sigma isa FT
             @test params.alpha isa FT
             @test params.tau_long_term isa FT
 
-            # Check expected values from default_parameters.toml (calibrated
-            # against MODIS LAI)
+            # Check expected values from default_parameters.toml, calibrated against
+            # MODIS LAI
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(29.2)
-            @test params.sigma ≈ FT(1.01)
+            @test params.z_tree ≈ FT(9.92)
+            @test params.z_grass ≈ FT(154)
+            @test params.sigma ≈ FT(1.09)
             @test params.alpha ≈ FT(0.202)  # ~15 days of memory
             @test params.f0_max ≈ FT(0.65)
             @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
@@ -39,7 +44,166 @@ using ClimaCore
             @test params.tc_c ≈ FT(-7.72)
             @test params.tc_gpp_ref ≈ FT(2.8)
 
+            # logistic of the climate tree share, and the canopy trees retain
+            @test params.tree_b0 ≈ FT(-1.07)
+            @test params.tree_b_lai ≈ FT(0.0254)
+            @test params.tree_b_dry ≈ FT(-0.372)
+            @test params.tree_b_temp ≈ FT(0.0917)
+            @test params.tree_retention ≈ FT(0.5)
+            # season-scaled leaf cost
+            @test params.maintenance_share ≈ FT(0.43)
+            @test params.maintenance_q10 ≈ FT(2)
+
             @test eltype(params) == FT
+        end
+
+        @testset "climate_tree_share for FT = $FT" begin
+            params = Canopy.OptimalLAIParameters{FT}(toml_dict)
+            # a humid tropical forest, a desert, a boreal forest
+            forest = Canopy.climate_tree_share(FT(5.8), FT(0), FT(23), params)
+            desert = Canopy.climate_tree_share(FT(0), FT(12), FT(28), params)
+            boreal = Canopy.climate_tree_share(FT(3.5), FT(0), FT(9), params)
+            @test forest isa FT
+            @test forest > FT(0.7)
+            @test desert < FT(0.1)
+            @test FT(0) < desert < boreal < forest < FT(1)
+            # a longer dry season favours grasses
+            @test Canopy.climate_tree_share(FT(3), FT(6), FT(20), params) <
+                  Canopy.climate_tree_share(FT(3), FT(2), FT(20), params)
+            @test Canopy.climate_tree_share(FT(0), FT(0), FT(0), params) ≈
+                  1 / (1 + exp(-params.tree_b0))
+        end
+
+        @testset "optimal_chi for FT = $FT" begin
+            pmodel = Canopy.PModel{FT}(
+                ClimaLand.Domains.Point(;
+                    z_sfc = FT(0),
+                    longlat = FT.((-60, -3)),
+                ),
+                toml_dict,
+            )
+            (; β_c3, β_c4) = pmodel.parameters
+            χ(T, vpd, β = β_c3) = Canopy.optimal_chi(
+                FT(T),
+                FT(101325),
+                FT(4.2e-4),
+                FT(vpd),
+                β,
+                pmodel.constants,
+            )
+            @test χ(298, 1000) isa FT
+            @test FT(0) < χ(298, 1000) < FT(1)
+            # stomata close as the air dries
+            @test χ(298, 2000) < χ(298, 1000) < χ(298, 500)
+            # a larger cost ratio β keeps the stomata more open; C4 plants are
+            # more conservative
+            @test χ(298, 1000) > χ(298, 1000, β_c3 / 2)
+            @test χ(298, 1000, β_c4) < χ(298, 1000)
+        end
+
+        @testset "potential_gpp_transpiration for FT = $FT" begin
+            pmodel = Canopy.PModel{FT}(
+                ClimaLand.Domains.Point(;
+                    z_sfc = FT(0),
+                    longlat = FT.((-60, -3)),
+                ),
+                toml_dict,
+            )
+            (; β_c3, β_c4) = pmodel.parameters
+            T, P_air, ca, vpd = FT(298), FT(101325), FT(4.2e-4), FT(1500)
+            A0 = FT(300)  # mol CO2 m^-2 yr^-1
+            E0(β) = Canopy.potential_gpp_transpiration(
+                A0,
+                T,
+                P_air,
+                ca,
+                vpd,
+                β,
+                pmodel.constants,
+            )
+            # C4 plants transpire less per unit of GPP
+            @test E0(β_c4) < E0(β_c3)
+            # for one pathway, the water limit is that of Zhou et al. (2025), Eq. 11
+            χ3 = Canopy.optimal_chi(T, P_air, ca, vpd, β_c3, pmodel.constants)
+            k, z, precip, f0 = FT(0.5), FT(1), FT(50000), FT(0.3)
+            fAPAR_water =
+                f0 * precip / A0 * ca * P_air * (1 - χ3) / (FT(1.6) * vpd)
+            @test FT(0) < fAPAR_water < FT(1) - z / (k * A0)
+            @test Canopy.compute_L_max(A0, k, z, precip, f0, E0(β_c3)) ≈
+                  -log(1 - fAPAR_water) / k
+        end
+
+        @testset "ground_water_input for FT = $FT" begin
+            # without a snow model, all the precipitation, rain and snow
+            drivers = (; P_liq = FT(-2e-8), P_snow = FT(-1e-8))
+            water_input =
+                Canopy.ground_water_input((; drivers), Val((:canopy,)))
+            @test Base.materialize(water_input) ≈ FT(-3e-8)
+        end
+
+        @testset "moist_season_vpd for FT = $FT" begin
+            day = FT(86400)
+            vpd(moist_days) = Canopy.moist_season_vpd(
+                FT(500) * moist_days * day,
+                FT(moist_days),
+                FT(2000) * 300 * day,
+                FT(300),
+                day,
+            )
+            # the VPD of the moist season, once it lasts a month
+            @test vpd(200) ≈ 500
+            @test vpd(30) ≈ 500
+            # without a moist season, that of the whole growing season
+            @test vpd(0) ≈ 2000
+            @test vpd(0) > vpd(15) > vpd(30)
+        end
+
+        @testset "growing_running_sum_tendency for FT = $FT" begin
+            day = FT(86400)
+            reduction = ClimaLand.RunningSum(365 * day, 2 * 365 * day)
+            # integrate a constant rate from zero with explicit Euler, as the model does
+            X, age, Δt, f = FT(0), FT(0), FT(900), 1 / day
+            for _ in 1:(30 * 96)
+                X +=
+                    Δt *
+                    Canopy.growing_running_sum_tendency(f, X, age, reduction)
+                age += Δt
+            end
+            # after a month the total is already close to its 365-day steady state
+            @test X ≈ 365 rtol = 0.05
+            # once older than τ_long, it is a RunningSum
+            @test Canopy.growing_running_sum_tendency(
+                f,
+                FT(100),
+                FT(1e9),
+                reduction,
+            ) ≈ ClimaLand.apply_time_reduction(f, FT(100), reduction)
+        end
+
+        @testset "maintenance_rate and leaf_cost_scale for FT = $FT" begin
+            T_freeze = FT(273.15)
+            @test Canopy.maintenance_rate(T_freeze + 25, T_freeze, FT(2)) ≈ 1
+            @test Canopy.maintenance_rate(T_freeze + 15, T_freeze, FT(2)) ≈
+                  FT(0.5)
+            @test Canopy.maintenance_rate(T_freeze - 5, T_freeze, FT(2)) == 0
+            # a year-round 25 °C season keeps the full cost; shorter and colder
+            # seasons are cheaper, down to the construction share
+            m = FT(0.43)
+            @test Canopy.leaf_cost_scale(FT(365), m) ≈ 1
+            @test Canopy.leaf_cost_scale(FT(0), m) ≈ 1 - m
+            @test Canopy.leaf_cost_scale(FT(50), m) <
+                  Canopy.leaf_cost_scale(FT(200), m)
+        end
+
+        @testset "leaf_cost for FT = $FT" begin
+            z_tree, z_grass = FT(12), FT(100)
+            @test Canopy.leaf_cost(FT(1), z_tree, z_grass) ≈ z_tree
+            @test Canopy.leaf_cost(FT(0), z_tree, z_grass) ≈ z_grass
+            # geometric mean of the two costs at an even share
+            @test Canopy.leaf_cost(FT(0.5), z_tree, z_grass) ≈
+                  sqrt(z_tree * z_grass)
+            @test Canopy.leaf_cost(FT(0.8), z_tree, z_grass) <
+                  Canopy.leaf_cost(FT(0.2), z_tree, z_grass)
         end
 
         @testset "ZhouOptimalLAIModel construction for FT = $FT" begin
@@ -50,12 +214,14 @@ using ClimaCore
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
                 height = FT(10.0),
+                tree_share = FT(0.7),
             )
 
             @test model.parameters === params
             @test eltype(model) == FT
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
+            @test model.tree_share == FT(0.7)
 
             # Cache variables: the potential GPP and χ, the steady-state LAI target,
             # and the growing-season inputs derived from the totals in Y.
@@ -79,18 +245,112 @@ using ClimaCore
                 :A0_annual,
                 :precip_annual,
                 :PET_annual,
-                :VPDA0_annual,
+                :VPDgs_annual,
                 :growing_days,
                 :A0c3_annual,
                 :A0c4_annual,
                 :GPPc3_annual,
                 :LAI,
+                :water_30d,
+                :PET_30d,
+                :VPD_moist_annual,
+                :moist_days,
+                :degree_days,
+                :warm_days,
+                :maintenance_days,
+                :age,
             )
             @test Canopy.prognostic_vars(model) == optlai_prog
             @test Canopy.prognostic_types(model) ==
                   ntuple(_ -> FT, length(optlai_prog))
             @test Canopy.prognostic_domain_names(model) ==
                   ntuple(_ -> :surface, length(optlai_prog))
+
+            # A climate tree share uses the same climate totals
+            climate_tree = Canopy.ZhouOptimalLAIModel{FT}(
+                params;
+                SAI = FT(0.0),
+                RAI = FT(1.0),
+                rooting_depth = FT(1.0),
+                height = FT(10.0),
+                tree_share = Canopy.ClimateTreeShare(),
+            )
+            @test Canopy.prognostic_vars(climate_tree) == optlai_prog
+        end
+
+        @testset "Area indices from the maximum LAI for FT = $FT" begin
+            max_LAI = FT(4)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(1),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.8)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(0),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.2)
+            @test Canopy.area_index_from_max_lai(
+                max_LAI,
+                FT(0.5),
+                FT(0.2),
+                FT(0.05),
+            ) ≈ FT(0.5)
+
+            stem = Canopy.AreaIndexFromMaxLAI{FT}(toml_dict, "SAI")
+            @test stem.tree == toml_dict["SAI_coeff_tree"]
+            @test stem.grass == toml_dict["SAI_coeff_grass"]
+            # grasses have no wood, but more roots per unit of leaf area
+            @test stem.grass < stem.tree
+            root = Canopy.AreaIndexFromMaxLAI{FT}(toml_dict, "RAI")
+            @test root.grass > root.tree
+
+            area_index = zeros(FT, 3)
+            Canopy.set_area_index!(
+                area_index,
+                Canopy.AreaIndexFromMaxLAI{FT}(FT(0.2), FT(0.05)),
+                FT[1, 2, 4],
+                FT[1, 0, 0.5],
+            )
+            @test area_index ≈ FT[0.2, 0.1, 0.5]
+            Canopy.set_area_index!(area_index, FT(0.7), FT[1, 2, 4], FT(1))
+            @test all(area_index .== FT(0.7))
+
+            # By default, the optimal-LAI model's stems and roots follow its own
+            # maximum LAI, and its height is that of the CLM surface data
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            model = Canopy.ZhouOptimalLAIModel{FT}(domain, toml_dict)
+            @test model.SAI == stem
+            @test model.RAI == root
+            @test model.height isa ClimaCore.Fields.Field
+
+            # The prescribed-LAI model weights the same factors by the CLM tree share
+            LAI = TimeVaryingInput((t) -> FT(2))
+            biomass = Canopy.PrescribedBiomassModel{FT}(
+                domain,
+                LAI,
+                max_LAI,
+                toml_dict,
+            )
+            tree = Canopy.clm_tree_share(domain.space.surface)
+            scalar(x) = Array(parent(x))[1]
+            @test scalar(biomass.plant_area_index.SAI) ≈
+                  Canopy.area_index_from_max_lai(
+                max_LAI,
+                scalar(tree),
+                stem.tree,
+                stem.grass,
+            )
+            @test scalar(biomass.plant_area_index.RAI) ≈
+                  Canopy.area_index_from_max_lai(
+                max_LAI,
+                scalar(tree),
+                root.tree,
+                root.grass,
+            )
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -98,12 +358,10 @@ using ClimaCore
             Ao_annual = FT(100.0)   # mol m^-2 yr^-1
             k = FT(0.5)
             z = FT(12.227)
-            # Use high precip and low VPD to ensure energy-limited
+            # High precipitation and low transpiration: energy-limited
             precip_annual = FT(100000.0)  # mol H2O m^-2 yr^-1 (very high)
             f0 = FT(0.65)
-            ca_pa = FT(40.0)  # Pa
-            chi = FT(0.77)  # typical tropical value
-            vpd_gs = FT(1000.0)  # Pa
+            E0_annual = FT(2.0e4)  # mol H2O m^-2 yr^-1
 
             LAI_max = Canopy.compute_L_max(
                 Ao_annual,
@@ -111,9 +369,7 @@ using ClimaCore
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
 
             @test LAI_max isa FT
@@ -127,9 +383,7 @@ using ClimaCore
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
             LAI_low_gpp = Canopy.compute_L_max(
                 FT(50.0),
@@ -137,9 +391,7 @@ using ClimaCore
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
             @test LAI_high_gpp > LAI_low_gpp
 
@@ -234,6 +486,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 )
@@ -263,6 +516,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 )
@@ -281,6 +535,7 @@ using ClimaCore
                     a3,
                     a4,
                     a3 * fapar,
+                    FT(365),
                     Mc,
                     params,
                 ) ≈ c.tree + c.c3_grass
@@ -298,6 +553,12 @@ using ClimaCore
             # a sparser canopy lowers the tree share
             @test g(FT(150), FT(150), FT(0.4)).tree <
                   g(FT(150), FT(150), FT(0.9)).tree
+            # the same annual GPP over a shorter season, as in boreal forests,
+            # supports more trees
+            gppc3 = FT(70)  # ≈ 0.84 kg C m^-2 yr^-1
+            @test Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params) <
+                  FT(0.1) <
+                  Canopy.tree_share_from_gpp(gppc3, FT(150), Mc, params)
         end
 
         @testset "c4_advantage_for_c3_fraction for FT = $FT" begin
@@ -310,12 +571,13 @@ using ClimaCore
                 (FT(40), FT(0.3), FT(0.5)),
             )
                 gppc3 = a3 * fapar
-                tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+                tree = Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params)
                 adv = Canopy.c4_advantage_for_c3_fraction(fc3, tree, params)
                 @test Canopy.c3_fraction_from_competition(
                     a3,
                     a3 * (1 + adv),
                     gppc3,
+                    FT(365),
                     Mc,
                     params,
                 ) ≈ fc3 rtol = 1e-3
@@ -328,13 +590,14 @@ using ClimaCore
                       FT(100),
                       FT(0),
                       FT(0),
+                      FT(365),
                       Mc,
                       params,
                   ) <
                   FT(1)
             # More C4 than the open canopy allows saturates at the open canopy.
             gppc3 = FT(150) * FT(0.9)
-            tree = Canopy.tree_share_from_gpp(gppc3, Mc, params)
+            tree = Canopy.tree_share_from_gpp(gppc3, FT(365), Mc, params)
             @test FT(0) < tree < FT(1)
             adv = Canopy.c4_advantage_for_c3_fraction(FT(0), tree, params)
             @test isfinite(adv)
@@ -342,6 +605,7 @@ using ClimaCore
                 FT(150),
                 FT(150) * (1 + adv),
                 gppc3,
+                FT(365),
                 Mc,
                 params,
             ) ≈ tree atol = 1e-3
@@ -374,54 +638,37 @@ using ClimaCore
             λv = LP.LH_v0(earth_param_set)
             ϵ = FT(0.98)
             P = FT(101325)
-            # Daily-mean forcing for a temperate summer, the averaging FAO-56 ET0 is
-            # defined at.
-            pet(; SW = 220, LW = 330, T = 293.15, q = 0.008, u = 2, h = 2) =
+            pet(; SW = 220, LW = 330, T = 293.15) =
                 Canopy.potential_evaporation(
                     FT(SW),
                     FT(LW),
                     FT(T),
                     P,
-                    FT(q),
-                    FT(u),
-                    FT(h),
                     ϵ,
                     σ,
                     M_w,
                     thermo_params,
                 )
-
             mm_per_day(x) = x * M_w * FT(86400)
+            Rn_over_λ(; SW = 220, LW = 330, T = 293.15) =
+                ((1 - FT(0.17)) * FT(SW) + ϵ * (FT(LW) - σ * FT(T)^4)) /
+                (λv * M_w)
 
             @test pet() > FT(0)
             @test isfinite(pet())
-            # Reference ET0 in a temperate summer is a few mm/day.
+            # Daily-mean forcing of a temperate summer gives a few mm/day.
             @test FT(1) < mm_per_day(pet()) < FT(8)
 
-            # Drier air raises the aerodynamic demand.
-            @test pet(q = 0.002) > pet(q = 0.012)
+            # Priestley-Taylor: 1.26 Δ/(Δ+γ) of the net radiation, so above the
+            # equilibrium evaporation Δ/(Δ+γ)·Rn but below 1.26·Rn ...
+            @test pet() < FT(1.26) * Rn_over_λ()
+            @test pet() > FT(0.5) * Rn_over_λ()
+            # ... and a larger fraction of Rn in the warm, where Δ/(Δ+γ) is larger.
+            @test pet(T = 278.15) / Rn_over_λ(T = 278.15) <
+                  pet(T = 303.15) / Rn_over_λ(T = 303.15)
 
-            # Wind raises ET0 in dry air and lowers it near saturation, where it
-            # ventilates the surface toward air temperature.
-            @test pet(q = 0.002, u = 6) > pet(q = 0.002, u = 1)
-            @test pet(q = 0.014, u = 6) < pet(q = 0.014, u = 1)
-
-            # At night the radiative term goes negative while the aerodynamic term
-            # does not; ET0 is clipped at zero rather than Rn.
-            @test pet(SW = 0, LW = 50) == FT(0)
-
-            # In still air ET0 tends to the radiative limit Delta/(Delta+gamma)*Rn,
-            # below Rn and a smaller fraction of it in the cold.
-            still(T) = pet(T = T, u = 0)
-            Rn_over_λ(T) =
-                ((1 - FT(0.23)) * FT(220) + ϵ * (FT(330) - σ * T^4)) /
-                (λv * M_w)
-            @test still(FT(278.15)) < Rn_over_λ(FT(278.15))
-            @test still(FT(278.15)) / Rn_over_λ(FT(278.15)) <
-                  still(FT(303.15)) / Rn_over_λ(FT(303.15))
-
-            # A higher measurement height maps to a lower equivalent 2 m wind.
-            @test pet(q = 0.002, h = 10) < pet(q = 0.002, h = 2)
+            # Negative (night-time) net radiation does not count.
+            @test pet(SW = 0, LW = 250) == FT(0)
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
@@ -527,6 +774,7 @@ using ClimaCore
             k = model.parameters.k
             tree = Canopy.tree_share_from_gpp(
                 scalar(ic.A0_annual) * (1 - exp(-k * scalar(max_lai_field))),
+                scalar(ic.GSL),
                 Mc,
                 model.parameters,
             )
@@ -539,7 +787,8 @@ using ClimaCore
                 ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
                 max_lai_field,
                 fractional_c3,
-                Mc,
+                Mc;
+                state_path = nothing,
             )
             LAI = Array(parent(Y.canopy.biomass.LAI))[1]
             A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
@@ -560,7 +809,8 @@ using ClimaCore
             f0_max = model.parameters.f0_max
             @test Canopy.f0_from_aridity(PET_annual, precip_annual, f0_max) ≈
                   scalar(ic.f0) rtol = 1e-5
-            @test scalar(Y.canopy.biomass.VPDA0_annual) / A0_annual ≈
+            @test scalar(Y.canopy.biomass.VPDgs_annual) /
+                  (scalar(Y.canopy.biomass.growing_days) * FT(86400)) ≈
                   scalar(ic.vpd_gs) rtol = 1e-5
             @test scalar(Y.canopy.biomass.growing_days) ≈ scalar(ic.GSL)
             @test scalar(Y.canopy.biomass.A0c3_annual) ≈ A0_annual
@@ -575,6 +825,7 @@ using ClimaCore
                 scalar(Y.canopy.biomass.A0c3_annual),
                 scalar(Y.canopy.biomass.A0c4_annual),
                 GPPc3_annual,
+                scalar(Y.canopy.biomass.growing_days),
                 Mc,
                 model.parameters,
             ) ≈ fractional_c3 rtol = 1e-3
@@ -616,7 +867,8 @@ using ClimaCore
                     ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
                     Canopy.modis_max_lai(surface_space),
                     FT(1),
-                    FT(0.0120107),
+                    FT(0.0120107);
+                    state_path = nothing,
                 )
                 for var in Canopy.prognostic_vars(model)
                     @test isfinite(scalar(getproperty(Y.canopy.biomass, var)))
@@ -629,6 +881,191 @@ using ClimaCore
                     @test scalar(Y.canopy.biomass.A0_annual) == 0
                 end
             end
+        end
+
+        @testset "set_canopy_component_initial_conditions! from the spin-up state for FT = $FT" begin
+            state_path = ClimaLand.Artifacts.optimal_lai_state_path()
+            start_date = DateTime(2008, 3, 1)
+            # a forest in Missouri, where the state has data, and the ocean, where
+            # the climatology is kept
+            for (longlat, from_state) in
+                ((FT(-92.2), FT(38.7441)) => true, (FT(-150), FT(-10)) => false)
+                domain = Point(; z_sfc = FT(0.0), longlat)
+                surface_space = domain.space.surface
+                model = Canopy.ZhouOptimalLAIModel{FT}(
+                    domain,
+                    toml_dict;
+                    SAI = FT(0.0),
+                    RAI = FT(1.0),
+                    rooting_depth = FT(1.0),
+                    height = FT(1.0),
+                    tree_share = Canopy.ClimateTreeShare(),
+                )
+                new_state() = ClimaCore.Fields.FieldVector(;
+                    canopy = (;
+                        biomass = NamedTuple(
+                            var => ClimaCore.Fields.zeros(surface_space) for
+                            var in Canopy.prognostic_vars(model)
+                        )
+                    ),
+                )
+                scalar(field) = Array(parent(field))[1]
+                set_ic!(Y, path) =
+                    ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+                        Y,
+                        nothing,
+                        model,
+                        nothing,
+                        ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
+                        Canopy.modis_max_lai(surface_space),
+                        FT(1),
+                        FT(0.0120107);
+                        state_path = path,
+                        start_date,
+                    )
+                Y = new_state()
+                set_ic!(Y, state_path)
+                Y_climatology = new_state()
+                set_ic!(Y_climatology, nothing)
+                # the nearest cell of the file, on the start date
+                ds = NCDatasets.NCDataset(state_path)
+                i = argmin(abs.(ds["lon"][:] .- longlat[1]))
+                j = argmin(abs.(ds["lat"][:] .- longlat[2]))
+                k = findfirst(==(start_date), ds["time"][:])
+                @test all(
+                    name -> haskey(ds, String(name)),
+                    Canopy.prognostic_vars(model),
+                )
+                for name in Canopy.prognostic_vars(model)
+                    value = scalar(getproperty(Y.canopy.biomass, name))
+                    state = ds[String(name)][i, j, k]
+                    climatology =
+                        scalar(getproperty(Y_climatology.canopy.biomass, name))
+                    @test isfinite(value)
+                    @test isnan(state) == !from_state
+                    @test from_state ? value ≈ state : value == climatology
+                end
+                close(ds)
+                if from_state
+                    # PET is that of a humid climate, not the arid-branch seed,
+                    # and the sums with a growing memory are six years old
+                    @test scalar(Y.canopy.biomass.PET_annual) <
+                          scalar(Y_climatology.canopy.biomass.PET_annual)
+                    @test scalar(Y.canopy.biomass.age) ≈
+                          Dates.value(start_date - DateTime(2002, 3, 1)) / 1000
+                else
+                    # the 30-day totals start from the annual ones, the yearly
+                    # sums of the moist and warm seasons from zero
+                    @test scalar(Y.canopy.biomass.water_30d) ≈
+                          scalar(Y.canopy.biomass.precip_annual) * 30 / 365
+                    @test scalar(Y.canopy.biomass.PET_30d) ≈
+                          scalar(Y.canopy.biomass.PET_annual) * 30 / 365
+                    for name in (
+                        :VPD_moist_annual,
+                        :moist_days,
+                        :degree_days,
+                        :warm_days,
+                        :maintenance_days,
+                        :age,
+                    )
+                        @test scalar(getproperty(Y.canopy.biomass, name)) == 0
+                    end
+                end
+            end
+        end
+
+        @testset "set_canopy_component_initial_conditions! from monthly states for FT = $FT" begin
+            # The states of the first day of each month of 2008, as the spin-up
+            # writes them: LAI is the month, the moist days a hundred times it. The
+            # file also holds a variable the model does not have, `snow_store`.
+            path = joinpath(mktempdir(), "optimal_lai_state.nc")
+            lon = collect(-180.0:10.0:170.0)
+            lat = collect(-90.0:10.0:80.0)
+            months = 1:12
+            NCDatasets.NCDataset(path, "c") do ds
+                NCDatasets.defVar(ds, "lon", lon, ("lon",))
+                NCDatasets.defVar(ds, "lat", lat, ("lat",))
+                NCDatasets.defVar(
+                    ds,
+                    "time",
+                    [DateTime(2008, month, 1) for month in months],
+                    ("time",);
+                    attrib = ["units" => "days since 2000-01-01 00:00:00"],
+                )
+                state(f) =
+                    Float32[f(month) for _ in lon, _ in lat, month in months]
+                NCDatasets.defVar(
+                    ds,
+                    "LAI",
+                    state(identity),
+                    ("lon", "lat", "time"),
+                )
+                NCDatasets.defVar(
+                    ds,
+                    "moist_days",
+                    state(month -> 100month),
+                    ("lon", "lat", "time"),
+                )
+                NCDatasets.defVar(
+                    ds,
+                    "snow_store",
+                    state(month -> 1),
+                    ("lon", "lat", "time"),
+                )
+            end
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            surface_space = domain.space.surface
+            model = Canopy.ZhouOptimalLAIModel{FT}(
+                domain,
+                toml_dict;
+                SAI = FT(0.0),
+                RAI = FT(1.0),
+                rooting_depth = FT(1.0),
+                height = FT(1.0),
+                tree_share = Canopy.ClimateTreeShare(),
+            )
+            scalar(field) = Array(parent(field))[1]
+            function initial_state(start_date)
+                Y = ClimaCore.Fields.FieldVector(;
+                    canopy = (;
+                        biomass = NamedTuple(
+                            var => ClimaCore.Fields.zeros(surface_space) for
+                            var in Canopy.prognostic_vars(model)
+                        )
+                    ),
+                )
+                ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+                    Y,
+                    nothing,
+                    model,
+                    nothing,
+                    ClimaLand.Artifacts.optimal_lai_initial_conditions_path(),
+                    Canopy.modis_max_lai(surface_space),
+                    FT(1),
+                    FT(0.0120107);
+                    state_path = path,
+                    start_date,
+                )
+                return Y.canopy.biomass
+            end
+            # the state of the start date, interpolated between months and from
+            # December to January
+            state = initial_state(DateTime(2008, 3, 1))
+            @test scalar(state.LAI) ≈ 3
+            @test scalar(state.moist_days) ≈ 300
+            @test !hasproperty(state, :snow_store)
+            @test scalar(initial_state(DateTime(2008, 3, 16, 12)).LAI) ≈ 3.5
+            @test scalar(initial_state(DateTime(2008, 12, 16, 12)).LAI) ≈ 6.5
+            # in other years, that of the day of the year, to within the day a year
+            # by which the periodic calendar of ClimaUtilities, of 366 days for 2008,
+            # drifts
+            @test scalar(initial_state(DateTime(2010, 3, 1)).LAI) ≈ 3 atol = 0.1
+            # variables the file does not hold keep their seeds
+            @test scalar(state.water_30d) ≈
+                  scalar(state.precip_annual) * 30 / 365
+            # monthly states need the start date
+            @test_throws ErrorException initial_state(nothing)
         end
     end
 end

@@ -507,6 +507,7 @@ function get_possible_diagnostics(model::CanopyModel)
         # "fa", # return a Tuple
         "far",
         "lai",
+        "sai",
         "msf",
         "gpp",
         "an",

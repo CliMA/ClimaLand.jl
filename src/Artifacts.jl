@@ -275,6 +275,41 @@ function optimal_lai_initial_conditions_path(; context = nothing)
     return joinpath(dir, "optimal_lai_inputs.nc")
 end
 
+"""
+    clm_tree_share_path(; context = nothing)
+
+Return the path to the tree share of the natural vegetation in the CLM5 surface data
+for the year 2000 (0.9°×1.25°), NaN where there is no vegetation.
+"""
+function clm_tree_share_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "clm_tree_share.nc")
+end
+
+"""
+    optimal_lai_state_path(; context = nothing)
+
+Return the path to the states of `ZhouOptimalLAIModel` on the first day of each month
+of 2008, on a 1° grid, NaN over ocean: those of its spin-up
+(`experiments/long_runs/optimal_lai_spinup.jl`, run in Buildkite build 5127 of
+`climaland-long-runs`).
+"""
+function optimal_lai_state_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "optimal_lai_state.nc")
+end
+
+"""
+    clm_crop_fraction_path(; context = nothing)
+
+Return the path to the fraction of the land in the crop land unit of the CLM5 surface
+data for the year 2000 (0.9°×1.25°), NaN over ocean.
+"""
+function clm_crop_fraction_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_state_and_clm_maps", context)
+    return joinpath(dir, "clm_crop_fraction.nc")
+end
+
 
 """
     clm_data__folder_path(; context, lowres = false)

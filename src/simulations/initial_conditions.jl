@@ -1,4 +1,5 @@
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
 using ClimaCore
@@ -323,16 +324,22 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
 end
 
 """
-    set_canopy_component_initial_conditions!(Y, p, model::ClimaLand.Canopy.AbstractCanopyComponent, canopy)
+    set_canopy_component_initial_conditions!(Y, p, model::ClimaLand.Canopy.AbstractCanopyComponent, canopy; kwargs...)
 
-Sets the initial state of the canopy component in `Y`.
+Sets the initial state of the canopy component in `Y`. Keyword arguments, which some
+components take (e.g. the `start_date` of `ZhouOptimalLAIModel`), are ignored.
 """
 set_canopy_component_initial_conditions!(
     Y,
     p,
     model::ClimaLand.Canopy.AbstractCanopyComponent,
-    canopy,
+    canopy;
+    kwargs...,
 ) = nothing
+
+# The date of `t0`, at which the optimal-LAI state is read; `nothing` without an epoch.
+initial_date(t0::ITime) = isnothing(t0.epoch) ? nothing : date(t0)
+initial_date(t0) = nothing
 
 """
     set_canopy_component_initial_conditions!(Y, p, model::ClimaLand.Canopy.BigLeafEnergyModel, canopy)
@@ -474,21 +481,24 @@ end
         ),
         max_lai = ClimaLand.Canopy.modis_max_lai(axes(Y.canopy.biomass.LAI)),
         fractional_c3 = ClimaLand.Canopy.static_fractional_c3(canopy.photosynthesis),
-        Mc = canopy.photosynthesis.constants.Mc,
+        Mc = canopy.photosynthesis.constants.Mc;
+        state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+            context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+        ),
+        start_date = nothing,
     ) where {FT}
 
-Sets the optimal-LAI prognostic state in `Y.canopy.biomass` (`LAI`, `A0_daily`,
-`A0_annual`, `precip_annual`, `PET_annual`, `VPDA0_annual`, `growing_days`,
-`A0c3_annual`, `A0c4_annual`, `GPPc3_annual`) from the netCDF file at `ic_path`,
-which must contain `lai_init`, `a0_annual`, `precip_annual`, `vpd_gs`, `gsl` and `f0`
-on a (lon, lat) grid.
+Sets the optimal-LAI prognostic state in `Y.canopy.biomass` from a climatology, the
+netCDF file at `ic_path`, which must contain `lai_init`, `a0_annual`, `precip_annual`,
+`vpd_gs`, `gsl` and `f0` on a (lon, lat) grid, and then, where it has data, from a
+state of the model, the netCDF file at `state_path` (unless it is `nothing`).
 
 With the default path, `LAI` starts from the MODIS observation, which shortens the
 spin-up. The annual totals start at their climatological values, which are their
 steady state whatever `tau_long_term`; `A0_daily` starts at the daily share of
 `A0_annual`.
 
-`PET_annual`, `VPDA0_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
+`PET_annual`, `VPDgs_annual` and `growing_days` are seeded so that `f0`, `vpd_gs`
 and `GSL` start at the artifact values they replace, then relax to the simulated
 climate over `tau_long_term`. Since `f0(AI)` peaks at `f0_max`, the `f0` seed uses
 the arid branch of the inverse, and a cell whose artifact `f0` exceeds the peak
@@ -509,6 +519,17 @@ competition (`c4_advantage_for_c3_fraction`): given that tree share, it is the C
 potential GPP at which the competition returns the static C3 map `fractional_c3` (the
 photosynthesis model's; `Mc` is the molar mass of carbon). Where the map is pure C3 the
 seed is `A0c4_annual = 0`, which leaves a small C4 grass share in the open canopy.
+
+The 30-day totals start at the 30-day share of the annual ones, and the yearly sums of the moist growing season and of the days, degree-days and
+maintenance load above freezing at zero: they average their history until it reaches
+`tau_long_term`.
+
+The state at `state_path`, from a spin-up of the model
+(`experiments/long_runs/optimal_lai_spinup.jl`) on a (lon, lat) grid, replaces these
+seeds for every variable it holds, in particular the `PET_annual` seed, which is far
+too high where the climate is humid. It holds a single state, or the states of the
+first day of each month of a calendar year (a `time` dimension), which are read at the
+day of the year of `start_date`, interpolated between months.
 """
 function set_canopy_component_initial_conditions!(
     Y,
@@ -522,7 +543,11 @@ function set_canopy_component_initial_conditions!(
     fractional_c3 = ClimaLand.Canopy.static_fractional_c3(
         canopy.photosynthesis,
     ),
-    Mc = canopy.photosynthesis.constants.Mc,
+    Mc = canopy.photosynthesis.constants.Mc;
+    state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+        context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+    ),
+    start_date = nothing,
 ) where {FT}
     ic = optimal_lai_initial_conditions(axes(Y.canopy.biomass.LAI), ic_path)
     nan_to_zero(x) = ifelse(isnan(x), zero(x), x)
@@ -538,10 +563,12 @@ function set_canopy_component_initial_conditions!(
         f0_max,
     )
     Y.canopy.biomass.PET_annual .= AI_seed .* Y.canopy.biomass.precip_annual
-    # vpd_gs is recovered as VPDA0_annual / A0_annual.
-    Y.canopy.biomass.VPDA0_annual .=
-        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.A0_annual
     Y.canopy.biomass.growing_days .= nan_to_zero.(ic.GSL)
+    # vpd_gs is recovered as VPDgs_annual / (growing_days in s).
+    seconds_per_day = FT(86400)
+    Y.canopy.biomass.VPDgs_annual .=
+        nan_to_zero.(ic.vpd_gs) .* Y.canopy.biomass.growing_days .*
+        seconds_per_day
     Y.canopy.biomass.A0c3_annual .= Y.canopy.biomass.A0_annual
     k = model.parameters.k
     @. Y.canopy.biomass.GPPc3_annual =
@@ -553,13 +580,94 @@ function set_canopy_component_initial_conditions!(
                 fractional_c3,
                 ClimaLand.Canopy.tree_share_from_gpp(
                     Y.canopy.biomass.GPPc3_annual,
+                    Y.canopy.biomass.growing_days,
                     Mc,
                     parameters,
                 ),
                 parameters,
             )
         )
+
+    Y.canopy.biomass.water_30d .= Y.canopy.biomass.precip_annual .* FT(30 / 365)
+    Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
+    for name in (
+        :VPD_moist_annual,
+        :moist_days,
+        :degree_days,
+        :warm_days,
+        :maintenance_days,
+        :age,
+    )
+        getproperty(Y.canopy.biomass, name) .= 0
+    end
+
+    if !isnothing(state_path)
+        surface_space = axes(Y.canopy.biomass.LAI)
+        names, dates = NCDataset(state_path) do ds
+            filter(n -> haskey(ds, String(n)), ClimaLand.prognostic_vars(model)),
+            haskey(ds, "time") ? ds["time"][:] : nothing
+        end
+        isnothing(dates) ||
+            !isnothing(start_date) ||
+            error("$state_path holds monthly states; pass the `start_date`")
+        for name in names
+            state = read_optimal_lai_state(
+                state_path,
+                String(name),
+                surface_space,
+                dates,
+                start_date,
+            )
+            field = getproperty(Y.canopy.biomass, name)
+            @. field = ifelse(isnan(state), field, state)
+        end
+        # 30-day totals the state does not hold follow its annual ones
+        :water_30d in names || (
+            Y.canopy.biomass.water_30d .=
+                Y.canopy.biomass.precip_annual .* FT(30 / 365)
+        )
+        :PET_30d in names || (
+            Y.canopy.biomass.PET_30d .=
+                Y.canopy.biomass.PET_annual .* FT(30 / 365)
+        )
+    end
     return nothing
+end
+
+"""
+    read_optimal_lai_state(path, name, surface_space, dates, start_date)
+
+The variable `name` of the optimal-LAI state file `path`, regridded to `surface_space`:
+its only state if `dates` is `nothing`, or else its monthly states of a calendar year,
+at the `dates`, interpolated to the day of the year of `start_date`.
+"""
+function read_optimal_lai_state(path, name, surface_space, dates, start_date)
+    regridder_type = :InterpolationsRegridder
+    regridder_kwargs = (;
+        extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat()),
+        interpolation_method = Interpolations.Constant(),
+    )
+    isnothing(dates) && return SpaceVaryingInput(
+        path,
+        name,
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+    )
+    state = TimeVaryingInput(
+        path,
+        name,
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs,
+        method = LinearInterpolation(
+            PeriodicCalendar(Year(1), DateTime(year(first(dates)))),
+        ),
+    )
+    field = ClimaCore.Fields.zeros(surface_space)
+    evaluate!(field, state, start_date)
+    return field
 end
 
 """
@@ -623,7 +731,14 @@ function set_canopy_component_initial_conditions!(
 end
 
 """
-    make_set_initial_state_from_file(ic_path, land::LandModel{FT}; enforce_constraints=false) where {FT}
+    make_set_initial_state_from_file(
+        ic_path,
+        land::LandModel{FT};
+        enforce_constraints = false,
+        optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+            context = ClimaComms.context(ClimaLand.get_domain(land).space.surface),
+        ),
+    ) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from `ic_path`, a netCDF file.
@@ -642,6 +757,9 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
+With a `ZhouOptimalLAIModel`, its state is read from `optimal_lai_state_path` at the
+date of `t0` (see `set_canopy_component_initial_conditions!`).
+
 It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
 been updated already.
 """
@@ -649,6 +767,9 @@ function make_set_initial_state_from_file(
     ic_path,
     land::LandModel{FT};
     enforce_constraints = false,
+    optimal_lai_state_path = ClimaLand.Artifacts.optimal_lai_state_path(;
+        context = ClimaComms.context(ClimaLand.get_domain(land).space.surface),
+    ),
 ) where {FT}
     function set_land_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
@@ -762,7 +883,9 @@ function make_set_initial_state_from_file(
             Y,
             p,
             land.canopy.biomass,
-            land.canopy,
+            land.canopy;
+            state_path = optimal_lai_state_path,
+            start_date = initial_date(t0),
         )
         set_canopy_component_initial_conditions!(
             Y,
@@ -895,7 +1018,8 @@ function make_set_initial_state_from_file(
             Y,
             p,
             land.canopy.biomass,
-            land.canopy,
+            land.canopy;
+            start_date = initial_date(t0),
         )
         set_canopy_component_initial_conditions!(
             Y,
@@ -1023,7 +1147,8 @@ function make_set_initial_state_from_era5land(
             Y,
             p,
             land.canopy.biomass,
-            land.canopy,
+            land.canopy;
+            start_date = initial_date(t0),
         )
         set_canopy_component_initial_conditions!(
             Y,
@@ -1302,7 +1427,8 @@ function make_set_initial_state_from_atmos_and_parameters(
             Y,
             p,
             land.canopy.biomass,
-            land.canopy,
+            land.canopy;
+            start_date = initial_date(t0),
         )
         set_canopy_component_initial_conditions!(
             Y,

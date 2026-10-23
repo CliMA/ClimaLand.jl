@@ -223,7 +223,7 @@ end
 Creates a FarquharModel using default parameters of type FT.
 
 The `photosynthesis_parameters` argument is a NamedTuple that contains
-- `fractional_c3`: a Float or Field indicating the proportion of plants that are C3
+- `fractional_c3`: a Float or Field, the C3 fraction; Farquhar photosynthesis is C3 where it is above 0.5, and C4 elsewhere
 - `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
 By default, these parameters are set by the `clm_photosynthesis_parameters` function,
 which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.
@@ -405,25 +405,40 @@ end
         LAI::AbstractTimeVaryingInput,
         maxLAI,
         toml_dict::CP.ParamDict;
-        SAI = toml_dict["SAI_coeff"] .* maxLAI,
-        RAI = toml_dict["RAI_coeff"] .* maxLAI,
+        tree_share = clm_tree_share(domain.space.surface),
+        SAI = area_index_from_max_lai.(maxLAI, tree_share, toml_dict["SAI_coeff_tree"], toml_dict["SAI_coeff_grass"]),
+        RAI = area_index_from_max_lai.(maxLAI, tree_share, toml_dict["RAI_coeff_tree"], toml_dict["RAI_coeff_grass"]),
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel with time-constant stem and root area indices
-set as a linear multiple of the per-pixel maximum LAI: SAI = SAI_coeff * maxLAI,
-RAI = RAI_coeff * maxLAI. `maxLAI` may be a scalar or a ClimaCore Field (e.g.
-from `ClimaLand.Canopy.modis_max_lai(domain.space.surface)`); SAI/RAI inherit its
-type.
+proportional to the per-pixel maximum LAI, with the area index per unit of maximum
+LAI weighted between trees and grasses by the tree share
+(`area_index_from_max_lai`): SAI = (tree_share * SAI_coeff_tree + (1 - tree_share)
+* SAI_coeff_grass) * maxLAI, and likewise for RAI. `maxLAI` may be a scalar or a
+ClimaCore Field (e.g. from `ClimaLand.Canopy.modis_max_lai(domain.space.surface)`),
+and `tree_share` defaults to the tree share of the natural vegetation of the CLM
+surface data (`clm_tree_share`).
 """
 function PrescribedBiomassModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     maxLAI,
     toml_dict::CP.ParamDict;
-    SAI = toml_dict["SAI_coeff"] .* maxLAI,
-    RAI = toml_dict["RAI_coeff"] .* maxLAI,
+    tree_share = clm_tree_share(domain.space.surface),
+    SAI = area_index_from_max_lai.(
+        maxLAI,
+        tree_share,
+        toml_dict["SAI_coeff_tree"],
+        toml_dict["SAI_coeff_grass"],
+    ),
+    RAI = area_index_from_max_lai.(
+        maxLAI,
+        tree_share,
+        toml_dict["RAI_coeff_tree"],
+        toml_dict["RAI_coeff_grass"],
+    ),
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
@@ -444,10 +459,11 @@ end
     ZhouOptimalLAIModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        SAI::FT = toml_dict["SAI"],
-        RAI::FT = toml_dict["RAI"],
+        SAI = AreaIndexFromMaxLAI{FT}(toml_dict, "SAI"),
+        RAI = AreaIndexFromMaxLAI{FT}(toml_dict, "RAI"),
         rooting_depth = clm_rooting_depth(domain.space.surface),
-        height = toml_dict["canopy_height"],
+        height = clm_canopy_height(domain.space.surface),
+        tree_share = ClimateTreeShare(),
     ) where {FT <: AbstractFloat}
 
 Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the provided domain,
@@ -462,10 +478,17 @@ mirrored into `p.canopy.biomass.area_index.leaf`.
 - `toml_dict`: Parameter dictionary containing optimal LAI parameters
 
 # Keyword Arguments
-- `SAI`: Stem area index (m2/m2), default from toml_dict
-- `RAI`: Root area index (m2/m2), default from toml_dict
+- `SAI`: Stem area index (m2/m2); by default proportional to the model's seasonal
+  maximum LAI, with the toml_dict factors `SAI_coeff_tree` and `SAI_coeff_grass`
+  weighted by the tree share (`AreaIndexFromMaxLAI`), or prescribed (scalar or Field)
+- `RAI`: Root area index (m2/m2); like `SAI`, with `RAI_coeff_tree` and
+  `RAI_coeff_grass`
 - `rooting_depth`: Rooting depth (m), default from CLM data
-- `height`: Canopy height (m), default the constant `canopy_height` from `toml_dict`
+- `height`: Canopy height (m), default from CLM data
+- `tree_share`: Tree share of the vegetation (dimensionless), which sets the unit cost of
+  leaves; by default computed from the simulated climate (`ClimateTreeShare()`), or
+  prescribed, e.g. from the natural vegetation of the CLM surface data
+  (`clm_tree_share(domain.space.surface)`)
 
 # Example
 ```julia
@@ -480,18 +503,21 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 function ZhouOptimalLAIModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    SAI::FT = toml_dict["SAI"],
-    RAI::FT = toml_dict["RAI"],
+    SAI = AreaIndexFromMaxLAI{FT}(toml_dict, "SAI"),
+    RAI = AreaIndexFromMaxLAI{FT}(toml_dict, "RAI"),
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    # Use the constant `canopy_height` (as the prescribed-biomass models do)
-    # rather than the CLM canopy-height field: the latter is ~0 at barren/alpine
-    # cells, which makes the leaf-water storage `LAI * height` in the ϑ_l tendency
-    # vanish, so once the prognostic LAI greens up the transpiration/root fluxes
-    # drive ϑ_l (and the coupled canopy/soil state) to NaN.
-    height = toml_dict["canopy_height"],
+    height = clm_canopy_height(domain.space.surface),
+    tree_share = ClimateTreeShare(),
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
-    return ZhouOptimalLAIModel{FT}(parameters; SAI, RAI, rooting_depth, height)
+    return ZhouOptimalLAIModel{FT}(
+        parameters;
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+        tree_share,
+    )
 end
 
 ## Radiative transfer models

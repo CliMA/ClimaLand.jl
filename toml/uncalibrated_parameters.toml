@@ -86,16 +86,28 @@ type = "float"
 description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
-["SAI_coeff"]
+["SAI_coeff_tree"]
 value = 0.16
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI."
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with SAI_coeff_grass by the tree share. Trees: the annual-mean SAI per unit of maximum LAI of the CLM tree PFTs; grasses have no wood."
 tag = "PrescribedAreaIndices"
 
-["RAI_coeff"]
+["SAI_coeff_grass"]
+value = 0.05
+type = "float"
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with SAI_coeff_tree by the tree share."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff_tree"]
 value = 1.0
 type = "float"
-description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI."
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with RAI_coeff_grass by the tree share. The CLM2 root-to-shoot ratios of trees (1) and grasses (3)."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff_grass"]
+value = 3.0
+type = "float"
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with RAI_coeff_tree by the tree share."
 tag = "PrescribedAreaIndices"
 
 [canopy_height]
@@ -112,10 +124,16 @@ type = "float"
 description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
-["optimal_lai_z"]
+["optimal_lai_z_tree"]
 value = 12.227
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+description = "Unit cost of constructing and maintaining tree leaves (mol m^-2 yr^-1)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z_grass"]
+value = 12.227
+type = "float"
+description = "Unit cost of grass leaves (mol m^-2 yr^-1); the tree cost, the single leaf cost of Zhou et al. (2025)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
