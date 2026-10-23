@@ -178,7 +178,16 @@ set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
     model;
     optimal_lai_state_path = OPTIMAL_LAI_STATE,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date, outdir;
+    reduction_period = :daily,
+    reduction_type = :average,
+    output_vars = ["lai",
+                   "snowc",
+                   ],
+);
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics,set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
