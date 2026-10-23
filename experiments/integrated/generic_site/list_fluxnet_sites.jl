@@ -21,17 +21,16 @@ import ClimaLand
 
 Return the sorted list of FLUXNET2015 site IDs found in the `fluxnet2015`
 artifact, parsed from the per-site directory names of the form
-`FLX_<SITE_ID>_FLUXNET2015_FULLSET_<years>_<version>`.
+`FLX_<SITE_ID>_FLUXNET2015_FULLSET_<years>_<version>`. Other directories, such
+as the site metadata `FLX_AA-Flx_BIF_ALL_<date>`, are skipped.
 """
 function list_fluxnet_sites()
     root = ClimaLand.Artifacts.fluxnet2015_data_path()
     site_ids = String[]
     for d in readdir(root)
         isdir(joinpath(root, d)) || continue
-        startswith(d, "FLX_") || continue
-        parts = split(d, '_')
-        length(parts) >= 2 || continue
-        push!(site_ids, parts[2])
+        m = match(r"^FLX_([^_]+)_FLUXNET2015_FULLSET_", d)
+        isnothing(m) || push!(site_ids, m[1])
     end
     return sort!(unique(site_ids))
 end

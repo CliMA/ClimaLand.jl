@@ -273,3 +273,26 @@ steps:
           - "bucket_era5_gpu"
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
+
+  # Calibrates parameters on the FLUXNET2015 sites, each a column forced by its
+  # own meteorology. Runs when the PR has the "calibrate fluxnet" label, or on
+  # a manual build with `CALIBRATE_FLUXNET=""`. See
+  # experiments/calibration/fluxnet_sites/README.md.
+  - group: "Calibration on FLUXNET sites"
+    if: build.pull_request.labels includes "calibrate fluxnet" || build.env("CALIBRATE_FLUXNET") != null
+    steps:
+      - label: ":gear: Calibrate on FLUXNET sites (5 EKI iterations)"
+        key: "calibrate_fluxnet"
+        command:
+          - julia --color=yes --project=.buildkite experiments/calibration/fluxnet_sites/run_calibration.jl fluxnet_calibration
+          - buildkite-agent annotate --style success --context fluxnet-calibration < fluxnet_calibration/results/summary.md
+        artifact_paths:
+          - "fluxnet_calibration/results/*"
+        # This step only drives the calibration: every forward run is a Slurm
+        # job of its own, with one GPU
+        agents:
+          slurm_cpus_per_task: 4
+          slurm_mem: 32G
+          slurm_time: "24:00:00"
+        env:
+          CALIBRATION_BACKEND: "caltech"
