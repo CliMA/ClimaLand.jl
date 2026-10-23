@@ -84,7 +84,7 @@ function _convert_to_monthly(var)
             ClimaAnalysis.view_select(var; by = ClimaAnalysis.Index(), time = i)
         slice.data .*= Dates.daysinmonth(date) * 86400
     end
-    ClimaAnalysis.set_units!(var, "kg m-2")
+    ClimaAnalysis.set_units!(var, "kg m^-2")
     return var
 end
 
