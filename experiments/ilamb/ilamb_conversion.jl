@@ -222,7 +222,7 @@ function make_ilamb_netcdf_file(filepath, save_dir)
 
     # Add 14 days, since ClimaDiagnostics save dates at the start of the period
     # and ILAMB wants the days to be in the middle of the months
-    dates = clima_ds["date"] .+ Dates.Day(14)
+    dates = clima_ds["time"] .+ Dates.Day(14)
     start_date = first(dates)
     end_date = last(dates)
 
@@ -359,9 +359,7 @@ function add_temporal_dimension(ilamb_ds, clima_ds, dates)
     NCDatasets.defVar(
         ilamb_ds,
         "time_bnds",
-        # Even though the dates need to be shifted by one month, the
-        # date/time bounds are correct
-        Array(clima_ds["date_bnds"]),
+        Array(clima_ds["time_bnds"]),
         ("bnds", "time"),
         attrib = Dict("units" => "days since 1850-01-01"),
     )

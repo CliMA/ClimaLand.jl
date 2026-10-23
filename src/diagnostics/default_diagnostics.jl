@@ -185,8 +185,19 @@ default_diagnostics(
     model::ClimaLand.AbstractModel,
     start_date::ITime{<:Any, <:Any, <:DateTime},
     outdir;
+    output_writer = default_output_writer(
+        get_domain(model),
+        epoch(start_date),
+        outdir,
+    ),
     kwargs...,
-) = default_diagnostics(model, date(start_date), outdir; kwargs...)
+) = default_diagnostics(
+    model,
+    date(start_date),
+    outdir;
+    output_writer,
+    kwargs...,
+)
 
 # The default diagnostics currently require a start date because they use Dates.Period.
 function default_diagnostics(

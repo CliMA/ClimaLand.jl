@@ -346,25 +346,6 @@ function time_to_date(t::ITime, start_date)
 end
 
 """
-    _reduction_starts(dates, start_date)
-
-Move the timestamps of a reduction (a monthly average, say) from the end of each
-averaging period to its start, so that output kept in memory is dated the way
-output written to disk is.
-
-The two writers disagree on when a reduction happened. A `DictWriter` stores it
-under the time the period closed, while `ClimaDiagnostics` writes the start of
-the period to NetCDF: `init_time` for the first output, the end of the previous
-period after that. Reading the two paths through `site_timeseries` therefore
-needs this on the `DictWriter` side, and only for reductions — an instantaneous
-diagnostic carries no period and is already stamped at its own time.
-"""
-function _reduction_starts(dates, start_date)
-    isempty(dates) && return dates
-    return [start_date; dates[1:(end - 1)]]
-end
-
-"""
     site_source(diagnostics)
 
 Return what the diagnostics of a single-site simulation are read from: a
@@ -418,7 +399,7 @@ function site_timeseries(
 end
 
 # On disk the SimDir holds everything: it knows the units, and the dates it
-# reports are already the start of each reduction period.
+# reports are the start of each reduction period.
 function _site_timeseries(
     sim_dir::ClimaAnalysis.SimDir,
     _,
@@ -445,8 +426,7 @@ function _site_timeseries(
 end
 
 # In memory there is no file to describe the output, so the diagnostic itself
-# supplies the name it is stored under, its units, and whether its timestamps
-# need `_reduction_starts`.
+# supplies the name it is stored under and its units.
 function _site_timeseries(
     writer::ClimaDiagnostics.Writers.DictWriter,
     diagnostics,
@@ -466,8 +446,6 @@ function _site_timeseries(
         depth,
     )
     dates = time_to_date.(times, start_date)
-    isnothing(diagnostic.reduction_time_func) ||
-        (dates = _reduction_starts(dates, start_date))
     return (dates, values, diagnostic.variable.units)
 end
 
