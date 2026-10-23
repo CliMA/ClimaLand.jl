@@ -669,11 +669,11 @@ when the Canopy is run in standalone mode.
 """
 NVTX.@annotate function lsm_radiant_energy_fluxes!(
     p,
-    land::LandModel{FT},
-    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    land::LandModel,
+    canopy_radiation::Canopy.AbstractRadiationModel,
     Y,
     t,
-) where {FT}
+)
     canopy = land.canopy
     snow = land.snow
     earth_param_set = canopy.earth_param_set
@@ -685,12 +685,10 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     α_soil_PAR = p.soil.PAR_albedo
     α_soil_NIR = p.soil.NIR_albedo
     ϵ_soil = ClimaLand.surface_emissivity(land.soil, Y, p)
-    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     α_snow_NIR = p.snow.α_snow
     α_snow_PAR = p.snow.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.turbulent_fluxes.T_sfc
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -736,8 +734,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     # The snow and soil surfaces below the canopy exchange with the air at the
     # sub-canopy reference height, with the wind there; bare ground is forced
     # as a standalone surface
-    snow_forcing = soil_forcing = ground_forcing(land, Y, p)
-    #now solve for the snow surface temperature:
+    forcing = ground_forcing(land, Y, p)
     Snow.update_surf_temp!(
         snow,
         snow.parameters.surf_temp,
@@ -746,12 +743,7 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         Y,
         p,
         t;
-        h_atmos = snow_forcing.h_atmos,
-        u_atmos = snow_forcing.u_atmos,
-        T_atmos = snow_forcing.T_atmos,
-        q_atmos = snow_forcing.q_atmos,
-        gustiness = snow_forcing.gustiness,
-        reference = snow_forcing.reference,
+        forcing...,
     )
 
     # Solve for the soil skin temperature, T_soil, and the soil turbulent fluxes
@@ -763,13 +755,11 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
         Y,
         p,
         t;
-        h_atmos = soil_forcing.h_atmos,
-        u_atmos = soil_forcing.u_atmos,
-        T_atmos = soil_forcing.T_atmos,
-        q_atmos = soil_forcing.q_atmos,
-        gustiness = soil_forcing.gustiness,
-        reference = soil_forcing.reference,
+        forcing...,
     )
+
+    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
+    T_snow = ClimaLand.component_temperature(land.snow, Y, p)
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
@@ -816,7 +806,7 @@ NVTX.@annotate function implicit_radiant_energy_fluxes!(
     T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.turbulent_fluxes.T_sfc
+    T_snow = ClimaLand.component_temperature(land.snow, Y, p)
 
     # in W/m^2
     LW_d_canopy = p.scratch1

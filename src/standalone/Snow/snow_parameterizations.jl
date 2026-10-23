@@ -116,6 +116,18 @@ function ClimaLand.component_temperature(model::SnowModel, Y, p)
 end
 
 """
+    ClimaLand.get_∂T_sfc∂T_function(model::SnowModel, Y, p)
+    ClimaLand.get_∂q_sfc∂T_function(model::SnowModel, Y, p)
+
+Return `nothing`: `p.snow.turbulent_fluxes` stores no derivatives of the
+fluxes with respect to the snow temperature, so
+`ClimaLand.turbulent_fluxes_from_output` omits them and the surface density
+extrapolation they need.
+"""
+ClimaLand.get_∂T_sfc∂T_function(model::SnowModel, Y, p) = nothing
+ClimaLand.get_∂q_sfc∂T_function(model::SnowModel, Y, p) = nothing
+
+"""
     ClimaLand.component_specific_humidity(
         model::SnowModel,
         Y,
@@ -190,16 +202,13 @@ end
 
 """
     snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, h::FT,  surface_flux_params, thermo_params) where {FT}
+    snow_surface_specific_humidity(T_sfc, q_l, T_air, P_air, q_air, h, surface_flux_params, thermo_params)
 
 Computes the snow surface specific humidity at a point as the average,
 weighted by mass fraction, of the saturated specific humidity over ice and over
 liquid at temperature `T_sfc` and surface air density `ρ_sfc`. The second
 method extrapolates `ρ_sfc` from the air state at the height `h` above the
 apparent sink for momentum.
-
-`update_T_sfc_scheme` repeats this computation, with its derivative, and must
-change with it.
 """
 function snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
     qsat_over_ice = Thermodynamics.q_vap_saturation(
@@ -217,16 +226,54 @@ function snow_surface_specific_humidity(T_sfc, q_l, ρ_sfc, thermo_params)
     return qsat_over_ice * (1 - q_l) + q_l * qsat_over_liq
 end
 
+"""
+    snow_surface_humidity_and_derivative(T_sfc, q_l, ρ_sfc, thermo_params)
+
+Return `(; q_sfc, ∂q∂T)`: the snow surface specific humidity
+(`snow_surface_specific_humidity`) and its temperature derivative at surface
+temperature `T_sfc`, liquid mass fraction `q_l`, and surface air density
+`ρ_sfc`.
+"""
+function snow_surface_humidity_and_derivative(T_sfc, q_l, ρ_sfc, thermo_params)
+    qsat_over_ice = Thermodynamics.q_vap_saturation(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
+    qsat_over_liq = Thermodynamics.q_vap_saturation(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+    q_sfc = qsat_over_ice * (1 - q_l) + q_l * qsat_over_liq
+    ∂q∂T =
+        Thermodynamics.∂q_vap_sat_∂T_from_L(
+            thermo_params,
+            qsat_over_ice,
+            Thermodynamics.latent_heat_sublim(thermo_params, T_sfc),
+            T_sfc,
+        ) * (1 - q_l) +
+        q_l * Thermodynamics.∂q_vap_sat_∂T_from_L(
+            thermo_params,
+            qsat_over_liq,
+            Thermodynamics.latent_heat_vapor(thermo_params, T_sfc),
+            T_sfc,
+        )
+    return (; q_sfc, ∂q∂T)
+end
+
 function snow_surface_specific_humidity(
-    T_sfc::FT,
-    q_l::FT,
-    T_air::FT,
-    P_air::FT,
-    q_air::FT,
-    h::FT,
+    T_sfc,
+    q_l,
+    T_air,
+    P_air,
+    q_air,
+    h,
     surface_flux_params,
     thermo_params,
-) where {FT}
+)
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         T_air,
@@ -319,32 +366,27 @@ function snow_thermal_conductivity(
 end
 
 """
-    diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
+    diurnal_damping_depth(κ, ρ, earth_param_set)
 
 Provides the characteristic depth for diurnal variations in temperature in snow, used in the
 calculation of the surface tempearture. Formula is replicated from the Utah Energy Balance (UEB) model.
 A paper describing the formula can be found at https://hess.copernicus.org/articles/18/5061/2014/.
 """
-function diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
-    _cp_i = FT(LP.cp_i(earth_param_set))
-    _DT_ = FT(earth_param_set.insol_params.day)
+function diurnal_damping_depth(κ, ρ, earth_param_set)
+    _cp_i = LP.cp_i(earth_param_set)
+    _DT_ = earth_param_set.insol_params.day
     return sqrt(κ * _DT_ / (pi * _cp_i * ρ))
 end
 
 """
-    surface_temp_scaling_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
+    surface_temp_scaling_length(κ, ρ, z, earth_param_set)
 
 Provides the scaling length scale for calculation of the surface temperature, which is stable
 in the small-snowpack limit (it becomes (output) -> (input z) as (input z) -> 0).
 We recomment inputting the z-per-ground-area (i.e. averaged over the grid by the snow cover fraction) to this function,
 since 0 < z-per-ground-area <= z-per-snow-area, which means the reference depth will always remain inside the snowpack as (true z) -> 0.
 """
-function surface_temp_scaling_length(
-    κ::FT,
-    ρ::FT,
-    z::FT,
-    earth_param_set,
-)::FT where {FT}
+function surface_temp_scaling_length(κ, ρ, z, earth_param_set)
     d0 = diurnal_damping_depth(κ, ρ, earth_param_set)
     return d0 * (1 - exp(-z / d0))
 end
@@ -748,10 +790,6 @@ It makes this estimate by incrementing the initial guess for snow surface temper
 f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0, and capping the result at the
 freezing temperature, with `ClimaLand.surface_temperature_newton_update` and the
 thermal resistance `d/κ` between the surface and the bulk snow.
-
-Be aware that if the snow surface specific humidity parameterization changes, 
-we must also change the internals of this function.
-
 """
 function update_T_sfc_scheme(
     ζ,
@@ -778,32 +816,8 @@ function update_T_sfc_scheme(
         T_sfc,
         inputs.q_vap_sfc_guess,
     )
-    qsat_over_ice = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    qsat_over_liq = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
-    q_sfc = qsat_over_ice * (1 - q_l) + q_l * qsat_over_liq
-    ∂q∂T =
-        Thermodynamics.∂q_vap_sat_∂T_from_L(
-            thermo_params,
-            qsat_over_ice,
-            Thermodynamics.latent_heat_sublim(thermo_params, T_sfc),
-            T_sfc,
-        ) * (1 - q_l) +
-        q_l * Thermodynamics.∂q_vap_sat_∂T_from_L(
-            thermo_params,
-            qsat_over_liq,
-            Thermodynamics.latent_heat_vapor(thermo_params, T_sfc),
-            T_sfc,
-        )
+    (; q_sfc, ∂q∂T) =
+        snow_surface_humidity_and_derivative(T_sfc, q_l, ρ_sfc, thermo_params)
 
     g_h = SurfaceFluxes.heat_conductance(
         param_set,
@@ -837,30 +851,30 @@ end
 """
     solve_for_surface_temp_at_a_point(
         return_extra_fluxes::Val,
-        T_initial_guess::FT,
-        T_bulk::FT,
-        z_snow::FT,
-        κ_snow::FT,
-        ρ_snow::FT,
-        ϵ_snow::FT,
-        SW_net::FT,
-        LW_d::FT,
-        q_l::FT,
-        z_sfc::FT,
-        displ::FT,
-        P_atmos::FT,
-        T_atmos::FT,
-        q_atmos::FT,
+        T_initial_guess,
+        T_bulk,
+        z_snow,
+        κ_snow,
+        ρ_snow,
+        ϵ_snow,
+        SW_net,
+        LW_d,
+        q_l,
+        z_sfc,
+        displ,
+        P_atmos,
+        T_atmos,
+        q_atmos,
         u_atmos,
         roughness_model,
-        atmos_h::FT,
+        atmos_h,
         gustiness,
         reference,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
         earth_param_set,
         surf_temp::EquilibriumGradientTemperatureModel,
-    ) where {FT}
+    )
 
 Solves for T satisfying:
 (A) f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0
@@ -878,35 +892,36 @@ applied within the Monin-Obukhov iterations, the fluxes of the solve are those a
 the capped temperature, and they are returned with it: the NamedTuple stored in
 `p.snow.turbulent_fluxes` (with the momentum and buoyancy fluxes if
 `return_extra_fluxes` is `Val(true)`, for a coupled atmosphere), with `T_sfc`
-appended. The derivatives of the fluxes with respect to the surface temperature
-are computed with `update_∂T_sfc∂T` and `update_∂q_sfc∂T`.
+appended. `update_∂T_sfc∂T` and `update_∂q_sfc∂T` are the derivative callbacks
+of `ClimaLand.turbulent_fluxes_from_output`; `nothing` for `SnowModel`, whose
+cache stores no flux derivatives.
 """
 @inline function solve_for_surface_temp_at_a_point(
     return_extra_fluxes::Val,
-    T_initial_guess::FT,
-    T_bulk::FT,
-    z_snow::FT,
-    κ_snow::FT,
-    ρ_snow::FT,
-    ϵ_snow::FT,
-    SW_net::FT,
-    LW_d::FT,
-    q_l::FT,
-    z_sfc::FT,
-    displ::FT,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_atmos::FT,
+    T_initial_guess,
+    T_bulk,
+    z_snow,
+    κ_snow,
+    ρ_snow,
+    ϵ_snow,
+    SW_net,
+    LW_d,
+    q_l,
+    z_sfc,
+    displ,
+    P_atmos,
+    T_atmos,
+    q_atmos,
     u_atmos,
     roughness_model,
-    atmos_h::FT,
+    atmos_h,
     gustiness,
     reference,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
-) where {FT, UDT, UDQ}
+) where {UDT, UDQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _σ = LP.Stefan(earth_param_set)

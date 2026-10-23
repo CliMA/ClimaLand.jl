@@ -308,8 +308,6 @@ gross photosynthesis times the leaf area index.
 """
 function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (;
-        Vcmax25,
-        kn,
         is_c3,
         Γstar25,
         ΔHJmax,
@@ -360,7 +358,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 
     β = p.canopy.soil_moisture_stress.βm
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
-    Vcmax25_leaf = @. lazy(Vcmax25 * canopy_nitrogen_scaling(kn, LAI))
+    Vcmax25_leaf = get_Vcmax25_leaf(Y, p, model, canopy)
 
     @. Rd = dark_respiration_farquhar(
         is_c3,
@@ -433,56 +431,16 @@ get_Vcmax25_leaf(Y, p, m::FarquharModel, canopy) = @. lazy(
 )
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy) = @. lazy(
-    m.parameters.Vcmax25 *
-    canopy_nitrogen_scaling(m.parameters.kn, p.canopy.biomass.area_index.leaf) *
-    p.canopy.biomass.area_index.leaf,
-)
+function get_Vcmax25_canopy(Y, p, m::FarquharModel, canopy)
+    Vcmax25_leaf = get_Vcmax25_leaf(Y, p, m, canopy)
+    return @. lazy(Vcmax25_leaf * p.canopy.biomass.area_index.leaf)
+end
 get_Rd_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.Rd * p.canopy.biomass.area_index.leaf)
 get_An_canopy(p, m::FarquharModel) =
     @. lazy(p.canopy.photosynthesis.An * p.canopy.biomass.area_index.leaf)
 get_GPP(p, m::FarquharModel) = p.canopy.photosynthesis.GPP
 static_fractional_c3(m::FarquharModel) = m.parameters.is_c3
-
-function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    (; Vcmax25, kn, ΔHJmax, To) = m.parameters
-    LAI = p.canopy.biomass.area_index.leaf
-    Vcmax25_leaf = @. lazy(Vcmax25 * canopy_nitrogen_scaling(kn, LAI))
-    R = LP.gas_constant(canopy.earth_param_set)
-    return @. lazy(
-        max_electron_transport_farquhar(Vcmax25_leaf, ΔHJmax, T_canopy, To, R),
-    )
-end
-
-function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
-    earth_param_set = canopy.earth_param_set
-    f_abs_par = leaf_fAPAR(p) # PAR absorbed by leaves
-    par_d = p.canopy.radiative_transfer.par_d
-    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
-    c = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    LAI = p.canopy.biomass.area_index.leaf
-    APAR_leaf_moles = @. lazy(
-        compute_APAR_leaf_moles(
-            f_abs_par,
-            par_d,
-            λ_γ_PAR,
-            c,
-            planck_h,
-            N_a,
-            LAI,
-        ),
-    )
-
-    Jmax_leaf = compute_Jmax_leaf(Y, p, canopy, m)
-    (; θj, ϕ) = m.parameters
-    return @. lazy(
-        electron_transport_farquhar(APAR_leaf_moles, Jmax_leaf, θj, ϕ),
-    )
-end
 
 ## For interfacing with ClimaParams
 

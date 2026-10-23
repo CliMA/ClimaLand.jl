@@ -159,10 +159,10 @@ for FT in (Float32, Float64)
         q_atmos = FT(0.003)
         u_atmos = FT(3)
         atmos_h = FT(1)
-        # These only enter the flux derivatives ∂lhf∂T and ∂shf∂T returned by
-        # the solve, which this test does not check
-        ∂T_sfc∂T = (u_star, g_h, earth_param_set) -> FT(1)
-        ∂q_sfc∂T = (u_star, g_h, q_sat, T_sfc, earth_param_set) -> FT(0)
+        # The snow cache stores no flux derivatives, so the derivative
+        # callbacks are omitted
+        ∂T_sfc∂T = nothing
+        ∂q_sfc∂T = nothing
         reference = SurfaceFluxes.ReferenceAboveSurface()
         #No snow - should T_bulk
         result = Snow.solve_for_surface_temp_at_a_point(
@@ -297,6 +297,20 @@ for FT in (Float32, Float64)
         )
         @test q_mixed isa Float64
         @test q_mixed ≈ q_sfc rtol = 10 * eps(FT)
+        # The joint evaluation of the snow surface temperature solve returns
+        # the same humidity, with the derivative at fixed density
+        joint = Snow.snow_surface_humidity_and_derivative(
+            T_sfc,
+            q_l,
+            ρ_sfc,
+            thermo_params,
+        )
+        @test joint.q_sfc == q_sfc
+        δ = FT(0.1)
+        q_at(T) =
+            Snow.snow_surface_specific_humidity(T, q_l, ρ_sfc, thermo_params)
+        @test joint.∂q∂T ≈ (q_at(T_sfc + δ) - q_at(T_sfc - δ)) / (2δ) rtol =
+            1e-3
     end
 
     @testset "Alternative parameterizations, FT = $FT" begin

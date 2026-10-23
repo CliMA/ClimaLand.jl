@@ -33,10 +33,7 @@ using ClimaCore
     @test propertynames(Y.lake) == prognostic_vars(lake)
     @test propertynames(p.lake) == auxiliary_vars(lake)
     @test InlandWater.get_turb_fluxes_type(FT, lake.boundary_conditions) ==
-          NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-        Tuple{FT, FT, FT, FT, FT},
-    }
+          NamedTuple{(:lhf, :shf, :vapor_flux), Tuple{FT, FT, FT}}
     @test ClimaLand.surface_roughness_model(lake, Y, p) ==
           SurfaceFluxes.ConstantRoughnessParams{FT}(
         default_params_from_toml.z_0m,

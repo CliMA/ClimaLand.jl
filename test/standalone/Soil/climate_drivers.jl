@@ -462,32 +462,88 @@ end
     σ = LP.Stefan(earth_param_set)
     T_top, r, ϵ = FT(312.58), FT(0.016), FT(0.96)
     SW_n, LW_d = FT(-250), FT(450)
-    fluxes = Soil.solve_soil_surface_temperature_at_a_point(
-        Val(false),
-        T_top,
-        r,
-        ϵ,
-        SW_n,
-        LW_d,
-        FT(2.08), # g_liq
-        FT(0), # β_ice
-        FT(-3.75), # ψ_sfc
-        FT(273.15), # Tf_depressed
-        FT(0), # z_sfc
-        FT(0), # displ
-        FT(1e5), # P_atmos
-        FT(308.27), # T_atmos
-        FT(0.01956), # q_atmos
-        FT(0.132), # u_atmos
-        SurfaceFluxes.ConstantRoughnessParams{FT}(FT(0.01), FT(0.001)),
-        FT(0.5), # atmos_h
-        SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
-        SurfaceFluxes.ReferenceAboveSurface(),
-        (args...) -> FT(1),
-        (args...) -> FT(0),
-        earth_param_set,
-    )
-    F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
-    @test abs(F - (T_top - fluxes.T_sfc) / r) <
-          Soil.SKIN_ENERGY_BALANCE_TOLERANCE
+    for g_liq in (FT(1e-4), FT(0.01), FT(2.08))
+        fluxes = Soil.solve_soil_surface_temperature_at_a_point(
+            Val(false),
+            T_top,
+            r,
+            ϵ,
+            SW_n,
+            LW_d,
+            g_liq,
+            FT(0), # β_ice
+            FT(-3.75), # ψ_sfc
+            FT(273.15), # Tf_depressed
+            false, # frozen
+            FT(0), # z_sfc
+            FT(0), # displ
+            FT(1e5), # P_atmos
+            FT(308.27), # T_atmos
+            FT(0.01956), # q_atmos
+            FT(0.132), # u_atmos
+            SurfaceFluxes.ConstantRoughnessParams{FT}(FT(0.01), FT(0.001)),
+            FT(0.5), # atmos_h
+            SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
+            SurfaceFluxes.ReferenceAboveSurface(),
+            nothing, # update_∂T_sfc∂T
+            nothing, # update_∂q_sfc∂T
+            earth_param_set,
+        )
+        F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
+        @test abs(F - (T_top - fluxes.T_sfc) / r) < FT(1e-2)
+    end
+end
+
+@testset "Soil skin cooling through freezing" begin
+    # Clear night over a top cell with ice near the freezing temperature: the
+    # skin cools below it. The phase of the surface is that of the cell for the
+    # whole solve, so the energy balance closes on either side, and the vapor
+    # flux is booked as liquid over a thawing cell and as ice over a frozen one
+    FT = Float64
+    earth_param_set = LP.LandParameters(LP.create_toml_dict(FT))
+    σ = LP.Stefan(earth_param_set)
+    Tf = FT(273.15)
+    r, ϵ = FT(0.016), FT(0.96)
+    SW_n, LW_d = FT(0), FT(230)
+    θ_i, ν = FT(0.05), FT(0.45)
+    β_ice = Soil.frozen_soil_vapor_weight(θ_i, ν)
+    for T_top in (Tf + FT(0.5), Tf - FT(0.5))
+        frozen = Soil.frozen_soil_surface(θ_i, T_top, Tf)
+        @test frozen == (T_top < Tf)
+        fluxes = Soil.solve_soil_surface_temperature_at_a_point(
+            Val(false),
+            T_top,
+            r,
+            ϵ,
+            SW_n,
+            LW_d,
+            FT(0.01), # g_liq
+            β_ice,
+            FT(-3.75), # ψ_sfc
+            Tf,
+            frozen,
+            FT(0), # z_sfc
+            FT(0), # displ
+            FT(1e5), # P_atmos
+            FT(271), # T_atmos
+            FT(0.0025), # q_atmos
+            FT(1), # u_atmos
+            SurfaceFluxes.ConstantRoughnessParams{FT}(FT(0.01), FT(0.001)),
+            FT(2), # atmos_h
+            SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(0)),
+            SurfaceFluxes.ReferenceAboveSurface(),
+            nothing, # update_∂T_sfc∂T
+            nothing, # update_∂q_sfc∂T
+            earth_param_set,
+        )
+        @test fluxes.T_sfc < Tf
+        F = SW_n - ϵ * (LW_d - σ * fluxes.T_sfc^4) + fluxes.lhf + fluxes.shf
+        @test abs(F - (T_top - fluxes.T_sfc) / r) < FT(1e-2)
+        if frozen
+            @test fluxes.vapor_flux_liq == 0
+        else
+            @test fluxes.vapor_flux_ice == 0
+            @test fluxes.vapor_flux_liq != 0
+        end
+    end
 end

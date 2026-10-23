@@ -423,19 +423,32 @@ gustiness_spec(atmos::CoupledAtmosphere) =
     SurfaceFluxes.FlooredDeardorffGustinessSpec(atmos.gustiness)
 
 """
-    compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
+    compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc, q_vap_sfc = nothing)
 
 Computes the density of air at the displacement height, where SurfaceFluxes
 places the surface state, given the temperature at the surface T_sfc, the
 atmospheric temperature T_air, pressure P_air, specific humidity q_air, and the
 height `Δh` of the atmospheric state above the displacement height (see
-`compute_Δz_eff`), using surface_flux_params.
+`compute_Δz_eff`), using surface_flux_params. The hydrostatic extrapolation
+uses the surface specific humidity `q_vap_sfc` where given and `q_air`
+otherwise. A negative `T_sfc` gives `NaN`, which the NaN check reports, where
+the extrapolation would give a finite, unphysical density.
 """
-function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
-    T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
+function compute_ρ_sfc(
+    surface_flux_params,
+    T_air,
+    P_air,
+    q_air,
+    Δh,
+    T_sfc,
+    q_vap_sfc = nothing,
+)
+    T_sfc = T_sfc < 0 ? oftype(T_sfc, NaN) : T_sfc
     thermo_params =
         SurfaceFluxes.Parameters.thermodynamics_params(surface_flux_params)
     ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+    q_liq_air = zero(q_air)
+    q_ice_air = zero(q_air)
     return SurfaceFluxes.surface_density(
         surface_flux_params,
         T_air,
@@ -443,6 +456,9 @@ function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
         T_sfc,
         Δh,
         q_air,
+        q_liq_air,
+        q_ice_air,
+        q_vap_sfc,
     )
 end
 
@@ -778,22 +794,22 @@ the soil and snow models, which use its output with
 `turbulent_fluxes_from_output`.
 """
 @inline function surface_fluxes_at_a_point(
-    T_sfc_guess::FT,
-    q_vap_sfc_guess::FT,
+    T_sfc_guess,
+    q_vap_sfc_guess,
     update_T_sfc::UT,
     update_q_vap_sfc::UQ,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_tot_atmos::FT,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
     u_atmos,
-    h_atmos::FT,
-    z_sfc::FT,
-    displ::FT,
+    h_atmos,
+    z_sfc,
+    displ,
     roughness_model,
     gustiness,
     reference,
     earth_param_set,
-) where {FT, UT, UQ}
+) where {UT, UQ}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set)
@@ -804,23 +820,26 @@ the soil and snow models, which use its output with
         flux_specs = nothing,
     )
     # A coupled atmosphere provides a wind vector; a prescribed one a speed
-    u = u_atmos isa FT ? (u_atmos, FT(0)) : u_atmos
+    u = u_atmos isa Real ? (u_atmos, zero(u_atmos)) : u_atmos
+    u_sfc = (zero(first(u)), zero(first(u)))
+    q_liq_atmos = zero(q_tot_atmos)
+    q_ice_atmos = zero(q_tot_atmos)
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
     return SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
         q_tot_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
+        q_liq_atmos,
+        q_ice_atmos,
         ρ_atmos,
         T_sfc_guess,
         q_vap_sfc_guess,
         _grav * z_sfc,
-        h_atmos, # h_atmos can be height relative to apparent sink for momentum or relative to the ground, according to the passed `reference`.
+        h_atmos, # above the ground or apparent sink, according to `reference`
         displ,
         u,
-        (FT(0), FT(0)), # u_sfc
+        u_sfc,
         nothing, # roughness inputs
         config,
         positional_default_args...,
@@ -830,32 +849,32 @@ the soil and snow models, which use its output with
 end
 
 """
-     compute_Δz_eff(h_atmos::FT, z_0m::FT, displ::FT, reference::SurfaceFluxes.ReferenceAboveSurface)::FT
+     compute_Δz_eff(h_atmos, z_0m, displ, reference::SurfaceFluxes.ReferenceAboveSurface)
 
 The surface density and geopotential difference in SurfaceFluxes.jl is computed using z_atmos - z_ground - d.
 Under the reference `ReferenceAboveSurface`, `h_atmos = z_atmos - z_ground`.
 """
 function compute_Δz_eff(
-    h_atmos::FT,
-    z_0m::FT,
-    displ::FT,
+    h_atmos,
+    z_0m,
+    displ,
     reference::SurfaceFluxes.ReferenceAboveSurface,
-)::FT where {FT}
+)
     return h_atmos - displ
 end
 
 """
-     compute_Δz_eff(h_atmos::FT, z_0m::FT, displ::FT, reference::SurfaceFluxes.ReferenceAboveApparentSink)::FT
+     compute_Δz_eff(h_atmos, z_0m, displ, reference::SurfaceFluxes.ReferenceAboveApparentSink)
 
 The surface density and geopotential difference in SurfaceFluxes.jl is computed using z_atmos - z_ground - d.
 Under the reference `ReferenceAboveApparentSink`, `h_atmos = z_atmos - (z_ground + d + z_0m)`.
 """
 function compute_Δz_eff(
-    h_atmos::FT,
-    z_0m::FT,
-    displ::FT,
+    h_atmos,
+    z_0m,
+    displ,
     reference::SurfaceFluxes.ReferenceAboveApparentSink,
-)::FT where {FT}
+)
     return h_atmos + z_0m
 end
 
@@ -866,44 +885,38 @@ end
 
 Return the NamedTuple of `turbulent_fluxes_at_a_point` from the SurfaceFluxes.jl
 `output` of `surface_fluxes_at_a_point`: the latent and sensible heat fluxes,
-the vapor flux in volume of liquid water, the approximate derivatives of
-the heat fluxes with respect to the component temperature (evaluated with
+the vapor flux in volume of liquid water, the approximate derivatives of the
+heat fluxes with respect to the component temperature (evaluated with
 `update_∂T_sfc∂T` and `update_∂q_sfc∂T` at the surface temperature and
-humidity `T_sfc_guess` and `q_vap_sfc_guess`), the surface temperature `T_sfc`
-and specific humidity `q_sfc` at which the fluxes were evaluated, the friction
-velocity `ustar`, the stability parameter `ζ`, followed for
+humidity `T_sfc_guess` and `q_vap_sfc_guess`, or omitted when both are
+`nothing`), the surface temperature `T_sfc` and specific humidity `q_sfc` at
+which the fluxes were evaluated, the friction velocity `ustar`, the stability
+parameter `ζ`, and the effective height `Δz_eff`, followed for
 `return_extra_fluxes = Val(true)` by the momentum fluxes and the buoyancy
-flux. The atmospheric state is given at height `h_atmos` relative to the `reference` convention,
-the surface has displacement height `displ`, and the roughness model is as given.
-Models that solve for their surface
-temperature within the Monin-Obukhov iterations use it to obtain the fluxes
-from that solve.
+flux. The atmospheric state is given at height `h_atmos` according to the
+`reference` convention, the surface has displacement height `displ`, and the
+roughness model is as given. Models that solve for their surface temperature
+within the Monin-Obukhov iterations use it to obtain the fluxes from that
+solve.
 """
 @inline function turbulent_fluxes_from_output(
     return_extra_fluxes::Val,
     output,
-    T_sfc_guess::FT,
-    q_vap_sfc_guess::FT,
+    T_sfc_guess,
+    q_vap_sfc_guess,
     update_∂T_sfc∂T::UDT,
     update_∂q_sfc∂T::UDQ,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_tot_atmos::FT,
-    h_atmos::FT,
-    displ::FT,
+    P_atmos,
+    T_atmos,
+    q_tot_atmos,
+    h_atmos,
+    displ,
     roughness_model,
     reference,
     earth_param_set,
-) where {FT, UDT, UDQ}
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+) where {UDT, UDQ}
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-    _LH_v0 = LP.LH_v0(earth_param_set)
-    ρ_atmos =
-        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
-    # Approximate derivatives of fluxes with respect to T_sfc
-    g_h = output.g_h
-    u_star = output.ustar
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     # The surface state applies at the displacement height, so the density is
     # extrapolated over the effective height, as in the flux solve
     z_0m = SurfaceFluxes.momentum_roughness(
@@ -913,40 +926,40 @@ from that solve.
         nothing,
     )
     Δz_eff = compute_Δz_eff(h_atmos, z_0m, displ, reference)
-    ρ_sfc = SurfaceFluxes.surface_density(
-        surface_flux_params,
-        T_atmos,
-        ρ_atmos,
-        output.T_sfc,
-        Δz_eff,
-        q_tot_atmos,
-        FT(0),
-        FT(0),
-        output.q_vap_sfc,
+    needs_ρ_sfc = !(
+        isnothing(update_∂T_sfc∂T) &&
+        isnothing(update_∂q_sfc∂T) &&
+        return_extra_fluxes isa Val{false}
     )
-    # This assumes that q_vap_sfc_guess is the saturated value
-    ∂lhf∂T =
-        ρ_sfc *
-        g_h *
-        _LH_v0 *
-        update_∂q_sfc∂T(
-            u_star,
-            g_h,
-            q_vap_sfc_guess,
-            T_sfc_guess,
-            earth_param_set,
-        )
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    ρ_sfc =
+        needs_ρ_sfc ?
+        compute_ρ_sfc(
+            surface_flux_params,
+            T_atmos,
+            P_atmos,
+            q_tot_atmos,
+            Δz_eff,
+            output.T_sfc,
+            output.q_vap_sfc,
+        ) : zero(output.T_sfc)
+    derivatives = flux_temperature_derivatives(
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        ρ_sfc,
+        output.ustar,
+        output.g_h,
+        q_vap_sfc_guess,
+        T_sfc_guess,
+        earth_param_set,
+    )
     fluxes = (;
         lhf = output.lhf,
         shf = output.shf,
         vapor_flux = output.evaporation / _ρ_liq, # volume of liquid water
-        ∂lhf∂T,
-        ∂shf∂T,
+        derivatives...,
         T_sfc = output.T_sfc,
         q_sfc = output.q_vap_sfc,
-        ustar = u_star,
+        ustar = output.ustar,
         # Stability parameter at which the exchange coefficients were
         # evaluated (capped in stable conditions)
         ζ = output.ζ_eff,
@@ -959,6 +972,38 @@ from that solve.
         surface_flux_params,
         ρ_sfc,
     )
+end
+
+# Approximate derivatives of the turbulent heat fluxes with respect to T_sfc;
+# omitted when neither derivative callback is supplied
+@inline flux_temperature_derivatives(::Nothing, ::Nothing, args...) = (;)
+@inline function flux_temperature_derivatives(
+    update_∂T_sfc∂T::UDT,
+    update_∂q_sfc∂T::UDQ,
+    ρ_sfc,
+    u_star,
+    g_h,
+    q_vap_sfc_guess,
+    T_sfc_guess,
+    earth_param_set,
+) where {UDT, UDQ}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    _LH_v0 = LP.LH_v0(earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    # This assumes that q_vap_sfc_guess is the saturated value
+    ∂lhf∂T =
+        ρ_sfc *
+        g_h *
+        _LH_v0 *
+        update_∂q_sfc∂T(
+            u_star,
+            g_h,
+            q_vap_sfc_guess,
+            T_sfc_guess,
+            earth_param_set,
+        )
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    return (; ∂lhf∂T, ∂shf∂T)
 end
 
 """
@@ -976,7 +1021,6 @@ surface air density `ρ_sfc`.
     surface_flux_params,
     ρ_sfc,
 )
-    FT = typeof(ρ_sfc)
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,
@@ -984,8 +1028,6 @@ surface air density `ρ_sfc`.
         output.T_sfc,
         ρ_sfc,
         output.q_vap_sfc,
-        FT(0),
-        FT(0),
     )
     return (; fluxes..., ρτxz = output.ρτxz, ρτyz = output.ρτyz, buoyancy_flux)
 end
@@ -1253,15 +1295,15 @@ arguments are (`u_star`, `g_h`, `earth_param_set`).
 This is only required if the output of `component_temperature` does not coincide
 with the temperature that should be used to compute turbulent fluxes, and if your
 model requires derivatives of the fluxes with respect to the component temperature.
+A model whose cache stores no flux derivatives returns `nothing` from this
+function and from `get_∂q_sfc∂T_function`, and `turbulent_fluxes_from_output`
+then omits the derivatives (see `Soil.EnergyHydrology`).
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file.
 """
 function get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
-    function update_∂T_sfc∂T_at_a_point(u_star, g_h, earth_param_set)
-        FT = eltype(earth_param_set)
-        return FT(1)
-    end
+    update_∂T_sfc∂T_at_a_point(u_star, g_h, earth_param_set) = one(g_h)
     return update_∂T_sfc∂T_at_a_point
 end
 
@@ -1270,11 +1312,13 @@ end
 
 Returns a function which computes the partial derivative of the surface humidity
 used in `turbulent_fluxes!` with respect to the component temperature. The expected
-arguments are (`u_star`, `g_h`, `T_sfc`, `P_sfc`, `earth_param_set`).
+arguments are (`u_star`, `g_h`, `q_sat`, `T_sfc`, `earth_param_set`).
 
 This is only required if the output of `component_specific_humidity` does not coincide
 with the humidity that should be used to compute turbulent fluxes, and if your
 model requires derivatives of the fluxes with respect to the component temperature.
+A model whose cache stores no flux derivatives returns `nothing` from this
+function and from `get_∂T_sfc∂T_function` (see `Soil.EnergyHydrology`).
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes using the functions in this file.
