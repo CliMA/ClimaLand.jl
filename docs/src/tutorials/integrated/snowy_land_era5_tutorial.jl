@@ -167,7 +167,7 @@ simulation_no_stress = run_simulation(land_model_no_stress, output_vars);
 # mol CO₂ m⁻² s⁻¹ to g C m⁻² day⁻¹. Soil water content is
 # resolved in depth; we keep the layers centered near 10 cm and 1 m below the
 # surface. Note that in ClimaLand, precipitation is negative (downward), and
-# that each daily average is timestamped at the end of its day.
+# that each daily average is timestamped at the start of its day.
 z = vec(parent(domain.fields.z))
 layer_10cm = argmin(abs.(z .+ 0.1))
 layer_1m = argmin(abs.(z .+ 1.0))
@@ -184,7 +184,7 @@ function get_daily_series(simulation)
         )
     times, precip = series("precip")
     return (;
-        dates = date.(times) .- Day(1),
+        dates = date.(times),
         precip = -precip .* seconds_per_day,
         lai = series("lai")[2],
         vpd = series("vpd")[2] ./ Pa_per_kPa,

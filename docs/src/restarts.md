@@ -139,10 +139,10 @@ At the moment, `ClimaLand` does not support working with accumulated diagnostics
 across restarts. The present limitations are best illustrated with an example.
 
 Suppose you are saving 30-day averages and stop the simulation at day 45. If you
-do so, you'll find output for day 30 and the checkpoint at day 45. Then, if you
-restart the simulation, you'll see that the next diagnostic output will be at
-day 75, and not day 60. In other words, the counter starts from 0 with every
-restart.
+do so, you'll find the average over days 0 to 30 and the checkpoint at day 45.
+Then, if you restart the simulation, you'll see that the next diagnostic output
+will be the average over days 45 to 75, and not over days 30 to 60. In other
+words, the counter starts from 0 with every restart.
 
 !!! note
 

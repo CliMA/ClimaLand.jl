@@ -2,6 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Update to ClimaDiagnostics v0.4. Time-reduced
+  diagnostics no longer include the initial state, and the `DictWriter` saves
+  them at the start of their period, like the `NetCDFWriter`. NetCDF
+  diagnostics no longer have `date` and `date_bnds`, and `time` is in seconds
+  since the start date. The default NetCDF diagnostics of a restarted
+  `LandSimulation` are now correctly dated.
 - ![][badge-✨feature] Diagnostics are reproducible when restarting a
   simulation.
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
