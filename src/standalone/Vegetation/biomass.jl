@@ -521,10 +521,9 @@ Each `RunningSum` holds a total over its own window (1 day, 1 year) whatever the
 smoothing timescale τ_long: only the smoothing changes with τ_long, not the magnitude,
 as the LAI_max/steady-state formulas require.
 
-Nine more variables carry the climate of the moist growing season, of the leaf cost
-and of the tree share: a degree-day snow store (`snow_store`), which holds the
-precipitation that falls below freezing until it melts; the 30-day totals of the water
-input, rain and snowmelt (`water_30d`), and of the PET (`PET_30d`); the yearly sums of
+Eight more variables carry the climate of the moist growing season, of the leaf cost
+and of the tree share: the 30-day totals of the water input, the liquid water reaching
+the ground (`water_30d`, see `ground_water_input`), and of the PET (`PET_30d`); the yearly sums of
 the VPD (`VPD_moist_annual`) and of the days (`moist_days`) of the moist growing
 season, when the air is above freezing and the 30-day water input is at least half the
 PET; the yearly sums of the degree-days (`degree_days`), of the days (`warm_days`) and
@@ -616,10 +615,6 @@ function ZhouOptimalLAIModel{FT}(
     month = 30 * seconds_per_day
     year = 365 * seconds_per_day
     climate_tivs = (
-        ClimaLand.TimeIntegratedVariable{FT}(;
-            name = :snow_store,
-            reduction = ClimaLand.TimeIntegral(),
-        ),
         ClimaLand.TimeIntegratedVariable{FT}(;
             name = :water_30d,
             reduction = ClimaLand.RunningSum(month, month),
@@ -789,11 +784,6 @@ end
 # this much of its history.
 const RUNNING_SUM_START_MEMORY = 86400
 
-# Melt of the snow store of the optimal-LAI climate (m of water per K per day above
-# freezing), and the shortest time (s) over which it can empty
-const SNOWMELT_DEGREE_DAY_FACTOR = 3e-3
-const SNOWMELT_MIN_TIMESCALE = 3600
-
 """
     growing_running_sum_tendency(f, X, age, reduction::ClimaLand.RunningSum)
 
@@ -827,6 +817,17 @@ function moist_season_vpd(
     w = min(moist_days / 30, one(FT))
     return w * vpd_moist + (1 - w) * vpd_warm
 end
+
+"""
+    ground_water_input(p, prognostic_land_components)
+
+Liquid water reaching the ground (m s^-1, negative downward), the water input of the
+moist growing season of `ZhouOptimalLAIModel`: the precipitation, rain and snow,
+without a snow model. Land models with a snow model extend it with the liquid water
+input of the soil, rain on snow-free ground and the water leaving the snowpack.
+"""
+ground_water_input(p, prognostic_land_components) =
+    @. lazy(p.drivers.P_liq + p.drivers.P_snow)
 
 """
     leaf_cost_tree_share(tree_share, p)
@@ -1014,8 +1015,8 @@ function ClimaLand.make_compute_exp_tendency(
     ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
     tivs = component.time_integrated_vars
     seconds_per_day = IP.day(IP.InsolationParameters(FT))
-    # mol H2O m^-2 s^-1 K^-1
-    snowmelt_factor = FT(SNOWMELT_DEGREE_DAY_FACTOR) * ρ_m_liq / seconds_per_day
+    prognostic_land_components =
+        Val(canopy.boundary_conditions.prognostic_land_components)
     earth_param_set = canopy.earth_param_set
     σ = LP.Stefan(earth_param_set)
     M_w = LP.molar_mass_water(earth_param_set)  # kg mol^-1
@@ -1148,25 +1149,9 @@ function ClimaLand.make_compute_exp_tendency(
             tivs.LAI.reduction,
         )
         b = Y.canopy.biomass
-        # Precipitation below freezing accumulates as snow until it melts.
-        frozen = @. lazy(p.drivers.T <= T_freeze)
-        melt = @. lazy(
-            ifelse(
-                frozen,
-                zero(FT),
-                min(
-                    snowmelt_factor * (p.drivers.T - T_freeze),
-                    b.snow_store / SNOWMELT_MIN_TIMESCALE,
-                ),
-            ),
-        )
-        @. dY.canopy.biomass.snow_store = apply_time_reduction(
-            ifelse(frozen, precip, zero(FT)) - melt,
-            b.snow_store,
-            tivs.snow_store.reduction,
-        )
+        water_input = ground_water_input(p, prognostic_land_components)
         @. dY.canopy.biomass.water_30d = apply_time_reduction(
-            ifelse(frozen, zero(FT), precip) + melt,
+            -water_input * ρ_m_liq,
             b.water_30d,
             tivs.water_30d.reduction,
         )

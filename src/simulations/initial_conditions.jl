@@ -520,8 +520,7 @@ potential GPP at which the competition returns the static C3 map `fractional_c3`
 photosynthesis model's; `Mc` is the molar mass of carbon). Where the map is pure C3 the
 seed is `A0c4_annual = 0`, which leaves a small C4 grass share in the open canopy.
 
-The 30-day totals start at the 30-day share of the annual ones, the snow store empty,
-and the yearly sums of the moist growing season and of the days, degree-days and
+The 30-day totals start at the 30-day share of the annual ones, and the yearly sums of the moist growing season and of the days, degree-days and
 maintenance load above freezing at zero: they average their history until it reaches
 `tau_long_term`.
 
@@ -592,7 +591,6 @@ function set_canopy_component_initial_conditions!(
     Y.canopy.biomass.water_30d .= Y.canopy.biomass.precip_annual .* FT(30 / 365)
     Y.canopy.biomass.PET_30d .= Y.canopy.biomass.PET_annual .* FT(30 / 365)
     for name in (
-        :snow_store,
         :VPD_moist_annual,
         :moist_days,
         :degree_days,

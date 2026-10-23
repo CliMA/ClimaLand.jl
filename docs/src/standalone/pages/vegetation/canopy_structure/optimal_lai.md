@@ -47,7 +47,7 @@ with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the
 
 ### No Soil-Moisture Stress
 
-The potential GPP carries no soil-moisture stress: its soil-moisture stress factor is 1. Zhou et al. (2025) applied the soil-moisture penalty of [Stocker2020](@citet), with the soil moisture of the SPLASH water balance [Davis2017](@cite), driven by the observed climate. Here the simulated soil moisture depends on the transpiration of the simulated canopy, and so on LAI: a stressed potential GPP would make the seasonal maximum LAI depend on LAI itself. Water limits LAI instead through the water-limited fAPAR alone (see Seasonal Maximum LAI), whose inputs come from the atmospheric drivers: the precipitation, the growing-season VPD, and the fraction of the precipitation available for transpiration, $f_0$, a function of the aridity index. The potential evapotranspiration (PET) of the aridity index is that of a reference surface: it measures the energy available to evaporate water, whatever the vegetation and the soil, not the water actually available. None of these inputs depends on LAI or on the simulated soil moisture.
+The potential GPP carries no soil-moisture stress: its soil-moisture stress factor is 1. Zhou et al. (2025) applied the soil-moisture penalty of [Stocker2020](@citet), with the soil moisture of the SPLASH water balance [Davis2017](@cite), driven by the observed climate. Here the simulated soil moisture depends on the transpiration of the simulated canopy, and so on LAI: a stressed potential GPP would make the seasonal maximum LAI depend on LAI itself. Water limits LAI instead through the water-limited fAPAR alone (see Seasonal Maximum LAI), whose inputs are upstream of the water use of the canopy: the precipitation; the fraction of the precipitation available for transpiration, $f_0$, a function of the aridity index; and the growing-season VPD, that of the season when enough water reaches the ground (see Growing-Season Climate). The potential evapotranspiration (PET) of the aridity index is that of a reference surface: it measures the energy available to evaporate water, whatever the vegetation and the soil, not the water actually available.
 
 ## Seasonal Maximum LAI
 
@@ -179,17 +179,7 @@ where we have:
 - the mean VPD of the moist growing season, $\overline{D}_{\mathrm{moist}}$, and above freezing, $\overline{D}_{\mathrm{warm}}$ (Pa)
 - the yearly number of moist days, $n_{\mathrm{moist}}$ (days)
 
-The water input $W$ is the precipitation $P$ that falls above freezing and the melt of a degree-day snow store $S$, which holds the precipitation that falls below freezing:
-
-```math
-\begin{aligned}
-\frac{dS}{dt} &= \begin{cases} P, & T \le T_f, \\ -R_{\mathrm{melt}}, & T > T_f, \end{cases} \qquad
-W = \begin{cases} 0, & T \le T_f, \\ P + R_{\mathrm{melt}}, & T > T_f, \end{cases} \\
-R_{\mathrm{melt}} &= \min\left[F_{\mathrm{dd}} \, (T - T_f),\ S / (1\ \text{h})\right],
-\end{aligned}
-```
-
-with the degree-day factor $F_{\mathrm{dd}}$ = 3 mm K⁻¹ day⁻¹. This store is not the snowpack of the snow model: like the other climate statistics of the model, the water input follows from the atmospheric drivers alone, so it depends neither on LAI, which shades the snow, nor on the presence of a snow model. The climate tree share uses two more statistics of the growing season: its mean air temperature, $T_{\mathrm{gs}}$ (°C), the yearly sum of the degree-days above freezing divided by the yearly number of days above freezing; and its number of dry months, $n_{\mathrm{dry}}$, the yearly number of days above freezing that are not moist, in months (12/365 of the days).
+The water input $W$ is the liquid water reaching the ground. In a land model with snow, it is that of the soil: the rain on snow-free ground and the water leaving the snowpack, so that the melt of the winter's snow makes the spring moist. Without a snow model, it is the precipitation, rain and snow. Unlike the soil moisture, the water reaching the ground is upstream of the water use of the canopy; LAI affects it only weakly, through the energy that reaches the snow. The climate tree share uses two more statistics of the growing season: its mean air temperature, $T_{\mathrm{gs}}$ (°C), the yearly sum of the degree-days above freezing divided by the yearly number of days above freezing; and its number of dry months, $n_{\mathrm{dry}}$, the yearly number of days above freezing that are not moist, in months (12/365 of the days).
 
 ## Climate Tree Share
 
@@ -263,21 +253,20 @@ so that it tends to $\tau \bar{f}$, the total of $f$ over the window, with $\bar
 | `VPD_moist_annual`, `moist_days` | $D$ and 1/day, when moist | 1 year | growing | Sum of the VPD, and number of days, of the moist growing season |
 | `degree_days`, `warm_days` | $T - T_f$ and 1/day, above freezing | 1 year | growing | Degree-days and number of days above freezing |
 | `maintenance_days` | $Q_{10}^{(T - T_f - 25)/10}$/day, above freezing | 1 year | growing | Maintenance load, $M$ |
-| `snow_store` | - | - | - | Snow store of the water input, $S$ |
 | `age` | - | - | - | Time since the start of the simulation, $t_{\mathrm{age}}$ |
 
 The diagnostics `a0d`, `a0a`, `a0c3`, `a0c4` and `pra` output `A0_daily`, `A0_annual`, `A0c3_annual`, `A0c4_annual` and `precip_annual` (the latter in m yr⁻¹).
 
 ### Initial Conditions
 
-The state of the model starts from a climatology (`ClimaLand.Artifacts.optimal_lai_initial_conditions_path()`), with LAI from MODIS, the 30-day totals at 30/365 of the yearly ones, and the snow store and the sums with a growing memory at zero. Where it has data, a state of the model written by a spin-up (`experiments/long_runs/optimal_lai_spinup.jl`, by default `ClimaLand.Artifacts.optimal_lai_state_path()`) then replaces every variable it holds. The spin-up writes the states of the first day of each month of a calendar year, and a run starts from the state of the day of the year of its start date, interpolated between months; the states of 2008 are in the `optimal_lai_state_and_clm_maps` artifact. See `ClimaLand.Simulations.set_canopy_component_initial_conditions!` for the details.
+The state of the model starts from a climatology (`ClimaLand.Artifacts.optimal_lai_initial_conditions_path()`), with LAI from MODIS, the 30-day totals at 30/365 of the yearly ones, and the sums with a growing memory at zero. Where it has data, a state of the model written by a spin-up (`experiments/long_runs/optimal_lai_spinup.jl`, by default `ClimaLand.Artifacts.optimal_lai_state_path()`) then replaces every variable it holds. The spin-up writes the states of the first day of each month of a calendar year, and a run starts from the state of the day of the year of its start date, interpolated between months; the states of 2008 are in the `optimal_lai_state_and_clm_maps` artifact. See `ClimaLand.Simulations.set_canopy_component_initial_conditions!` for the details.
 
 ## Model Assumptions
 
 1. **Water limitation enters once**: the potential GPP carries no soil-moisture stress, so the supply of water limits LAI only through the water-limited fAPAR.
 2. **Beer's law light extinction**: the absorption of light decays exponentially through the canopy.
 3. **Optimal stomatal behavior**: the ratio of leaf-internal to ambient CO₂, $\chi$, is the optimum of the P-model.
-4. **Climate inputs from the atmospheric drivers**: the growing-season length and VPD, the aridity index behind $f_0$, the water input of the moist season, the maintenance load and the climate tree share follow the air temperature, humidity, radiation and precipitation of the atmospheric drivers, rather than maps, and do not depend on the simulated land surface.
+4. **Climate inputs from the simulated climate**: the growing-season length and VPD, the aridity index behind $f_0$, the maintenance load and the climate tree share follow the air temperature, humidity, radiation and precipitation of the atmospheric drivers, rather than maps; the moist season also follows the water reaching the ground, which includes the melt of the snow model.
 5. **Continuous update**: LAI and the running totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters

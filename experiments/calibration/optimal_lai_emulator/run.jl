@@ -93,7 +93,7 @@ end
 CW = Vector{PointClimate}(undef, length(PTS));
 FW = Vector{Features}(undef, length(PTS))
 # water input of the moist season: precipitation (`:precip`) or rain and the melt of a
-# degree-day snow store (`:snow`, as in the model)
+# degree-day snow store (`:snow`, which stands in for the melt of the snow model)
 function set_input!(kind; ddf = 3.0)
     for i in eachindex(PTS)
         input = kind == :precip ? CLIM[i].precip : water_input(CLIM[i], ddf)

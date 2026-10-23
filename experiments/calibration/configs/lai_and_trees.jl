@@ -116,7 +116,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     sample_date_ranges = [("2010-3-1", "2010-12-1")],
     extend = Dates.Month(3),
     # From March 1 2008, the date of the spun-up optimal-LAI state; the climate
-    # totals that start empty (the moist season, the snow store) settle in a year.
+    # totals that start empty (the moist season) settle in a year.
     spinup = Dates.Year(2),
     nelements = (180, 360, 15),
     output_dir = OUTPUT_DIR,

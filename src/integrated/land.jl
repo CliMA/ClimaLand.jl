@@ -962,6 +962,23 @@ function Soil.compute_liquid_influx(
 end
 
 """
+    Canopy.ground_water_input(p, prognostic_land_components)
+
+The water input of the moist growing season of `ZhouOptimalLAIModel` in a land model
+with snow: the liquid water input of the soil, rain on snow-free ground and the water
+leaving the snowpack.
+"""
+Canopy.ground_water_input(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},
+    },
+) = Soil.compute_liquid_influx(p, nothing, Val((:snow, :soil)))
+
+"""
     compute_infiltration_energy_flux(
         p,
         runoff,

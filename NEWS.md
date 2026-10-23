@@ -69,16 +69,17 @@ main
 - ![][badge-🔥behavioralΔ] The water limit of `ZhouOptimalLAIModel` uses the VPD of the
   moist growing season (above freezing, and the 30-day water input of rain and snowmelt at
   least half the PET) rather than of the whole season above freezing, whose dry-season
-  VPD made the limit too tight in the seasonally dry tropics; snowmelt comes from a
-  degree-day snow store. Trees keep half of their LAI_max through the unfavourable season
-  (`optimal_lai_tree_retention`), the evergreen and semi-evergreen part of their canopy,
-  so winter LAI north of 30°N is no longer zero. The maintenance share of the leaf cost
+  VPD made the limit too tight in the seasonally dry tropics; in a land model with snow,
+  the water input is that of the soil, which includes the melt of the snowpack. Trees keep
+  half of their LAI_max through the unfavourable season (`optimal_lai_tree_retention`),
+  the evergreen and semi-evergreen part of their canopy, so winter LAI north of 30°N is
+  no longer zero. The maintenance share of the leaf cost
   (`optimal_lai_maintenance_share`, with `optimal_lai_maintenance_q10`) scales with the
   days and temperature above freezing, so leaves of short, cold seasons are cheaper,
   which raises the boreal summer LAI. The leaf costs (`optimal_lai_z_tree` 9.92,
   `optimal_lai_z_grass` 154), `optimal_lai_sigma` (1.09) and the climate tree share are
   calibrated against MODIS LAI and the CLM tree share in an offline emulator of the model
-  (`experiments/calibration/optimal_lai_emulator`). Nine time-integrated variables carry
+  (`experiments/calibration/optimal_lai_emulator`). Eight time-integrated variables carry
   this climate. In the emulator, the annual-mean LAI RMSE falls from 0.82 to 0.73, the
   global bias from −0.21 to −0.04, and the JJA LAI north of 30°N rises from 1.21 to 1.47
   (MODIS 1.68).

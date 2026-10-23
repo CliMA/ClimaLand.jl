@@ -12,7 +12,8 @@ The CLM5 tree share is a target of the calibration, never an input.
 
 - `data.jl`: forcing, observations and the per-point climate (potential GPP, χ, PET).
 - `model.jl`: climate features, the configuration (`Config`), `emulate` and scores.
-- `snow.jl`: the degree-day snow store and the moist growing season.
+- `snow.jl`: the moist growing season, with a degree-day snow store that stands in for
+  the melt of the snow model, which sets the water input of the model in a land model.
 - `calibrate.jl`: Nelder–Mead.
 - `run.jl`: loads everything, scores the defaults of `toml/default_parameters.toml`,
   and holds the calibration (weak priors, global-bias penalty, checkerboard

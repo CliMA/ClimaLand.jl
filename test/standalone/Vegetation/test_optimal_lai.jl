@@ -133,6 +133,14 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                   -log(1 - fAPAR_water) / k
         end
 
+        @testset "ground_water_input for FT = $FT" begin
+            # without a snow model, all the precipitation, rain and snow
+            drivers = (; P_liq = FT(-2e-8), P_snow = FT(-1e-8))
+            water_input =
+                Canopy.ground_water_input((; drivers), Val((:canopy,)))
+            @test Base.materialize(water_input) ≈ FT(-3e-8)
+        end
+
         @testset "moist_season_vpd for FT = $FT" begin
             day = FT(86400)
             vpd(moist_days) = Canopy.moist_season_vpd(
@@ -243,7 +251,6 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 :A0c4_annual,
                 :GPPc3_annual,
                 :LAI,
-                :snow_store,
                 :water_30d,
                 :PET_30d,
                 :VPD_moist_annual,
@@ -954,7 +961,6 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                     @test scalar(Y.canopy.biomass.PET_30d) ≈
                           scalar(Y.canopy.biomass.PET_annual) * 30 / 365
                     for name in (
-                        :snow_store,
                         :VPD_moist_annual,
                         :moist_days,
                         :degree_days,
@@ -970,7 +976,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
         @testset "set_canopy_component_initial_conditions! from monthly states for FT = $FT" begin
             # The states of the first day of each month of 2008, as the spin-up
-            # writes them: LAI is the month, the snow store a hundred times it.
+            # writes them: LAI is the month, the moist days a hundred times it. The
+            # file also holds a variable the model does not have, `snow_store`.
             path = joinpath(mktempdir(), "optimal_lai_state.nc")
             lon = collect(-180.0:10.0:170.0)
             lat = collect(-90.0:10.0:80.0)
@@ -995,8 +1002,14 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 )
                 NCDatasets.defVar(
                     ds,
-                    "snow_store",
+                    "moist_days",
                     state(month -> 100month),
+                    ("lon", "lat", "time"),
+                )
+                NCDatasets.defVar(
+                    ds,
+                    "snow_store",
+                    state(month -> 1),
                     ("lon", "lat", "time"),
                 )
             end
@@ -1040,7 +1053,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             # December to January
             state = initial_state(DateTime(2008, 3, 1))
             @test scalar(state.LAI) ≈ 3
-            @test scalar(state.snow_store) ≈ 300
+            @test scalar(state.moist_days) ≈ 300
+            @test !hasproperty(state, :snow_store)
             @test scalar(initial_state(DateTime(2008, 3, 16, 12)).LAI) ≈ 3.5
             @test scalar(initial_state(DateTime(2008, 12, 16, 12)).LAI) ≈ 6.5
             # in other years, that of the day of the year, to within the day a year

@@ -95,7 +95,6 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(canopy.biomass.A0c4_annual),
         @name(canopy.biomass.GPPc3_annual),
         @name(canopy.biomass.LAI),
-        @name(canopy.biomass.snow_store),
         @name(canopy.biomass.water_30d),
         @name(canopy.biomass.PET_30d),
         @name(canopy.biomass.VPD_moist_annual),
