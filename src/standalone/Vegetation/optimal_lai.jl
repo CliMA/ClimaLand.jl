@@ -6,8 +6,8 @@ export OptimalLAIParameters,
 
 The required parameters for the optimal LAI model based on Zhou et al. (2025).
 
-Water limitation is handled through the f0*P/A0 term following Zhou et al. (2025) Equation 11,
-where P is annual precipitation and A0 is annual potential GPP.
+Water limitation is handled through the f0*P/E0 term following Zhou et al. (2025) Equation 11,
+where P is annual precipitation and E0 the annual transpiration of the potential GPP.
 
 # References
 Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
@@ -206,14 +206,40 @@ function optimal_chi(
 end
 
 """
-    compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
+    potential_gpp_transpiration(A0, T, P_air, ca, vpd, β, constants)
+
+Transpiration that goes with the potential GPP `A0` of one photosynthetic pathway, in
+mol H2O per mol CO2 of `A0` (same area and time units): `A0 / iWUE`, with the intrinsic
+water use efficiency `iWUE = ca (1 - χ) / (1.6 D)` (Zhou et al. 2025, Equations 4 and 5)
+and the optimal ratio of intercellular to ambient CO2 χ of unit cost ratio `β`
+(`optimal_chi`) at air temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing ratio
+`ca` (mol mol^-1) and vapor pressure deficit `vpd` (Pa).
+
+A canopy blends the GPP and stomatal conductance of pure C3 and pure C4 canopies with
+its C3 fraction, so its transpiration blends theirs, each with its own χ.
+"""
+function potential_gpp_transpiration(
+    A0::FT,
+    T::FT,
+    P_air::FT,
+    ca::FT,
+    vpd::FT,
+    β::FT,
+    constants,
+) where {FT}
+    χ = optimal_chi(T, P_air, ca, vpd, β, constants)
+    return A0 * FT(1.6) * vpd / max(ca * P_air * (1 - χ), eps(FT))
+end
+
+"""
+    compute_L_max(Ao_annual, k, z, precip_annual, f0, E0_annual)
 
 Compute seasonal maximum leaf area index (LAI_max) based on annual potential GPP
 and water availability, following Zhou et al. (2025) Equation 11.
 
 LAI_max is determined by the minimum of energy-limited and water-limited fAPAR:
 - Energy-limited: fAPAR_energy = 1 - z/(k*A0)
-- Water-limited: fAPAR_water = f0*P/A0 * (ca(1-chi))/(1.6*D)
+- Water-limited: fAPAR_water = f0*P/E0
 
 # Arguments
 - `Ao_annual::FT`: Annual total potential GPP (mol CO2 m^-2 yr^-1).
@@ -221,25 +247,20 @@ LAI_max is determined by the minimum of energy-limited and water-limited fAPAR:
 - `z::FT`: Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1); see `leaf_cost`
 - `precip_annual::FT`: Mean annual precipitation (mol H2O m^-2 yr^-1)
 - `f0::FT`: Fraction of precipitation available for transpiration (dimensionless); see `f0_from_aridity`
-- `ca_pa::FT`: Ambient CO2 partial pressure (Pa), typically ~40 Pa at 400 ppm
-- `chi::FT`: Optimal ratio of intercellular to ambient CO2 (dimensionless), typically 0.7-0.8
-- `vpd_gs::FT`: Mean vapor pressure deficit during growing season (Pa)
+- `E0_annual::FT`: Annual transpiration of the potential GPP (mol H2O m^-2 yr^-1); see
+  `potential_gpp_transpiration`
 
 # Returns
 - `LAI_max::FT`: Seasonal maximum leaf area index (m^2 m^-2)
 
 # Notes
-Following Zhou et al. (2025) Equation 11:
-```
-fAPAR_max = min{1 - z/(k*A0), f0*P/A0 * (ca(1-chi))/(1.6*D)}
-```
-The first term is energy-limited (carbon gain vs leaf cost trade-off).
-The second term is water-limited (precipitation constrains transpiration, scaled by
-intrinsic water use efficiency iWUE = ca(1-chi)/(1.6*D)).
+The energy-limited fAPAR maximizes the carbon gain net of the leaf cost. The
+water-limited fAPAR is the one at which the canopy transpires `f0*P`. For a single
+photosynthetic pathway, `E0 = A0 * 1.6*D / (ca(1-chi))` and the water limit is
+`f0*P/A0 * ca(1-chi)/(1.6*D)`, as in Zhou et al. (2025) Equation 11.
 
-The iWUE factor converts water flux to carbon flux:
-- ca(1-chi): CO2 drawdown from ambient to intercellular (Pa)
-- 1.6*D: VPD adjusted for CO2/H2O diffusivity ratio (Pa)
+The energy limit is below 1, and negative where `A0 < z/k`: no leaf pays back its
+cost, and LAI_max is 0.
 
 # References
 Zhou et al. (2025) Global Change Biology, Equation 11
@@ -250,13 +271,9 @@ function compute_L_max(
     z::FT,              # mol m^-2 yr^-1
     precip_annual::FT,  # mol H2O m^-2 yr^-1
     f0::FT,             # dimensionless
-    ca_pa::FT,          # Pa
-    chi::FT,            # dimensionless
-    vpd_gs::FT,         # Pa
+    E0_annual::FT,      # mol H2O m^-2 yr^-1
 ) where {FT}
-    # Handle edge case: very small or zero Ao_annual (e.g., polar regions)
-    # When Ao_annual ~ 0, z / (k * Ao_annual) -> Inf, causing numerical issues.
-    # Use ifelse for GPU compatibility.
+    # Ao_annual ~ 0 (e.g., polar regions) would make z / (k * Ao_annual) infinite.
     Ao_annual_safe = max(Ao_annual, eps(FT))
 
     # Energy-limited fAPAR (Equation 11, first term)
@@ -264,17 +281,12 @@ function compute_L_max(
     fAPAR_energy = FT(1) - z / (k * Ao_annual_safe)
 
     # Water-limited fAPAR (Equation 11, second term)
-    # fAPAR_water = f0 * P / A0 * (ca(1-chi)) / (1.6*D)
-    # The iWUE factor (ca(1-chi))/(1.6*D) converts water flux to carbon flux
-    # Guard against zero VPD
-    vpd_safe = max(vpd_gs, eps(FT))
-    iWUE_factor = (ca_pa * (FT(1) - chi)) / (FT(1.6) * vpd_safe)
-    fAPAR_water = f0 * precip_annual / Ao_annual_safe * iWUE_factor
+    fAPAR_water = f0 * precip_annual / max(E0_annual, eps(FT))
 
     # fAPAR_max is the minimum of energy and water constraints (Equation 11)
     fAPAR_max = min(fAPAR_energy, fAPAR_water)
 
-    # Ensure fAPAR is in valid range [0, 1]
+    # No canopy where the energy limit is negative
     fAPAR_max = max(FT(0), min(FT(1), fAPAR_max))
 
     # Convert fAPAR to LAI using Beer's law (Equation 12)
@@ -492,7 +504,7 @@ function compute_steady_state_LAI(
 end
 
 """
-    compute_L_steady_target(A0_daily, k, A0_annual, z, GSL, sigma, precip_annual, f0, ca_pa, chi, vpd_gs)
+    compute_L_steady_target(A0_daily, k, A0_annual, z, GSL, sigma, precip_annual, f0, E0_annual)
 
 Compute the steady-state LAI target `L_steady` (Zhou et al. 2025 Eqs. 11-15) from
 the daily and annual potential GPP and the water-limitation inputs, without the
@@ -510,12 +522,9 @@ function compute_L_steady_target(
     sigma::FT,
     precip_annual::FT,
     f0::FT,
-    ca_pa::FT,
-    chi::FT,
-    vpd_gs::FT,
+    E0_annual::FT,
 ) where {FT}
-    LAI_max =
-        compute_L_max(A0_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
+    LAI_max = compute_L_max(A0_annual, k, z, precip_annual, f0, E0_annual)
     m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
     return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
 end
@@ -566,7 +575,8 @@ mol CO2 m^-2 yr^-1), with `GSL` the growing-season length (days); `Mc` is the mo
 of carbon (kg mol^-1). Returns a `NamedTuple` `(; tree, c3_grass, c4_grass)` summing to
 one.
 
-The fractions are shares of productivity, not of ground area: the proportional C4 GPP
+The fractions weight the fluxes of pure C3 and pure C4 canopies, each with the full
+LAI; they do not split the LAI. The proportional C4 GPP
 advantage `(A0c4 − A0c3)/A0c3` goes through a logistic to an expected C4 share of
 the open canopy, and the tree share is the C3 tree cover estimated from the realized C3
 GPP (`tree_share_from_gpp`), normalized by the cover at canopy closure (`tc_gpp_ref`). C4 grasses

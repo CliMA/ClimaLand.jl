@@ -100,8 +100,6 @@ struct PointClimate
     P::FT               # mean surface pressure, Pa
     A0c3::Vector{FT}    # mol m^-2 s^-1, at fAPAR = 1
     A0c4::Vector{FT}
-    χc3::Vector{FT}     # at the growing-season VPD
-    χc4::Vector{FT}
 end
 
 function point_climates(points)
@@ -140,8 +138,6 @@ function point_climates(points)
         VPD = [
             max(TD.vapor_pressure_deficit(THERMO, T[h], P[h], q[h]), zero(FT)) for h in eachindex(T)
         ]
-        grow = T .> TF
-        vpd_gs = sum(VPD .* grow) / max(sum(grow), 1)
         PPFD = [
             Canopy.compute_PPFD(
                 SW[h] / 2,
@@ -152,7 +148,7 @@ function point_climates(points)
             ) for h in eachindex(T)
         ]
         p3 = [
-            Canopy.compute_A0_and_χ(
+            Canopy.compute_A0(
                 one(FT),
                 PMP,
                 PC,
@@ -163,11 +159,10 @@ function point_climates(points)
                 C_CO2,
                 PPFD[h],
                 one(FT),
-                vpd_gs,
             ) for h in eachindex(T)
         ]
         p4 = [
-            Canopy.compute_A0_and_χ(
+            Canopy.compute_A0(
                 zero(FT),
                 PMP,
                 PC,
@@ -178,7 +173,6 @@ function point_climates(points)
                 C_CO2,
                 PPFD[h],
                 one(FT),
-                vpd_gs,
             ) for h in eachindex(T)
         ]
         push!(
@@ -194,8 +188,6 @@ function point_climates(points)
                 mean(P),
                 [p.A0_c3 for p in p3],
                 [p.A0_c4 for p in p4],
-                [p.χ for p in p3],
-                [p.χ for p in p4],
             ),
         )
     end

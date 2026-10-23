@@ -110,7 +110,19 @@ f0_curve(AI, cfg) =
         log(AI / cfg.ai_peak)^2,
     )
 
-# LAI_max of a C3 tree canopy, with χ at the growing-season temperature and VPD
+# yearly transpiration of the potential GPP A0a of one pathway, with χ at the
+# growing-season temperature and VPD
+transpiration(c, f, A0a, β) = Canopy.potential_gpp_transpiration(
+    A0a,
+    TF + f.Tgs,
+    c.P,
+    C_CO2,
+    f.vpd_gs,
+    β,
+    PC,
+)
+
+# LAI_max of a C3 tree canopy
 function tree_lai_max(
     c,
     f,
@@ -118,16 +130,13 @@ function tree_lai_max(
     f0 = f0_curve(f.AI, cfg),
     zs = cost_scale(c, cfg),
 )
-    χ = Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c3, PC)
     return Canopy.compute_L_max(
         f.A0c3a,
         LPAR.k,
         cfg.z_tree * zs,
         f.Pa,
         f0,
-        C_CO2 * c.P,
-        χ,
-        f.vpd_gs,
+        transpiration(c, f, f.A0c3a, PMP.β_c3),
     )
 end
 
@@ -153,13 +162,10 @@ function emulate(
     fc3 = 1 - comp.c4_grass
     A0a = fc3 * f.A0c3a + (1 - fc3) * f.A0c4a
     f0 = f0_curve(f.AI, cfg) * φ^cfg.phase_exp
-    ca = C_CO2 * c.P
-    χgs =
-        fc3 *
-        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c3, PC) +
-        (1 - fc3) *
-        Canopy.optimal_chi(TF + f.Tgs, c.P, C_CO2, f.vpd_gs, PMP.β_c4, PC)
-    Lmax = Canopy.compute_L_max(A0a, k, z, f.Pa, f0, ca, χgs, f.vpd_gs)
+    E0a =
+        fc3 * transpiration(c, f, f.A0c3a, PMP.β_c3) +
+        (1 - fc3) * transpiration(c, f, f.A0c4a, PMP.β_c4)
+    Lmax = Canopy.compute_L_max(A0a, k, z, f.Pa, f0, E0a)
     m_steady = Canopy.compute_m(f.gd, Lmax, A0a, cfg.sigma, k)
     Lfloor = cfg.ever_floor * Lmax
     E = tree * ever

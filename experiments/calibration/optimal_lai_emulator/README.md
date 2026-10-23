@@ -2,7 +2,7 @@
 
 An offline version of `ZhouOptimalLAIModel`, used to screen its structure and calibrate
 its parameters against MODIS LAI in minutes rather than with global runs. It calls the
-model's own functions (`compute_A0_and_χ`, `compute_L_steady_target`, `optimal_chi`,
+model's own functions (`compute_A0`, `compute_L_max`, `potential_gpp_transpiration`,
 `climate_tree_share`, ...) on hourly low-resolution ERA5 for 2008 (recycled) at the land
 points of its 8° grid, at equilibrium: the yearly totals are the annual means of their
 rates, and LAI runs hourly over the year after a 60-day warm-up. It is scored against
@@ -25,5 +25,5 @@ CLM_SURFDATA=/path/to/surfdata_0.9x1.25_16pfts__CMIP6_simyr2000_c170616.nc \
 
 The surface data is the file from which the `optimal_lai_state_and_clm_maps` artifact of
 ClimaArtifacts derives the CLM5 tree share and crop fraction. With the defaults, the emulator gives an annual-mean LAI RMSE of 0.73, a
-monthly RMSE of 0.85 and a bias of −0.04; with the same structure, global long runs have
+monthly RMSE of 0.85 and a bias of −0.05; with the same structure, global long runs have
 had RMSEs about 0.83 times those of the emulator.

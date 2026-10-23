@@ -223,7 +223,7 @@ end
 Creates a FarquharModel using default parameters of type FT.
 
 The `photosynthesis_parameters` argument is a NamedTuple that contains
-- `fractional_c3`: a Float or Field indicating the proportion of plants that are C3
+- `fractional_c3`: a Float or Field, the C3 fraction; Farquhar photosynthesis is C3 where it is above 0.5, and C4 elsewhere
 - `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
 By default, these parameters are set by the `clm_photosynthesis_parameters` function,
 which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.

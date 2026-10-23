@@ -43,15 +43,11 @@ The ratio of leaf-internal to ambient CO₂, $\chi$, is the optimum of the P-mod
 \chi = \frac{\xi + \sqrt{D} \, \Gamma^* / c_a}{\xi + \sqrt{D}}, \qquad \xi = \sqrt{\frac{\beta \, (K + \Gamma^*)}{1.6 \, \eta^*}}
 ```
 
-with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the Michaelis-Menten coefficient of Rubisco $K$, and the viscosity of water relative to 25 °C, $\eta^*$ (see the [P-model](../photosynthesis/pmodel.md) page). The potential GPP and $\chi$ of the canopy blend those of pure C3 and pure C4 canopies with the C3 fraction $f_{\mathrm{C3}}$ of the canopy (see C3/C4 Competition): $A_0 = f_{\mathrm{C3}} A_{0,\mathrm{C3}} + (1 - f_{\mathrm{C3}}) A_{0,\mathrm{C4}}$. The potential GPP uses the current air temperature and VPD, while the seasonal maximum LAI (below) uses the $\chi$ of the growing season.
-
-### Parameters of the Potential GPP
-
-The potential GPP and $\chi$ use the parameters of the photosynthesis model, among them the unit cost ratios $\beta$ and the cost of electron transport $c^*$ (`pmodel_β_c3`, `pmodel_β_c4` and `pmodel_cstar`). Their defaults, $\beta$ = 146 for C3 plants, 146/9 for C4 plants, and $c^*$ = 0.41, are the default P-model values of pyrealm, with which Zhou et al. (2025) fitted their model and Lavergne et al. (2022) the C3/C4 competition. These fits, and the LAI parameters calibrated here (see Climate Tree Share), hold for the potential GPP and $\chi$ that these values give, so a calibration of $\beta$ or $c^*$ against GPP and surface fluxes also shifts LAI and the C3/C4 balance.
+with the ratio $\beta$ of the unit costs of carboxylation and transpiration, the Michaelis-Menten coefficient of Rubisco $K$, and the viscosity of water relative to 25 °C, $\eta^*$ (see the [P-model](../photosynthesis/pmodel.md) page). C3 and C4 plants each have their own $\beta$, and so their own $\chi$. The potential GPP of the canopy blends those of pure C3 and pure C4 canopies with the C3 fraction $f_{\mathrm{C3}}$ (see C3/C4 Competition), $A_0 = f_{\mathrm{C3}} A_{0,\mathrm{C3}} + (1 - f_{\mathrm{C3}}) A_{0,\mathrm{C4}}$, as photosynthesis blends their GPP, SIF and stomatal conductance. The potential GPP uses the current air temperature and VPD, while the seasonal maximum LAI (below) uses the $\chi$ of the growing season.
 
 ### No Soil-Moisture Stress
 
-The potential GPP carries no soil-moisture stress: its soil-moisture stress factor is 1. Zhou et al. (2025) applied the soil-moisture penalty of [Stocker2020](@citet), with the soil moisture of the SPLASH water balance [Davis2017](@cite), driven by the observed climate. Here the soil moisture is simulated, and depends on the transpiration of the simulated canopy, and so on LAI. A stressed potential GPP would make the seasonal maximum LAI depend on LAI itself, with a positive feedback where water limits LAI: a denser canopy dries the soil, which lowers the potential GPP and so raises the water-limited fAPAR, which is inversely proportional to the annual potential GPP (see Seasonal Maximum LAI). Without the stress, the supply of water limits LAI only through the precipitation that the canopy can transpire, $f_0 P_{\mathrm{annual}}$.
+The potential GPP carries no soil-moisture stress: its soil-moisture stress factor is 1. Zhou et al. (2025) applied the soil-moisture penalty of [Stocker2020](@citet), with the soil moisture of the SPLASH water balance [Davis2017](@cite), driven by the observed climate. Here the simulated soil moisture depends on the transpiration of the simulated canopy, and so on LAI: a stressed potential GPP would make the seasonal maximum LAI depend on LAI itself. Water limits LAI instead through the water-limited fAPAR alone (see Seasonal Maximum LAI), whose inputs come from the atmospheric drivers: the precipitation, the growing-season VPD, and the fraction of the precipitation available for transpiration, $f_0$, a function of the aridity index. The potential evapotranspiration (PET) of the aridity index is that of a reference surface: it measures the energy available to evaporate water, whatever the vegetation and the soil, not the water actually available. None of these inputs depends on LAI or on the simulated soil moisture.
 
 ## Seasonal Maximum LAI
 
@@ -61,21 +57,25 @@ The seasonal maximum LAI follows from the smaller of an energy-limited and a wat
 \begin{aligned}
 \text{fAPAR}_{\max} &= \min\left(\text{fAPAR}_{\mathrm{energy}},\ \text{fAPAR}_{\mathrm{water}}\right), \\
 \text{fAPAR}_{\mathrm{energy}} &= 1 - \frac{z}{k \, A_{0,\mathrm{annual}}}, \\
-\text{fAPAR}_{\mathrm{water}} &= \frac{c_a \, (1 - \chi)}{1.6 \, D_{\mathrm{gs}}} \, \frac{f_0 \, P_{\mathrm{annual}}}{A_{0,\mathrm{annual}}}, \\
+\text{fAPAR}_{\mathrm{water}} &= \frac{f_0 \, P_{\mathrm{annual}}}{E_{0,\mathrm{annual}}}, \\
+E_{0,\mathrm{annual}} &= f_{\mathrm{C3}} \, \frac{1.6 \, D_{\mathrm{gs}} \, A_{0,\mathrm{C3,annual}}}{c_a \, (1 - \chi_{\mathrm{C3}})} + (1 - f_{\mathrm{C3}}) \, \frac{1.6 \, D_{\mathrm{gs}} \, A_{0,\mathrm{C4,annual}}}{c_a \, (1 - \chi_{\mathrm{C4}})}, \\
 \text{LAI}_{\max} &= -\frac{1}{k} \ln\left(1 - \text{fAPAR}_{\max}\right),
 \end{aligned}
 ```
 
-with $\text{fAPAR}_{\max}$ clamped to [0, 1), and where we have:
-- the annual potential GPP, $A_{0,\mathrm{annual}}$ (mol CO₂ m⁻² yr⁻¹), the running yearly total of $A_0$ (see Prognostic Variables)
+where we have:
+- the annual potential GPP, $A_{0,\mathrm{annual}}$ (mol CO₂ m⁻² yr⁻¹), the running yearly total of $A_0$ (see Prognostic Variables), and that of pure C3 and pure C4 canopies, $A_{0,\mathrm{C3,annual}}$ and $A_{0,\mathrm{C4,annual}}$
+- the annual transpiration of the potential GPP, $E_{0,\mathrm{annual}}$ (mol H₂O m⁻² yr⁻¹)
 - the annual precipitation, rain and snow, $P_{\mathrm{annual}}$ (mol H₂O m⁻² yr⁻¹; 1 mm ≈ 55.5 mol H₂O m⁻²)
 - the unit cost of building and maintaining leaves, $z$ (mol CO₂ m⁻² yr⁻¹), see Leaf Cost
 - the ambient CO₂ partial pressure, $c_a$ (Pa), the CO₂ mixing ratio times the air pressure (400 ppm at 101325 Pa ≈ 40.5 Pa)
 - the growing-season VPD, $D_{\mathrm{gs}}$ (Pa), see Growing-Season Climate
-- the ratio of leaf-internal to ambient CO₂ in the growing season, $\chi$, the optimum of the P-model at the mean air temperature of the growing season, $T_{\mathrm{gs}}$, and at the VPD $D_{\mathrm{gs}}$, blended between C3 and C4 plants like $A_0$: a seasonal value, like the growing-season mean of $\chi$ in pyrealm
+- the ratios of leaf-internal to ambient CO₂ of C3 and C4 plants in the growing season, $\chi_{\mathrm{C3}}$ and $\chi_{\mathrm{C4}}$, the optima of the P-model at the mean air temperature of the growing season, $T_{\mathrm{gs}}$, and at the VPD $D_{\mathrm{gs}}$: seasonal values, like the growing-season mean of $\chi$ in pyrealm
 - the fraction of the precipitation available for transpiration, $f_0$
 
-The energy-limited fAPAR maximizes the net carbon profit of the canopy, $A_0 \, \text{fAPAR} - z \, \text{LAI}$ (Equations 7 to 10): leaves are added until the last one no longer gains more carbon than it costs, so a high leaf cost relative to the potential GPP reduces it. The water-limited fAPAR is the one at which the canopy transpires the fraction $f_0$ of the precipitation: transpiration, $1.6 \, G_s D$, and GPP, $G_s c_a (1 - \chi)$, share the stomatal conductance $G_s$ (Equations 4 and 5), so transpiring $f_0 P$ supports a GPP of $f_0 P \, c_a (1 - \chi) / (1.6 \, D)$.
+The energy-limited fAPAR maximizes the net carbon profit of the canopy, $A_0 \, \text{fAPAR} - z \, \text{LAI}$ (Equations 7 to 10): leaves are added until the last one no longer gains more carbon than it costs, so a high leaf cost relative to the potential GPP reduces it. The water-limited fAPAR is the one at which the canopy transpires the fraction $f_0$ of the precipitation. Transpiration, $1.6 \, G_s D$, and GPP, $G_s c_a (1 - \chi)$, share the stomatal conductance $G_s$ (Equations 4 and 5), so a GPP $A$ transpires $1.6 \, D A / [c_a (1 - \chi)]$, and a canopy transpires $\text{fAPAR} \, E_{0,\mathrm{annual}}$ in a year. The canopy blends the GPP and stomatal conductance of C3 and C4 plants with $f_{\mathrm{C3}}$, and so their transpiration, each with its own $\chi$. For a single pathway, the water-limited fAPAR is that of Equation 11 of Zhou et al. (2025), $f_0 P_{\mathrm{annual}} \, c_a (1 - \chi) / (1.6 \, D_{\mathrm{gs}} A_{0,\mathrm{annual}})$.
+
+The energy-limited fAPAR is below 1, and so is $\text{fAPAR}_{\max}$. Where the annual potential GPP is below $z/k$, no leaf pays back its cost: the energy-limited fAPAR is negative, and $\text{fAPAR}_{\max}$ and $\text{LAI}_{\max}$ are zero. In the spin-up state of 2008, this is the case only on ice sheets and in the high Arctic, about 2% of the land north of 60°S, while the water limit binds on about a third of it.
 
 The fraction of the precipitation available for transpiration depends on the aridity index, $\text{AI} = \text{PET}_{\mathrm{annual}} / P_{\mathrm{annual}}$ (Equation 6):
 
@@ -189,7 +189,7 @@ R_{\mathrm{melt}} &= \min\left[F_{\mathrm{dd}} \, (T - T_f),\ S / (1\ \text{h})\
 \end{aligned}
 ```
 
-with the degree-day factor $F_{\mathrm{dd}}$ = 3 mm K⁻¹ day⁻¹. The climate tree share uses two more statistics of the growing season: its mean air temperature, $T_{\mathrm{gs}}$ (°C), the yearly sum of the degree-days above freezing divided by the yearly number of days above freezing; and its number of dry months, $n_{\mathrm{dry}}$, the yearly number of days above freezing that are not moist, in months (12/365 of the days).
+with the degree-day factor $F_{\mathrm{dd}}$ = 3 mm K⁻¹ day⁻¹. This store is not the snowpack of the snow model: like the other climate statistics of the model, the water input follows from the atmospheric drivers alone, so it depends neither on LAI, which shades the snow, nor on the presence of a snow model. The climate tree share uses two more statistics of the growing season: its mean air temperature, $T_{\mathrm{gs}}$ (°C), the yearly sum of the degree-days above freezing divided by the yearly number of days above freezing; and its number of dry months, $n_{\mathrm{dry}}$, the yearly number of days above freezing that are not moist, in months (12/365 of the days).
 
 ## Climate Tree Share
 
@@ -200,7 +200,7 @@ f_{\mathrm{tree}} = \frac{1}{1 + \exp\left[-\left(b_0 + b_L \, L_{\mathrm{tree}}
 ```
 
 where we have:
-- the seasonal maximum LAI that a C3 tree canopy would reach, $L_{\mathrm{tree}}$ (m² m⁻²): $\text{LAI}_{\max}$ with the annual potential GPP of C3 plants, the leaf cost of trees, $z_{\mathrm{tree}}$, scaled by the season (see Leaf Cost), and the $\chi$ of C3 plants at $T_{\mathrm{gs}}$ and $D_{\mathrm{gs}}$
+- the seasonal maximum LAI that a C3 tree canopy would reach, $L_{\mathrm{tree}}$ (m² m⁻²): $\text{LAI}_{\max}$ of a pure C3 canopy ($f_{\mathrm{C3}} = 1$), with the leaf cost of trees, $z_{\mathrm{tree}}$, scaled by the season (see Leaf Cost)
 - the number of dry months of the growing season, $n_{\mathrm{dry}}$, and its mean air temperature, $T_{\mathrm{gs}}$ (°C), see Growing-Season Climate
 
 Trees need water through the dry season and enough productivity to pay for their canopy; grasses take over where the dry season is long. The coefficients, with the leaf costs, the maintenance share, $\sigma$ and the tree leaf retention, were calibrated in an offline emulator of the model (226 natural-vegetation points of a global 8° grid, 2008 ERA5) against MODIS LAI and the tree share of the natural vegetation in the CLM5 surface data. Nothing in $f_{\mathrm{tree}}$ depends on the simulated LAI, so there is no feedback through the leaf cost. In this mode, $f_{\mathrm{tree}}$ is also the tree share of the C3/C4 competition.
@@ -223,7 +223,7 @@ where we have:
 - the shares of C3 trees, C3 grasses and C4 grasses, $f_{\mathrm{tree}}$, $f_{\mathrm{C3g}}$ and $f_{\mathrm{C4g}}$, which sum to one
 - the C3 fraction of photosynthesis, $f_{\mathrm{C3}}$, as trees are C3
 
-They are shares of productivity, not of ground area. pyrealm divides the advantage by $\exp[1/(1 + \text{TC})]$, with TC an observed tree cover; with no such input, TC = 0 and the divisor is $e$.
+The C3 fraction is the weight of C3 photosynthesis in the fluxes of the canopy: its GPP, SIF and stomatal conductance are those of a pure C3 and a pure C4 canopy, each with the full LAI, blended with $f_{\mathrm{C3}}$. It does not split the LAI between C3 and C4 plants. pyrealm divides the advantage by $\exp[1/(1 + \text{TC})]$, with TC an observed tree cover; with no such input, TC = 0 and the divisor is $e$.
 
 With a prescribed tree share, which then sets only the leaf cost, the tree retention and the stem and root area indices, the tree share of the competition is the C3 tree cover of Lavergne et al. (2022), estimated from the realized C3 GPP:
 
@@ -274,10 +274,10 @@ The state of the model starts from a climatology (`ClimaLand.Artifacts.optimal_l
 
 ## Model Assumptions
 
-1. **Water limitation enters once**: the potential GPP carries no soil-moisture stress, so the supply of water limits LAI only through the precipitation term of the water-limited fAPAR.
+1. **Water limitation enters once**: the potential GPP carries no soil-moisture stress, so the supply of water limits LAI only through the water-limited fAPAR.
 2. **Beer's law light extinction**: the absorption of light decays exponentially through the canopy.
 3. **Optimal stomatal behavior**: the ratio of leaf-internal to ambient CO₂, $\chi$, is the optimum of the P-model.
-4. **Climate inputs from the simulated climate**: the growing-season length and VPD, the aridity index behind $f_0$, the maintenance load and the climate tree share follow the simulated air temperature, humidity, radiation and precipitation, rather than maps.
+4. **Climate inputs from the atmospheric drivers**: the growing-season length and VPD, the aridity index behind $f_0$, the water input of the moist season, the maintenance load and the climate tree share follow the air temperature, humidity, radiation and precipitation of the atmospheric drivers, rather than maps, and do not depend on the simulated land surface.
 5. **Continuous update**: LAI and the running totals are advanced every timestep by the time-stepper, not by a daily callback.
 
 ## Parameters
@@ -349,7 +349,7 @@ With a prescribed tree share, `ftr` is the tree share of the C3/C4 competition, 
 ## Implementation Notes
 
 - The model is a biomass model, `ZhouOptimalLAIModel <: AbstractBiomassModel`: the leaf area index of the canopy is in `p.canopy.biomass.area_index.leaf`, as for `PrescribedBiomassModel`, and the biomass is updated first in `update_aux`, before radiative transfer and photosynthesis read the area indices and the C3 fraction.
-- It requires the P-model of photosynthesis, `PModel`, whose parameters (with the $\beta$ and $c^*$ of the optimal-LAI model) and constants it uses for the potential GPP.
+- It requires the P-model of photosynthesis, `PModel`, whose parameters and constants it uses for the potential GPP: a change of the photosynthesis parameters, such as $\beta$ or $c^*$, also changes LAI and the C3/C4 balance.
 - The equations are in `src/standalone/Vegetation/optimal_lai.jl`, and the model, its cache and its tendencies in `src/standalone/Vegetation/biomass.jl`.
 - Units: 1 mm of precipitation is 1 kg m⁻², or 55.5 mol H₂O m⁻²; 400 ppm of CO₂ at 101325 Pa is 40.5 Pa; the P-model gives the light use efficiency in kg C per mol photons, which the molar mass of carbon, 0.0120107 kg mol⁻¹, converts to mol CO₂ per mol photons.
 

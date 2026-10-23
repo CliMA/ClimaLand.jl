@@ -681,7 +681,7 @@ end
 
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
-- `OptVars.A0, OptVars.χ`: instantaneous potential GPP (mol CO2 m^-2 s^-1) and ci/ca ratio at the growing-season VPD (`compute_A0_and_χ`), from the parameters of the photosynthesis model (a `PModel`); `LAI_max` uses the ci/ca ratio of the growing-season temperature instead
+- `OptVars.A0`: instantaneous potential GPP (mol CO2 m^-2 s^-1) (`compute_A0`), from the parameters of the photosynthesis model (a `PModel`)
 - `OptVars.A0_c3, OptVars.A0_c4`: the same potential GPP for a pure-C3 and a pure-C4 canopy, which the C3/C4 competition compares
 - `L_opt`: steady-state LAI of Zhou et al. (2025), capped by `LAI_max`, toward which the prognostic `LAI` relaxes
 - `GSL`: growing season length (days), the trailing-year count of days above freezing
@@ -701,7 +701,7 @@ ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
     (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition, :LAI_max)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    NamedTuple{(:A0, :A0_c3, :A0_c4, :χ), NTuple{4, FT}},
+    NamedTuple{(:A0, :A0_c3, :A0_c4), NTuple{3, FT}},
     FT,
     FT,
     FT,
@@ -841,7 +841,8 @@ leaf_cost_tree_share(::ClimateTreeShare, p) = p.canopy.biomass.composition.tree
     set_max_leaf_area_index!(p, Y, component::ZhouOptimalLAIModel, canopy)
 
 Sets the seasonal maximum LAI `p.canopy.biomass.LAI_max` from the trailing totals in
-`Y`, with the χ of the growing-season temperature and VPD.
+`Y`. The transpiration of the potential GPP blends those of the C3 and C4 pathways,
+each with its own χ at the growing-season temperature and VPD.
 """
 function set_max_leaf_area_index!(
     p,
@@ -856,23 +857,27 @@ function set_max_leaf_area_index!(
     b = Y.canopy.biomass
     tree = leaf_cost_tree_share(component.tree_share, p)
     T_growing = @. lazy(b.degree_days / max(b.warm_days, eps(FT)))
-    fractional_c3 = @. lazy(1 - p.canopy.biomass.composition.c4_grass)
-    χ_growing = @. lazy(
-        fractional_c3 * optimal_chi(
-            T_freeze + T_growing,
-            p.drivers.P,
-            p.drivers.c_co2,
-            p.canopy.biomass.vpd_gs,
-            pmodel_parameters.β_c3,
-            constants,
-        ) +
-        (1 - fractional_c3) * optimal_chi(
-            T_freeze + T_growing,
-            p.drivers.P,
-            p.drivers.c_co2,
-            p.canopy.biomass.vpd_gs,
-            pmodel_parameters.β_c4,
-            constants,
+    E0_annual = @. lazy(
+        blend(
+            potential_gpp_transpiration(
+                b.A0c3_annual,
+                T_freeze + T_growing,
+                p.drivers.P,
+                p.drivers.c_co2,
+                p.canopy.biomass.vpd_gs,
+                pmodel_parameters.β_c3,
+                constants,
+            ),
+            potential_gpp_transpiration(
+                b.A0c4_annual,
+                T_freeze + T_growing,
+                p.drivers.P,
+                p.drivers.c_co2,
+                p.canopy.biomass.vpd_gs,
+                pmodel_parameters.β_c4,
+                constants,
+            ),
+            1 - p.canopy.biomass.composition.c4_grass,
         ),
     )
     @. p.canopy.biomass.LAI_max = compute_L_max(
@@ -882,9 +887,7 @@ function set_max_leaf_area_index!(
         leaf_cost_scale(b.maintenance_days, parameters.maintenance_share),
         b.precip_annual,
         p.canopy.biomass.f0,
-        p.drivers.c_co2 * p.drivers.P,
-        χ_growing,
-        p.canopy.biomass.vpd_gs,
+        E0_annual,
     )
 end
 
@@ -951,16 +954,6 @@ function update_composition!(
     b = Y.canopy.biomass
     # mean air temperature above freezing (°C)
     T_growing = @. lazy(b.degree_days / max(b.warm_days, eps(FT)))
-    χ_growing = @. lazy(
-        optimal_chi(
-            T_freeze + T_growing,
-            p.drivers.P,
-            p.drivers.c_co2,
-            p.canopy.biomass.vpd_gs,
-            pmodel_parameters.β_c3,
-            constants,
-        ),
-    )
     L_tree = @. lazy(
         compute_L_max(
             b.A0c3_annual,
@@ -971,9 +964,15 @@ function update_composition!(
             ),
             b.precip_annual,
             p.canopy.biomass.f0,
-            p.drivers.c_co2 * p.drivers.P,
-            χ_growing,
-            p.canopy.biomass.vpd_gs,
+            potential_gpp_transpiration(
+                b.A0c3_annual,
+                T_freeze + T_growing,
+                p.drivers.P,
+                p.drivers.c_co2,
+                p.canopy.biomass.vpd_gs,
+                pmodel_parameters.β_c3,
+                constants,
+            ),
         ),
     )
     @. p.canopy.biomass.composition = canopy_composition(
@@ -1042,8 +1041,8 @@ function ClimaLand.make_compute_exp_tendency(
         )
 
         # A0 is a potential GPP, so βm = 1: water limitation enters once, through
-        # the f0·P/A0 term of LAI_max.
-        @. p.canopy.biomass.OptVars = compute_A0_and_χ(
+        # the f0·P/E0 term of LAI_max.
+        @. p.canopy.biomass.OptVars = compute_A0(
             fractional_c3,
             pmodel_parameters,
             pmodel_constants,
@@ -1060,7 +1059,6 @@ function ClimaLand.make_compute_exp_tendency(
                 pmodel_constants.N_a,
             ),
             one(FT),
-            p.canopy.biomass.vpd_gs,
         )
 
         (; GSL, LAI_max) = p.canopy.biomass

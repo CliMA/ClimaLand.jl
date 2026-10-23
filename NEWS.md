@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-💥breaking] The water limit of the seasonal maximum LAI of
+  `ZhouOptimalLAIModel` is the precipitation available for transpiration over the
+  transpiration of the potential GPP, which blends those of the C3 and C4 pathways, each
+  with its own ci/ca ratio, as the canopy blends their GPP and stomatal conductance,
+  rather than a ci/ca ratio blended with the C3 fraction. `compute_L_max` takes that
+  transpiration (`potential_gpp_transpiration`) in place of `ca_pa`, `chi` and `vpd_gs`,
+  and so does `compute_L_steady_target`; `compute_A0_and_χ`, whose χ was unused, is
+  replaced by `compute_A0`. LAI_max falls by about 4% where the water limit binds and C4
+  grasses grow; in the offline emulator, the LAI RMSE is unchanged.
+  PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
 - ![][badge-🔥behavioralΔ] The unit cost ratios and cost of Jmax of the P-model
   (`pmodel_β_c3`, `pmodel_β_c4`, `pmodel_cstar`) default to the default P-model values of
   pyrealm, 146, 146/9 and 0.41, rather than the 112, 1.76 and 0.463 calibrated in #1926.

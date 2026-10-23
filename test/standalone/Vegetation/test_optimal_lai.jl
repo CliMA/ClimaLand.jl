@@ -101,6 +101,38 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             @test χ(298, 1000, β_c4) < χ(298, 1000)
         end
 
+        @testset "potential_gpp_transpiration for FT = $FT" begin
+            pmodel = Canopy.PModel{FT}(
+                ClimaLand.Domains.Point(;
+                    z_sfc = FT(0),
+                    longlat = FT.((-60, -3)),
+                ),
+                toml_dict,
+            )
+            (; β_c3, β_c4) = pmodel.parameters
+            T, P_air, ca, vpd = FT(298), FT(101325), FT(4.2e-4), FT(1500)
+            A0 = FT(300)  # mol CO2 m^-2 yr^-1
+            E0(β) = Canopy.potential_gpp_transpiration(
+                A0,
+                T,
+                P_air,
+                ca,
+                vpd,
+                β,
+                pmodel.constants,
+            )
+            # C4 plants transpire less per unit of GPP
+            @test E0(β_c4) < E0(β_c3)
+            # for one pathway, the water limit is that of Zhou et al. (2025), Eq. 11
+            χ3 = Canopy.optimal_chi(T, P_air, ca, vpd, β_c3, pmodel.constants)
+            k, z, precip, f0 = FT(0.5), FT(1), FT(50000), FT(0.3)
+            fAPAR_water =
+                f0 * precip / A0 * ca * P_air * (1 - χ3) / (FT(1.6) * vpd)
+            @test FT(0) < fAPAR_water < FT(1) - z / (k * A0)
+            @test Canopy.compute_L_max(A0, k, z, precip, f0, E0(β_c3)) ≈
+                  -log(1 - fAPAR_water) / k
+        end
+
         @testset "moist_season_vpd for FT = $FT" begin
             day = FT(86400)
             vpd(moist_days) = Canopy.moist_season_vpd(
@@ -319,12 +351,10 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
             Ao_annual = FT(100.0)   # mol m^-2 yr^-1
             k = FT(0.5)
             z = FT(12.227)
-            # Use high precip and low VPD to ensure energy-limited
+            # High precipitation and low transpiration: energy-limited
             precip_annual = FT(100000.0)  # mol H2O m^-2 yr^-1 (very high)
             f0 = FT(0.65)
-            ca_pa = FT(40.0)  # Pa
-            chi = FT(0.77)  # typical tropical value
-            vpd_gs = FT(1000.0)  # Pa
+            E0_annual = FT(2.0e4)  # mol H2O m^-2 yr^-1
 
             LAI_max = Canopy.compute_L_max(
                 Ao_annual,
@@ -332,9 +362,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
 
             @test LAI_max isa FT
@@ -348,9 +376,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
             LAI_low_gpp = Canopy.compute_L_max(
                 FT(50.0),
@@ -358,9 +384,7 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
                 z,
                 precip_annual,
                 f0,
-                ca_pa,
-                chi,
-                vpd_gs,
+                E0_annual,
             )
             @test LAI_high_gpp > LAI_low_gpp
 

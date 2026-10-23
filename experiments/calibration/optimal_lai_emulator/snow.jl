@@ -32,7 +32,7 @@ function moist_mask(c::PointClimate, input)
     end
     return m
 end
-# the climate (χ at the moist-season VPD) and features with a given water input
+# the climate and features (moist-season VPD, dry warm months) with a given water input
 function moist_climate(i, input)
     c, f = CLIM[i], FEAT[i]
     wet = moist_mask(c, input);
