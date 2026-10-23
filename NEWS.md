@@ -71,6 +71,12 @@ main
   a `spin_up_months` keyword. The optimal-LAI long run plots the new source, and runs for
   3 years, comparing the last.
   PR [#1901](https://github.com/CliMA/ClimaLand.jl/pull/1901)
+- ![][badge-🔥behavioralΔ] Update to ClimaDiagnostics v0.4. NetCDF diagnostics
+  no longer have `date` and `date_bnds`, and `time` is in seconds since
+  `start_date`. Time-reduced diagnostics no longer include the initial state,
+  and the times saved for the `DictWriter` and `HDF5Writer` are saved at the
+  start of the output window. The default NetCDF diagnostics of a restarted
+  `LandSimulation` are now correctly dated.
 - ![][badge-✨feature] Diagnostics are reproducible when restarting a
   simulation.
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
