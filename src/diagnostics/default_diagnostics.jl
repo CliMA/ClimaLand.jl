@@ -644,6 +644,7 @@ function get_possible_diagnostics(model::LandModel)
         "t2m",
         "q2m",
         "u10m",
+        "twsa",
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
@@ -708,6 +709,7 @@ function get_short_diagnostics(model::LandModel)
         "t2m",
         "q2m",
         "u10m",
+        "twsa",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
