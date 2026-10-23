@@ -221,19 +221,19 @@ turbulent surface fluxes are computed and used as boundary conditions).
 Please see the documentation for this boundary condition type for more
 details.
 
-$(DocStringExtensions.FIELDS)
+# Fields
+- `parameters`: The parameter sets
+- `domain`: the soil domain, using ClimaCore.Domains
+- `boundary_conditions`: the boundary conditions for RRE and heat, of type AbstractSoilBoundaryConditions
+- `sources`: A tuple of sources, each of type AbstractSoilSource
+- `lateral_flow`: A boolean flag which, when false, turns off the horizontal flow of water and heat
 """
-struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
-    "The parameter sets"
-    parameters::PS
-    "the soil domain, using ClimaCore.Domains"
-    domain::D
-    "the boundary conditions for RRE and heat, of type AbstractSoilBoundaryConditions"
-    boundary_conditions::BCRH
-    "A tuple of sources, each of type AbstractSoilSource"
-    sources::S
-    "A boolean flag which, when false, turns off the horizontal flow of water and heat"
-    lateral_flow::Bool
+mutable struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
+    const parameters::PS
+    const domain::D
+    const boundary_conditions::BCRH
+    const sources::S
+    const lateral_flow::Bool
 end
 
 """

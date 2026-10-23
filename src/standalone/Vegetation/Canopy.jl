@@ -694,34 +694,47 @@ stems. Eventually, when plant biomass becomes a prognostic variable (by
 integrating with a carbon model), some parameters specified here will be
 treated differently.
 
-$(DocStringExtensions.FIELDS)
+# Fields
+- `autotrophic_respiration`: Autotrophic respiration model, a canopy component model
+- `radiative_transfer`: Radiative transfer model, a canopy component model
+- `photosynthesis`: Photosynthesis model, a canopy component model
+- `conductance`: Stomatal conductance model, a canopy component model
+- `soil_moisture_stress`: Soil moisture stress parameterization, a canopy component model
+- `hydraulics`: Plant hydraulics model, a canopy component model
+- `energy`: Energy balance model, a canopy component model
+- `sif`: SIF model, a canopy component model
+- `biomass`: Biomass parameterization, a canopy component model
+- `boundary_conditions`: Boundary Conditions
+- `earth_param_set`: Shared parameters between component models
+- `domain`: Canopy model domain
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
-       ClimaLand.AbstractImExModel{FT}
-    "Autotrophic respiration model, a canopy component model"
-    autotrophic_respiration::AR
-    "Radiative transfer model, a canopy component model"
-    radiative_transfer::RM
-    "Photosynthesis model, a canopy component model"
-    photosynthesis::PM
-    "Stomatal conductance model, a canopy component model"
-    conductance::SM
-    "Soil moisture stress parameterization, a canopy component model"
-    soil_moisture_stress::SMSM
-    "Plant hydraulics model, a canopy component model"
-    hydraulics::PHM
-    "Energy balance model, a canopy component model"
-    energy::EM
-    "SIF model, a canopy component model"
-    sif::SIFM
-    "Biomass parameterization, a canopy component model"
-    biomass::BM
-    "Boundary Conditions"
-    boundary_conditions::B
-    "Shared parameters between component models"
-    earth_param_set::PSE
-    "Canopy model domain"
-    domain::D
+mutable struct CanopyModel{
+    FT,
+    AR,
+    RM,
+    PM,
+    SM,
+    SMSM,
+    PHM,
+    EM,
+    SIFM,
+    BM,
+    B,
+    PSE,
+    D,
+} <: ClimaLand.AbstractImExModel{FT}
+    const autotrophic_respiration::AR
+    const radiative_transfer::RM
+    const photosynthesis::PM
+    const conductance::SM
+    const soil_moisture_stress::SMSM
+    const hydraulics::PHM
+    const energy::EM
+    const sif::SIFM
+    const biomass::BM
+    const boundary_conditions::B
+    const earth_param_set::PSE
+    const domain::D
 end
 
 """
