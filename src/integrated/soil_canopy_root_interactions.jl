@@ -195,3 +195,33 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
         βm_root_distribution,
     )
 end
+
+NVTX.@annotate function update_weibull_soil_moisture_stress!(
+    ground::PrognosticGroundConditions,
+    p,
+    Y,
+    model,
+    canopy,
+)
+    ψ = p.soil.ψ
+    (; ψ_c, a, c) = model
+    z = ClimaCore.Fields.coordinate_field(axes(ψ)).z
+    # normalized distribution for root density
+    norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
+    # for soilcanopy and land models.
+    root_dist =
+        @. lazy(Canopy.root_distribution(z, canopy.biomass.rooting_depth))
+    # compute the root zone-averaged βm
+    ClimaCore.Operators.column_integral_definite!(norm, root_dist)
+    # per soil element
+    βm = @. lazy(compute_weibull_moisture_stress(ψ, ψ_c, a, c))
+    βm_root_distribution = @. lazy(
+        βm * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
+    )
+
+    # compute the root zone-averaged βm
+    ClimaCore.Operators.column_integral_definite!(
+        p.canopy.soil_moisture_stress.βm,
+        βm_root_distribution,
+    )
+end

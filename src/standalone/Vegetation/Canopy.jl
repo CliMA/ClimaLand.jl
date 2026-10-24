@@ -102,6 +102,24 @@ function Lee2015SIFModel{FT}(toml_dict::CP.ParamDict) where {FT}
 end
 
 ## Soil Moisture Stress
+function WeibullMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    c::FT = toml_dict["weibull_moisture_stress_c"],
+    a::FT = toml_dict["weibull_moisture_stress_a"],
+    soil_params = Soil.soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+) where {FT <: AbstractFloat}
+    n = soil_params.hydrology_cm.n
+    m = 1 .- 1 ./n
+    α = soil_params.hydrology_cm.α
+    S_c =  soil_params.hydrology_cm.S_c
+    ψ_c = (S_c .^((-1) ./m) .-1).^(1 ./n) ./α
+    return WeibullMoistureStressModel{FT}(; ψ_c, a, c)
+end
+
 """
     PiecewiseMoistureStressModel{FT}(
     domain,

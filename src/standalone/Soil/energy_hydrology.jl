@@ -1264,14 +1264,14 @@ When no dry layer has formed (`dsl = 0`), the resistance vanishes and the
 conductance is unbounded.
 """
 function soil_conductance(S_l, S_c, d_ds, p, α, _D_vapor, ν, θ_r, θ_i)
-    dsl = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
+    dsl = dry_soil_layer_thickness(S_l, S_c, α, d_ds, p)
     τ_a = soil_tortuosity(ν, θ_r, θ_i)
     r_soil = dsl / (_D_vapor * τ_a) # [s/m]
     return inv(max(r_soil, eps(typeof(r_soil)))) # [m/s]
 end
 
 """
-    dry_soil_layer_thickness(S_l, αS_c, d_ds, p)
+    dry_soil_layer_thickness(S_l, S_c, α, d_ds, p)
 
 Returns the maximum dry soil layer thickness that can develop under vapor flux; 
 this is used when computing the soil resistance to vapor flux similar to
@@ -1279,8 +1279,13 @@ Swenson et al (2012)/Sakaguchi and Zeng (2009).
 
 Note that S_l ∈ (0,1].
 """
-function dry_soil_layer_thickness(S_l, αS_c, d_ds, p)
-    αS_c = clamp(αS_c, zero(αS_c), one(αS_c))
-    return S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p :
-           zero(d_ds * (αS_c - S_l) / S_l * p)
+function dry_soil_layer_thickness(
+    S_l::FT,
+    S_c::FT,
+    α::FT,
+    d_ds::FT,
+    p::FT,
+)::FT where {FT}
+    αS_c = clamp(α*S_c, FT(0), FT(1)) # this must be between zero and one
+    return d_ds*exp(-(S_l-S_c)/(αS_c))
 end
