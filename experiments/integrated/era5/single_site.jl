@@ -53,6 +53,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing=true
     )
     forcing = (; atmos, radiation)
 
@@ -67,7 +68,7 @@ function setup_model(
 end
 
 start_date = DateTime("2008-03-01")
-stop_date = DateTime("2011-03-01")
+stop_date = DateTime("2010-03-01")
 Δt = 900.0
 longlat = FT.((24.6, -3.6))
 zlim = FT.((-15, 0))

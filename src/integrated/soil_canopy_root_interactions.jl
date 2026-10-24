@@ -208,7 +208,7 @@ NVTX.@annotate function update_weibull_soil_moisture_stress!(
 )
     ψ = p.soil.ψ
     (; ψ_c, a, c) = model
-    z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
+    z = ClimaCore.Fields.coordinate_field(axes(ψ)).z
     # normalized distribution for root density
     norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
     # for soilcanopy and land models.

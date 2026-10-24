@@ -5,7 +5,7 @@ export TuzetMoistureStressModel,
     compute_piecewise_moisture_stress,
     compute_weibull_moisture_stress,
     compute_tuzet_moisture_stress,
-    update_piecewise_soil_moisture_stress!
+    update_piecewise_soil_moisture_stress!,
     update_weibull_soil_moisture_stress!
 
 # define an abstract type for all soil moisture stress models
@@ -230,7 +230,7 @@ struct WeibullMoistureStressModel{
     """Water content above which stomata are unstressed (m^3 / m^3)"""
     ψ_c::F
     """Water content below which stomata are closed (m^3 / m^3)"""
-    a::F
+    a::FT
     """Curvature parameter (unitless)"""
     c::FT
 
