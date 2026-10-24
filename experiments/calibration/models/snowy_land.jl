@@ -45,7 +45,7 @@ function setup_model(
         stop_date,
     )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-      α_snow =  NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = float(Δt))
+    α_snow =  NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = float(Δt))
     density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = float(Δt))
     scf = Snow.TopoSnowCoverFractionModel(toml_dict, ClimaLand.Domains.obtain_surface_domain(domain))
     snow = ClimaLand.Snow.SnowModel(

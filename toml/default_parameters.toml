@@ -31,13 +31,13 @@ tag = "SoilMoistureStress"
 # TOPMODELRunoff model
 
 ["f_over"]
-value = 1.28
+value = 3.28
 type = "float"
 description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["R_sb"]
-value = 4.484e-7
+value = 1.484e-7
 type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
@@ -302,12 +302,12 @@ description = "Parameter fit to data by Sturm et al (1997); not meant to be re-c
 tag = "SturmSnowConductivityModel"
 
 [holding_capacity_of_water_in_snow]
-value = 0.08
+value = 0.0
 type = "float"
 description = "Volumetric holding capacity of liquid water in a snowpack (unitless)."
 
 [wet_snow_hydraulic_conductivity]
-value = 1e-3
+value = 2.5e-3
 type = "float"
 description = "Hydraulic conductivity of wet snow (m s⁻¹)."
 # WuWuSnowCoverFractionModel parameters
@@ -460,7 +460,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.2
+value = 0.05
 type = "float"
 description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"

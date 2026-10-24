@@ -23,21 +23,17 @@ function get_calibration_prior()
     priors = [
         EKP.constrained_gaussian("topo_scf_z0", 0.5, 0.2, 0.01, 2.0),
         EKP.constrained_gaussian("topo_scf_mu_exp", 0.3, 0.1, 0.01, 0.9),
-        EKP.constrained_gaussian("stem_scf_xi_exp", 2.0, 0.3, 0.01, 4.0),
-        EKP.constrained_gaussian("moisture_stress_c", 0.591, 0.2, 0.05, 2.0),
+        EKP.constrained_gaussian("topo_scf_xi_exp", 2.0, 0.3, 0.01, 4.0),
+        EKP.constrained_gaussian("weibull_moisture_stress_c", 2.0, 0.5, 0.05, 6.0),
+	EKP.constrained_gaussian("weibull_moisture_stress_a", 1.0, 0.2, 0.05, 3.0),
         EKP.constrained_gaussian("stem_PAR_reflectance", 0.3, 0.1, 0.01, 0.9),
         EKP.constrained_gaussian("stem_NIR_reflectance", 0.3, 0.1, 0.01, 0.9),
         EKP.constrained_gaussian("leaf_Cd", 0.07, 0.03, 0.005, 0.5),
-        EKP.constrained_gaussian("pmodel_α", 0.02, 0.01, 0.0005, 0.1),
-        EKP.constrained_gaussian("ac_canopy", 2.5e4, 0.5e4, 2e3, 2.5e5),
-        EKP.constrained_gaussian("canopy_z_0m_coeff", 0.0823, 0.04, 0.001, 0.5),
-        EKP.constrained_gaussian("canopy_z_0b_coeff", 0.073, 0.04, 0.0001, 0.5),
 	EKP.constrained_gaussian("canopy_subcanopy_min_reference_height", 1.0, 0.3, 0.5, 4.0),
         EKP.constrained_gaussian("canopy_subcanopy_wind_extinction_coefficient", 0.5, 0.02, 0.0, 2.0),	
         EKP.constrained_gaussian("canopy_K_lw", 1.16, 0.3, 0.1, 3.0),
-         EKP.constrained_gaussian("holding_capacity_of_water_in_snow", 0.08, 0.03, 0.0, 0.2),
-         EKP.constrained_gaussian("wet_snow_hydraulic_conductivity", 5e-4, 3e-4, 0.0, 1e-2),
-# add d_ds and parameter related to dry soil evaporation; remove moisture_stress_c; keep fixed those that dont move much and then try R_sb, f_over and TWSA in mid latitudes	 
+        EKP.constrained_gaussian("maximum_dry_soil_layer_depth", 0.05, 0.03, 0.0, 0.2),
+        EKP.constrained_gaussian("evaporation_scalar", 0.1, 0.02, 0.03, 0.8),
     ]
     return EKP.combine_distributions(priors)
 end
