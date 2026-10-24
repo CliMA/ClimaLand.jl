@@ -40,8 +40,6 @@ end
 function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
     m = 1 - 1 / n
     S_c = (1 + ((n - 1) / n)^(1 - 2 * n))^(-m)
-    #ψ_c = -(S_c ^((-1) /m) -1).^(1 /n) /α
-
     return vanGenuchten{FT}(α, n, m, S_c)
 end
 

@@ -416,7 +416,7 @@ function ClimaLand.get_update_surface_humidity_function(
     )
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = max(1 / r_stomata_canopy, zero(r_stomata_canopy))
-        g_land = g_stomata #series_conductance(g_stomata, g_leaf)
+        g_land = series_conductance(g_stomata, g_leaf)
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
