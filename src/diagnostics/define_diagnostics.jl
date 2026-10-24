@@ -235,40 +235,6 @@ function define_diagnostics!(land_model, possible_diags)
             compute_stomatal_conductance!(out, Y, p, t, land_model),
     )
 
-    # Leaf conductance
-    conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "gleaf",
-        long_name = "Leaf air Conductance",
-        standard_name = "leaf_air_conductance",
-        units = "mol H2O m^-2 s^-1",
-        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
-        compute! = (out, Y, p, t) ->
-            compute_leaf_conductance!(out, Y, p, t, land_model),
-    )
-
-        conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "qsfc_air",
-        long_name = "Canopy air q",
-        standard_name = "leaf_air_conductance",
-        units = "mol H2O m^-2 s^-1",
-        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
-        compute! = (out, Y, p, t) ->
-            compute_canopy_air_q!(out, Y, p, t, land_model),
-    )
-
-            conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "qsfc_air_ratio",
-        long_name = "Canopy air q/qsat",
-        standard_name = "leaf_air_conductance",
-        units = "mol H2O m^-2 s^-1",
-        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
-        compute! = (out, Y, p, t) ->
-            compute_canopy_air_q_ratio!(out, Y, p, t, land_model),
-    )
-
     # Canopy transpiration
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -793,16 +759,6 @@ function define_diagnostics!(land_model, possible_diags)
         units = "Pa",
         comments = "The vapor pressure deficit of the air, computed from the air temperature, pressure, and specific humidity. It is taken over ice below freezing and is non-negative.",
         compute! = (out, Y, p, t) -> compute_vpd!(out, Y, p, t, land_model),
-    )
-
-        conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "qat",
-        long_name = "q",
-        standard_name = "vapor_pressure_deficit",
-        units = "Pa",
-        comments = "The vapor pressure deficit of the air, computed from the air temperature, pressure, and specific humidity. It is taken over ice below freezing and is non-negative.",
-        compute! = (out, Y, p, t) -> compute_specific_humidity!(out, Y, p, t, land_model),
     )
 
 

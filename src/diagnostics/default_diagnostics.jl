@@ -500,7 +500,6 @@ function get_possible_diagnostics(model::CanopyModel)
         "sif",
         "ra",
         "gs",
-        "gleaf",
         "trans",
         "clhf",
         "cshf",
@@ -511,8 +510,6 @@ function get_possible_diagnostics(model::CanopyModel)
         "msf",
         "gpp",
         "an",
-        "qsfc_air",
-        "qsfc_air_ratio",
         "rd",
         "vcmax25",
         "nir",
@@ -634,8 +631,6 @@ function get_possible_diagnostics(model::LandModel)
         "swu",
         "lwu",
         "tair",
-        "qat",
-        "vpd",
         "precip",
         "nee",
         "cveg",
@@ -666,7 +661,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "so2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "lai", "trans", "er", "lwp",]
+    diagnostics = ["gpp", "lai", "trans", "er", "lwp"]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end

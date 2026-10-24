@@ -135,59 +135,6 @@ function compute_net_ecosystem_exchange!(
 end
 
 # Canopy - Conductance
-function compute_canopy_air_q!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
-)
-    canopy = get_canopy(land_model)
-        if isnothing(out)
-        out = zeros(canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.q_sfc
-        return out
-    else
-        @. out = p.canopy.turbulent_fluxes.q_sfc
-    end
-end
-
-function compute_canopy_air_q_ratio!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
-)
-    canopy = get_canopy(land_model)
-        if isnothing(out)
-        out = zeros(canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.q_sfc/p.drivers.q
-        return out
-    else
-        @. out = p.canopy.turbulent_fluxes.q_sfc/p.drivers.q
-    end
-end
-
-function compute_leaf_conductance!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
-)
-    canopy = get_canopy(land_model)
-        if isnothing(out)
-        out = zeros(canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.ustar * p.canopy.biomass.area_index.leaf * canopy.boundary_conditions.turbulent_flux_parameterization.Cd
-        return out
-    else
-        @. out = p.canopy.turbulent_fluxes.ustar * p.canopy.biomass.area_index.leaf * canopy.boundary_conditions.turbulent_flux_parameterization.Cd
-    end
-end
 function compute_stomatal_conductance!(
     out,
     Y,
@@ -256,16 +203,19 @@ function compute_stomatal_conductance!(
     conductance_model::PModelConductance,
 )
     (; Drel) = conductance_model.parameters
-    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    gs_co2 = p.canopy.photosynthesis.instantaneous.gs_co2
     # Divide by LAI to get leaf level, approximately, and multiple by Drel to get for water instead of co2
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =  max(1 / r_stomata_canopy, zero(r_stomata_canopy))
-
+        @. out =
+            Drel * gs_co2 /
+            max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(gs_co2))))
         return out
     else
-        @. out =  max(1 / r_stomata_canopy, zero(r_stomata_canopy))
+        @. out =
+            Drel * gs_co2 /
+            max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(gs_co2))))
     end
 end
 

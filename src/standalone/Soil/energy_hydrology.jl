@@ -1287,5 +1287,5 @@ function dry_soil_layer_thickness(
     p::FT,
 )::FT where {FT}
     αS_c = clamp(α*S_c, FT(0), FT(1)) # this must be between zero and one
-    return d_ds*exp(-(S_l-αS_c)/(αS_c))
+    return d_ds*exp(-(S_l-S_c)/(αS_c))
 end

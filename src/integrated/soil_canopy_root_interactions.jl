@@ -174,7 +174,6 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     canopy,
 )
     θ_l = p.soil.θ_l
-    ψ = @.lazy(abs.(min(0, p.soil.ψ)))
     (; θ_high, θ_low, c) = model
     z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
     # normalized distribution for root density
@@ -186,10 +185,8 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     ClimaCore.Operators.column_integral_definite!(norm, root_dist)
     # per soil element
     βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l))
-    #(1-exp(-((θ_l- θ_low)/( θ_high-  θ_low)/0.5)^2))
-    #exp(-(ψ/θ_high)^c) 
     βm_root_distribution = @. lazy(
-        exp(-(ψ/θ_high)^c) * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
+        βm * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
     )
 
     # compute the root zone-averaged βm
