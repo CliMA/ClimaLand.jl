@@ -273,3 +273,27 @@ steps:
           - "bucket_era5_gpu"
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
+
+  # Calibrates parameters on an ensemble of columns forced by ERA5. Runs when
+  # the PR has the "calibrate ERA5" label, or on a manual build with
+  # `CALIBRATE_ERA5=""`. See experiments/calibration/era5_columns/README.md.
+  - group: "Calibration on ERA5 columns"
+    if: build.pull_request.labels includes "calibrate ERA5" || build.env("CALIBRATE_ERA5") != null
+    steps:
+      - label: ":gear: Calibrate on ERA5 columns (5 EKI iterations)"
+        key: "calibrate_era5"
+        command:
+          - julia --color=yes --project=.buildkite experiments/calibration/era5_columns/run_calibration.jl era5_calibration
+          - buildkite-agent annotate --style success --context era5-calibration < era5_calibration/results/summary.md
+        artifact_paths:
+          - "era5_calibration/results/*"
+        # This step only drives the calibration: every forward run is a Slurm
+        # job of its own, with one GPU
+        agents:
+          slurm_cpus_per_task: 4
+          slurm_mem: 32G
+          slurm_time: "24:00:00"
+        env:
+          CALIBRATION_BACKEND: "caltech"
+          # Central only has the 8° ERA5 forcing of 2008
+          ERA5_LOWRES_FORCING: ""
