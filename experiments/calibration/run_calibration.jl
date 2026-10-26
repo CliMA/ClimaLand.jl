@@ -38,7 +38,7 @@ const OUTPUT_DIR = if length(ARGS) >= 1
 elseif basename(PROGRAM_FILE) == "model_run.jl"
     dirname(dirname(dirname(abspath(PROGRAM_FILE))))
 else
-    "experiments/calibration/land_model"
+    "/glade/derecho/scratch/kdeck/calibrate_modis_scf_gpp_eflux"
 end
 
 # Include the calibration configuration. This defines CALIBRATE_CONFIG,
@@ -49,7 +49,7 @@ end
 #   CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh
 const CONFIG_FILE =
     TEST_CALIBRATION ? "test.jl" :
-    get(ENV, "CALIBRATION_CONFIG", "energy_fluxes.jl")
+    get(ENV, "CALIBRATION_CONFIG", "scf_topo.jl")
 include(
     joinpath(
         pkgdir(ClimaLand),
