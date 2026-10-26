@@ -1,8 +1,10 @@
-# Calibrate the land model of the default long run (P-model, prescribed MODIS
-# LAI), forced by ERA5, on columns representing global land against seasonal
-# means of ERA5 LHF, SHF, SWU, LWU and GOSIF GPP, with TransformUnscented EKI.
+# Calibrate the land model of the global calibration (models/snowy_land.jl),
+# forced by ERA5, on columns representing global land, with the calibrated
+# variables, noise, and prior of configs/energy_fluxes.jl (ERA5 energy fluxes,
+# FLUXCOM GPP, and the MODIS snow cover fraction) and TransformUnscented EKI.
 #
-# Usage:
+# Usage, from the root of the repository (`TopoSnowCoverFractionModel` reads
+# topographic_data.nc in the working directory):
 #   julia --project=.buildkite experiments/calibration/era5_columns/run_calibration.jl [OUTPUT_DIR]
 #
 # The forward runs (the ensemble members, and the runs with the default and the
@@ -224,9 +226,13 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     lowres_forcing = haskey(ENV, "ERA5_LOWRES_FORCING")
-    # Fail early if the forcing is not available on this machine
+    # Fail early if the forcing or the data that are not artifacts are missing
     lowres_forcing ||
         ClimaLand.Artifacts.find_era5_year_paths(SPINUP_START, STOP_DATE)
+    isfile(SCF_FILE) ||
+        error("No snow cover fraction at $SCF_FILE: set ILAMB_SCF_FILE")
+    isfile("topographic_data.nc") ||
+        error("No topographic_data.nc: run from the root of the repository")
     backend_name = get(ENV, "CALIBRATION_BACKEND", "julia")
     backend =
         backend_name == "caltech" ? caltech_backend() :

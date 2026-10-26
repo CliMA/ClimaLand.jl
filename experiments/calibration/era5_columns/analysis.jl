@@ -11,6 +11,28 @@ const UNITS = Dict(
     "swu" => "W m⁻²",
     "lwu" => "W m⁻²",
     "gpp" => "g C m⁻² day⁻¹",
+    "snowc" => "fraction",
+)
+
+"""Dataset of the observations of each calibrated variable (see
+`read_monthly`)."""
+const SOURCES = Dict(
+    "lhf" => "ERA5",
+    "shf" => "ERA5",
+    "swu" => "ERA5",
+    "lwu" => "ERA5",
+    "gpp" => "FLUXCOM",
+    "snowc" => "ILAMB MODIS",
+)
+
+"""
+    targets_description()
+
+Return a description of the calibrated variables and their datasets.
+"""
+targets_description() = join(
+    ["$(uppercase(name)) ($(SOURCES[name]))" for name in SHORT_NAMES],
+    ", ",
 )
 
 """
@@ -26,22 +48,19 @@ forcing_description(interface::ERA5ColumnsInterface) =
 """
     write_parameter_file(path, interface, prior, ekp)
 
-Write the model parameters set by the mean of the final parameter ensemble of
-`ekp`, in TOML, to `path`.
+Write the mean of the final parameter ensemble of `ekp`, in TOML, to `path`.
 """
 function write_parameter_file(path, interface, prior, ekp)
-    calibrated =
-        Dict(zip(EKP.get_name(prior), EKP.get_ϕ_mean_final(prior, ekp)))
     parameters = Dict(
         name => round(value, sigdigits = 6) for (name, value) in
-        model_parameters(calibrated, LP.create_toml_dict(FT))
+        zip(EKP.get_name(prior), EKP.get_ϕ_mean_final(prior, ekp))
     )
     header = """
         # Calibrated by experiments/calibration/era5_columns: $N_ITERATIONS iterations of
-        # TransformUnscented EKI on $(length(read_columns(columns_path(interface)).weight)) columns of the default land model
-        # (P-model, prescribed MODIS LAI) forced by $(forcing_description(interface)),
-        # against seasonal means of ERA5 LHF, SHF, SWU, LWU and GOSIF GPP from
-        # $(Dates.Date(CALIBRATION_START)) to $(Dates.Date(STOP_DATE)).
+        # TransformUnscented EKI on $(length(read_columns(columns_path(interface)).weight)) columns of the land model of the global
+        # calibration (models/snowy_land.jl) forced by $(forcing_description(interface)),
+        # against seasonal means of $(targets_description())
+        # from $(Dates.Date(CALIBRATION_START)) to $(Dates.Date(STOP_DATE)), with the prior and noise of configs/energy_fluxes.jl.
         """
     haskey(ENV, "BUILDKITE_BUILD_URL") &&
         (header *= "# Buildkite build: $(ENV["BUILDKITE_BUILD_URL"])\n")
@@ -251,7 +270,8 @@ function write_summary(
             $N_ITERATIONS iterations of TransformUnscented EKI with $(2 * length(EKP.get_name(prior)) + 1) members on \
             $(length(read_columns(columns_path(interface)).weight)) columns, forced by $(forcing_description(interface)) \
             from $(Dates.Date(SPINUP_START)) to $(Dates.Date(STOP_DATE)) (first year is spinup), against seasonal \
-            means of ERA5 LHF, SHF, SWU, LWU and GOSIF GPP.
+            means of $(targets_description()), with the prior and noise of \
+            `experiments/calibration/configs/energy_fluxes.jl`.
 
             | Parameter | Default | Calibrated |
             |---|---|---|""",

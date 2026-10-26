@@ -297,3 +297,5 @@ steps:
           CALIBRATION_BACKEND: "caltech"
           # Central only has the 8° ERA5 forcing of 2008
           ERA5_LOWRES_FORCING: ""
+          # The ILAMB MODIS snow cover fraction is not an artifact
+          ILAMB_SCF_FILE: "/resnick/groups/esm/arenchon/ilamb/scf_0.5x0.5_ILAMB_filled.nc"

@@ -5,8 +5,9 @@ land model or bucket model. The observations are seasonal averages of `lhf`,
 `shf`, `lwu`, and `swu` spanning twenty years (1979-3 to 2024-8)  with a
 latitude-weighted scalar covariance matrix.
 
-To calibrate on an ensemble of columns forced by ERA5, against ERA5 energy
-fluxes and GOSIF GPP, see [`era5_columns`](era5_columns/README.md).
+To calibrate on an ensemble of columns forced by ERA5, with the calibrated
+variables, noise, and prior of `configs/energy_fluxes.jl`, see
+[`era5_columns`](era5_columns/README.md).
 
 # How do I run a calibration?
 

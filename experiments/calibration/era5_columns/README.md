@@ -1,23 +1,38 @@
 # Calibration on ERA5 columns
 
-This experiment calibrates the land model of the default long run (soil,
-canopy with the P-model, prescribed MODIS LAI, and spatially varying canopy
-height, snow, slab lake, soil CO2) forced by ERA5. Instead of the global grid,
-it runs a `ColumnEnsemble` of 200 columns chosen to represent global land,
-which makes each forward run cheap.
+This experiment calibrates the land model of the global calibration
+(`experiments/calibration/models/snowy_land.jl`: soil, canopy with the P-model
+and Weibull moisture stress, prescribed MODIS LAI, snow with the neural depth
+and albedo models and the topographic snow cover fraction, slab lake, soil CO2)
+forced by ERA5, with the calibrated variables, noise, prior, and number of
+iterations of the global configuration `configs/energy_fluxes.jl`. Instead of
+the global grid, it runs a `ColumnEnsemble` of 200 columns chosen to represent
+global land, which makes each forward run cheap.
 
-- **Observations:** seasonal means from March 2008 to February 2010 of ERA5
-  latent and sensible heat fluxes and upwelling shortwave and longwave
-  radiation, and GOSIF GPP (from the `inversion_nee` artifact).
-- **Simulations:** March 2007 to March 2010, with the first year as spinup.
-- **Parameters:** 16 parameters of the P-model, moisture stress, stem and root
-  area indices, canopy turbulence and heat capacity, turbulence below the
-  canopy, and radiation (see `get_calibration_prior` in `config.jl`). A single
-  factor scales the PAR and NIR reflectances of stems.
-- **Algorithm:** 5 iterations of TransformUnscented EKI (33 members), with a
-  diagonal noise covariance per variable (`NOISE_STD`) scaled by the area
-  weight of each column, so that the loss approximates an area-weighted global
-  misfit.
+- **Observations:** seasonal means from March 2008 to February 2010 of the
+  variables of `energy_fluxes.jl`, from the datasets of the global calibration:
+  ERA5 latent and sensible heat fluxes and upwelling shortwave and longwave
+  radiation, FLUXCOM GPP (from the `ilamb_data` artifact), and the MODIS snow
+  cover fraction of ILAMB.
+- **Simulations:** March 2007 to March 2010, with the first year as spinup. The
+  dates of `energy_fluxes.jl` only apply to the global calibration.
+- **Parameters:** the prior of `energy_fluxes.jl`.
+- **Algorithm:** TransformUnscented EKI (`2p + 1` members for `p` parameters),
+  with a diagonal noise covariance per variable scaled by the area weight of
+  each column, so that the loss approximates an area-weighted global misfit.
+  The standard deviation of each variable (`NOISE_STD`) is the square root of
+  its variance in `NOISE_SCALARS` of `energy_fluxes.jl`.
+
+## Data that are not artifacts
+
+- `topographic_data.nc`, at the root of the repository: the statistics of the
+  topography in 0.5° cells, made from ETOPO 2022 by `scf_topography_artifact.jl`.
+  `TopoSnowCoverFractionModel` reads it from the working directory, so the
+  calibration runs from the root of the repository.
+- The monthly 0.5° MODIS snow cover fraction of ILAMB (2001-2021), read from
+  `ILAMB_SCF_FILE`, or by default from `scf_0.5x0.5_ILAMB_filled.nc` at the
+  root of the repository. The Buildkite step reads it from a group directory
+  on the Caltech cluster.
 
 ## Running on Buildkite
 
@@ -59,18 +74,21 @@ only).
 
 ## Files
 
-- `config.jl`: dates, calibrated variables, noise, and prior.
-- `observations.jl`: reads ERA5 and GOSIF on the points of the ERA5 1° grid,
+- `config.jl`: dates and number of columns, and the calibrated variables,
+  noise, prior, and number of iterations of `energy_fluxes.jl`.
+- `observations.jl`: reads the observations on the points of the ERA5 1° grid,
   computes seasonal means, and builds the `EKP.Observation`. The columns are
-  ERA5 points, so they are forced by and compared to ERA5 at the same place;
-  GOSIF, whose 1° cells are centered half a degree away, is averaged over the
-  four cells around each point.
+  ERA5 points, so they are forced by and compared to ERA5 at the same place.
+  The other datasets are averaged over the four cells around each point: the
+  four 0.5° cells of FLUXCOM and MODIS tile the 1° cell centered on the point.
 - `columns.jl`: selects the columns. The candidates are the points inside land
-  where all five variables are observed (which excludes the ice sheets).
-  Area-weighted k-means groups them by their observed 2002-2020 seasonal
-  climatology, and each cluster contributes its most central point, weighted by
-  the cluster's area. The driver writes them to `results/columns.csv`; to
-  preview them, run
+  where all the calibrated variables are observed, with GOSIF GPP (from the
+  `inversion_nee` artifact) in place of FLUXCOM GPP, which is missing in most
+  deserts and ends in 2013. GOSIF does not cover the ice sheets, so they are
+  excluded. Area-weighted k-means groups the candidates by their observed
+  2002-2020 seasonal climatology, and each cluster contributes its most
+  central point, weighted by the cluster's area. The driver writes them to
+  `results/columns.csv`; to preview them, run
   `include("experiments/calibration/era5_columns/model_interface.jl"); write_columns("columns.csv", select_columns())`.
 - `model_interface.jl`: the forward model and observation map.
 - `analysis.jl`: the calibrated parameter file, metrics, figures, and summary.

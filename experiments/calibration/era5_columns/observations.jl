@@ -77,6 +77,33 @@ function read_era5_monthly(short_name, months)
 end
 
 """
+    mean_around_points(cells, lats)
+
+Return a `360 × 179 × months` array of the observations `cells` (longitude ×
+latitude × months, on a global grid of cells centered at the latitudes `lats`)
+at the points of the ERA5 1° grid: the area-weighted mean of the four cells
+whose common corner is the point. It is `NaN` unless all four are observed.
+"""
+function mean_around_points(cells, lats)
+    resolution = 180 / length(lats)
+    out = zeros(length(POINT_LONS), length(POINT_LATS), size(cells, 3))
+    for (j, lat) in enumerate(POINT_LATS), (i, lon) in enumerate(POINT_LONS)
+        # Cells centered at lon ± resolution / 2 and lat ± resolution / 2
+        i_west = round(Int, (lon + 180) / resolution)
+        j_south = round(Int, (lat + 90) / resolution)
+        i_cells = mod1.((i_west, i_west + 1), size(cells, 1))
+        j_cells = (j_south, j_south + 1)
+        weights = [cosd(lats[jc]) for ic in i_cells, jc in j_cells]
+        out[i, j, :] = sum(
+            weights[a, b] .* cells[i_cells[a], j_cells[b], :] for
+            a in 1:2, b in 1:2
+        )
+        out[i, j, :] ./= sum(weights)
+    end
+    return out
+end
+
+"""
     read_gosif_monthly(months)
 
 Return a `360 × 179 × length(months)` array of the GOSIF GPP (g C m^-2 day^-1)
@@ -85,7 +112,7 @@ are the first days of the months to read.
 
 The GOSIF 1° cells are centered half a degree from the points, so the value at
 a point is the area-weighted mean of the four cells around it: the mean over
-the 1° cell centered on the point. It is `NaN` unless all four are observed.
+the 1° cell centered on the point.
 """
 function read_gosif_monthly(months)
     path = ClimaLand.Artifacts.inversion_nee_dataset_path()
@@ -98,19 +125,55 @@ function read_gosif_monthly(months)
         cells =
             read_months(ds, "gpp", months) ./
             reshape(Dates.daysinmonth.(months), 1, 1, :)
-        out = zeros(length(POINT_LONS), length(POINT_LATS), length(months))
-        for (j, lat) in enumerate(POINT_LATS), (i, lon) in enumerate(POINT_LONS)
-            # Cells centered at lon ± 0.5 and lat ± 0.5
-            i_cells = mod1.((lon + 180, lon + 181), 360)
-            j_cells = (lat + 90, lat + 91)
-            weights = [cosd(lats[jc]) for ic in i_cells, jc in j_cells]
-            out[i, j, :] = sum(
-                weights[a, b] .* cells[i_cells[a], j_cells[b], :] for
-                a in 1:2, b in 1:2
-            )
-            out[i, j, :] ./= sum(weights)
-        end
-        return out
+        return mean_around_points(cells, lats)
+    end
+end
+
+"""
+    read_fluxcom_monthly(months)
+
+Return a `360 × 179 × length(months)` array of the FLUXCOM GPP
+(g C m^-2 day^-1) of the `ilamb_data` artifact at the points of the ERA5 1°
+grid: the area-weighted mean of the four 0.5° cells around each point, which
+tile the 1° cell centered on it. FLUXCOM is missing where its GPP is always
+zero, as in most deserts. `months` are the first days of the months to read.
+"""
+function read_fluxcom_monthly(months)
+    path = ClimaLand.Artifacts.ilamb_dataset_path("gpp_FLUXCOM_gpp.nc")
+    NCDatasets.NCDataset(path) do ds
+        lons, lats = ds["lon"][:], ds["lat"][:]
+        (lons == -179.75:0.5:179.75 && lats == -89.75:0.5:89.75) ||
+            error("Unexpected FLUXCOM grid in $path")
+        ds["gpp"].attrib["units"] == "g m-2 day-1" ||
+            error("Unexpected FLUXCOM units in $path")
+        return mean_around_points(read_months(ds, "gpp", months), lats)
+    end
+end
+
+"""Path to the monthly 0.5° MODIS snow cover fraction of ILAMB, which is not
+an artifact (set by `ILAMB_SCF_FILE`)."""
+const SCF_FILE = get(
+    ENV,
+    "ILAMB_SCF_FILE",
+    joinpath(pkgdir(ClimaLand), "scf_0.5x0.5_ILAMB_filled.nc"),
+)
+
+"""
+    read_scf_monthly(months)
+
+Return a `360 × 179 × length(months)` array of the MODIS snow cover fraction
+in `SCF_FILE` at the points of the ERA5 1° grid: the area-weighted mean of the
+four 0.5° cells around each point, which tile the 1° cell centered on it.
+`months` are the first days of the months to read.
+"""
+function read_scf_monthly(months)
+    NCDatasets.NCDataset(SCF_FILE) do ds
+        lons, lats = ds["lon"][:], ds["lat"][:]
+        (lons == -179.75:0.5:179.75 && lats == -89.75:0.5:89.75) ||
+            error("Unexpected snow cover fraction grid in $SCF_FILE")
+        ds["scf"].attrib["units"] == "1" ||
+            error("Unexpected snow cover fraction units in $SCF_FILE")
+        return mean_around_points(read_months(ds, "scf", months), lats)
     end
 end
 
@@ -118,12 +181,17 @@ end
     read_monthly(short_name, months)
 
 Return a `360 × 179 × length(months)` array of the monthly mean observations
-of `short_name` at the points of the ERA5 1° grid: GOSIF for `gpp`, ERA5 for
-the energy fluxes. `months` are the first days of the months to read.
+of `short_name` at the points of the ERA5 1° grid: FLUXCOM GPP for `gpp`, GOSIF
+GPP for `sif_gpp`, the MODIS snow cover fraction for `snowc`, and ERA5 for the
+energy fluxes, as in the global calibration. `months` are the first days of
+the months to read.
 """
-read_monthly(short_name, months) =
-    short_name == "gpp" ? read_gosif_monthly(months) :
-    read_era5_monthly(short_name, months)
+function read_monthly(short_name, months)
+    short_name == "gpp" && return read_fluxcom_monthly(months)
+    short_name == "sif_gpp" && return read_gosif_monthly(months)
+    short_name == "snowc" && return read_scf_monthly(months)
+    return read_era5_monthly(short_name, months)
+end
 
 """
     month_starts(start_date, stop_date)

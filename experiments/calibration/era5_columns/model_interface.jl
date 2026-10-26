@@ -1,6 +1,6 @@
 # Forward model and observation map of the ERA5 column-ensemble calibration:
-# the land model of the default long run (P-model, prescribed MODIS LAI) on an
-# ensemble of columns, forced by ERA5.
+# the land model of the global calibration (experiments/calibration/models/
+# snowy_land.jl) on an ensemble of columns, forced by ERA5.
 
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -16,6 +16,10 @@ import Dates
 import EnsembleKalmanProcesses as EKP
 import JLD2
 import TOML
+# Load ClimaLand's extension with the neural snow models
+import Adapt, Flux, InteractiveUtils
+const NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow
 
 include(joinpath(@__DIR__, "config.jl"))
 include(joinpath(@__DIR__, "observations.jl"))
@@ -64,8 +68,10 @@ columns_path(interface::ERA5ColumnsInterface) =
         stop_date = STOP_DATE,
     )
 
-Return the simulation of the default land model on columns at `longlat`, forced
-by ERA5, and the `DictWriter` collecting the monthly means of `SHORT_NAMES`.
+Return the simulation of the land model of the global calibration (P-model,
+prescribed MODIS LAI, neural snow depth and albedo, and the snow cover fraction
+of `TopoSnowCoverFractionModel`) on columns at `longlat`, forced by ERA5, and
+the `DictWriter` collecting the monthly means of `SHORT_NAMES`.
 """
 function setup_simulation(
     toml_dict,
@@ -94,18 +100,36 @@ function setup_simulation(
         use_lowres_forcing = lowres_forcing,
         context,
     )
+    forcing = (; atmos, radiation)
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
         surface_space,
         start_date,
         stop_date,
     )
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    snow = ClimaLand.Snow.SnowModel(
+        FT,
+        surface_domain,
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components,
+        α_snow = NeuralSnow.NeuralAlbedoModel(toml_dict, surface_space; Δt),
+        density = NeuralSnow.NeuralDepthModel(toml_dict; Δt),
+        scf = ClimaLand.Snow.TopoSnowCoverFractionModel(
+            toml_dict,
+            surface_domain,
+        ),
+    )
     model = ClimaLand.LandModel{FT}(
-        (; atmos, radiation),
+        forcing,
         LAI,
         toml_dict,
         domain,
         Δt;
-        prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2),
+        prognostic_land_components,
+        snow,
     )
 
     writer = ClimaDiagnostics.Writers.DictWriter()
@@ -188,26 +212,6 @@ function write_parameter_toml(path, parameters; header = "")
 end
 
 """
-    model_parameter_file(parameter_file)
-
-Return the path to a TOML file holding the model parameters that the
-calibrated parameters in `parameter_file` set (see `model_parameters`): a file
-written next to it if it holds `STEM_REFLECTANCE_SCALE`, or `parameter_file`
-itself.
-"""
-function model_parameter_file(parameter_file)
-    entries = TOML.parsefile(parameter_file)
-    haskey(entries, STEM_REFLECTANCE_SCALE) || return parameter_file
-    calibrated = Dict(name => entry["value"] for (name, entry) in entries)
-    path = joinpath(dirname(parameter_file), "model_parameters.toml")
-    write_parameter_toml(
-        path,
-        model_parameters(calibrated, LP.create_toml_dict(FT)),
-    )
-    return path
-end
-
-"""
     run_columns(interface::ERA5ColumnsInterface, parameter_files, path)
 
 Run the columns of `interface` with the default parameters overridden by the
@@ -215,14 +219,13 @@ calibrated parameters in the TOML files `parameter_files`, and save the
 simulated seasonal means to `path`.
 """
 function run_columns(interface::ERA5ColumnsInterface, parameter_files, path)
-    override_files = model_parameter_file.(parameter_files)
-    toml_dict = LP.create_toml_dict(FT; override_files)
+    toml_dict = LP.create_toml_dict(FT; override_files = parameter_files)
     simulation, writer = setup_simulation(
         toml_dict,
         read_columns(columns_path(interface)).longlat;
         interface.lowres_forcing,
     )
-    for file in override_files
+    for file in parameter_files
         CP.check_override_parameter_usage(
             toml_dict,
             keys(TOML.parsefile(file)),

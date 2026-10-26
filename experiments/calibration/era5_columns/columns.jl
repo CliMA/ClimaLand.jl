@@ -1,10 +1,10 @@
 # Selection of the simulated columns, and their CSV file.
 #
 # The candidates are the points of the ERA5 1° grid inside land (see
-# `interior_land`) where all of `SHORT_NAMES` are observed throughout
+# `interior_land`) where all of `SELECTION_NAMES` are observed throughout
 # `CLIMATOLOGY_YEARS`, which excludes the ice sheets that GOSIF does not cover.
 # Each candidate is described by the observed seasonal climatology (DJF, MAM,
-# JJA, SON) of the calibrated variables, and the candidates are grouped by
+# JJA, SON) of these variables, and the candidates are grouped by
 # area-weighted k-means. Each cluster contributes the point closest to its
 # centroid, weighted by the cluster's share of the candidates' area, so the
 # columns span the observed climates of global land and their weighted mean
@@ -128,13 +128,13 @@ function select_columns(;
 )
     climatologies = Dict(
         short_name => seasonal_climatology(short_name, years) for
-        short_name in SHORT_NAMES
+        short_name in SELECTION_NAMES
     )
     observed = reduce(
         .&,
         [
             all(isfinite, climatologies[name], dims = 3)[:, :, 1] for
-            name in SHORT_NAMES
+            name in SELECTION_NAMES
         ],
     )
     candidates = findall(vec(interior_land() .& observed))
@@ -149,7 +149,7 @@ function select_columns(;
     # to the distance, while keeping the seasonal cycle within a variable
     features = reduce(
         vcat,
-        map(SHORT_NAMES) do name
+        map(SELECTION_NAMES) do name
             values = reshape(climatologies[name], :, 4)[candidates, :]'
             μ = sum(values .* area') / (4 * sum(area))
             σ = sqrt(sum(abs2.(values .- μ) .* area') / (4 * sum(area)))
