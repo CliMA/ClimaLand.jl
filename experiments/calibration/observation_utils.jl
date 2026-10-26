@@ -53,7 +53,6 @@ and that the output is on the grid specified by
   of land)
 """
 function make_ocean_mask(nelements)
-@show nelements
     lats, longs = get_lat_lon_from_resolution(nelements)
 
     # We do not want to load the CUDA backend or construct this on GPU which is
@@ -70,7 +69,7 @@ function make_ocean_mask(nelements)
     # by the simulation. We set the threshold of fractional area of land to be
     # 0.99 here - cells with > 1% ocean are ignored in calibration.
     mask = ClimaLand.Domains.landsea_mask(domain; threshold = 0.99)
-    @show extrema(mask)
+
     # Interpolate the ClimaLand land sea mask (Field) to the diagnostics grid
     # (matrix)
     target_hcoords = [
@@ -79,7 +78,7 @@ function make_ocean_mask(nelements)
     # Select only locations where the interpolated mask is equal to 1
     interpolated_mask =
         Array(ClimaCore.Remapping.interpolate(mask; target_hcoords))
-	@show extrema(interpolated_mask)
+
     all(0 .<= interpolated_mask .<= 1) ||
         error("Interpolated mask contains values outside the range [0, 1]")
     # Interpolating using ClimaCore does not guarantee that the values are
