@@ -39,8 +39,8 @@ global land, which makes each forward run cheap.
 Add the `calibrate ERA5` label (together with `Launch Buildkite`) to a pull
 request, or start a manual build with `CALIBRATE_ERA5=""`. The step drives
 the calibration on a CPU and submits every forward run as a Slurm job with one
-P100 GPU, so all the members of an iteration run at once when enough GPUs are
-free. It uploads `era5_calibration/results` as Buildkite artifacts and
+H100 GPU (the neural snow depth model does not run on P100s), so the members of
+an iteration run at once when enough GPUs are free. It uploads `era5_calibration/results` as Buildkite artifacts and
 summarizes it in a build annotation:
 
 - `era5_parameters.toml`: the calibrated parameters.

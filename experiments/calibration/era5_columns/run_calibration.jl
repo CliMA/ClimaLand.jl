@@ -26,11 +26,12 @@ include(MODEL_INTERFACE_FILE)
 include(joinpath(@__DIR__, "analysis.jl"))
 
 """Slurm directives of a forward run on the Caltech cluster, where GPUs are
-requested by type with `--gres`."""
+requested by type with `--gres`. The kernel of the neural snow depth model
+takes more than the 4 KiB of parameters that P100s allow, so the runs use
+H100s, outside the P100-only `clima` reservation."""
 const CALTECH_DIRECTIVES = [
     :partition => "gpu",
-    :reservation => "clima",
-    :gres => "gpu:p100:1",
+    :gres => "gpu:h100:1",
     :ntasks => 1,
     :cpus_per_task => 4,
     :mem => "32G",
