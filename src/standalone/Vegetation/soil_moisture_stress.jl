@@ -265,7 +265,7 @@ function compute_weibull_moisture_stress(
     c::FT,
 ) where {FT}
     ψ_safe = min(0, ψ)
-    arg = a*(ψ/ψ_c)^c # ψ/ψ_c is positive because both are negative.
+    arg = a*(ψ_safe/ψ_c)^c # ψ/ψ_c is positive because both are negative.
     return exp(-arg) # when ψ = 0, returns 1. Very dry (ψ -> -∞), goes to zero
 end
 
