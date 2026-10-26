@@ -1,18 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 2
-type = "float"
-description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
-tag = "SoilMoistureStress"
-
-[weibull_moisture_stress_c]
-value = 2
-type = "float"
-description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
-tag = "SoilMoistureStress"
-
-[weibull_moisture_stress_a]
-value = 1
+value = 0.759
 type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
@@ -59,7 +47,7 @@ tag = "BigLeafEnergyModel"
 # Weibull model
 
 ["K_sat_plant"]
-value = 7e-6
+value = 7e-8
 type = "float"
 description = "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation. Units are m / s."
 tag = "Weibull"
@@ -198,7 +186,7 @@ description = "Minimum hydraulic height of the canopy (m): the height used in th
 tag = "PlantHydraulicsParameters"
 
 ["plant_nu"]
-value = 0.02
+value = 0.2
 type = "float"
 description = "Porosity (m3/m3)"
 tag = "PlantHydraulicsParameters"
@@ -301,6 +289,7 @@ type = "float"
 description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (kg/m^3)"
 tag = "SturmSnowConductivityModel"
 
+# WuWuSnowCoverFractionModel parameters
 [holding_capacity_of_water_in_snow]
 value = 0.0
 type = "float"
@@ -310,7 +299,6 @@ description = "Volumetric holding capacity of liquid water in a snowpack (unitle
 value = 2.5e-3
 type = "float"
 description = "Hydraulic conductivity of wet snow (m s⁻¹)."
-# WuWuSnowCoverFractionModel parameters
 
 ["topo_scf_z0"]
 value = 0.5
@@ -331,7 +319,7 @@ description = ""
 tag = "TopoSnowCoverFractionModel"
 
 ["gamma"]
-value = 0.001
+value = 0.08
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
@@ -343,7 +331,7 @@ description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_min"]
-value = 0.1
+value = 1.0
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"
@@ -382,31 +370,31 @@ tag = "ConstantResetAlbedo"
 
 # P model parameters
 ["pmodel_vpd_ratio"]
-value = 0.001
+value = 0.05
 type = "float"
 description = "Minimum value for the ratio of sqrt(vpd) and the pmdodel xi"
 tag = "PModelParameters"
 
 ["pmodel_gamma_ratio"]
-value = 0.999
+value = 0.99
 type = "float"
 description = "Maximum value for the ratio of Gamma star over the partial pressure of CO2 in the atmosphere"
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.41
+value = 0.463
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 146.0
+value = 112.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 16.0
+value = 1.76
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
@@ -460,20 +448,20 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.05
+value = 0.0113
 type = "float"
 description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 # P Model constants (see Stocker et al. (2020) Table A2 and references within for more information)
 ["pmodel_Kc25"]
-value = 40.49
+value = 39.97
 type = "float"
 description = "Michaelis-Menten parameter for oxygenation at 25°C (Pa)."
 tag = "PModelConstants"
 
 ["pmodel_Ko25"]
-value = 27840
+value = 27480
 type = "float"
 description = "Reference temperature equal to 25˚C (K)."
 tag = "PModelConstants"
@@ -497,7 +485,7 @@ description = "Effective energy of activation for Γstar (J mol^-1)."
 tag = "PModelConstants"
 
 ["pmodel_Γstar25"]
-value = 4.275
+value = 4.332
 type = "float"
 description = "Photorespiratory compensation point at 25°C (Pa)."
 tag = "PModelConstants"
@@ -599,7 +587,7 @@ description = "PAR transmittance of stems (unitless); woody-plant value. Dorman 
 tag = "AbstractRadiationModel"
 
 [stem_NIR_reflectance]
-value = 0.32
+value = 0.78
 type = "float"
 description = "NIR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
 tag = "AbstractRadiationModel"
@@ -894,7 +882,7 @@ tag = "SoilCO2Parameters"
 
 # Soil Parameters
 ["maximum_dry_soil_layer_depth"]
-value = 0.005
+value = 0.00296
 type = "float"
 description = "Maximum depth of the dry soil layer that can develop under evaporation (m); Shokri and Or (2011), DOI: 10.1029/2010WR010284. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "EnergyHydrologyParameters"
@@ -912,7 +900,7 @@ description = "Exponent of dry soil layer factor in evaporation; for use with RO
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
-value = 0.1
+value = 1.0
 type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"
