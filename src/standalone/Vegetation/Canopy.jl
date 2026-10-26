@@ -116,7 +116,7 @@ function WeibullMoistureStressModel{FT}(
     m = 1 .- 1 ./n
     α = soil_params.hydrology_cm.α
     S_c =  soil_params.hydrology_cm.S_c
-    ψ_c = (S_c .^((-1) ./m) .-1).^(1 ./n) ./α
+    ψ_c = .-(S_c .^((-1) ./m) .-1).^(1 ./n) ./α
     return WeibullMoistureStressModel{FT}(; ψ_c, a, c)
 end
 
