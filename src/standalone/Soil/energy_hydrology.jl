@@ -1064,6 +1064,7 @@ function soil_specific_humidity(
     g = LP.grav(earth_param_set)
     R = LP.gas_constant(earth_param_set)
     M_w = LP.molar_mass_water(earth_param_set)
+    FT = promote_type(typeof(T_sfc), typeof(ρ_sfc), typeof(ψ_sfc))
     if frozen
         q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
@@ -1080,7 +1081,7 @@ function soil_specific_humidity(
                 Thermodynamics.Liquid(),
             ) * exp(g * min(ψ_sfc, zero(ψ_sfc)) * M_w / (R * T_sfc))
     end
-    return q_sfc
+    return FT(q_sfc)
 end
 
 function ClimaLand.get_update_surface_humidity_function(

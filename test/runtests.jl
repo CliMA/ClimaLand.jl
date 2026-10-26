@@ -191,6 +191,10 @@ if TEST_GROUP in ("all", "core")
         include("integrated/soil_snow.jl")
     end
 
+    # Test compatibility with automatic differentiation
+    @safetestset "Autodiff compatibility" begin
+        include("shared_utilities/ad_compatibility.jl")
+    end
 end
 
 if TEST_GROUP in ("all", "simulations")
