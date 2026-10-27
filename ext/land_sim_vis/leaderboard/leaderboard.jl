@@ -392,33 +392,49 @@ function _land_intersection_mask(vars...)
 end
 
 """
+    _repeat_static_obs(obs_var, sim_var)
+
+Return `obs_var` if it has a time dimension. Otherwise `obs_var` is a static map,
+which is resampled onto the grid of `sim_var` and repeated at each of its times,
+so that every simulated month is compared with it.
+"""
+_repeat_static_obs(obs_var, sim_var) =
+    ClimaAnalysis.has_time(obs_var) ? obs_var :
+    repeat_over_times(obs_var, sim_var)
+
+"""
     _get_data_loader(data_source)
 
 Return the observational data loader for `data_source` (case-insensitive), one
-of `"ERA5"`, `"FlagshipCarbonMetrics"`, or `"ILAMB"`. Errors on anything else.
+of `"ERA5"`, `"FlagshipCarbonMetrics"`, `"FlagshipVegetationMetrics"`, or
+`"ILAMB"`. Errors on anything else.
 """
 function _get_data_loader(data_source)
     source = uppercase(data_source)
     source == "ERA5" && return ERA5DataLoader()
     source == "FLAGSHIPCARBONMETRICS" &&
         return FlagshipCarbonMetricsDataLoader()
+    source == "FLAGSHIPVEGETATIONMETRICS" &&
+        return FlagshipVegetationMetricsDataLoader()
     source == "ILAMB" && return ILAMBDataLoader()
     return error(
-        "Unknown data_source \"$data_source\"; expected \"ERA5\", \"FlagshipCarbonMetrics\", or \"ILAMB\".",
+        "Unknown data_source \"$data_source\"; expected \"ERA5\", \"FlagshipCarbonMetrics\", \"FlagshipVegetationMetrics\", or \"ILAMB\".",
     )
 end
 
 """
     compute_monthly_leaderboard(leaderboard_base_path,
                                 diagnostics_folder_path,
-                                data_source)
+                                data_source;
+                                spin_up_months = 12)
 
 Plot the biases and a monthly leaderboard of various variables defined over longitude,
 latitude, and time. The observational data is determined by `data_source` and can either be
 `ILAMB` or `ERA5`.
 
 The parameter `leaderboard_base_path` is the path to save the leaderboards and bias plots,
-and `diagnostics_folder_path` is the path to the simulation data.
+and `diagnostics_folder_path` is the path to the simulation data. The first
+`spin_up_months` months of the simulation are excluded when it is longer.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
@@ -432,7 +448,8 @@ data_sources.jl.
 function compute_monthly_leaderboard(
     leaderboard_base_path,
     diagnostics_folder_path,
-    data_source,
+    data_source;
+    spin_up_months = 12,
 )
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     data_loader = _get_data_loader(data_source)
@@ -466,7 +483,6 @@ function compute_monthly_leaderboard(
         obs_var = get(data_loader, short_name)
 
         # Remove first spin_up_months months from simulation
-        spin_up_months = 12
         spinup_cutoff = spin_up_months * 30 * 86400.0
         ClimaAnalysis.times(sim_var)[end] >= spinup_cutoff && (
             sim_var =
@@ -475,6 +491,7 @@ function compute_monthly_leaderboard(
 
         # Preprocess sim var to match conventions of data loaders
         sim_var = preprocess_sim_var(sim_var)
+        obs_var = _repeat_static_obs(obs_var, sim_var)
 
         # Make the relative time the same between observational and simulation data
         ClimaAnalysis.set_reference_date!(
@@ -679,14 +696,16 @@ end
 """
     compute_seasonal_leaderboard(leaderboard_base_path,
                                  diagnostics_folder_path,
-                                 data_source)
+                                 data_source;
+                                 spin_up_months = 12)
 
 Plot the biases and a seasonal leaderboard of various variables defined over longitude,
 latitude, and time. The observational data is determined by `data_source` and can either be
 `ILAMB` or `ERA5`.
 
 The parameter `leaderboard_base_path` is the path to save the leaderboards and bias plots,
-and `diagnostics_folder_path` is the path to the simulation data.
+and `diagnostics_folder_path` is the path to the simulation data. The first
+`spin_up_months` months of the simulation are excluded when it is longer.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
@@ -700,7 +719,8 @@ data_sources.jl.
 function compute_seasonal_leaderboard(
     leaderboard_base_path,
     diagnostics_folder_path,
-    data_source,
+    data_source;
+    spin_up_months = 12,
 )
     # Get everything we need from data_sources.jl
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
@@ -726,7 +746,6 @@ function compute_seasonal_leaderboard(
     hemisphere_climatology_dict = Dict()
     seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
 
-    spin_up_months = 12
     for short_name in short_names
         @info short_name
         # Simulation data
@@ -744,6 +763,7 @@ function compute_seasonal_leaderboard(
 
         # Preprocess sim var to match conventions of data loaders
         sim_var = preprocess_sim_var(sim_var)
+        obs_var = _repeat_static_obs(obs_var, sim_var)
 
         # Make the relative time the same between observational and simulation data
         ClimaAnalysis.set_reference_date!(

@@ -283,6 +283,11 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
+@diagnostic_compute "stem_area_index" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.area_index.stem
 
 # Canopy - Optimal LAI model diagnostics: prognostic time-integrated variables in Y.
 @diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_daily

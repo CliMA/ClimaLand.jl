@@ -368,3 +368,42 @@ function clm_canopy_height(
     )
     return canopy_height
 end
+
+"""
+    clm_tree_share(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant(),
+    )
+
+Read the tree share of the natural vegetation in the CLM surface data (the cover of the
+tree PFTs over that of all vegetated PFTs) onto the `surface_space`, zero where there is
+no vegetation.
+"""
+function clm_tree_share(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    tree_share = SpaceVaryingInput(
+        Artifacts.clm_tree_share_path(;
+            context = ClimaComms.context(surface_space),
+        ),
+        "tree_share",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    @. tree_share = ifelse(isnan(tree_share), zero(tree_share), tree_share)
+    return tree_share
+end

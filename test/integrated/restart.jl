@@ -82,6 +82,31 @@ using Dates
     @test model.canopy.photosynthesis isa ClimaLand.Canopy.PModel
     @test (model.canopy.biomass isa ClimaLand.Canopy.ZhouOptimalLAIModel) ==
           prognostic_lai
+    if prognostic_lai
+        # A `canopy` passed with a `biomass` must use it.
+        components =
+            (; model.canopy, model.snow, model.soil, model.soilco2, model.lake)
+        with_biomass(biomass) = ClimaLand.LandModel{FT}(
+            (; atmos, radiation),
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            biomass,
+            components...,
+        )
+        @test with_biomass(model.canopy.biomass).canopy === model.canopy
+        @test_throws ErrorException with_biomass(
+            ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                model.canopy.biomass.parameters;
+                SAI = FT(0),
+                RAI = FT(1),
+                rooting_depth = FT(1),
+                height = FT(1),
+                tree_share = FT(1),
+            ),
+        )
+    end
 
     set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
         ClimaLand.Artifacts.soil_ic_2008_50m_path(; context),

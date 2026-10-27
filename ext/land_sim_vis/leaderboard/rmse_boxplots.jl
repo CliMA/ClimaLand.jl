@@ -356,7 +356,8 @@ end
 """
     compute_rmse_boxplots(leaderboard_base_path,
                           diagnostics_folder_path;
-                          prev_diagnostics_folder_path = nothing)
+                          prev_diagnostics_folder_path = nothing,
+                          spin_up_months = 12)
 
 Generate `boxplot_rmse.png` in `leaderboard_base_path`: a single figure with
 four energy panels (H, LE, SWup, LWup) and two carbon panels (GPP, ER) side
@@ -367,7 +368,8 @@ Each panel shows a boxplot of "other-model" RMSE values from the ILAMB
 land-hist dashboards alongside the ClimaLand RMSE computed from the simulation
 in `diagnostics_folder_path` (red dot). If `prev_diagnostics_folder_path` is
 given, the equivalent RMSE from that earlier run is plotted as a gray dot,
-with a percent-change label drawn between the two.
+with a percent-change label drawn between the two. The first `spin_up_months`
+months of both runs are excluded.
 
 Energy panels are RMSE in W m⁻² (ClimaLand vs ERA5); the cohort benchmark
 differs per panel — see the per-panel label. Carbon panels are RMSE in
@@ -377,6 +379,7 @@ function compute_rmse_boxplots(
     leaderboard_base_path,
     diagnostics_folder_path;
     prev_diagnostics_folder_path = nothing,
+    spin_up_months = 12,
 )
     @info "Computing ClimaLand RMSE for energy/carbon boxplots"
 
@@ -391,14 +394,16 @@ function compute_rmse_boxplots(
         rmse_current[p.sim_short_name] = _annual_global_rmse(
             diagnostics_folder_path,
             p.sim_short_name,
-            p.data_source,
+            p.data_source;
+            spin_up_months,
         )
         rmse_prev[p.sim_short_name] =
             isnothing(prev_diagnostics_folder_path) ? NaN :
             _annual_global_rmse(
                 prev_diagnostics_folder_path,
                 p.sim_short_name,
-                p.data_source,
+                p.data_source;
+                spin_up_months,
             )
     end
 
