@@ -209,7 +209,7 @@ end
 """
     ERA5DataLoader
 
-A struct for loading preprocessed ERA5_DL data as `OutputVar`s.
+A struct for loading preprocessed ERA5 data as `OutputVar`s.
 """
 struct ERA5DataLoader <: AbstractDataLoader
     """A catalog built from NetCDF files, designed to initialize `OutputVar`s.
@@ -232,7 +232,7 @@ const ERA5_TO_CLIMA_NAMES = [
 leaderboard needs; the default `era5_to_clima_names` of
 `compute_partitioning_leaderboard` and `create_partitioning_plots`.
 
-These are kept out of `ERA_TO_CLIMA_NAMES` because the standard ENERGYWATER_DL
+These are kept out of `ERA_TO_CLIMA_NAMES` because the standard ERA5
 leaderboard draws a row per loaded variable the simulation also has, so adding
 them there would add rows to it.
 """
@@ -253,7 +253,7 @@ const STANDARD_UNITS = Dict(
 """
     ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
 
-Construct a data loader that can be used to load preprocessed ERA5_DL monthly
+Construct a data loader that can be used to load preprocessed ERA5 monthly
 time-averaged data in `OutputVar`, where
 - the short name, sign of the data, and units match CliMA conventions
 - the latitudes are shifted to be -180 to 180 degrees,
@@ -261,7 +261,7 @@ time-averaged data in `OutputVar`, where
   January is on the first of January instead of January 15th),
 - units match the variables in the output of the CliMA diagnostics.
 
-The ERA5_DL data comes from the
+The ERA5 data comes from the
 `era5_monthly_averages_surface_single_level_1979_2024` artifact. See
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/era5_monthly_averages_single_level_1979_2024)
 for more information about this artifact.
@@ -285,13 +285,13 @@ end
 """
     get(loader::ERA5DataLoader, short_name::String)
 
-Get the preprocessed `OutputVar` with the name `short_name` from the ERA5_DL
+Get the preprocessed `OutputVar` with the name `short_name` from the ERA5
 dataset.
 """
 function Base.get(loader::ERA5DataLoader, short_name::String)
     (; catalog, available_vars) = loader
     short_name in available_vars || error(
-        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES or another name map, as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
+        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES, as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
     )
     var = get(catalog, short_name;)
     ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
@@ -804,7 +804,7 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     ilamb_data_loader = ILAMBDataLoader()
     grace_data_loader = GRACEDataLoader()
 
-    for short_name in available_vars(era_data_loader)
+    for short_name in available_vars(era5_data_loader)
         obs_var_dict[short_name] = get(era5_data_loader, short_name)
     end
     for short_name in available_vars(grace_data_loader)
