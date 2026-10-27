@@ -232,7 +232,7 @@ const ERA5_TO_CLIMA_NAMES = [
 leaderboard needs; the default `era5_to_clima_names` of
 `compute_partitioning_leaderboard` and `create_partitioning_plots`.
 
-These are kept out of `ERA_TO_CLIMA_NAMES` because the standard ERA5
+These are kept out of `ERA5_TO_CLIMA_NAMES` because the standard ERA5
 leaderboard draws a row per loaded variable the simulation also has, so adding
 them there would add rows to it.
 """
@@ -291,7 +291,7 @@ dataset.
 function Base.get(loader::ERA5DataLoader, short_name::String)
     (; catalog, available_vars) = loader
     short_name in available_vars || error(
-        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES, as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
+        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
     )
     var = get(catalog, short_name;)
     ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
