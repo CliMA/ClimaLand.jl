@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] The masked NaN check no longer throws a `DimensionMismatch` on
+  CPU for state variables with several components per point (such as the P-model
+  acclimated capacities), which stopped CPU global runs at their first NaN check.
+- ![][badge-✨feature] A calibration configuration
+  (`experiments/calibration/configs/lai_and_trees.jl`) calibrates the optimal-LAI model
+  against MODIS LAI and the CLM tree share (`ftr`, a new calibration target), over
+  natural vegetation as in the vegetation leaderboard; `CalibrateConfig` takes
+  `prognostic_lai`.
 - ![][badge-💥breaking] API changes of the optimal-LAI model: `optimal_lai_z` is replaced
   by `optimal_lai_z_tree` and `optimal_lai_z_grass`, and `SAI_coeff` and `RAI_coeff` by
   `SAI_coeff_tree`, `SAI_coeff_grass`, `RAI_coeff_tree` and `RAI_coeff_grass`;

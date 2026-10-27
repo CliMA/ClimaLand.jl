@@ -14,6 +14,9 @@ latitude-weighted scalar covariance matrix.
    `CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh`.
    When `TEST_CALIBRATION` is set, the single-parameter `configs/test.jl` is
    loaded instead.
+   `configs/lai_and_trees.jl` calibrates the optimal-LAI model (prognostic LAI,
+   `prognostic_lai = true`) against MODIS LAI and the CLM tree share; its prior
+   means come from the offline emulator in `optimal_lai_emulator/`.
 2. Load the `climacommon` version appropriate for your cluster (for example,
    `module load climacommon/2025_02_25` on Derecho). The loaded version is
    forwarded to the compute jobs automatically.

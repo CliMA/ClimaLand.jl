@@ -23,7 +23,8 @@ function setup_model(
     Δt,
     domain,
     toml_dict,
-    ::Type{ClimaLand.LandModel},
+    ::Type{ClimaLand.LandModel};
+    prognostic_lai = false,
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - always use high resolution for calibration runs
@@ -37,6 +38,17 @@ function setup_model(
         context,
     )
     forcing = (; atmos, radiation)
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+
+    # Without a prescribed LAI, the LandModel computes LAI with the optimal-LAI
+    # model, as in the optimal-LAI long run.
+    prognostic_lai && return LandModel{FT}(
+        forcing,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+    )
 
     # Read in LAI from MODIS data
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
@@ -44,7 +56,6 @@ function setup_model(
         start_date,
         stop_date,
     )
-    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
     land = LandModel{FT}(
         forcing,
         LAI,
@@ -64,6 +75,7 @@ function ClimaCalibrate.forward_model(
 )
     (; config) = model_interface
     (; output_dir, sample_date_ranges, nelements, spinup, extend) = config
+    (; prognostic_lai) = config
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -106,7 +118,8 @@ function ClimaCalibrate.forward_model(
         Δt,
         domain,
         toml_dict,
-        ClimaLand.LandModel,
+        ClimaLand.LandModel;
+        prognostic_lai,
     )
 
     # Set up diagnostics
@@ -117,6 +130,8 @@ function ClimaCalibrate.forward_model(
         [
             short_names
             ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
+            # for the vegetation leaderboard
+            prognostic_lai ? ["lai", "fc3", "ftr"] : String[]
         ],
     )
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
