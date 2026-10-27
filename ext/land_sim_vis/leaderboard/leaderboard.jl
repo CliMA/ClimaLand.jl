@@ -399,7 +399,7 @@ of `"ERA5"`, `"FlagshipCarbonMetrics"`, or `"ILAMB"`. Errors on anything else.
 """
 function _get_data_loader(data_source)
     source = uppercase(data_source)
-    source == "ERA5" && return EnergyWaterMetricsDataLoader()
+    source == "ERA5" && return ERA5DataLoader()
     source == "FLAGSHIPCARBONMETRICS" &&
         return FlagshipCarbonMetricsDataLoader()
     source == "ILAMB" && return ILAMBDataLoader()
@@ -422,7 +422,7 @@ and `diagnostics_folder_path` is the path to the simulation data.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
-observational data is done by `EnergyWaterMetricsDataLoader` or `ILAMBDataLoader`. The
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The
 observations are resampled onto the simulation grid, and both are compared over
 the land cells where neither is missing at any time (see `_land_intersection_mask`).
 The ranges of the bias plots are determined by
@@ -690,7 +690,7 @@ and `diagnostics_folder_path` is the path to the simulation data.
 
 Loading and preprocessing simulation data is done by loading `OutputVar`s from a
 `SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
-observational data is done by `EnergyWaterMetricsDataLoader` or `ILAMBDataLoader`. The
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The
 observations are resampled onto the simulation grid, and both are compared over
 the land cells where neither is missing at any time (see `_land_intersection_mask`).
 The ranges of the bias plots are determined by

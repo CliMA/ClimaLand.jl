@@ -505,7 +505,7 @@ function compute_partitioning_leaderboard(
     era5_to_clima_names = ERA5_PARTITION_TO_CLIMA_NAMES,
 )
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
-    data_loader = EnergyWaterMetricsDataLoader(; era5_to_clima_names)
+    data_loader = ERA5DataLoader(; era5_to_clima_names)
 
     rows = filter(
         !isnothing,

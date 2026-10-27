@@ -193,11 +193,25 @@ function preprocess(
 end
 
 """
-    EnergyWaterMetricsDataLoader
+    GRACEDataLoader
 
-A struct for loading preprocessed ENERGYWATER_DL data as `OutputVar`s.
+A struct for loading preprocessed GRACE_DL data as `OutputVar`s.
 """
-struct EnergyWaterMetricsDataLoader <: AbstractDataLoader
+struct GRACEDataLoader <: AbstractDataLoader
+    """A catalog built from NetCDF files, designed to initialize `OutputVar`s.
+    See ClimaAnalysis documentation for more information about NCCatalog."""
+    catalog::NCCatalog
+
+    """A list of available variables to load."""
+    available_vars::Set{String}
+end
+
+"""
+    ERA5DataLoader
+
+A struct for loading preprocessed ERA5_DL data as `OutputVar`s.
+"""
+struct ERA5DataLoader <: AbstractDataLoader
     """A catalog built from NetCDF files, designed to initialize `OutputVar`s.
     See ClimaAnalysis documentation for more information about NCCatalog."""
     catalog::NCCatalog
@@ -237,9 +251,9 @@ const STANDARD_UNITS = Dict(
 )
 
 """
-    EnergyWaterMetricsDataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
+    ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
 
-Construct a data loader that can be used to load preprocessed ENERGYWATER_DL monthly
+Construct a data loader that can be used to load preprocessed ERA5_DL monthly
 time-averaged data in `OutputVar`, where
 - the short name, sign of the data, and units match CliMA conventions
 - the latitudes are shifted to be -180 to 180 degrees,
@@ -247,7 +261,7 @@ time-averaged data in `OutputVar`, where
   January is on the first of January instead of January 15th),
 - units match the variables in the output of the CliMA diagnostics.
 
-The ENERGYWATER_DL data comes from the
+The ERA5_DL data comes from the
 `era5_monthly_averages_surface_single_level_1979_2024` artifact. See
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/era5_monthly_averages_single_level_1979_2024)
 for more information about this artifact.
@@ -255,66 +269,73 @@ for more information about this artifact.
 The keyword argument `ERA5_to_clima_names` is a vector of pairs mapping
 ERA5 name to CliMA name.
 """
-function EnergyWaterMetricsDataLoader(;
-    era5_to_clima_names = ERA5_TO_CLIMA_NAMES,
-    grace_to_clima_names = ["twsa" => "twsa"],
-)
+function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
     artifact_dir =
         @clima_artifact"era5_monthly_averages_surface_single_level_1979_2024"
     flux_file = joinpath(
         artifact_dir,
         "era5_monthly_averages_surface_single_level_197901-202410.nc",
     )
-    twsa_file = ClimaLand.Artifacts.grace_twsa_data()
     catalog = NCCatalog()
     ClimaAnalysis.add_file!(catalog, flux_file, era5_to_clima_names...)
-    ClimaAnalysis.add_file!(catalog, twsa_file, grace_to_clima_names...)
 
-    return EnergyWaterMetricsDataLoader(
-        catalog,
-        Set([last.(era5_to_clima_names)..., last.(grace_to_clima_names)...]),
-    )
+    return ERA5DataLoader(catalog, Set([last.(era5_to_clima_names)...]))
 end
 
 """
-    get(loader::EnergyWaterMetricsDataLoader, short_name::String)
+    get(loader::ERA5DataLoader, short_name::String)
 
-Get the preprocessed `OutputVar` with the name `short_name` from the ENERGYWATER_DL
+Get the preprocessed `OutputVar` with the name `short_name` from the ERA5_DL
 dataset.
 """
-function Base.get(loader::EnergyWaterMetricsDataLoader, short_name::String)
+function Base.get(loader::ERA5DataLoader, short_name::String)
     (; catalog, available_vars) = loader
     short_name in available_vars || error(
-        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES or another name map, as a pair mapping ERA5/GRACE name to CliMA name and create a new EnergyWaterMetricsDataLoader",
+        "$short_name is not available to load. To add this variable, add it to ERA5_TO_CLIMA_NAMES or another name map, as a pair mapping ERA5 name to CliMA name and create a new ERA5DataLoader",
     )
     var = get(catalog, short_name;)
     ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
     return preprocess(loader, var, Val(Symbol(short_name)))
 end
 
+function GRACEDataLoader(; grace_to_clima_names = ["twsa" => "twsa"])
+    twsa_file = ClimaLand.Artifacts.grace_twsa_data()
+    catalog = NCCatalog()
+    ClimaAnalysis.add_file!(catalog, twsa_file, grace_to_clima_names...)
+
+    return GRACEDataLoader(catalog, Set([last.(grace_to_clima_names)...]))
+end
+
+function Base.get(loader::GRACEDataLoader, short_name::String)
+    (; catalog, available_vars) = loader
+    short_name in available_vars ||
+        error("$short_name is not available to load.")
+    var = get(catalog, short_name;)
+    ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
+    return preprocess(loader, var, Val(Symbol(short_name)))
+end
+
 """
-    preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{varname}) where {varname}
+    preprocess(::ERA5DataLoader, var, ::Val{varname}) where {varname}
 
 Preprocess `var` with short name `varname`.
 """
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:shf}) =
+preprocess(::ERA5DataLoader, var, ::Val{:shf}) =
     _preprocess_var(var; flip_sign = true)
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:lhf}) =
+preprocess(::ERA5DataLoader, var, ::Val{:lhf}) =
     _preprocess_var(var; flip_sign = true)
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:lwu}) =
-    _preprocess_var(var)
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:swu}) =
-    _preprocess_var(var)
-function preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:twsa})
+preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
+preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
+function preprocess(::GRACEDataLoader, var, ::Val{:twsa})
     replace!(var, missing => NaN)
     return _preprocess_var(var, flip_sign = true)
 end
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:sr}) =
+preprocess(::ERA5DataLoader, var, ::Val{:sr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:ssr}) =
+preprocess(::ERA5DataLoader, var, ::Val{:ssr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
 # ERA5 evaporation is negative downward-positive; CliMA reports it positive.
-preprocess(::EnergyWaterMetricsDataLoader, var, ::Val{:et}) =
+preprocess(::ERA5DataLoader, var, ::Val{:et}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var); flip_sign = true)
 
 """
@@ -518,7 +539,6 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "lhf" => (-40.0, 40.0) .* factor,
         "swu" => (-50.0, 50.0) .* factor,
         "lai" => (-3.0, 3.0) .* factor,
-        "twsa" => (-200.0, 200.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -779,14 +799,17 @@ the MODIS LAI file load is skipped unless `lai` is requested).
 function get_calibration_obs_var_dict(; short_names = nothing)
     obs_var_dict = Dict{String, Any}()
     # ERA5 energy fluxes
-    energywater_dl_data_loader = EnergyWaterMetricsDataLoader()
+    era5_data_loader = ERA5DataLoader()
     # ILAMB GPP, ecosystem respiration (FLUXCOM reco), and NEE
     ilamb_data_loader = ILAMBDataLoader()
+    grace_data_loader = GRACEDataLoader()
 
-    for short_name in available_vars(energywater_dl_data_loader)
-        obs_var_dict[short_name] = get(energywater_dl_data_loader, short_name)
+    for short_name in available_vars(era_data_loader)
+        obs_var_dict[short_name] = get(era5_data_loader, short_name)
     end
-
+    for short_name in available_vars(grace_data_loader)
+        obs_var_dict[short_name] = get(grace_data_loader, short_name)
+    end
     # Add more variables to obs_var_dict
     for short_name in ("gpp", "er", "nee")
         obs_var_dict[short_name] = get(ilamb_data_loader, short_name)

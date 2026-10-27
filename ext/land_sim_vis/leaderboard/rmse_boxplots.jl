@@ -153,8 +153,7 @@ function _annual_global_rmse(
 )
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     data_loader =
-        uppercase(data_source) == "ERA5" ? EnergyWaterMetricsDataLoader() :
-        ILAMBDataLoader()
+        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
     available = ClimaAnalysis.available_vars(
         ClimaAnalysis.SimDir(diagnostics_folder_path),
     )
