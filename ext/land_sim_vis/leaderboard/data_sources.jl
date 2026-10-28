@@ -75,8 +75,21 @@ function _preprocess_sim_var(var, ::Val{:hr})
 end
 
 """
-    _water_mass_flux_to_mm_per_day(var)
+    _convert_to_monthly(var)
+"""
+function _convert_to_monthly(var)
+    @assert ClimaAnalysis.units(var) == "kg m^-2 s^-1"
+    for (i, date) in enumerate(ClimaAnalysis.dates(var))
+        slice =
+            ClimaAnalysis.view_select(var; by = ClimaAnalysis.Index(), time = i)
+        slice.data .*= Dates.daysinmonth(date) * 86400
+    end
+    ClimaAnalysis.set_units!(var, "kg m^-2")
+    return var
+end
 
+"""
+    _water_mass_flux_to_mm_per_day(var)
 Convert a simulation water mass flux (`kg m^-2 s^-1`) to `mm / day`.
 """
 _water_mass_flux_to_mm_per_day(var) =
@@ -116,9 +129,14 @@ end
 # magnitude.
 function _preprocess_sim_var(var, ::Val{:precip})
     var = _water_mass_flux_to_mm_per_day(var)
-    return ClimaAnalysis.remake(var; data = abs.(var.data))
+    replace!(val -> -val, var)
+    return var
 end
 
+function _preprocess_sim_var(var, ::Val{:twsa})
+    var = _convert_to_monthly(var)
+    return var
+end
 _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
@@ -175,6 +193,20 @@ function preprocess(
 end
 
 """
+    GRACEDataLoader
+
+A struct for loading preprocessed GRACE_DL data as `OutputVar`s.
+"""
+struct GRACEDataLoader <: AbstractDataLoader
+    """A catalog built from NetCDF files, designed to initialize `OutputVar`s.
+    See ClimaAnalysis documentation for more information about NCCatalog."""
+    catalog::NCCatalog
+
+    """A list of available variables to load."""
+    available_vars::Set{String}
+end
+
+"""
     ERA5DataLoader
 
 A struct for loading preprocessed ERA5 data as `OutputVar`s.
@@ -211,7 +243,12 @@ const ERA5_PARTITION_TO_CLIMA_NAMES = [
     "mer" => "et"
 ]
 
-const STANDARD_UNITS = Dict("W m**-2" => "W m^-2", "W m-2" => "W m^-2")
+const STANDARD_UNITS = Dict(
+    "W m**-2" => "W m^-2",
+    "W m-2" => "W m^-2",
+    "kg m-2" => "kg m^-2",
+    "kg/m2" => "kg m^-2",
+)
 
 """
     ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
@@ -229,7 +266,7 @@ The ERA5 data comes from the
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/era5_monthly_averages_single_level_1979_2024)
 for more information about this artifact.
 
-The keyword argument `era5_to_clima_names` is a vector of pairs mapping
+The keyword argument `ERA5_to_clima_names` is a vector of pairs mapping
 ERA5 name to CliMA name.
 """
 function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
@@ -239,10 +276,10 @@ function ERA5DataLoader(; era5_to_clima_names = ERA5_TO_CLIMA_NAMES)
         artifact_dir,
         "era5_monthly_averages_surface_single_level_197901-202410.nc",
     )
-
     catalog = NCCatalog()
     ClimaAnalysis.add_file!(catalog, flux_file, era5_to_clima_names...)
-    return ERA5DataLoader(catalog, Set(last.(era5_to_clima_names)))
+
+    return ERA5DataLoader(catalog, Set([last.(era5_to_clima_names)...]))
 end
 
 """
@@ -261,6 +298,23 @@ function Base.get(loader::ERA5DataLoader, short_name::String)
     return preprocess(loader, var, Val(Symbol(short_name)))
 end
 
+function GRACEDataLoader(; grace_to_clima_names = ["twsa" => "twsa"])
+    twsa_file = ClimaLand.Artifacts.grace_twsa_data()
+    catalog = NCCatalog()
+    ClimaAnalysis.add_file!(catalog, twsa_file, grace_to_clima_names...)
+
+    return GRACEDataLoader(catalog, Set([last.(grace_to_clima_names)...]))
+end
+
+function Base.get(loader::GRACEDataLoader, short_name::String)
+    (; catalog, available_vars) = loader
+    short_name in available_vars ||
+        error("$short_name is not available to load.")
+    var = get(catalog, short_name;)
+    ClimaAnalysis.transform_dates!(var, Dates.firstdayofmonth)
+    return preprocess(loader, var, Val(Symbol(short_name)))
+end
+
 """
     preprocess(::ERA5DataLoader, var, ::Val{varname}) where {varname}
 
@@ -272,6 +326,10 @@ preprocess(::ERA5DataLoader, var, ::Val{:lhf}) =
     _preprocess_var(var; flip_sign = true)
 preprocess(::ERA5DataLoader, var, ::Val{:lwu}) = _preprocess_var(var)
 preprocess(::ERA5DataLoader, var, ::Val{:swu}) = _preprocess_var(var)
+function preprocess(::GRACEDataLoader, var, ::Val{:twsa})
+    replace!(var, missing => NaN)
+    return _preprocess_var(var, flip_sign = true)
+end
 preprocess(::ERA5DataLoader, var, ::Val{:sr}) =
     _preprocess_var(_era5_water_flux_to_mm_per_day(var))
 preprocess(::ERA5DataLoader, var, ::Val{:ssr}) =
@@ -744,11 +802,14 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     era5_data_loader = ERA5DataLoader()
     # ILAMB GPP, ecosystem respiration (FLUXCOM reco), and NEE
     ilamb_data_loader = ILAMBDataLoader()
+    grace_data_loader = GRACEDataLoader()
 
     for short_name in available_vars(era5_data_loader)
         obs_var_dict[short_name] = get(era5_data_loader, short_name)
     end
-
+    for short_name in available_vars(grace_data_loader)
+        obs_var_dict[short_name] = get(grace_data_loader, short_name)
+    end
     # Add more variables to obs_var_dict
     for short_name in ("gpp", "er", "nee")
         obs_var_dict[short_name] = get(ilamb_data_loader, short_name)

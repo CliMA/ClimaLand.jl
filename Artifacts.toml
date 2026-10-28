@@ -1,3 +1,10 @@
+[grace]
+git-tree-sha1 = "8c88b9173eb593cff61b181aa15cd17eeb1c9520"
+
+    [[grace.download]]
+    sha256 = "db4bd90b580a8c23b93f31931f39b95e52868cf9601b45367d212db881d32468"
+    url = "https://caltech.box.com/shared/static/3v1cv8m802po4rzwhdtbkiw1ycrv6iud.gz"
+
 [rosetta_spunup_ic]
 git-tree-sha1 = "2ac7808da475dda482d5631003b2e0684a4ec15e"
 

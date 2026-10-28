@@ -977,6 +977,16 @@ function define_diagnostics!(land_model, possible_diags)
             compute_soilco2_diffusivity!(out, Y, p, t, land_model),
     )
 
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "twsa",
+        long_name = "The sum of P+ET+R; the integral of this is used to compute TWSA",
+        standard_name = "twsa",
+        units = "kg m^-2 s^-1",
+        comments = "Terrestrial Water Storage Anomaly is the integral of P +ET + Runoff less the mean",
+        compute! = (out, Y, p, t) -> compute_twsa!(out, Y, p, t, land_model),
+    )
+
     # Soil O2 diffusivity
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -1245,7 +1255,7 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "snowc",
         long_name = "Snow cover fraction",
         standard_name = "snow_cover_fraction",
-        units = "",
+        units = "1",
         comments = "The snow cover fraction",
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
