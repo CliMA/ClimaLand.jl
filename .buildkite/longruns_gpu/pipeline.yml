@@ -152,6 +152,19 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
 
+      - label: ":seedling: Snowy Land (Optimal LAI), 19 years"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
+        artifact_paths:
+          - "snowy_land_pmodel_opt_lai_longrun_gpu/*png"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 15:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          LONGER_RUN: ""
+          PROGNOSTIC_LAI: ""
+
       - label: "Soil, 20 years"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
