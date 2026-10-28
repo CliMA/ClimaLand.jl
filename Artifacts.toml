@@ -267,6 +267,13 @@ git-tree-sha1 = "2ce5e5e05e4f17c86b07eadff1f9dd551e779524"
     sha256 = "dfaa2e9c649e609f274a5db15a4504067df5c6cfea00d6676d468177d2432654"
     url = "https://caltech.box.com/shared/static/y8igrojuyvbww0gn5zi8und9wgsqhtv5.gz"
 
+[optimal_lai_state_and_clm_maps]
+git-tree-sha1 = "e65017b77172d6713a8908b96665b9de78c0a5e9"
+
+    [[optimal_lai_state_and_clm_maps.download]]
+    sha256 = "369933d75decedf6d3e6ee4fef7924b890916bc6f2cc92c4d91cfd5cdcb4c2fe"
+    url = "https://caltech.box.com/shared/static/lc0oz6d7dxzv4ixoo1kuqrpd4pnekerp.gz"
+
 [neural_snow]
 git-tree-sha1 = "9977a4f9cd33b21340f13c9eb4fcd13ad96ad5ee"
 

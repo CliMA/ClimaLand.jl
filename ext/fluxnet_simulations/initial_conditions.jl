@@ -226,7 +226,8 @@ function set_fluxnet_ic!(
         Y,
         nothing,
         model.biomass,
-        model,
+        model;
+        state_path = nothing,
     )
     if model.photosynthesis isa Canopy.PModel
         idx = findfirst(columns[:] .== "VPD_F")

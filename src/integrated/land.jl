@@ -304,6 +304,7 @@ end
             ),
             toml_dict,
         ) : nothing,
+        biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
             (;
@@ -314,6 +315,7 @@ end
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            biomass = isnothing(biomass) ? Canopy.ZhouOptimalLAIModel{FT}(Domains.obtain_surface_domain(domain), toml_dict) : biomass,
         ),
         snow = Snow.SnowModel(
             FT,
@@ -337,6 +339,9 @@ A convenience constructor for setting up the default LandModel using prognostic 
 via the `ZhouOptimalLAIModel`. This is identical to the LAI-prescribing constructor, except
 that `LAI` is not a required argument and the default canopy model does not take an LAI as input.
 Instead it uses `ZhouOptimalLAIModel` for the biomass component instead of `PrescribedBiomassModel`.
+A different biomass model, e.g. a `ZhouOptimalLAIModel` with a prescribed tree share, can be
+passed as `biomass`, which the default canopy then uses; a `canopy` passed with it must
+use that same biomass model.
 
 See also the constructor `LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; ...)` for
 the version that uses prescribed LAI from a `TimeVaryingInput`.
@@ -367,6 +372,7 @@ function LandModel{FT}(
         ),
         toml_dict,
     ) : nothing,
+    biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
         (;
@@ -385,6 +391,11 @@ function LandModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        biomass = isnothing(biomass) ?
+                  Canopy.ZhouOptimalLAIModel{FT}(
+            Domains.obtain_surface_domain(domain),
+            toml_dict,
+        ) : biomass,
     ),
     snow = Snow.SnowModel(
         FT,
@@ -403,6 +414,9 @@ function LandModel{FT}(
         prognostic_land_components,
     ) : nothing,
 ) where {FT}
+    isnothing(biomass) ||
+        canopy.biomass === biomass ||
+        error("The `canopy` does not use the `biomass` passed with it")
     return LandModel{FT}(canopy, snow, soil, soilco2, lake)
 end
 
@@ -938,6 +952,23 @@ function Soil.compute_liquid_influx(
 )
     Soil.compute_liquid_influx(p, model, Val((:snow, :soil)))
 end
+
+"""
+    Canopy.ground_water_input(p, prognostic_land_components)
+
+The water input of the moist growing season of `ZhouOptimalLAIModel` in a land model
+with snow: the liquid water input of the soil, rain on snow-free ground and the water
+leaving the snowpack.
+"""
+Canopy.ground_water_input(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},
+    },
+) = Soil.compute_liquid_influx(p, nothing, Val((:snow, :soil)))
 
 """
     compute_infiltration_energy_flux(

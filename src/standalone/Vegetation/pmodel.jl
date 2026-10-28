@@ -3,7 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     compute_optimal_capacities,
-    compute_A0_and_χ
+    compute_A0
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -228,7 +228,7 @@ struct PModel{
     parameters::OPFT
     "Constants for the P-model"
     constants::OPCT
-    "C3 fraction of the canopy (1 = C3, 0 = C4), constant in time; with `ZhouOptimalLAIModel` it only seeds the initial composition (see `get_fractional_c3`)"
+    "C3 fraction of the canopy (1 = C3, 0 = C4), constant in time: the weight of the fluxes (GPP, SIF, stomatal conductance) of a pure C3 canopy, blended with those of a pure C4 canopy of the same LAI, not a split of the LAI; with `ZhouOptimalLAIModel` it only seeds the initial composition (see `get_fractional_c3`)"
     fractional_c3::F
     "Time integrated prognostic vars"
     time_integrated_vars::T
@@ -412,8 +412,8 @@ function compute_full_pmodel_outputs(
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = optimal_xi(β_c3, Kmm, Γstar, ηstar, Drel)
+    ξ_opt_c4 = optimal_xi(β_c4, Kmm, Γstar, ηstar, Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -609,8 +609,8 @@ function compute_optimal_capacities(
     # convert ca from mol/mol to Pa
     ca_pp = ca * P_air
 
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = optimal_xi(β_c3, Kmm, Γstar, ηstar, Drel)
+    ξ_opt_c4 = optimal_xi(β_c4, Kmm, Γstar, ηstar, Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -1315,6 +1315,50 @@ function intercellular_co2_pmodel(
 end
 
 """
+    optimal_xi(β, Kmm, Γstar, ηstar, Drel)
+
+The optimal sensitivity of the intercellular CO2 to dryness `ξ` (Pa^1/2) of the P-model
+(Stocker et al. 2020), with the unit cost ratio `β`, the Michaelis-Menten coefficient
+`Kmm` (Pa), the CO2 compensation point `Γstar` (Pa), the viscosity of water relative to
+25 °C `ηstar` and the relative diffusivity of water vapour and CO2 `Drel`.
+"""
+optimal_xi(β, Kmm, Γstar, ηstar, Drel) =
+    sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+
+"""
+    optimal_chi(T, P_air, ca, vpd, β, constants)
+
+Optimal ratio of intercellular to ambient CO2 in the P-model with unit cost ratio `β`
+(the C3 or C4 one) at air temperature `T` (K), air pressure `P_air` (Pa), CO2 mixing
+ratio `ca` (mol mol^-1) and vapour pressure deficit `vpd` (Pa).
+"""
+function optimal_chi(
+    T::FT,
+    P_air::FT,
+    ca::FT,
+    vpd::FT,
+    β::FT,
+    constants,
+) where {FT}
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi) = constants
+    (; vpd_ratio_min, Γ_ratio_max) = constants
+    ca_pp = ca * P_air
+    Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T, To)
+    Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+    ξ = optimal_xi(β, Kmm, Γstar, ηstar, Drel)
+    ci = intercellular_co2_pmodel(
+        ξ,
+        ca_pp,
+        Γstar,
+        vpd,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    return ci / ca_pp
+end
+
+"""
     gs_co2_pmodel(
         χ::FT,
         ca::FT,
@@ -1366,32 +1410,28 @@ function compute_LUE(ϕ0::FT, βm::FT, mprime::FT, Mc::FT) where {FT}
 end
 
 """
-    compute_A0_and_χ(
+    compute_A0(
         fractional_c3::FT,
         parameters::PModelParameters{FT},
         constants::PModelConstants{FT},
+        earth_param_set,
         T_air::FT,
         P_air::FT,
-        VPD::FT,
+        q_air::FT,
         ca::FT,
         PPFD::FT,
         βm::FT,
-        vpd_gs::FT,
     ) where {FT}
 
-Compute potential GPP (A0) and ci/ca ratio used in the optimal LAI model (Zhou et al. 2025).
+Compute the potential GPP (A0) used in the optimal LAI model (Zhou et al. 2025).
 
 This function computes the potential GPP assuming fAPAR = 1 (full light absorption),
 which represents the maximum carbon assimilation possible under given environmental
-conditions.
-
-`A0` responds to the instantaneous vapor pressure deficit, while `χ` is the
-growing-season value the water-limitation term of `LAI_max` calls for, and so is
-evaluated at the growing-season mean VPD `vpd_gs`. Both share the same optimal `ξ`,
-which depends on temperature and pressure only.
+conditions, at the instantaneous vapor pressure deficit.
 
 # Arguments
-- `fractional_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `fractional_c3::FT`: C3 fraction, the weight of the pure-C3 potential GPP in the blend
+  with the pure-C4 one (1 = all C3, 0 = all C4)
 - `parameters`: PModelParameters containing cstar, beta, etc.
 - `constants`: PModelConstants containing physical constants
 - `earth_param_set`: Additional physical constants
@@ -1401,14 +1441,13 @@ which depends on temperature and pressure only.
 - `ca::FT`: Ambient CO2 concentration (mol/mol)
 - `PPFD::FT`: Downwelling radiative flux in PAR band at the surface (moles photons/m^2/s)
 - `βm::FT`: Soil moisture stress factor (dimensionless, 0-1)
-- `vpd_gs::FT`: Growing-season mean vapor pressure deficit (Pa)
 
 # Returns
-- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), the
+- NamedTuple with `A0`, the potential GPP with fAPAR=1 (mol C m^-2 s^-1), and the
   pure-C3 and pure-C4 potential GPP `A0_c3`/`A0_c4` that the C3/C4 competition
-  compares, and `χ = ci/ca` at the growing-season VPD (unitless)
+  compares
 """
-function compute_A0_and_χ(
+function compute_A0(
     fractional_c3::FT,
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
@@ -1419,7 +1458,6 @@ function compute_A0_and_χ(
     ca::FT,
     PPFD::FT,
     βm::FT,
-    vpd_gs::FT,
 ) where {FT}
     (; cstar, β_c3, β_c4) = parameters
     (;
@@ -1453,8 +1491,8 @@ function compute_A0_and_χ(
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute optimal ξ and intercellular CO2
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = optimal_xi(β_c3, Kmm, Γstar, ηstar, Drel)
+    ξ_opt_c4 = optimal_xi(β_c4, Kmm, Γstar, ηstar, Drel)
     ci_c3 = intercellular_co2_pmodel(
         ξ_opt_c3,
         ca_pp,
@@ -1480,31 +1518,12 @@ function compute_A0_and_χ(
     LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mj_c3*L_c3, Mc)
     LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mj_c4*L_c4, Mc)
 
-    # χ = ci/ca at the growing-season VPD, as the LAI_max water limitation requires
-    ci_gs_c3 = intercellular_co2_pmodel(
-        ξ_opt_c3,
-        ca_pp,
-        Γstar,
-        vpd_gs,
-        vpd_ratio_min,
-        Γ_ratio_max,
-    )
-    ci_gs_c4 = intercellular_co2_pmodel(
-        ξ_opt_c4,
-        ca_pp,
-        Γstar,
-        vpd_gs,
-        vpd_ratio_min,
-        Γ_ratio_max,
-    )
-
     # Potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD); LUE is
     # in kg C per mol photon, so dividing by Mc returns it in mol C m^-2 s^-1.
     return (;
         A0 = PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3) / Mc,
         A0_c3 = PPFD * LUE_daily_c3 / Mc,
         A0_c4 = PPFD * LUE_daily_c4 / Mc,
-        χ = blend(ci_gs_c3, ci_gs_c4, fractional_c3) / ca_pp,
     )
 end
 
