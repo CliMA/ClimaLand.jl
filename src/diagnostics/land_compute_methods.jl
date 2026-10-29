@@ -252,25 +252,11 @@ end
 } p.canopy.turbulent_fluxes.shf
 @diagnostic_compute "latent_heat_flux" CanopyModel p.canopy.turbulent_fluxes.lhf
 @diagnostic_compute "sensible_heat_flux" CanopyModel p.canopy.turbulent_fluxes.shf
-
-# Canopy - Hydraulics
-function compute_leaf_water_potential!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
-)
-    canopy = get_canopy(land_model)
-    if isnothing(out)
-        out = zeros(canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .= p.canopy.hydraulics.ψ
-        return out
-    else
-        out .= p.canopy.hydraulics.ψ
-    end
-end
+@diagnostic_compute "leaf_water_potential" Union{
+    CanopyModel,
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.hydraulics.ψ
 
 # @diagnostic_compute "flux_per_ground_area" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.fa # return a Tuple
 @diagnostic_compute "root_flux_per_ground_area" Union{

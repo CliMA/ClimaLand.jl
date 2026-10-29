@@ -89,7 +89,8 @@ unless otherwise noted.
 |                                       | `PModel`                                                    |
 | `AbstractStomatalConductanceModel`    | `MedlynConductanceModel` (default)                          |
 |                                       | `PModelConductance`                                         |
-| `AbstractPlantHydraulicsModel`        | `PlantHydraulicsModel` (default)                            |
+| `AbstractPlantHydraulicsModel`        | `PlantHydraulicsModel` (default, in standalone canopy)      |
+|                                       | `SteadyStateModel` (default, in integrated models)          |
 | `AbstractSoilMoistureStressModel`     | `TuzetMoistureStressModel` (default)                        |
 |                                       | `PiecewiseMoistureStressModel`                              |
 | `AbstractSIFModel`                    | `Lee2015SIFModel` (default)                                 |

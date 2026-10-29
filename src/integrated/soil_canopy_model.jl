@@ -81,13 +81,10 @@ struct SoilCanopyModel{
             )
         end
 
-        if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
-            # Note that these functions allocate. These checks should not occur except on initialization.
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
-            )
-        end
+        check_moisture_stress_thresholds(
+            canopy.soil_moisture_stress,
+            soil.parameters,
+        )
 
         return new{FT, MM, SM, VM}(soilco2, soil, canopy)
     end
@@ -125,6 +122,7 @@ end
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
             soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
     ) where {FT}
 
@@ -176,6 +174,7 @@ function SoilCanopyModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        hydraulics = Canopy.SteadyStateModel{FT}(),
     ),
 ) where {FT}
     return SoilCanopyModel{FT}(soilco2, soil, canopy)
@@ -198,6 +197,7 @@ and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bona
 lsm_aux_vars(m::SoilCanopyModel) = (
     :root_extraction,
     :root_energy_extraction,
+    :root_dryness_norm,
     :LW_u,
     :SW_u,
     :T_sfc,
@@ -214,7 +214,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -225,6 +225,7 @@ included in the integrated Soil-Canopy model.
 lsm_aux_domain_names(m::SoilCanopyModel) = (
     :subsurface,
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -263,11 +264,13 @@ function make_update_boundary_fluxes(
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        # update root extraction
-        update_root_extraction!(p, Y, t, land)
         # The canopy turbulent fluxes come first: the soil skin solve in
         # lsm_radiant_energy_fluxes! reads the canopy-air state they produce
         Canopy.canopy_turbulent_fluxes!(p, land.canopy, Y, t)
+
+        # update root extraction - for steady state hydraulics models, transpiration, computed above, is needed here.
+        update_root_extraction!(p, Y, t, land)
+
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,

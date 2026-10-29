@@ -136,7 +136,7 @@ const ILAMB_VARIABLES = Dict(
     ),
     "lai" => ILAMBMapping("lai", "Leaf Area Index", 1.0, "1", "m^2 m^-2"),
     # Assuming the native range is 0–100 %
-    "snowc" => ILAMBMapping("scf", "Snow Cover Fraction", 1.0, "1", ""),
+    "snowc" => ILAMBMapping("scf", "Snow Cover Fraction", 1.0, "1", "1"),
     # Fixed: CF conventions state mrros is surface runoff, not mrro
     "sr" => ILAMBMapping(
         "mrros",

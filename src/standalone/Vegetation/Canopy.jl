@@ -107,25 +107,28 @@ end
     domain,
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
+    ψ_wilt::FT = toml_dict["wilting_potential"],
     soil_params
 ) where {FT <: AbstractFloat}
 
 Create a `PiecewiseMoistureStressModel` whose thresholds are computed from
-the soil parameters: the low threshold `θ_low` is the residual water content
-`θ_r`, and the high threshold `θ_high` is the field capacity
+the soil parameters: the low threshold `θ_low` is the water content at the
+wilting potential `ψ_wilt` (m), and the high threshold `θ_high` is the field
+capacity
 
     θ_high = θ_r + S_fc (ν - θ_r),
 
-where `S_fc` is the effective saturation at the inflection point of the
-retention curve (`Soil.field_capacity_saturation`), which Assouline and Or
-(2014) identify with field capacity. Stomata are unstressed above field
-capacity.
+where `S_fc` is the effective saturation at field capacity of Assouline and
+Or (2014) (`Soil.field_capacity_saturation`). Stomata are unstressed above
+field capacity, and fully stressed below the wilting point.
 
-The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
-the field capacity, the retention model `hydrology_cm` (as returned by
+The soil parameters should be a named tuple with keys `ν` and `θ_r` and the
+retention model `hydrology_cm` (as returned by
 `Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`, `θ_high` is the
-porosity `ν`. The entries may be ClimaCore fields or floats, but must be
-consistently one or the other.
+porosity `ν` and `θ_low` is `θ_r`; the `SoilCanopyModel` and `LandModel` do
+not accept these thresholds, and require them to be computed from the
+parameters of their soil model. The entries may be ClimaCore fields or
+floats, but must be consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
 """
@@ -133,6 +136,7 @@ function PiecewiseMoistureStressModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
+    ψ_wilt::FT = toml_dict["wilting_potential"],
     soil_params = Soil.soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
@@ -143,16 +147,14 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = if :hydrology_cm in propertynames(soil_params)
-        (; θ_r, ν, hydrology_cm) = soil_params
-        S_fc = Soil.field_capacity_saturation(hydrology_cm)
-        @. θ_r + S_fc * (ν - θ_r)
+    θ_high, θ_low = if :hydrology_cm in propertynames(soil_params)
+        (; ν, θ_r, hydrology_cm) = soil_params
+        piecewise_moisture_stress_thresholds(ν, θ_r, hydrology_cm, ψ_wilt)
     else
-        copy(soil_params.ν)
+        copy(soil_params.ν), copy(soil_params.θ_r)
     end
-    θ_low = copy(soil_params.θ_r)
 
-    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c, ψ_wilt)
 end
 
 """
@@ -692,8 +694,9 @@ an extended surface (plane/spherical surface) for regional or global simulations
  `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel` (default)
  `PiecewiseMoistureStressModel`, and `NoMoistureStressModel` (stress factor = 1).
 - subcomponent model type for plant hydraulics. This is of type
- `AbstractPlantHydraulicsModel` and currently only a version which
-prognostically solves Richards equation in the plant is available.
+ `AbstractPlantHydraulicsModel` and supports `PlantHydraulicsModel` (default),
+ which prognostically solves Richards equation in the plant, and
+ `SteadyStateModel`, in which root extraction balances transpiration.
 - subcomponent model type for canopy energy. This is of type
  `AbstractCanopyEnergyModel` and currently we support a version where
   the canopy temperature is prescribed, and one where it is solved for
@@ -1295,6 +1298,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         update_hydraulics!(p, Y, canopy.hydraulics, canopy)
 
         # Update soil moisture stress, used in photosynthesis and conductance
+        # This depends on the outcome of the previous call, so this ordering is important.
         update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP

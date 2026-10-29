@@ -117,6 +117,7 @@ The parameters should fall within
 the following ranges:
 - θ_high>θ_low should be in (θ_r, ν) where ν is the porosity of the soil
 - c should be positive
+- ψ_wilt should be negative, and measured in `m`.
 
 See Egea et al. (2011) for details.
 Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
@@ -131,15 +132,22 @@ struct PiecewiseMoistureStressModel{
     θ_low::F
     """Curvature parameter (unitless)"""
     c::FT
-
+    """Wilting point (m)"""
+    ψ_wilt::FT
 end
 
 function PiecewiseMoistureStressModel{FT}(;
     θ_high,
     θ_low,
     c::FT,
+    ψ_wilt::FT,
 ) where {FT <: AbstractFloat}
-    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(
+        θ_high,
+        θ_low,
+        c,
+        ψ_wilt,
+    )
 end
 
 ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
@@ -214,4 +222,20 @@ function update_piecewise_soil_moisture_stress!(
         model.c,
         p.drivers.θ,
     )
+end
+
+"""
+    piecewise_moisture_stress_thresholds(ν, θ_r, hydrology_cm, ψ_wilt)
+
+Return the thresholds `(θ_high, θ_low)` of the `PiecewiseMoistureStressModel`
+for a soil with porosity `ν`, residual water content `θ_r`, and retention
+model `hydrology_cm`: the water contents at field capacity and at the wilting
+potential `ψ_wilt` (m). The soil parameters may be ClimaCore fields or floats.
+"""
+function piecewise_moisture_stress_thresholds(ν, θ_r, hydrology_cm, ψ_wilt)
+    S_fc = Soil.field_capacity_saturation(hydrology_cm)
+    S_wilt = Soil.wilting_saturation(hydrology_cm, ψ_wilt)
+    θ_high = @. θ_r + S_fc * (ν - θ_r)
+    θ_low = @. θ_r + S_wilt * (ν - θ_r)
+    return θ_high, θ_low
 end
