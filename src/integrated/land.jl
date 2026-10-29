@@ -88,6 +88,10 @@ mutable struct LandModel{
         @assert soil.parameters.earth_param_set == canopy.earth_param_set
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
+        if !isnothing(soilco2)
+            @assert (SoilCarbonLitterInput{FT}() in soilco2.sources) ==
+                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include SoilCarbonLitterInput if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+        end
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
@@ -154,15 +158,7 @@ end
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         ),
-        soilco2 = :soilco2 in prognostic_land_components ?
-                Soil.Biogeochemistry.SoilCO2Model{FT}(
-            domain,
-            Soil.Biogeochemistry.SoilDrivers(
-                PrognosticMet(soil.parameters),
-                forcing.atmos,
-            ),
-            toml_dict,
-        ) : nothing,
+        biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
             (;
@@ -174,7 +170,18 @@ end
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            biomass = isnothing(biomass) ? Canopy.PrescribedBiomassModel{FT}(Domains.obtain_surface_domain(domain), LAI, Canopy.modis_max_lai(Domains.obtain_surface_domain(domain).space.surface), toml_dict) : biomass,
         ),
+        soilco2 = :soilco2 in prognostic_land_components ?
+                Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            Soil.Biogeochemistry.SoilDrivers(
+                PrognosticMet(soil.parameters),
+                forcing.atmos,
+            ),
+            toml_dict;
+            sources = soilco2_sources(canopy.biomass),
+        ) : nothing,
         snow = Snow.SnowModel(
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
@@ -208,6 +215,12 @@ inland water points, include `:lake` in `prognostic_land_components`.
 
 If you wish to include a lake or soilco2 model which is not the default, provide the model as a keyword
 argument and add :lake, :soilco2 to `prognostic_land_components`.
+
+A biomass model other than the default `PrescribedBiomassModel`, e.g. a
+`PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
+`canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
+the default soilco2 model receives the litter of the canopy carbon pools, which makes its
+soil organic carbon prognostic (`SoilCarbonLitterInput`).
 """
 function LandModel{FT}(
     forcing,
@@ -227,15 +240,7 @@ function LandModel{FT}(
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
     ),
-    soilco2 = :soilco2 in prognostic_land_components ?
-              Soil.Biogeochemistry.SoilCO2Model{FT}(
-        domain,
-        Soil.Biogeochemistry.SoilDrivers(
-            PrognosticMet(soil.parameters),
-            forcing.atmos,
-        ),
-        toml_dict,
-    ) : nothing,
+    biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
         (;
@@ -255,7 +260,26 @@ function LandModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        biomass = isnothing(biomass) ?
+                  Canopy.PrescribedBiomassModel{FT}(
+            Domains.obtain_surface_domain(domain),
+            LAI,
+            Canopy.modis_max_lai(
+                Domains.obtain_surface_domain(domain).space.surface,
+            ),
+            toml_dict,
+        ) : biomass,
     ),
+    soilco2 = :soilco2 in prognostic_land_components ?
+              Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            PrognosticMet(soil.parameters),
+            forcing.atmos,
+        ),
+        toml_dict;
+        sources = soilco2_sources(canopy.biomass),
+    ) : nothing,
     snow = Snow.SnowModel(
         FT,
         ClimaLand.Domains.obtain_surface_domain(domain),
@@ -273,6 +297,9 @@ function LandModel{FT}(
         prognostic_land_components,
     ) : nothing,
 ) where {FT}
+    isnothing(biomass) ||
+        canopy.biomass === biomass ||
+        error("The `canopy` does not use the `biomass` passed with it")
     return LandModel{FT}(canopy, snow, soil, soilco2, lake)
 end
 
@@ -295,15 +322,6 @@ end
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         ),
-        soilco2 = :soilco2 in prognostic_land_components ?
-                Soil.Biogeochemistry.SoilCO2Model{FT}(
-            domain,
-            Soil.Biogeochemistry.SoilDrivers(
-                PrognosticMet(soil.parameters),
-                forcing.atmos,
-            ),
-            toml_dict,
-        ) : nothing,
         biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -317,6 +335,16 @@ end
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
             biomass = isnothing(biomass) ? Canopy.ZhouOptimalLAIModel{FT}(Domains.obtain_surface_domain(domain), toml_dict) : biomass,
         ),
+        soilco2 = :soilco2 in prognostic_land_components ?
+                Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            Soil.Biogeochemistry.SoilDrivers(
+                PrognosticMet(soil.parameters),
+                forcing.atmos,
+            ),
+            toml_dict;
+            sources = soilco2_sources(canopy.biomass),
+        ) : nothing,
         snow = Snow.SnowModel(
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
@@ -339,9 +367,10 @@ A convenience constructor for setting up the default LandModel using prognostic 
 via the `ZhouOptimalLAIModel`. This is identical to the LAI-prescribing constructor, except
 that `LAI` is not a required argument and the default canopy model does not take an LAI as input.
 Instead it uses `ZhouOptimalLAIModel` for the biomass component instead of `PrescribedBiomassModel`.
-A different biomass model, e.g. a `ZhouOptimalLAIModel` with a prescribed tree share, can be
-passed as `biomass`, which the default canopy then uses; a `canopy` passed with it must
-use that same biomass model.
+A different biomass model, e.g. a `ZhouOptimalLAIModel` with a prescribed tree share, or a
+`PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
+`canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
+the default soilco2 model receives the litter of the canopy carbon pools.
 
 See also the constructor `LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; ...)` for
 the version that uses prescribed LAI from a `TimeVaryingInput`.
@@ -363,15 +392,6 @@ function LandModel{FT}(
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
     ),
-    soilco2 = :soilco2 in prognostic_land_components ?
-              Soil.Biogeochemistry.SoilCO2Model{FT}(
-        domain,
-        Soil.Biogeochemistry.SoilDrivers(
-            PrognosticMet(soil.parameters),
-            forcing.atmos,
-        ),
-        toml_dict,
-    ) : nothing,
     biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -397,6 +417,16 @@ function LandModel{FT}(
             toml_dict,
         ) : biomass,
     ),
+    soilco2 = :soilco2 in prognostic_land_components ?
+              Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            PrognosticMet(soil.parameters),
+            forcing.atmos,
+        ),
+        toml_dict;
+        sources = soilco2_sources(canopy.biomass),
+    ) : nothing,
     snow = Snow.SnowModel(
         FT,
         ClimaLand.Domains.obtain_surface_domain(domain),
@@ -442,6 +472,7 @@ included in the land model.
 """
 lsm_aux_vars(m::LandModel) = (
     :snow_T_bot,
+    :soil_litter_input,
     :root_extraction,
     :root_energy_extraction,
     :LW_u,
@@ -489,6 +520,7 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
     FT,
     FT,
@@ -502,6 +534,7 @@ included in the land model.
 """
 lsm_aux_domain_names(m::LandModel) = (
     :surface,
+    :subsurface,
     :subsurface,
     :subsurface,
     :surface,
@@ -565,6 +598,7 @@ function make_update_boundary_fluxes(
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+        update_soil_litter_input!(p, Y, t, land) # defined in src/integrated/soil_canopy_carbon_interactions.jl
         # The canopy turbulent fluxes come first: the ground skin solves in
         # lsm_radiant_energy_fluxes! read the canopy-air state they produce
         Canopy.canopy_turbulent_fluxes!(p, land.canopy, Y, t)

@@ -238,6 +238,128 @@ type = "float"
 description = "Temperature sensitivity (Q10) of the leaf maintenance of the optimal-LAI model (dimensionless)."
 tag = "OptimalLAIModel"
 
+# Prognostic carbon pools
+
+["carbon_construction_efficiency"]
+value = 0.7
+type = "float"
+description = "Construction efficiency (-): the fraction of the sugar allocated to growth that becomes structural carbon; the rest is growth respiration."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_tree"]
+value = 0.3
+type = "float"
+description = "Leaf allocation fraction of trees (-). Fine roots take 1 - f_leaf - f_stem."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_stem_tree"]
+value = 0.32
+type = "float"
+description = "Wood allocation fraction of trees (-). Calibrated, with carbon_tau_stem, carbon_tau_stem_q and carbon_r_root, against the live woody carbon of Xu et al. (2021) and the residual ecosystem respiration of the inversion targets of the carbon leaderboard, in an offline emulator of the equilibrium pools."
+tag = "PrognosticCarbonParameters"
+
+["carbon_f_leaf_grass"]
+value = 0.4
+type = "float"
+description = "Leaf allocation fraction of grasses (-), which build no wood: fine roots take the rest."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_leaf"]
+value = 4.7304e7
+type = "float"
+description = "Leaf turnover time (s), 1.5 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem"]
+value = 7.56864e8
+type = "float"
+description = "Wood turnover time (s), 24 years, at mean annual temperatures above carbon_tau_stem_T_ref; an effective value, which includes the losses to disturbance in the observed woody carbon it is calibrated against."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_root"]
+value = 6.3072e7
+type = "float"
+description = "Fine-root turnover time (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_stem"]
+value = 3.17e-9
+type = "float"
+description = "Sapwood maintenance respiration rate at carbon_T_ref (s^-1), about 0.1 per year."
+tag = "PrognosticCarbonParameters"
+
+["carbon_r_root"]
+value = 2.3782e-8
+type = "float"
+description = "Fine-root maintenance respiration rate at carbon_T_ref (s^-1), 0.75 per year."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sap_half"]
+value = 2.0
+type = "float"
+description = "Sapwood carbon of a large stem (kg C m^-2): sapwood is C_stem/(1 + C_stem/C_sap_half), half the stem when C_stem equals this value."
+tag = "PrognosticCarbonParameters"
+
+["carbon_c_nsc"]
+value = 0.1
+type = "float"
+description = "Target sugar (non-structural carbon) pool as a fraction of the living biomass (-); observed values are about 0.05-0.2."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_alloc"]
+value = 864000.0
+type = "float"
+description = "Timescale of allocation from the sugar pool (s), 10 days."
+tag = "PrognosticCarbonParameters"
+
+["carbon_alloc_ramp_n"]
+value = 3.0
+type = "float"
+description = "Exponent n of the ramp x^n/(1 + x^n) switching on allocation and maintenance respiration as the sugar pool fills (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_C_sugar_ref"]
+value = 1.0e-3
+type = "float"
+description = "Sugar pool below which maintenance respiration shuts down (kg C m^-2), small next to a typical pool of 0.05-0.2."
+tag = "PrognosticCarbonParameters"
+
+["carbon_Q10"]
+value = 2.0
+type = "float"
+description = "Q10 of sapwood and fine-root maintenance respiration (-)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature of the sapwood and fine-root maintenance respiration rates (K)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_q"]
+value = 1.7
+type = "float"
+description = "Factor by which wood turnover time lengthens per 10 K of mean annual temperature below carbon_tau_stem_T_ref (-), up to tenfold; 1 disables."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_stem_T_ref"]
+value = 283.0
+type = "float"
+description = "Mean annual temperature below which wood turnover time lengthens (K)."
+tag = "PrognosticCarbonParameters"
+
+["carbon_tau_climate"]
+value = 6.3072e7
+type = "float"
+description = "Memory timescale of the mean annual temperature of the carbon pools (s), 2 years."
+tag = "PrognosticCarbonParameters"
+
+["carbon_soil_litter_depth"]
+value = 0.05
+type = "float"
+description = "E-folding depth of the leaf and stem litter input to soil carbon (m)."
+tag = "PrognosticCarbonParameters"
+
 # Plant Hydraulics Parameters
 ["minimum_hydraulic_height"]
 value = 1.0

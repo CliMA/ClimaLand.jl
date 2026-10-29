@@ -147,6 +147,7 @@ _preprocess_sim_var(var, ::Val{:lai}) = var
 # rejects.
 _preprocess_sim_var(var, ::Val{:fc3}) = ClimaAnalysis.set_units(var, "fraction")
 _preprocess_sim_var(var, ::Val{:ftr}) = ClimaAnalysis.set_units(var, "fraction")
+_preprocess_sim_var(var, ::Val{:cveg}) = var
 _preprocess_sim_var(var, name::Val) =
     error("Preprocessing var with short name ($name) is not defined")
 
@@ -545,6 +546,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "lai" => (-3.0, 3.0) .* factor,
         "fc3" => (-1.0, 1.0) .* factor,
         "ftr" => (-1.0, 1.0) .* factor,
+        "cveg" => (-15.0, 15.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -699,10 +701,11 @@ end
     FlagshipVegetationMetricsDataLoader
 
 Loads the observations of the vegetation structure for the leaderboard: the
-MODIS `lai` target, and the C3 fraction `fc3` and tree share `ftr` of the CLM
-surface data, static maps. They cover natural vegetation only: where cropland
-exceeds `CROPLAND_THRESHOLD` of the land in the CLM surface data, the observations
-are `NaN`, which leaves those cells out of the maps and metrics.
+MODIS `lai` target, the C3 fraction `fc3` and tree share `ftr` of the CLM
+surface data, and the live woody carbon `cveg` of Xu et al. (2021), static maps.
+They cover natural vegetation only: where cropland exceeds `CROPLAND_THRESHOLD` of
+the land in the CLM surface data, the observations are `NaN`, which leaves those
+cells out of the maps and metrics.
 """
 struct FlagshipVegetationMetricsDataLoader <: AbstractDataLoader
     """Preprocessed `OutputVar`s, keyed by model short name."""
@@ -716,8 +719,9 @@ end
     FlagshipVegetationMetricsDataLoader()
 
 Construct a data loader for MODIS LAI (`get_modis_lai_obs_var`), the CLM C3
-fraction (`get_clm_c3_fraction_obs_var`) and the CLM tree share
-(`get_clm_tree_share_obs_var`), with cropland masked (`mask_cropland`).
+fraction (`get_clm_c3_fraction_obs_var`), the CLM tree share
+(`get_clm_tree_share_obs_var`) and the live woody carbon of Xu et al. (2021)
+(`get_woody_carbon_obs_var`), with cropland masked (`mask_cropland`).
 """
 function FlagshipVegetationMetricsDataLoader()
     crop_fraction = get_clm_crop_fraction_var()
@@ -726,10 +730,11 @@ function FlagshipVegetationMetricsDataLoader()
         "lai" => natural(get_modis_lai_obs_var()),
         "fc3" => natural(get_clm_c3_fraction_obs_var()),
         "ftr" => natural(get_clm_tree_share_obs_var()),
+        "cveg" => natural(get_woody_carbon_obs_var()),
     )
     return FlagshipVegetationMetricsDataLoader(
         obs_var_dict,
-        Set(["lai", "fc3", "ftr"]),
+        Set(["lai", "fc3", "ftr", "cveg"]),
     )
 end
 
@@ -737,7 +742,7 @@ end
     get(loader::FlagshipVegetationMetricsDataLoader, short_name::String)
 
 Get the preprocessed `OutputVar` with the model short name `short_name` (`lai`,
-`fc3` or `ftr`).
+`fc3`, `ftr` or `cveg`).
 """
 function Base.get(
     loader::FlagshipVegetationMetricsDataLoader,
@@ -837,6 +842,24 @@ function get_clm_tree_share_obs_var()
     obs_var = _preprocess_var(ClimaAnalysis.OutputVar(path, "tree_share"))
     obs_var.attributes["short_name"] = "ftr"
     obs_var.attributes["units"] = "fraction"
+    return obs_var
+end
+
+"""
+    get_woody_carbon_obs_var()
+
+The 2000-2019 mean carbon of the live woody vegetation, above and below ground, of
+Xu et al. (2021) (1° blocks of the 0.5° map of ILAMB) as a static `OutputVar` keyed
+`cveg`, NaN over ocean. It is compared with the carbon of all the live vegetation of
+the model, as in ILAMB, so the leaf and root carbon of grasses shows as a small bias
+where there is no wood. Latitude is sorted ascending and longitude shifted to
+[-180, 180].
+"""
+function get_woody_carbon_obs_var()
+    path = ClimaLand.Artifacts.xusaatchi_woody_carbon_path()
+    obs_var = _preprocess_var(ClimaAnalysis.OutputVar(path, "woody_carbon"))
+    obs_var.attributes["short_name"] = "cveg"
+    obs_var.attributes["units"] = "kg C m^-2"
     return obs_var
 end
 
