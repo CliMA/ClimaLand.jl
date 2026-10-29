@@ -8,6 +8,7 @@ CurrentModule = ClimaLand.Simulations
 ClimaLand.Simulations.LandSimulation
 ClimaLand.Simulations.step!
 ClimaLand.Simulations.solve!
+ClimaLand.Simulations.spin_up_carbon_pools!
 ClimaLand.Simulations.make_set_initial_state_from_file
 ClimaLand.Simulations.make_set_initial_state_from_era5land
 ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters

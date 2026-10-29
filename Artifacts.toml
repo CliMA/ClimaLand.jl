@@ -301,3 +301,10 @@ git-tree-sha1 = "d400472ea191639cb1dafac41b09ce36383aee54"
     [[inversion_nee.download]]
     sha256 = "84ccc2b60b276575342886535d78faa83f64dd83e327f65b31a10da8f9da721c"
     url = "https://caltech.box.com/shared/static/13xeg76obc5cc73h2sqzhogx0hr97poz.gz"
+
+[xusaatchi_woody_carbon]
+git-tree-sha1 = "b1a485375efc776e0f9a3cd2f9f414ea286a1776"
+
+    [[xusaatchi_woody_carbon.download]]
+    sha256 = "1bf1d1d71328f9f8caab997453ce32802520bc6d360d46c5c0c2306364f15a2b"
+    url = "https://caltech.box.com/shared/static/wlst659b9v907i8vws15h4jzqhzei2z3.gz"
