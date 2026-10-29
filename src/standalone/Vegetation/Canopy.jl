@@ -859,7 +859,7 @@ end
         photosynthesis = PModel{FT}(domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-        hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+        hydraulics = SteadyStateModel{FT}(),
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI,  modis_max_lai(domain.space.surface), toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
@@ -900,7 +900,7 @@ function CanopyModel{FT}(
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    hydraulics = SteadyStateModel{FT}(),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(
         domain,
@@ -1005,7 +1005,7 @@ function CanopyModel{FT}(
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    hydraulics = SteadyStateModel{FT}(),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(

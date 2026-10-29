@@ -19,6 +19,10 @@ import ..Soil.Biogeochemistry: SoilCO2Model
 import ..Snow: SnowModel
 import ..Canopy:
     CanopyModel,
+    PlantHydraulicsModel,
+    SteadyStateModel,
+    root_distribution,
+    PiecewiseMoistureStressModel,
     medlyn_conductance,
     medlyn_term,
     gs_h2o_pmodel,

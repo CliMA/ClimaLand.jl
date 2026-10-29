@@ -6,6 +6,10 @@ for the flux of water and energy between the soil and the canopy via
 root extraction.
 """
 NVTX.@annotate function update_root_extraction!(p, Y, t, land)
+    update_root_extraction!(p,Y,t,land,land.canopy.hydraulics)
+end
+
+function update_root_extraction!(p, Y, t, land, hydraulics::Canopy.PlantHydraulicsModel)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
     LAI = p.canopy.biomass.area_index.leaf
@@ -40,6 +44,24 @@ NVTX.@annotate function update_root_extraction!(p, Y, t, land)
         )
 end
 
+
+function update_root_extraction!(p, Y, t, land, hydraulics::Canopy.SteadyStateModel)
+    z = land.soil.domain.fields.z
+    norm = p.scratch1 # A surface scratch field
+    (; θ_high, θ_low, c) = land.canopy.soil_moisture_stress
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.θ_l))
+    root_dryness_weight =
+        @. lazy(Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)*βm)
+    ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
+
+    @. p.root_extraction = root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux/ norm # Integrates to equal transpiration.
+    @. p.root_energy_extraction =
+        p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
+            p.soil.T,
+            land.soil.parameters.earth_param_set,
+        )
+end
+
 """
     root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
@@ -64,7 +86,7 @@ roots and soil at each soil layer.
 function Canopy.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrognosticGroundConditions,
-    model::Canopy.PlantHydraulicsModel,
+    model::Union{Canopy.PlantHydraulicsModel, Canopy.SteadyStateModel},
     canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
