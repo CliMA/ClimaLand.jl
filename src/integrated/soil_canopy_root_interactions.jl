@@ -7,32 +7,17 @@ root extraction.
 """
 NVTX.@annotate function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
-    (; conductivity_model) = land.canopy.hydraulics.parameters
-    LAI = p.canopy.biomass.area_index.leaf
-    RAI = p.canopy.biomass.area_index.root
-    # Note that we model the flux between each soil layer and the canopy as:
-    # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
-    # K_eff = K_soil K_canopy /(K_canopy + K_soil)
+    norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
+    # for soilcanopy and land models.
+    (; θ_high, θ_low, c) = land.canopy.soil_moisture_stress
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.ψ))
+    # βm = exp(-(min(p.soil.ψ, 0)/Soil.matric_potential.(land.soil.parameters.hydrology_cm, land.soil.parameters.hydrology_cm.S_c))^3)
+    root_dryness_weight =
+        @. lazy(Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)*βm)
+    # compute the root zone-averaged βm
+    ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
 
-    # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
-    # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
-    # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
-    effective_height =
-        Canopy.hydraulic_height(p, Y, land.canopy.hydraulics, land.canopy)
-    @. p.root_extraction =
-        Canopy.harmonic_mean(LAI, RAI) *
-        Canopy.water_flux(
-            z,
-            effective_height / 2,
-            p.soil.ψ,
-            p.canopy.hydraulics.ψ,
-            p.soil.K,
-            Canopy.hydraulic_conductivity(
-                conductivity_model,
-                p.canopy.hydraulics.ψ,
-            ),
-        ) *
-        Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)
+    @. p.root_extraction = root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux/ norm
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -173,9 +158,9 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     model,
     canopy,
 )
-    θ_l = p.soil.θ_l
+    ψ = p.soil.ψ
     (; θ_high, θ_low, c) = model
-    z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
+    z = ClimaCore.Fields.coordinate_field(axes(ψ)).z
     # normalized distribution for root density
     norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
     # for soilcanopy and land models.
@@ -184,7 +169,7 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     # compute the root zone-averaged βm
     ClimaCore.Operators.column_integral_definite!(norm, root_dist)
     # per soil element
-    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l))
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, ψ))
     βm_root_distribution = @. lazy(
         βm * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
     )

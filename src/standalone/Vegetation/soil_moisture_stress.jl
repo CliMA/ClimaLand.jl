@@ -162,14 +162,12 @@ unitless). See  Egea et al. (2011).
 Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
 """
 function compute_piecewise_moisture_stress(
-    θ_high::FT,
+    ψc::FT,
     θ_low::FT,
     c::FT,
-    θ::FT,
+    ψ::FT,
 ) where {FT}
-    # avoid taking e.g. sqrt of negative numbers for rational c
-    arg = max((θ - θ_low) / (θ_high - θ_low), FT(0))
-    return min(FT(1), arg^c)
+    return ψ > ψc ? FT(1) : exp(-((min(ψ, 0-ψc))/ψc)^c)
 end
 
 """

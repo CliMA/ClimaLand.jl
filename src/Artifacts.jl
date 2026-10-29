@@ -420,10 +420,10 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    if site_ID in _DOWNLOADABLE_FLUXNET_SITES
-        folder_path = @clima_artifact("fluxnet_sites", context)
-        return joinpath(folder_path, "$(site_ID).csv")
-    end
+#    if site_ID in _DOWNLOADABLE_FLUXNET_SITES
+#        folder_path = @clima_artifact("fluxnet_sites", context)
+#        return joinpath(folder_path, "$(site_ID).csv")
+#    end
 
     full_fluxnet_path = @clima_artifact("fluxnet2015", context)
     dirs = filter(

@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.759
+value = 0.8
 type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
@@ -47,13 +47,13 @@ tag = "BigLeafEnergyModel"
 # Weibull model
 
 ["K_sat_plant"]
-value = 7e-8
+value = 7e-6
 type = "float"
 description = "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation. Units are m / s."
 tag = "Weibull"
 
 ["psi_63"]
-value = -408.163265306122448
+value = -108.163265306122448
 type = "float"
 description = "The absolute water potential in xylem (or xylem water potential) at which ∼63% of maximum xylem conductance is lost (Liu, 2020). Computed by -4 / 0.0098. Holtzman's original parameter value is -4 MPa"
 tag = "Weibull"
@@ -421,7 +421,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.0113
+value = 0.07
 type = "float"
 description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
@@ -560,7 +560,7 @@ description = "PAR transmittance of stems (unitless); woody-plant value. Dorman 
 tag = "AbstractRadiationModel"
 
 [stem_NIR_reflectance]
-value = 0.78
+value = 0.32
 type = "float"
 description = "NIR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
 tag = "AbstractRadiationModel"
@@ -867,7 +867,7 @@ description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020).
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_exponent"]
-value = 2.0
+value = 0.5
 type = "float"
 description = "Exponent of dry soil layer factor in evaporation; for use with ROSETTA parameters, this needs to be 2.0 for stability at a timestep of 900s"
 tag = "EnergyHydrologyParameters"

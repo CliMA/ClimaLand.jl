@@ -99,9 +99,10 @@ water, and the conductance ratio `g_liq / (g_liq + g_h)` of the dry soil
 layer otherwise.
 """
 function soil_evaporation_beta(q_air, qsat, g_liq, g_h, β_ice, frozen::Bool)
-    β_frozen = ifelse(q_air < qsat, β_ice, one(β_ice))
+    β_frozen = ifelse(q_air < qsat, β_ice, zero(β_ice))
     denom = g_liq + g_h
     β_unfrozen = ifelse(iszero(denom), one(denom), g_liq / denom)
+    β_unfrozen = ifelse(q_air < qsat, β_unfrozen, zero(β_unfrozen))
     return ifelse(frozen, promote(β_frozen, β_unfrozen)...)
 end
 

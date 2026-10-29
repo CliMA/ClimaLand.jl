@@ -143,13 +143,12 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = if :hydrology_cm in propertynames(soil_params)
-        (; θ_r, ν, hydrology_cm) = soil_params
-        S_fc = Soil.field_capacity_saturation(hydrology_cm)
-        @. θ_r + S_fc * (ν - θ_r)
-    else
-        copy(soil_params.ν)
-    end
+    m = soil_params.hydrology_cm.m
+    n = soil_params.hydrology_cm.n
+    α = soil_params.hydrology_cm.α
+    S_c = soil_params.hydrology_cm.S_c
+    ψ_c = @. -((S_c^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    θ_high = ψ_c
     θ_low = copy(soil_params.θ_r)
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)

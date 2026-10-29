@@ -91,7 +91,7 @@ function CLMTwoBandSoilAlbedo{FT}(;
     NIR_albedo_dry,
     PAR_albedo_wet,
     NIR_albedo_wet,
-    albedo_calc_top_thickness = FT(0.02),
+    albedo_calc_top_thickness = FT(0.1),
 ) where {FT}
     return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry)}(
         PAR_albedo_dry,
