@@ -2,6 +2,7 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-💥breaking] Introduce steady state hydraulics model and make default. Adjust piecewise soil moisture stress low value to be equal to the wilting point; correct bug in the high value.
 
 v1.14.1
 ----

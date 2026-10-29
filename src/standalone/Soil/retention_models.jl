@@ -12,7 +12,9 @@ To add a new parameterization, methods are required for:
 - inverse_matric_potential,
 - pressure_head,
 - dψdϑ,
-- hydraulic_conductivity.
+- hydraulic_conductivity,
+- field_capacity_saturation,
+- wilting_saturation
 """
 abstract type AbstractSoilHydrologyClosure{FT <: AbstractFloat} end
 Base.broadcastable(x::AbstractSoilHydrologyClosure) = tuple(x)
@@ -39,7 +41,7 @@ struct vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
 end
 function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
     m = 1 - 1 / n
-    S_c = (1 + ((n - 1) / n)^(1 - 2 * n))^(-m)
+    S_c = (1 + m^(1 - 2 * n))^(-m)
     return vanGenuchten{FT}(α, n, m, S_c)
 end
 
@@ -67,18 +69,23 @@ struct BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
 end
 
 """
-    field_capacity_saturation(cm::vanGenuchten)
-    field_capacity_saturation(cm::BrooksCorey)
+    field_capacity_saturation(cm::AbstractSoilHydrologyClosure)
 
-Return the effective saturation at field capacity. For the van Genuchten
-retention curve this is the saturation `(1 + 1/m)^(-m)` at the inflection
-point of `S(ψ)` (van Genuchten, 1980), which Assouline and Or (2014) identify
-with field capacity; it lies between 0.54 (`n = 3`) and 0.63 (`n = 1.5`).
-The Brooks and Corey curve has no inflection point, and the saturation at its
-air entry potential, one, is returned.
+Return the effective saturation at field capacity. Following Assouline and Or (2014),
+this is the value `S_c` stored in the hydrology closure model.
 """
-field_capacity_saturation(cm::vanGenuchten) = (1 + 1 / cm.m)^(-cm.m)
-field_capacity_saturation(cm::BrooksCorey{FT}) where {FT} = FT(1)
+field_capacity_saturation(cm::AbstractSoilHydrologyClosure) = cm.S_c
 # Retention models broadcast as scalars, so a field of them maps elementwise
 field_capacity_saturation(cm::ClimaCore.Fields.Field) =
     field_capacity_saturation.(cm)
+
+"""
+    wilting_saturation(cm::AbstractSoilHydrologyClosure)
+
+Return the effective saturation at the wilting point, which is taken to coincide with
+ρ g ψ_soil = -1.5MPa, or ψ_soil = -153 m.
+"""
+wilting_saturation(cm::AbstractSoilHydrologyClosure{FT}) where {FT} =
+    Soil.inverse_matric_potential(cm, FT(-153))
+# Retention models broadcast as scalars, so a field of them maps elementwise
+wilting_saturation(cm::ClimaCore.Fields.Field) = wilting_saturation.(cm)

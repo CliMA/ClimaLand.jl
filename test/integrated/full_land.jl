@@ -413,10 +413,17 @@ end
             ] .< eps(FT),
         )
         @test all(parent(Y.soil.θ_i)[:, 1, 1, 1, Array(binary_mask)] .≈ 0)
-        @test all(
-            vec(parent(Y.canopy.hydraulics.ϑ_l))[Array(binary_mask)] .-
-            land.canopy.hydraulics.parameters.ν .≈ 0,
-        )
+        if land.canopy.hydraulics isa Canopy.PlantHydraulicsModel
+            @test all(
+                vec(parent(Y.canopy.hydraulics.ϑ_l))[Array(binary_mask)] .-
+                land.canopy.hydraulics.parameters.ν .≈ 0,
+            )
+        else
+            @test all(
+                vec(parent(Y.canopy.hydraulics.ϑ_l))[Array(binary_mask)] .== 0,
+            )
+        end
+
         @test all(vec(parent(Y.snow.U))[Array(binary_mask)] .≈ 0)
         @test all(vec(parent(Y.snow.S))[Array(binary_mask)] .≈ 0)
         @test all(vec(parent(Y.snow.S_l))[Array(binary_mask)] .≈ 0)
@@ -452,7 +459,7 @@ end
         Y.soil.ρe_int = ρe_int0
 
         # Canopy IC
-        ϑ0 = land.canopy.hydraulics.parameters.ν / 2
+        ϑ0 = 0
         CTemp0 = FT(290.5)
 
         Y.canopy.hydraulics.ϑ_l .= ϑ0

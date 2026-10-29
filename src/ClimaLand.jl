@@ -3,7 +3,7 @@ using DocStringExtensions
 
 using ClimaCore
 using LazyBroadcast: lazy
-import ClimaCore: Fields, Spaces
+import ClimaCore: Fields, Spaces, Operators
 using NVTX
 include("Artifacts.jl")
 include("shared_utilities/Parameters.jl")
@@ -432,7 +432,8 @@ import .Canopy:
     root_energy_flux_per_ground_area!,
     update_piecewise_soil_moisture_stress!,
     mask_biomass!,
-    root_water_flux_per_ground_area!
+    root_water_flux_per_ground_area!,
+    update_steady_state_leaf_water_potential!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")

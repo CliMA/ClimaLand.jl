@@ -81,11 +81,20 @@ struct SoilCanopyModel{
             )
         end
 
-        if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
+        if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
             check_land_equality(
+                canopy.soil_moisture_stress.θ_high,
+                @. soil.parameters.θ_r +
+                   (soil.parameters.ν - soil.parameters.θ_r) *
+                   Soil.field_capacity_saturation(soil.parameters.hydrology_cm)
+            )
+
+            check_land_equality(
                 canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
+                @. soil.parameters.θ_r +
+                   (soil.parameters.ν - soil.parameters.θ_r) *
+                   Soil.wilting_saturation(soil.parameters.hydrology_cm)
             )
         end
 
@@ -125,6 +134,7 @@ end
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
             soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
     ) where {FT}
 
@@ -176,6 +186,7 @@ function SoilCanopyModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        hydraulics = Canopy.SteadyStateModel{FT}(),
     ),
 ) where {FT}
     return SoilCanopyModel{FT}(soilco2, soil, canopy)
@@ -263,11 +274,13 @@ function make_update_boundary_fluxes(
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        # update root extraction
-        update_root_extraction!(p, Y, t, land)
         # The canopy turbulent fluxes come first: the soil skin solve in
         # lsm_radiant_energy_fluxes! reads the canopy-air state they produce
         Canopy.canopy_turbulent_fluxes!(p, land.canopy, Y, t)
+
+        # update root extraction - for steady state hydraulics models, transpiration, computed above, is needed here.
+        update_root_extraction!(p, Y, t, land)
+
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,

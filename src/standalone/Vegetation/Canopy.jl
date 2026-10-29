@@ -150,7 +150,13 @@ function PiecewiseMoistureStressModel{FT}(
     else
         copy(soil_params.ν)
     end
-    θ_low = copy(soil_params.θ_r)
+    θ_low = if :hydrology_cm in propertynames(soil_params)
+        (; θ_r, ν, hydrology_cm) = soil_params
+        S_wilt = Soil.wilting_saturation(hydrology_cm)
+        @. θ_r + S_wilt * (ν - θ_r)
+    else
+        copy(soil_params.θ_r)
+    end
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
 end

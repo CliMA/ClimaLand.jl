@@ -39,6 +39,7 @@ for FT in (Float32, Float64)
             LAI,
             toml_dict;
             soil_moisture_stress = sms_model,
+            hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict),
         )
         @testset "Initialize canopy with type $name for float type $FT" begin
             Y, p, coords = initialize(canopy)
@@ -104,14 +105,13 @@ for FT in (Float32, Float64)
             toml_dict;
             soil_params = (; ν, θ_r, hydrology_cm),
         )
-        @test sms_fc.θ_low == θ_r
-        S_fc = (1 + 1 / hydrology_cm.m)^(-hydrology_cm.m)
-        @test S_fc ≈ FT(0.63) atol = FT(0.01) # n = 1.5
+        S_fc = hydrology_cm.S_c
         @test Soil.field_capacity_saturation(hydrology_cm) ≈ S_fc
         @test sms_fc.θ_high ≈ θ_r + S_fc * (ν - θ_r)
-        @test Soil.field_capacity_saturation(
-            Soil.BrooksCorey{FT}(; c = FT(0.3), ψb = FT(-0.1)),
-        ) == 1
+        S_wilt = Soil.inverse_matric_potential(hydrology_cm, FT(-153))
+        @test Soil.wilting_saturation(hydrology_cm) ≈ S_wilt
+        @test sms_fc.θ_low ≈ θ_r + S_wilt * (ν - θ_r)
+
     end
 
 end

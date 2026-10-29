@@ -69,6 +69,19 @@ function check_land_equality(
     @assert f1 == f2 # checks all values
 end
 
+"""
+    check_land_equality(f1::FT, f2::Tuple{FT})
+        where {FT <: AbstractFloat}
+
+Check that a float x is equal to the value in the tuple (x,).
+This is not commutative and a little brittle. It primarily is used when
+broadcasting over a soil hydrology closure parameterization which returns a Tuple 
+with a single float.
+"""
+function check_land_equality(f1::FT, f2::Tuple{FT}) where {FT <: AbstractFloat}
+    @assert f1 == f2[1]
+end
+
 
 """
      heaviside(x)
