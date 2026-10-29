@@ -532,7 +532,9 @@ Infiltration * (P_liq*(1-σ)/Influx * ρe(T_air)+snowmelt_water_flux *σ/Influx 
 i.e.,
 Infiltration * (f_rain * ρe(T_air) + f_snow * ρe(T_snow)), where f_rain  = 1- f_snow, since
 Influx = P_liq * (1-σ) + snowmelt * σ. Here, σ is the snow cover fraction, and ρe(T) refers
-to the volumetric internal energy of liquid water at temperature T.
+to the volumetric internal energy of liquid water at temperature T. In coupled simulations,
+ρe(T_air) is replaced by the energy of the liquid precipitation provided by the atmosphere
+(see `Soil.volumetric_energy_liquid_precipitation`).
 """
 NVTX.@annotate function Soil.compute_infiltration_energy_flux(
     p,
@@ -548,11 +550,11 @@ NVTX.@annotate function Soil.compute_infiltration_energy_flux(
     infiltration_fraction = @. lazy(
         Soil.compute_infiltration_fraction(p.soil.infiltration, liquid_influx),
     )
+    ρe_rain =
+        Soil.volumetric_energy_liquid_precipitation(atmos, p, earth_param_set)
     return @. lazy(
         infiltration_fraction * (
-            p.drivers.P_liq *
-            p.bare_soil_fraction *
-            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
+            p.drivers.P_liq * p.bare_soil_fraction * ρe_rain +
             p.snow.energy_runoff * p.snow.snow_cover_fraction
         ),
     )
