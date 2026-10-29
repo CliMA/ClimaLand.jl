@@ -3,7 +3,7 @@ module Diagnostics
 import Dates: Month, Period, DateTime
 
 import ClimaComms
-using ClimaCore: Spaces, Fields
+using ClimaCore: Spaces, Fields, Operators
 using LazyBroadcast: lazy
 import ..Parameters as LP
 import Thermodynamics
@@ -20,6 +20,7 @@ import ..Snow: SnowModel
 import ..Canopy:
     CanopyModel,
     PlantHydraulicsModel,
+    compute_piecewise_moisture_stress,
     SteadyStateModel,
     root_distribution,
     PiecewiseMoistureStressModel,

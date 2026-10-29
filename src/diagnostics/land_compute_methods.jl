@@ -294,21 +294,22 @@ function compute_leaf_water_potential!(
 )
     canopy = get_canopy(land_model)
     soil = get_soil(land_model)
+    z = soil.domain.fields.z
     norm = p.scratch1 # A surface scratch field
     (; θ_high, θ_low, c) = sms
     βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.θ_l))
     root_dryness_weight =
         @. lazy(root_distribution(z, canopy.biomass.rooting_depth)*βm)
-    ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
+    Operators.column_integral_definite!(norm, root_dryness_weight)
     field = @. lazy(p.soil.ψ * root_dryness_weight / norm)
     # compute soil
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        ClimaCore.Operators.column_integral_definite!(out, field)
+        Operators.column_integral_definite!(out, field)
         return out
     else
-        ClimaCore.Operators.column_integral_definite!(out, field)
+        Operators.column_integral_definite!(out, field)
     end
 end
 

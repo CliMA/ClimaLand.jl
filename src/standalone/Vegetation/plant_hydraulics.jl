@@ -188,13 +188,6 @@ hydraulic_height(
     canopy,
 ) where {FT} = @. lazy(max(canopy.biomass.height, hydraulics.parameters.height))
 
-hydraulic_height(
-    p,
-    Y,
-    hydraulics::SteadyStateModel{FT},
-    canopy,
-) where {FT} = @. lazy(max(canopy.biomass.height, FT(1)))
-
 """
     harmonic_mean(x::FT,y::FT) where {FT}
 
@@ -575,3 +568,10 @@ end
 function update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
     nothing
 end
+
+hydraulic_height(
+    p,
+    Y,
+    hydraulics::SteadyStateModel{FT},
+    canopy,
+) where {FT} = @. lazy(max(canopy.biomass.height, FT(1)))
