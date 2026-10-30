@@ -1138,7 +1138,10 @@ function make_set_initial_state_from_era5land(
             Y.soilco2.O2 .= FT(0.08)    # kg O₂ m⁻³ soil (≈ θ_eff · 0.21 · P·M_O2/(R·T))
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
-        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+            Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        end
+        
         set_canopy_component_initial_conditions!(
             Y,
             p,
@@ -1418,7 +1421,10 @@ function make_set_initial_state_from_atmos_and_parameters(
         # canopy state where the canopy is masked out; the cache update sets it
         # again later.
         ClimaLand.set_lake_fraction!(p, land)
-        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+            Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        end
+        
         set_canopy_component_initial_conditions!(
             Y,
             p,

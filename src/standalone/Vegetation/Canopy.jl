@@ -111,20 +111,23 @@ end
 ) where {FT <: AbstractFloat}
 
 Create a `PiecewiseMoistureStressModel` whose thresholds are computed from
-the soil parameters: the low threshold `θ_low` is the residual water content
-`θ_r`, and the high threshold `θ_high` is the field capacity
+the soil parameters: the low threshold `θ_low` is the wilting point, and the high threshold 
+`θ_high` is the field capacity
 
+    θ_low = θ_r + S_wilt (ν - θ_r),
     θ_high = θ_r + S_fc (ν - θ_r),
 
 where `S_fc` is the effective saturation at the inflection point of the
 retention curve (`Soil.field_capacity_saturation`), which Assouline and Or
-(2014) identify with field capacity. Stomata are unstressed above field
-capacity.
+(2014) identify with field capacity, and `S_wilt` is a free parameter.
+Stomata are unstressed above field capacity, and stomata are completely shut below
+the wilting point.
 
 The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
 the field capacity, the retention model `hydrology_cm` (as returned by
 `Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`, `θ_high` is the
-porosity `ν`. The entries may be ClimaCore fields or floats, but must be
+porosity `ν` and `θ_low` is the residual `θ_r`.
+ The entries may be ClimaCore fields or floats, but must be
 consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
@@ -150,7 +153,13 @@ function PiecewiseMoistureStressModel{FT}(
     else
         copy(soil_params.ν)
     end
-    θ_low = copy(soil_params.θ_r)
+    θ_low = if :hydrology_cm in propertynames(soil_params)
+        (; θ_r, ν, hydrology_cm) = soil_params
+        S_wilt = Soil.wilting_saturation(hydrology_cm)
+        @. θ_r + S_wilt * (ν - θ_r)
+    else
+        copy(soil_params.θ_r)
+    end
 
     return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
 end
@@ -859,7 +868,7 @@ end
         photosynthesis = PModel{FT}(domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-        hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+        hydraulics = SteadyStateModel{FT}(),
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI,  modis_max_lai(domain.space.surface), toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
@@ -900,7 +909,7 @@ function CanopyModel{FT}(
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    hydraulics = SteadyStateModel{FT}(),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(
         domain,
@@ -1005,7 +1014,7 @@ function CanopyModel{FT}(
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    hydraulics = SteadyStateModel{FT}(),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(

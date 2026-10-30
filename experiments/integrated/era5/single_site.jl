@@ -53,7 +53,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
+        use_lowres_forcing = false,
     )
     forcing = (; atmos, radiation)
 
@@ -70,7 +70,7 @@ end
 start_date = DateTime("2008-03-01")
 stop_date = DateTime("2010-03-01")
 Δt = 900.0
-longlat = FT.((-77.0, 0.1))
+longlat = FT.((33.0, 15))
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
@@ -78,17 +78,7 @@ domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple);
 toml_dict = LP.create_toml_dict(FT)
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
-diagnostics = ClimaLand.default_diagnostics(
-    model,
-    start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-        domain.space.subsurface,
-        outdir;
-        start_date,
-    ),
-    reduction_period = :monthly,
-    reduction_type = :average,
-    output_vars = [
+output_vars = [
         "shf",
         "lhf",
         "trans",
@@ -99,7 +89,21 @@ diagnostics = ClimaLand.default_diagnostics(
         "precip",
         "et",
         "lai",
-    ],
+        "swc",
+        "lwp",
+        "msf",
+    ]
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date;
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        outdir;
+        start_date,
+    ),
+    reduction_period = :daily,
+    reduction_type = :average,
+    output_vars
 );
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics);
@@ -115,8 +119,9 @@ ClimaLand.Simulations.solve!(simulation);
 LandSimVis.make_timeseries(
     simulation;
     savedir = root_path,
-    short_names = ["lai"],
+    short_names = output_vars,
 )
+#=
 LandSimVis.make_leaderboard_plots(
     model,
     domain,
@@ -125,3 +130,4 @@ LandSimVis.make_leaderboard_plots(
     stop_date;
     savedir = root_path,
 )
+    =#

@@ -262,6 +262,18 @@ function compute_leaf_water_potential!(
     land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
 )
     canopy = get_canopy(land_model)
+    compute_leaf_water_potential!(out, Y, p, t, land_model, canopy.hydraulics, canopy.soil_moisture_stress)
+end
+function compute_leaf_water_potential!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
+    hydraulics::PlantHydraulicsModel,
+    sms
+)
+    canopy = get_canopy(land_model)
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
@@ -269,6 +281,35 @@ function compute_leaf_water_potential!(
         return out
     else
         out .= p.canopy.hydraulics.ψ
+    end
+end
+function compute_leaf_water_potential!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+    hydraulics::SteadyStateModel,
+    sms::PiecewiseMoistureStressModel
+)
+    canopy = get_canopy(land_model)
+    soil = get_soil(land_model)
+    z = soil.domain.fields.z
+    norm = p.scratch1 # A surface scratch field
+    (; θ_high, θ_low, c) = sms
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.θ_l))
+    root_dryness_weight =
+        @. lazy(root_distribution(z, canopy.biomass.rooting_depth)*βm)
+    Operators.column_integral_definite!(norm, root_dryness_weight)
+    field = @. lazy(p.soil.ψ * root_dryness_weight / norm)
+    # compute soil
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        Operators.column_integral_definite!(out, field)
+        return out
+    else
+        Operators.column_integral_definite!(out, field)
     end
 end
 

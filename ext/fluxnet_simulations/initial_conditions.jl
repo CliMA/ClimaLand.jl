@@ -209,19 +209,21 @@ function set_fluxnet_ic!(
         )
         Y.canopy.energy.T .= T_air_0
     end
-
-    ψ_leaf_0 = FT(-2e5 / 9800)
-    hydraulics = model.hydraulics
-    S_l_ini = ClimaLand.Canopy.inverse_water_retention_curve.(
-        hydraulics.parameters.retention_model,
-        ψ_leaf_0,
-        hydraulics.parameters.ν,
-        hydraulics.parameters.S_s,
-    )
-    Y.canopy.hydraulics.ϑ_l .= ClimaLand.Canopy.augmented_liquid_fraction.(
-        hydraulics.parameters.ν,
-        S_l_ini,
-    )
+    if model.hydraulics isa Canopy.PlantHydraulicsModel
+        ψ_leaf_0 = FT(-2e5 / 9800)
+        hydraulics = model.hydraulics
+        S_l_ini = ClimaLand.Canopy.inverse_water_retention_curve.(
+            hydraulics.parameters.retention_model,
+            ψ_leaf_0,
+            hydraulics.parameters.ν,
+            hydraulics.parameters.S_s,
+        )
+        Y.canopy.hydraulics.ϑ_l .= ClimaLand.Canopy.augmented_liquid_fraction.(
+            hydraulics.parameters.ν,
+            S_l_ini,
+        )
+    end
+    
     ClimaLand.Simulations.set_canopy_component_initial_conditions!(
         Y,
         nothing,
