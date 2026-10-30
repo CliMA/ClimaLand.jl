@@ -11,9 +11,20 @@ Return the depths (m) of the soil temperature (`tsoil`) and soil water content
 whose depths are not documented. Sites without a method fall back to unknown
 depths.
 """
-FluxnetSimulations.get_sensor_depths(FT, ::Val) =
+function FluxnetSimulations.get_sensor_depths(FT, site_ID)
+   try
+    path = "/groups/esm/ClimaArtifacts/artifacts/fluxnet2015/metadata_DD_clean.csv"
+    (data, columns) = readdlm(path, ',', header = true)
+    swc_depths = data[data[:,1] .== "DE-Lnf",columns[:] .== "swc_depths"][1]
+    tsoil_depths = data[data[:,1] .== "DE-Lnf",columns[:] .== "ts_depths"][1]
+    tsoil = sort(abs.(parse.(FT, split(tsoil_depths, ";"))))
+    swc = sort(abs.(parse.(FT, split(swc_depths, ";"))))
+    return (; tsoil, swc)
+   catch
+    return (; tsoil = nothing, swc = nothing)
+   end
     (; tsoil = nothing, swc = nothing)
-
+end
 ###################################
 #            UTILITIES            #
 ###################################

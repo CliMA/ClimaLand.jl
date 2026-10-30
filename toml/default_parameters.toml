@@ -361,13 +361,13 @@ description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, 
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 112.0
+value = 146.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 1.76
+value = 16.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
@@ -867,13 +867,13 @@ description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020).
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_exponent"]
-value = 0.5
+value = 2
 type = "float"
 description = "Exponent of dry soil layer factor in evaporation; for use with ROSETTA parameters, this needs to be 2.0 for stability at a timestep of 900s"
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
-value = 1.0
+value = 2.0
 type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"

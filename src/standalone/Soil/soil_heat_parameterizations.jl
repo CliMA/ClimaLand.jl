@@ -307,6 +307,7 @@ function kersten_number(
     ν_ss_quartz::FT,
     ν_ss_gravel::FT,
 ) where {FT}
+    S_r = clamp(S_r, FT(0), FT(1))
     if θ_i < eps(FT)
         K_e =
             S_r^((FT(1) + ν_ss_om - α * ν_ss_quartz - ν_ss_gravel) / FT(2)) *

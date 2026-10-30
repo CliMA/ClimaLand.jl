@@ -25,34 +25,17 @@ const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 climaland_dir = pkgdir(ClimaLand)
 prognostic_land_components = (:canopy, :snow, :soil,)
-site_ID = "US-Var"
+site_ID = "DE-Lnf"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
 # Get the default values for this site's domain, location, and parameters
-(; dz_tuple, nelements, zmin, zmax) =
-    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-zmin = FT(-5.0)
+zmin = FT(-15.0)
 zmax = FT(0.0)
 nelements = 15
-dz_tuple = FT.((0.5, 0.04))
+dz_tuple = FT.((3, 0.05))
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
-(;
-    soil_ν,
-    soil_K_sat,
-    soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
-    θ_r,
-    ν_ss_quartz,
-    ν_ss_om,
-    ν_ss_gravel,
-    SAI,
-    f_root_to_shoot,
-    rooting_depth,
-    h_canopy,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;
@@ -69,7 +52,10 @@ dt = Float64(450) # 7.5 minutes
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 (start_date, stop_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
-#stop_date = start_date + Year(4)
+start_date = start_date + Year(3)
+stop_date = start_date + Year(6)
+@show stop_date
+@show start_date
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -84,16 +70,9 @@ dt = Float64(450) # 7.5 minutes
 
 # Now we set up the model. For the soil model, we pick
 # a model type and package up parameters.
-soil_domain = land_domain
+soil_domain = land_domain;
 
-forcing = (; atmos, radiation)
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-)
-composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
+forcing = (; atmos, radiation);
 
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
@@ -101,26 +80,17 @@ soil = Soil.EnergyHydrology{FT}(
     toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
- #   retention_parameters,
- #   composition_parameters,
-)
+);
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
 LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-# Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
-RAI = maxLAI * f_root_to_shoot
-height = h_canopy
-biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date);
 
-
-ground = ClimaLand.PrognosticGroundConditions{FT}()
-canopy_forcing = (; atmos, radiation, ground)
+ground = ClimaLand.PrognosticGroundConditions{FT}();
+canopy_forcing = (; atmos, radiation, ground);
 soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm))
 # Combine the components into a CanopyModel
-radiation_parameters = (; Ω = 1.0,  α_NIR_leaf = 0.11,  α_PAR_leaf = 0.35, G_Function = CLMGFunction(-0.3))
+radiation_parameters = (; Ω = 1.0,  α_NIR_leaf = 0.21,  α_PAR_leaf = 0.35, G_Function = CLMGFunction(-0.3))
 rad = Canopy.BeerLambertModel{FT}(ClimaLand.Domains.obtain_surface_domain(land_domain), toml_dict; radiation_parameters)
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
@@ -128,10 +98,9 @@ canopy = Canopy.CanopyModel{FT}(
     LAI,
     toml_dict;
     prognostic_land_components,
-    #biomass,
     radiative_transfer = rad,
     soil_moisture_stress
-)
+);
 
 # Snow model
 snow = Snow.SnowModel(
@@ -141,7 +110,7 @@ snow = Snow.SnowModel(
     toml_dict,
     dt;
     prognostic_land_components,
-)
+);
 
 # Integrated plant hydraulics, soil, and snow model
 lake = nothing
@@ -152,28 +121,9 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     start_date,
     time_offset,
     land,
-)
-function reset_soil_ic!(Y,p,t0,land)
-    evaluate!(p.drivers.T, atmos.T, t0)
-    @. Y.soil.ϑ_l = land.soil.parameters.ν*0.9
-    @. Y.soil.θ_i = 0
+);
 
-    (; θ_r, ν, ρc_ds, earth_param_set) = soil.parameters
-    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        land.soil.parameters.earth_param_set,
-    )
-    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        p.drivers.T,
-        land.soil.parameters.earth_param_set,
-    )
-end
-
-dt_save = Second(1800)
+dt_save = Second(dt)
 updateat = Second(dt)
 saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, dt_save)
 sv = saving_cb.affect!.saved_values
@@ -189,10 +139,17 @@ simulation = LandSimulation(
     solver_kwargs,
     user_callbacks,
     diagnostics = (),
-)
+);
 #reset_soil_ic!(simulation._integrator.u, simulation._integrator.p, ClimaUtilities.TimeManager.ITime(0, Second(1), simulation.start_date), land)
 
 @time sol = solve!(simulation);
+#for i in 1:392
+#    ClimaLand.Simulations.step!(simulation)
+#end
+
+#sol = simulation._integrator.sol;
+#mask = sv.t .!= nothing;
+#sv = (;t = sv.t[mask], saveval = sv.saveval[mask]);
 
 function compute_monthly_avg(x, dates)
     moy = month.(dates)
@@ -209,7 +166,7 @@ savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
 mkpath(savedir)
 
-spinup = Month(3)
+spinup = Month(0)
 data_id_post_spinup =
     (comparison_data.UTC_datetime .> start_date .+ spinup) .&&
     (comparison_data.UTC_datetime .<= stop_date)
@@ -229,16 +186,16 @@ swc_depths = sensor_depths.swc
     at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, swc_depths[1]) for
     k in model_idx1:1:model_idxend
 ]
-θ3 = [
-    at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, swc_depths[3]) for
+θ4 = [
+    at_depth(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i, swc_depths[4]) for
     k in model_idx1:1:model_idxend
 ]
 T_soil1 = [
     at_depth(sv.saveval[k].soil.T, tsoil_depths[1]) for
     k in model_idx1:1:model_idxend
 ]
-T_soil5 = [
-    at_depth(sv.saveval[k].soil.T, tsoil_depths[5]) for
+T_soil4 = [
+    at_depth(sv.saveval[k].soil.T, tsoil_depths[4]) for
     k in model_idx1:1:model_idxend
 ]
 SW_u = [parent(sv.saveval[k].SW_u)[1] for k in model_idx1:1:model_idxend]
@@ -287,6 +244,12 @@ GPP = [
     parent(get_GPP(sv.saveval[k], land.canopy.photosynthesis))[1] for
     k in model_idx1:1:model_idxend
 ]
+
+albedo_soil = [
+    parent(sv.saveval[k].soil.NIR_albedo .+ sv.saveval[k].soil.PAR_albedo)[1] for
+    k in model_idx1:1:model_idxend
+] ./ 2
+alpha_monthly = compute_monthly_avg(albedo_soil, model_dates)
 
 
 # Monthly averages
@@ -493,6 +456,22 @@ lines!(
     color = "blue",
     linewidth = 3,
 )
+ax0c = Axis(
+    fig[7, 1],
+    xlabel = "Month of year",
+    ylabel = "Soil albedo",
+    xticks = (1:12, Dates.monthabbr.(1:12)),
+    xgridvisible = false,
+    ygridvisible = false,
+)
+lines!(
+    ax0c,
+    collect(1:12),
+    alpha_monthly,
+    label = "",
+    color = "blue",
+    linewidth = 3,
+)
 CairoMakie.save(joinpath(savedir, "vaira_monthly.png"), fig)
 
 fig = Figure(size = (800, 800), fontsize = 24)
@@ -526,16 +505,9 @@ ax1 = Axis(
     yticks = [270, 290, 310],
 )
 ylims!(ax1, 270, 320)
-lines!(ax1, model_dates, T_soil5, label = "", color = "blue", linewidth = 1)
+lines!(ax1, model_dates, T_soil4, label = "", color = "blue", linewidth = 1)
+lines!(ax1, data_dates, comparison_data.tsoil4[data_id_post_spinup], label = "", color = "orange", linewidth = 1)
 
-lines!(
-    ax1,
-    data_dates,
-    comparison_data.tsoil5[data_id_post_spinup],
-    label = "",
-    color = "orange",
-    linewidth = 1,
-)
 text!(ax1, model_dates[1], 310, text = "32 cm")
 
 
@@ -568,12 +540,12 @@ ax3 = Axis(
     yticks = [0, 0.2, 0.4],
 )
 ylims!(ax3, 0.0, 0.5)
-lines!(ax3, model_dates, θ3, color = "blue", label = "Model", linewidth = 1)
+lines!(ax3, model_dates, θ4, color = "blue", label = "Model", linewidth = 1)
 lines!(
     ax3,
     data_dates,
-    comparison_data.swc3[data_id_post_spinup],
-    label = "Data",
+    comparison_data.swc4[data_id_post_spinup],
+    label = "",
     color = "orange",
     linewidth = 1,
 )
@@ -619,7 +591,7 @@ save(joinpath(savedir,"some_other_plots2.png"), fig2)
 
 
 error = T_soil1 .- comparison_data.tsoil[data_id_post_spinup];
-days = start_date .+Month.(0:1:12*4);
+days = start_date .+Month.(0:1:12*12);
 monthly_error = zeros(length(days))
 monthly_soil_rn = zeros(length(days))
 monthly_soil_bowen = zeros(length(days))

@@ -1281,7 +1281,6 @@ Note that S_l ∈ (0,1].
 """
 function dry_soil_layer_thickness(S_l, αS_c, d_ds, p)
     αS_c = clamp(αS_c, zero(αS_c), one(αS_c))
-    αS_c = typeof(S_l)(1)
     return S_l < αS_c ? d_ds * ((αS_c - S_l) / S_l)^p :
            zero(d_ds * (αS_c - S_l) / S_l * p)
 end
