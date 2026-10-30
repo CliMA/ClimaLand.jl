@@ -48,8 +48,8 @@ end
 function update_root_extraction!(p, Y, t, land, hydraulics::Canopy.SteadyStateModel)
     z = land.soil.domain.fields.z
     norm = p.scratch1 # A surface scratch field
-    Canopy.update_soil_moisture_stress!(p,Y,land.canopy.soil_moisture_stress, land.canopy)
-    βm = p.canopy.soil_moisture_stress.βm
+    (; θ_high, θ_low, c) = land.canopy.soil_moisture_stress
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.θ_l))
     root_dryness_weight =
         @. lazy(Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)*βm)
     ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
