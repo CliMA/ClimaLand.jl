@@ -494,8 +494,9 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil and consumption of O2
-SOC is held constant (initialized from data, no tendency).
+case of microbe production of CO2 in soil and consumption of O2.
+This source leaves SOC unchanged; `SoilCarbonLitterInput` adds its tendency
+when the canopy carries carbon pools.
 
 Physics:
 - CO2 production from microbial respiration (kg C m⁻³ s⁻¹)
