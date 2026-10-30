@@ -17,7 +17,7 @@ steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
     concurrency: 1
-    concurrency_group: 'depot/climaland-ci'
+    concurrency_group: 'depot/${BUILDKITE_PIPELINE_SLUG}'
     command:
       - "echo $$JULIA_DEPOT_PATH"
 
