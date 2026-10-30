@@ -87,3 +87,4 @@ where $R_{el}$ is the relative contribution of growth respiration (–), and $A_
 - This formulation follows the approach used in large-scale ecosystem models such as JULES (Clark et al., 2011).
 - Growth respiration is proportional to net assimilation after subtracting maintenance costs.
 - Maintenance respiration scales with tissue nitrogen pools.
+- With prognostic carbon pools (`PrognosticCarbonModel`), the canopy respires through `PoolBasedAutotrophicRespirationModel` instead, from the pools themselves; see [Prognostic carbon](../canopy_structure/prognostic_carbon.md).
