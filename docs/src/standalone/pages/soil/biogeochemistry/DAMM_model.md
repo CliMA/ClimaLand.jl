@@ -1,6 +1,6 @@
 # Soil Biogeochemistry: CO₂ Production and O₂ Consumption
 
-This section describes the coupled soil biogeochemistry model implemented in ClimaLand, which simulates the production and diffusion of CO₂, consumption of O₂, and microbial respiration sourced by a fixed pool of soil organic carbon ($Y_{C_{som}}$). The model combines the Dual Arrhenius and Michaelis-Menten (DAMM) kinetics framework for microbial respiration with gas diffusion equations that account for soil structure, temperature, and moisture, and with Henry's-law partitioning of dissolved CO₂ and O₂ between the gas and aqueous phases of the pore space.
+This section describes the coupled soil biogeochemistry model implemented in ClimaLand, which simulates the production and diffusion of CO₂, consumption of O₂, and microbial respiration sourced by a pool of soil organic carbon ($Y_{C_{som}}$), fixed unless the canopy carries prognostic carbon pools. The model combines the Dual Arrhenius and Michaelis-Menten (DAMM) kinetics framework for microbial respiration with gas diffusion equations that account for soil structure, temperature, and moisture, and with Henry's-law partitioning of dissolved CO₂ and O₂ between the gas and aqueous phases of the pore space.
 
 ## Model Overview
 
@@ -8,11 +8,11 @@ The biogeochemistry model carries three prognostic fields that evolve in space (
 
 - the total CO₂ stored per unit soil volume (gas phase plus dissolved), $Y_{CO_2}$ (kg C m⁻³ soil), with $Y_{CO_2} = \theta_{\rm eff}\, c_g$ where $c_g$ is the air-phase carbon mass concentration (kg C m⁻³ air) and $\theta_{\rm eff}$ is the effective porosity, defined as the sum of the gas-filled pore volume and the dissolved-equivalent volume of the liquid pore water (see Effective Porosity below);
 - the total O₂ stored per unit soil volume (gas phase plus dissolved), $Y_{O_2}$ (kg O m⁻³ soil), with $Y_{O_2} = \theta_{\rm {eff,o2}}\, c_{g, O_2}$ where $c_{g, O_2}$ is the air-phase carbon mass concentration (kg $O_2$ m⁻³ air) and $\theta_{\rm {eff, o2}}$ is the effective porosity, as above;
-- the soil organic carbon density, $Y_{C_{som}}$ (kg C m⁻³), held fixed at its initial value (no tendency, see below).
+- the soil organic carbon density, $Y_{C_{som}}$ (kg C m⁻³), held fixed at its initial value unless the canopy carries prognostic carbon pools (see below).
 
 The model captures the fundamental processes of aerobic decomposition: microbes consume soluble carbon and oxygen to produce carbon dioxide. CO₂ and O₂ diffuse through the soil pore space, with diffusion rates controlled by soil structure (porosity, tortuosity), moisture, temperature, and pressure.
 
-$Y_{C_{som}}$ is initialized from the SoilGrids organic carbon density product and is treated as a stationary spatial parameter: we assume that the input of organic matter (e.g., from litter and root turnover) is equal to the rate of decomposition, so the actual $Y_{C_{som}}$ is constant in time. The model thus captures geographic heterogeneity of carbon stocks but does not integrate carbon depletion on simulation timescales — a deliberate simplification appropriate for the multi-decade runs targeted by ClimaLand. In the future, we may model the rate of decomposition explicitly and track $Y_{C_{som}}$ over time; expressing $Y_{C_{som}}$ as a prognostic variable now allows that change to be made easily.
+$Y_{C_{som}}$ is initialized from the SoilGrids organic carbon density product and is treated as a stationary spatial parameter: we assume that the input of organic matter (e.g., from litter and root turnover) is equal to the rate of decomposition, so the actual $Y_{C_{som}}$ is constant in time. The model thus captures geographic heterogeneity of carbon stocks but does not integrate carbon depletion on simulation timescales — a deliberate simplification appropriate for the multi-decade runs targeted by ClimaLand. When the canopy carries prognostic carbon pools, the litter they shed enters the soil and $Y_{C_{som}}$ evolves (see Soil Organic Carbon below).
 
 ## Governing Equations
 
@@ -66,7 +66,7 @@ The second term represents O₂ consumption by microbial respiration. The stoich
 
 ### Soil Organic Carbon
 
-The $Y_{C_{som}}$ pool is held fixed at its initial value under the assumption of steady state:
+By default, the $Y_{C_{som}}$ pool is held fixed at its initial value under the assumption of steady state:
 
 ```math
 \begin{equation}
@@ -74,7 +74,17 @@ The $Y_{C_{som}}$ pool is held fixed at its initial value under the assumption o
 \end{equation}
 ```
 
-The pool $Y_{C_{som}}$ enters the DAMM substrate kinetics (below) but is not depleted by respiration. Its value is set from the SoilGrids organic carbon density at the start of the simulation, providing the spatial structure of carbon availability.
+The pool $Y_{C_{som}}$ then enters the DAMM substrate kinetics (below) but is not depleted by respiration. Its value is set from the SoilGrids organic carbon density at the start of the simulation, providing the spatial structure of carbon availability.
+
+In `LandModel` and `SoilCanopyModel`, when the canopy carries prognostic carbon pools (`PrognosticCarbonModel`), the soil CO₂ model includes the source `SoilCarbonLitterInput`, and the pool gains the litter of the canopy and loses the carbon respired by microbes:
+
+```math
+\begin{equation}
+\frac{\partial Y_{C_{som}}}{\partial t} = I_{litter}(z) - S_m
+\end{equation}
+```
+
+where $I_{litter}$ (kg C m⁻³ s⁻¹) is the litter of the leaf, wood and fine-root pools distributed over depth (see [Prognostic carbon](../../vegetation/canopy_structure/prognostic_carbon.md)). It still starts from the SoilGrids organic carbon density.
 
 ## Microbial Respiration: DAMM Model
 
@@ -333,7 +343,7 @@ At the bottom boundary, a zero-flux condition is applied: $F_{O_2,{\rm bottom}} 
 | Total CO₂ | $Y_{CO_2}$ | kg C m⁻³ soil | Gas plus dissolved, $\theta_{\rm eff} c_g$ |
 | Air-phase CO₂ | $c_g$ | kg C m⁻³ air | Diagnosed as $Y_{CO_2}/\theta_{\rm eff}$ |
 | O₂ volumetric fraction | $O_{2,f}$ | dimensionless | O₂ fraction in soil air |
-| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids, fixed |
+| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids; fixed unless the canopy carries carbon pools |
 | Microbial respiration | $S_m$ | kg C m⁻³ s⁻¹ | CO₂ production rate |
 
 ### Drivers

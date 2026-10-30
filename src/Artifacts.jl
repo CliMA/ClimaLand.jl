@@ -318,6 +318,23 @@ function clm_crop_fraction_path(; context = nothing)
     return joinpath(dir, "clm_crop_fraction.nc")
 end
 
+"""
+    xusaatchi_woody_carbon_path(; context = nothing)
+
+Return the path to the 2000-2019 mean carbon of the live woody vegetation, above and
+below ground, of Xu et al. (2021), in kg C m^-2 on a 1° grid, NaN over ocean. A copy in
+the repository, made by `artifacts/prognostic_carbon/create_xusaatchi_woody_carbon.jl`.
+"""
+function xusaatchi_woody_carbon_path(; context = nothing)
+    return joinpath(
+        @__DIR__,
+        "..",
+        "artifacts",
+        "prognostic_carbon",
+        "xusaatchi_woody_carbon_1deg.nc",
+    )
+end
+
 
 """
     clm_data__folder_path(; context, lowres = false)

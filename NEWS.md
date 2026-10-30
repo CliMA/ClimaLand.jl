@@ -2,6 +2,18 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
+  four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
+  allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
+  no wood); it respires through `PoolBasedAutotrophicRespirationModel`, and in `LandModel`
+  and `SoilCanopyModel` feeds its litter to a prognostic soil organic carbon
+  (`SoilCarbonLitterInput`). Also adds `Canopy.equilibrium_carbon_pools`,
+  `Simulations.spin_up_carbon_pools!`, which sets the pools to their equilibrium under the
+  mean drivers of a spin-up period, a `biomass` keyword to the integrated-model
+  constructors, and the `crd` (canopy leaf respiration) diagnostic. The long run with
+  prognostic LAI carries the pools, and its vegetation leaderboard compares `cveg` with the
+  live woody carbon of Xu et al. (2021).
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - ![][badge-💥breaking] API changes of the optimal-LAI model: `optimal_lai_z` is replaced
   by `optimal_lai_z_tree` and `optimal_lai_z_grass`, and `SAI_coeff` and `RAI_coeff` by
   `SAI_coeff_tree`, `SAI_coeff_grass`, `RAI_coeff_tree` and `RAI_coeff_grass`;

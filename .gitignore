@@ -8,6 +8,8 @@ experiments/integrated/fluxnet/out/*
 experiments/integrated/fluxnet/US-*/out/*
 *_longrun_*/
 *.nc
+# Temporary data files until they become artifacts
+!artifacts/prognostic_carbon/*.nc
 *.png
 # Precomputed tutorial figure committed intentionally (expensive to build on the fly)
 !docs/src/tutorials/calibration/perfect_model_ces_predictive_offline.png
