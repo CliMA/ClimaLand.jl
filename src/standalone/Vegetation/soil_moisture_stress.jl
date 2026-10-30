@@ -169,12 +169,12 @@ function compute_piecewise_moisture_stress(
 ) where {FT}
     # avoid taking e.g. sqrt of negative numbers for rational c
     arg = max((θ - θ_low) / (θ_high - θ_low), FT(0))
-    f1 = min(FT(1), arg^c)
-    f2 = arg^FT(4)
-    arg_c = FT(0.1)
-    f1_c = min(FT(1), arg_c^c)
-    f2_c = arg_c^FT(4)
-    return arg < arg_c ? f2* f1_c/f2_c : f1
+    return min(FT(1), arg^c)
+#    f2 = arg^FT(4)
+##    arg_c = FT(0.1)
+#    f1_c = min(FT(1), arg_c^c)
+#    f2_c = arg_c^FT(4)
+#    return arg < arg_c ? f2* f1_c/f2_c : f1
 end
 
 """
