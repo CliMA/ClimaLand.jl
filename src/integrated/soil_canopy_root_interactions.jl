@@ -53,8 +53,8 @@ function update_root_extraction!(p, Y, t, land, hydraulics::Canopy.SteadyStateMo
     root_dryness_weight =
         @. lazy(Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)*βm)
     ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
-
-    @. p.root_extraction = root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux/ norm # Integrates to equal transpiration.
+    FT = eltype(z)
+    @. p.root_extraction = root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux/ (norm+sqrt(eps(FT))) # Integrates to equal transpiration.
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,

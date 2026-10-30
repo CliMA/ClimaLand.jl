@@ -39,7 +39,7 @@ struct vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
 end
 function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
     m = 1 - 1 / n
-    S_c = (1 + ((n - 1) / n)^(1 - 2 * n))^(-m)
+    S_c = (1 + m^(1 - 2 * n))^(-m)
     return vanGenuchten{FT}(α, n, m, S_c)
 end
 
@@ -81,9 +81,9 @@ field_capacity_saturation(cm::ClimaCore.Fields.Field) =
     wilting_saturation(cm::AbstractSoilHydrologyClosure)
 
 Return the effective saturation at the wilting point. Approximate this
-as 75% of the way between S = 0 and S = S_c.
+as 90% of the way between S = 0 and S = S_c.
 """
-wilting_saturation(cm::AbstractSoilHydrologyClosure{FT}) where {FT} = FT(0.25)*cm.S_c
+wilting_saturation(cm::AbstractSoilHydrologyClosure{FT}) where {FT} = FT(0.1)*cm.S_c
 # Retention models broadcast as scalars, so a field of them maps elementwise
 wilting_saturation(cm::ClimaCore.Fields.Field) =
     wilting_saturation.(cm)

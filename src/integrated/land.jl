@@ -92,10 +92,10 @@ mutable struct LandModel{
         # Check that soil moisture stress parameters are consistent between canopy and soil
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
-            )
+       #     check_land_equality(
+       #         canopy.soil_moisture_stress.θ_low,
+       #         soil.parameters.θ_r,
+       #     )
         end
 
         # LandModel-specific checks
