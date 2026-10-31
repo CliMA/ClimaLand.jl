@@ -7,7 +7,9 @@ main
   of CLM4.5 and CLM5. With the old value the water table stayed within about a metre of
   the surface, and in the global runs (15 m of soil over a zero-flux bottom) it kept the
   root zone of savannas moist through the dry season. The default initial conditions
-  were spun up with the old value.
+  were spun up with the old value. The subsurface runoff now treats a water table above
+  the surface, which supersaturated layers can give, as one at the surface, so it never
+  exceeds `R_sb`.
   PR [#1941](https://github.com/CliMA/ClimaLand.jl/pull/1941)
 - ![][badge-🔥behavioralΔ] The piecewise soil moisture stress of the integrated models
   (`PiecewiseMoistureStressModel`) closes the stomata at the permanent wilting point,
