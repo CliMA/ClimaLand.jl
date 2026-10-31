@@ -2,6 +2,23 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] TOPMODEL subsurface runoff drains 100 times faster: the
+  default `R_sb` is 1.484e-5 m/s instead of 1.484e-7, between the drainage coefficients
+  of CLM4.5 and CLM5. With the old value the water table stayed within about a metre of
+  the surface, and in the global runs (15 m of soil over a zero-flux bottom) it kept the
+  root zone of savannas moist through the dry season. The default initial conditions
+  were spun up with the old value. The subsurface runoff now treats a water table above
+  the surface, which supersaturated layers can give, as one at the surface, so it never
+  exceeds `R_sb`.
+  PR [#1941](https://github.com/CliMA/ClimaLand.jl/pull/1941)
+- ![][badge-🔥behavioralΔ] The piecewise soil moisture stress of the integrated models
+  (`PiecewiseMoistureStressModel`) closes the stomata at the permanent wilting point,
+  -150 m (-1.5 MPa) on the retention curve of the soil, rather than at its residual
+  water content, which in clay-rich soils is far drier: plants kept transpiring through
+  the dry season. Set the new parameter `moisture_stress_wilting_potential` to `-inf`
+  for the old behaviour; the model stores it as `ψ_wilt`, and
+  `Soil.inverse_matric_potential` takes a field of retention models.
+  PR [#1941](https://github.com/CliMA/ClimaLand.jl/pull/1941)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
   four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
   allocation of trees and grasses weighted by the tree share of the LAI model (grasses build

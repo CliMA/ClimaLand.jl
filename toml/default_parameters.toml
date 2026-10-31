@@ -5,6 +5,12 @@ type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
 
+[moisture_stress_wilting_potential]
+value = -150.0
+type = "float"
+description = "Soil matric potential (m) at which the piecewise soil moisture stress closes the stomata: the permanent wilting point, -150 m (-1.5 MPa). -inf places it at the residual water content."
+tag = "SoilMoistureStress"
+
 [moisture_stress_sc]
 value = 5.0e-6
 type = "float"
@@ -25,9 +31,9 @@ description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["R_sb"]
-value = 1.484e-7
+value = 1.484e-5
 type = "float"
-description = "Units are m/s"
+description = "Units are m/s. TOPMODEL subsurface runoff when the water table is at the surface, which decays as exp(-f_over z) with the water table depth z. 100 times the earlier 1.484e-7 (about the SIMTOP coefficient of Noah-MP), which kept water tables within about a metre of the surface; it lies between the drainage coefficients of CLM4.5 (5.5e-6) and CLM5 (10 sin(slope) mm/s, 1.7e-4 for a 1 degree slope)."
 tag = "TOPMODELRunoff"
 
 # Big leaf energy parameters

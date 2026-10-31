@@ -96,9 +96,14 @@ mutable struct LandModel{
         # Check that soil moisture stress parameters are consistent between canopy and soil
         if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
+            (; ν, θ_r, hydrology_cm) = soil.parameters
+            S_wilt = Soil.inverse_matric_potential(
+                hydrology_cm,
+                canopy.soil_moisture_stress.ψ_wilt,
+            )
             check_land_equality(
                 canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
+                @. θ_r + S_wilt * (ν - θ_r)
             )
         end
 

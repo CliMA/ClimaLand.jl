@@ -199,6 +199,10 @@ function inverse_matric_potential(cm::BrooksCorey{FT}, ψ::FT) where {FT}
     return S
 end
 
+# Retention models broadcast as scalars, so a field of them maps elementwise
+inverse_matric_potential(cm::ClimaCore.Fields.Field, ψ) =
+    inverse_matric_potential.(cm, ψ)
+
 
 """
      approximate_ψ_S_slope(cm::BrooksCorey)

@@ -107,25 +107,29 @@ end
     domain,
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
+    ψ_wilt::FT = toml_dict["moisture_stress_wilting_potential"],
     soil_params
 ) where {FT <: AbstractFloat}
 
 Create a `PiecewiseMoistureStressModel` whose thresholds are computed from
-the soil parameters: the low threshold `θ_low` is the residual water content
-`θ_r`, and the high threshold `θ_high` is the field capacity
+the soil parameters: the low threshold is the water content at the wilting
+matric potential `ψ_wilt` (m), and the high threshold `θ_high` is the field
+capacity,
 
+    θ_low = θ_r + S(ψ_wilt) (ν - θ_r),
     θ_high = θ_r + S_fc (ν - θ_r),
 
-where `S_fc` is the effective saturation at the inflection point of the
-retention curve (`Soil.field_capacity_saturation`), which Assouline and Or
+where `S(ψ)` is the effective saturation of the retention curve
+(`Soil.inverse_matric_potential`) and `S_fc` the effective saturation at its
+inflection point (`Soil.field_capacity_saturation`), which Assouline and Or
 (2014) identify with field capacity. Stomata are unstressed above field
-capacity.
+capacity. With `ψ_wilt = -Inf`, `θ_low` is the residual water content `θ_r`.
 
 The soil parameters should be a named tuple with keys `ν` and `θ_r` and, for
-the field capacity, the retention model `hydrology_cm` (as returned by
-`Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`, `θ_high` is the
-porosity `ν`. The entries may be ClimaCore fields or floats, but must be
-consistently one or the other.
+the field capacity and the wilting point, the retention model `hydrology_cm`
+(as returned by `Soil.soil_vangenuchten_parameters`). Without `hydrology_cm`,
+`θ_high` is the porosity `ν` and `θ_low` is `θ_r`. The entries may be
+ClimaCore fields or floats, but must be consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
 """
@@ -133,6 +137,7 @@ function PiecewiseMoistureStressModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
+    ψ_wilt::FT = toml_dict["moisture_stress_wilting_potential"],
     soil_params = Soil.soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
@@ -143,16 +148,16 @@ function PiecewiseMoistureStressModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    θ_high = if :hydrology_cm in propertynames(soil_params)
+    θ_high, θ_low = if :hydrology_cm in propertynames(soil_params)
         (; θ_r, ν, hydrology_cm) = soil_params
         S_fc = Soil.field_capacity_saturation(hydrology_cm)
-        @. θ_r + S_fc * (ν - θ_r)
+        S_wilt = Soil.inverse_matric_potential(hydrology_cm, ψ_wilt)
+        (@. θ_r + S_fc * (ν - θ_r)), (@. θ_r + S_wilt * (ν - θ_r))
     else
-        copy(soil_params.ν)
+        copy(soil_params.ν), copy(soil_params.θ_r)
     end
-    θ_low = copy(soil_params.θ_r)
 
-    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c, ψ_wilt)
 end
 
 """
