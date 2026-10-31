@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.14.0
+----
 - ![][badge-💥breaking] API changes of the optimal-LAI model: `optimal_lai_z` is replaced
   by `optimal_lai_z_tree` and `optimal_lai_z_grass`, and `SAI_coeff` and `RAI_coeff` by
   `SAI_coeff_tree`, `SAI_coeff_grass`, `RAI_coeff_tree` and `RAI_coeff_grass`;
@@ -77,8 +80,16 @@ main
   and the times saved for the `DictWriter` and `HDF5Writer` are saved at the
   start of the output window. The default NetCDF diagnostics of a restarted
   `LandSimulation` are now correctly dated.
+  PR [#1932](https://github.com/CliMA/ClimaLand.jl/pull/1932)
 - ![][badge-✨feature] Diagnostics are reproducible when restarting a
   simulation.
+  PR [#1932](https://github.com/CliMA/ClimaLand.jl/pull/1932)
+- ![][badge-✨feature] Add GRACE terrestrial water storage data (`grace` artifact) as
+  a calibration target, and the `twsa` diagnostic.
+  PR [#1930](https://github.com/CliMA/ClimaLand.jl/pull/1930)
+- ![][badge-🚀performance] Make the model structs mutable, which halves the compile
+  time of the global snowy land model.
+  PR [#1906](https://github.com/CliMA/ClimaLand.jl/pull/1906)
 - ![][badge-🔥behavioralΔ] Recalibrate 18 default parameters of the global
   P-model land model against seasonal ERA5 latent and sensible heat fluxes and
   upwelling longwave radiation, and GOSIF GPP (Dec 2003 - Nov 2019, prescribed
@@ -91,6 +102,7 @@ main
   the latent heat flux, from 16.5 to 10.9 W m⁻² for the sensible heat flux,
   from 4.6 to 4.0 W m⁻² for the upwelling longwave radiation, and from 1.21 to
   1.13 g C m⁻² day⁻¹ for GPP.
+  PR [#1926](https://github.com/CliMA/ClimaLand.jl/pull/1926)
 - ![][badge-🐛bugfix] Close the soil skin energy balance within the
   Monin-Obukhov iterations of SurfaceFluxes 1.6, which prevent surface-callback
   oscillations at low wind speed under buoyancy-dependent gustiness; decide the
@@ -98,6 +110,7 @@ main
   balance keeps a root when the skin cools through the freezing temperature;
   and return one from `soil_evaporation_beta` when the aerodynamic and soil
   vapor conductances both vanish.
+  PR [#1928](https://github.com/CliMA/ClimaLand.jl/pull/1928)
 - ![][badge-🔥behavioralΔ] Use spatially varying canopy height and
   stem/root area indices in global models with a prescribed LAI, by default;
   replace true canopy height in plant hydraulics with a hydraulic height,
@@ -112,6 +125,11 @@ main
   of `turbulent_fluxes_at_a_point` without a reference (measured from the
   ground), are deprecated and kept for ClimaCoupler.
   PR [#1907](https://github.com/CliMA/ClimaLand.jl/pull/1907)
+- ![][badge-🔥behavioralΔ] Fix unbounded canopy heating in coupled simulations:
+  `CoupledAtmosphere` keeps convective gustiness, the P-model stomatal conductance
+  cannot go negative, and an absent canopy relaxes to the air temperature (new
+  parameter `absent_canopy_relaxation_time`).
+  PR [#1923](https://github.com/CliMA/ClimaLand.jl/pull/1923)
 - ![][badge-🔥behavioralΔ] Use 0.25° MODIS LAI of the land part of each cell
   (`modis_lai_0.25deg`, `modis_lai_climatology_0.25deg`, and
   `modis_max_lai_0.25deg` artifacts, from
@@ -120,6 +138,7 @@ main
   the leaderboard and calibration LAI target. The previous 1° data counted
   water as LAI = 0, so the LAI of coastal and lake-side cells was too low by
   their land fraction. Ocean cells are filled from the nearest land cells.
+  PR [#1918](https://github.com/CliMA/ClimaLand.jl/pull/1918)
 - ![][badge-✨feature] The MON column of the annual leaderboards
   (`*_sim_annual_time_avg_over_all_years.png`) shows the seasonal cycle of the
   northern and southern hemisphere means (solid and dashed) instead of the
@@ -204,7 +223,7 @@ main
 - ![][badge-🐛bugfix] Update `p.soil.θ_l` in `make_update_implicit_aux` of
   `Soil.EnergyHydrology`, so that implicit evaluations see the updated liquid
   water fraction.
-- Requires SurfaceFluxes 1.5 and ClimaParams 1.3.1.
+- Requires SurfaceFluxes 1.6 and ClimaParams 1.3.1.
 
 v1.13.0
 ----
