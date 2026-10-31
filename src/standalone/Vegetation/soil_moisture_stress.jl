@@ -131,15 +131,23 @@ struct PiecewiseMoistureStressModel{
     θ_low::F
     """Curvature parameter (unitless)"""
     c::FT
-
+    """Matric potential at which stomata close (m), which sets `θ_low` from the soil
+    retention curve; -Inf for the residual water content"""
+    ψ_wilt::FT
 end
 
 function PiecewiseMoistureStressModel{FT}(;
     θ_high,
     θ_low,
     c::FT,
+    ψ_wilt::FT = FT(-Inf),
 ) where {FT <: AbstractFloat}
-    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(
+        θ_high,
+        θ_low,
+        c,
+        ψ_wilt,
+    )
 end
 
 ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)

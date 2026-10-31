@@ -5,6 +5,12 @@ type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
 
+[moisture_stress_wilting_potential]
+value = -150.0
+type = "float"
+description = "Soil matric potential (m) at which the piecewise soil moisture stress closes the stomata: the permanent wilting point, -150 m (-1.5 MPa). -inf places it at the residual water content."
+tag = "SoilMoistureStress"
+
 [moisture_stress_sc]
 value = 5.0e-6
 type = "float"

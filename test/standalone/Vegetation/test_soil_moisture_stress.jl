@@ -103,12 +103,24 @@ for FT in (Float32, Float64)
             domain,
             toml_dict;
             soil_params = (; ν, θ_r, hydrology_cm),
+            ψ_wilt = FT(-Inf),
         )
         @test sms_fc.θ_low == θ_r
         S_fc = (1 + 1 / hydrology_cm.m)^(-hydrology_cm.m)
         @test S_fc ≈ FT(0.63) atol = FT(0.01) # n = 1.5
         @test Soil.field_capacity_saturation(hydrology_cm) ≈ S_fc
         @test sms_fc.θ_high ≈ θ_r + S_fc * (ν - θ_r)
+        @test sms_fc.ψ_wilt == FT(-Inf)
+        # by default, stomata close at the wilting point of the retention curve
+        sms_wilt = PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict;
+            soil_params = (; ν, θ_r, hydrology_cm),
+        )
+        @test sms_wilt.ψ_wilt == FT(-150)
+        (; α, n, m) = hydrology_cm
+        @test sms_wilt.θ_low ≈ θ_r + (1 + (α * 150)^n)^(-m) * (ν - θ_r)
+        @test θ_r < sms_wilt.θ_low < sms_wilt.θ_high
         @test Soil.field_capacity_saturation(
             Soil.BrooksCorey{FT}(; c = FT(0.3), ψb = FT(-0.1)),
         ) == 1
