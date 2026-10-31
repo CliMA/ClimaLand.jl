@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The piecewise soil moisture stress of the integrated models
+  (`PiecewiseMoistureStressModel`) closes the stomata at the permanent wilting point,
+  -150 m (-1.5 MPa) on the retention curve of the soil, rather than at its residual
+  water content, which in clay-rich soils is far drier: plants kept transpiring through
+  the dry season. Set the new parameter `moisture_stress_wilting_potential` to `-inf`
+  for the old behaviour; the model stores it as `ψ_wilt`, and
+  `Soil.inverse_matric_potential` takes a field of retention models.
+  PR [#1941](https://github.com/CliMA/ClimaLand.jl/pull/1941)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
   four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
   allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
