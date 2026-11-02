@@ -2,6 +2,13 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The ERA5 forcing is applied on time. `LandSimulation` now
+  updates the drivers every step (the default `updateat` is `Δt` instead of 3 hours), and
+  `prescribed_forcing_era5` and the perturbed variants read ERA5's hourly mean rates
+  (precipitation, snowfall, downward shortwave and longwave, the diffuse fraction) half an
+  hour later, as ERA5 stamps them at the end of the hour they average
+  (`TimeShiftedInput`). Before, the drivers held for 3 hours the mean of the hour before
+  each update, so the light reached the surface about 2 hours late.
 
 v1.14.0
 ----
