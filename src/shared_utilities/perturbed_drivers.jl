@@ -95,7 +95,8 @@ end
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder,
-                             interpolation_method = Interpolations.Constant(),)
+                             interpolation_method = Interpolations.Constant(),
+                             mean_rate_shift = Dates.Minute(30),)
 
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
@@ -119,33 +120,44 @@ function prescribed_perturbed_temperature_era5(
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
+    mean_rate_shift = Dates.Minute(30),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
-    precip = TimeVaryingInput(
-        [era5_ncdata_path, era5_ncdata_path],
-        ["mtpr", "msr"],
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
-        method = time_interpolation_method,
-        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+    precip = TimeShiftedInput(
+        TimeVaryingInput(
+            [era5_ncdata_path, era5_ncdata_path],
+            ["mtpr", "msr"],
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> -data / _ρ_liq,
+            ),
+            method = time_interpolation_method,
+            compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+        ),
+        mean_rate_shift,
     )
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
-    snow_precip = TimeVaryingInput(
-        era5_ncdata_path,
-        "msr",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
-        method = time_interpolation_method,
+    snow_precip = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msr",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> -data / _ρ_liq,
+            ),
+            method = time_interpolation_method,
+        ),
+        mean_rate_shift,
     )
     if max_wind_speed isa Nothing
         wind_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2)
@@ -218,17 +230,20 @@ function prescribed_perturbed_temperature_era5(
         c_co2 = c_co2,
     )
 
-    SW_d = TimeVaryingInput(
-        era5_ncdata_path,
-        "msdwswrf",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (;
-            preprocess_func = (data) -> max.(data, Float32(0)),
+    SW_d = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msdwswrf",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> max.(data, Float32(0)),
+            ),
+            method = time_interpolation_method,
         ),
-        method = time_interpolation_method,
+        mean_rate_shift,
     )
     function compute_diffuse_fraction(total, direct)
         diff = max(total - direct, Float32(0))
@@ -238,26 +253,32 @@ function prescribed_perturbed_temperature_era5(
         return @. compute_diffuse_fraction(total, direct)
     end
 
-    frac_diff = TimeVaryingInput(
-        [era5_ncdata_path, era5_ncdata_path],
-        ["msdwswrf", "msdrswrf"],
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        method = time_interpolation_method,
-        compose_function = compute_diffuse_fraction_broadcasted,
+    frac_diff = TimeShiftedInput(
+        TimeVaryingInput(
+            [era5_ncdata_path, era5_ncdata_path],
+            ["msdwswrf", "msdrswrf"],
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            method = time_interpolation_method,
+            compose_function = compute_diffuse_fraction_broadcasted,
+        ),
+        mean_rate_shift,
     )
     perturb_lw_d(LW_d; ΔT = ΔT, a = 2) = max.(LW_d, Float32(0)) .+ (a * ΔT)
-    LW_d = TimeVaryingInput(
-        era5_ncdata_path,
-        "msdwlwrf",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        method = time_interpolation_method,
-        file_reader_kwargs = (; preprocess_func = perturb_lw_d),
+    LW_d = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msdwlwrf",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            method = time_interpolation_method,
+            file_reader_kwargs = (; preprocess_func = perturb_lw_d),
+        ),
+        mean_rate_shift,
     )
     cos_zenith_angle =
         (t, s) -> default_cos_zenith_angle(
@@ -294,7 +315,8 @@ end
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder,
-                             interpolation_method = Interpolations.Constant(),)
+                             interpolation_method = Interpolations.Constant(),
+                             mean_rate_shift = Dates.Minute(30),)
 
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
@@ -318,33 +340,44 @@ function prescribed_perturbed_rh_era5(
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
+    mean_rate_shift = Dates.Minute(30),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
-    precip = TimeVaryingInput(
-        [era5_ncdata_path, era5_ncdata_path],
-        ["mtpr", "msr"],
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
-        method = time_interpolation_method,
-        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+    precip = TimeShiftedInput(
+        TimeVaryingInput(
+            [era5_ncdata_path, era5_ncdata_path],
+            ["mtpr", "msr"],
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> -data / _ρ_liq,
+            ),
+            method = time_interpolation_method,
+            compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+        ),
+        mean_rate_shift,
     )
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
-    snow_precip = TimeVaryingInput(
-        era5_ncdata_path,
-        "msr",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
-        method = time_interpolation_method,
+    snow_precip = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msr",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> -data / _ρ_liq,
+            ),
+            method = time_interpolation_method,
+        ),
+        mean_rate_shift,
     )
     if max_wind_speed isa Nothing
         wind_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2)
@@ -415,17 +448,20 @@ function prescribed_perturbed_rh_era5(
         c_co2 = c_co2,
     )
 
-    SW_d = TimeVaryingInput(
-        era5_ncdata_path,
-        "msdwswrf",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (;
-            preprocess_func = (data) -> max.(data, Float32(0)),
+    SW_d = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msdwswrf",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> max.(data, Float32(0)),
+            ),
+            method = time_interpolation_method,
         ),
-        method = time_interpolation_method,
+        mean_rate_shift,
     )
     function compute_diffuse_fraction(total, direct)
         diff = max(total - direct, Float32(0))
@@ -435,27 +471,33 @@ function prescribed_perturbed_rh_era5(
         return @. compute_diffuse_fraction(total, direct)
     end
 
-    frac_diff = TimeVaryingInput(
-        [era5_ncdata_path, era5_ncdata_path],
-        ["msdwswrf", "msdrswrf"],
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        method = time_interpolation_method,
-        compose_function = compute_diffuse_fraction_broadcasted,
-    )
-    LW_d = TimeVaryingInput(
-        era5_ncdata_path,
-        "msdwlwrf",
-        surface_space;
-        start_date,
-        regridder_type,
-        regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (;
-            preprocess_func = (data) -> max.(data, Float32(0)),
+    frac_diff = TimeShiftedInput(
+        TimeVaryingInput(
+            [era5_ncdata_path, era5_ncdata_path],
+            ["msdwswrf", "msdrswrf"],
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            method = time_interpolation_method,
+            compose_function = compute_diffuse_fraction_broadcasted,
         ),
-        method = time_interpolation_method,
+        mean_rate_shift,
+    )
+    LW_d = TimeShiftedInput(
+        TimeVaryingInput(
+            era5_ncdata_path,
+            "msdwlwrf",
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            file_reader_kwargs = (;
+                preprocess_func = (data) -> max.(data, Float32(0)),
+            ),
+            method = time_interpolation_method,
+        ),
+        mean_rate_shift,
     )
     cos_zenith_angle =
         (t, s) -> default_cos_zenith_angle(

@@ -5,6 +5,7 @@ using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+using ClimaUtilities.TimeManager: ITime
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
@@ -101,6 +102,26 @@ end
     p = (; drivers = ClimaLand.initialize_drivers((pp,), coords))
     precip_update!(p, 0.0)
     @test p.drivers.P_liq == sfc_instance .* 0 .- FT(1)
+end
+
+@testset "TimeShiftedInput" begin
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((1.0, 2.0)),
+        ylim = FT.((1.0, 2.0)),
+        zlim = FT.((1.0, 2.0)),
+        nelements = (1, 1, 1),
+    )
+    dest = ClimaCore.Fields.zeros(
+        axes(ClimaLand.Domains.coordinates(domain).surface),
+    )
+    input = ClimaLand.TimeShiftedInput(
+        TimeVaryingInput((t) -> float(t)),
+        Dates.Minute(30),
+    )
+    ClimaLand.evaluate!(dest, input, 600.0)
+    @test all(parent(dest) .== FT(2400))
+    ClimaLand.evaluate!(dest, input, ITime(600; epoch = DateTime(2020)))
+    @test all(parent(dest) .== FT(2400))
 end
 
 @testset "PrescribedAtmosphere and PrescribedRadiativeFluxes show and summary" begin
