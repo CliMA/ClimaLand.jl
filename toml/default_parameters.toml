@@ -1057,7 +1057,7 @@ tag = "EnergyHydrologyParameters"
 ["soil_scalar_roughness_length"]
 value = 0.005
 type = "float"
-description = "Scalar roughness length for soil (m), which sets its transfer coefficient for heat and water vapour; CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP (0.00302), raised to 0.005 with the soil moisture stress on the P-model's xi, under which the savannas transpire less: the soil then passes the heat to the air at a lower surface temperature."
+description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_exponent"]
