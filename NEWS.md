@@ -2,6 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The albedo of dry snow varies half as much with the sun angle:
+  `alpha_0` is 0.70 instead of 0.59 and `delta_alpha` 0.20 instead of 0.40, which keeps
+  the albedo at a cosine of the zenith angle of 0.3. It ran from 0.65 under an overhead
+  sun to 0.99 at the horizon, while the albedo of dry snow observed on the ice sheets, and
+  ERA5's, hardly changes with the sun angle: the summer snow of Antarctica and Greenland was
+  too dark, and the snow under a low sun too bright.
 - ![][badge-🔥behavioralΔ] TOPMODEL subsurface runoff drains 100 times faster: the
   default `R_sb` is 1.484e-5 m/s instead of 1.484e-7, between the drainage coefficients
   of CLM4.5 and CLM5. With the old value the water table stayed within about a metre of
