@@ -614,6 +614,12 @@ type = "float"
 description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "PModelParameters"
 
+["pmodel_xi_moisture_exponent"]
+value = 0.5
+type = "float"
+description = "Exponent p of the soil moisture stress betam on the P-model's sensitivity of ci/ca to dryness, xi * betam^p: drier soil makes water dearer, lowering the unit cost ratio beta in proportion to betam at p = 0.5 (Lavergne et al. 2020). 0 leaves ci/ca unstressed."
+tag = "PModelParameters"
+
 # P Model constants (see Stocker et al. (2020) Table A2 and references within for more information)
 ["pmodel_Kc25"]
 value = 39.97
@@ -1049,9 +1055,9 @@ description = "Maximum depth of the dry soil layer that can develop under evapor
 tag = "EnergyHydrologyParameters"
 
 ["soil_scalar_roughness_length"]
-value = 0.00302
+value = 0.005
 type = "float"
-description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP (0.00302), raised to 0.005 with the soil moisture stress on the P-model's xi, to keep the soil of drying savannas coupled to the air."
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_exponent"]
