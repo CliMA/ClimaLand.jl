@@ -156,13 +156,13 @@ git-tree-sha1 = "b849eb95c09190095e7bf021494ddeda8858af01"
 
     [[modis_clumping_index.download]]
     sha256 = "e4c766a93a673e5dc22540687ef5616416d65bb13a0f4a67789b95d49ccbb158"
-    url = "https://caltech.box.com/shared/static/ec2y3k5kqpl9wjvtsx3584wgkp5q8dyw.gz"
+    url = "https://caltech.box.com/shared/static/y9y9z02jvbigysp7lb7li77ax1p723ym.gz"
 
 [bonan_richards_eqn]
 git-tree-sha1 = "043f9354b961fd3ef6ac4cf71d0c99930e177a92"
     [[bonan_richards_eqn.download]]
     sha256 = "50f1739dfd8193742488f249bd1ba8a157dfc7c1d8a27392ba7edbe9b4c0db03"
-    url = "https://caltech.box.com/shared/static/4jcz9c1lp6rt750q28kx3qvihi8393tv.gz"
+    url = "https://caltech.box.com/shared/static/eb0yfxibx43qxk1vh957xknffwlw77t4.gz"
 
 [fluxnet_sites]
 git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
@@ -189,7 +189,7 @@ git-tree-sha1 = "49386718eda19d2fa00ae6981d83948c6664057a"
 
     [[lehmann2008_evaporation.download]]
     sha256 = "e9603add174709a8eb7f70487bdc0f519843c03d83cb40cf07acd428f0d9d881"
-    url = "https://caltech.box.com/shared/static/khhop0nvuumrtzdakemaab8hsq8emh8e.gz"
+    url = "https://caltech.box.com/shared/static/qcqqjy1s3npdae59gikwf580fnw2n80f.gz"
 
 [ilamb_data]
 git-tree-sha1 = "839224a62b59d73073bdb9a5c55d3dc75e30fe33"
