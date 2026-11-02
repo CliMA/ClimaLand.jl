@@ -260,6 +260,7 @@ end
         ϕa1_c4 = toml_dict["pmodel_ϕa1_c4"],
         ϕa2_c4 = toml_dict["pmodel_ϕa2_c4"],
         α = toml_dict["pmodel_α"],
+        ξ_moisture_exponent = toml_dict["pmodel_xi_moisture_exponent"],
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
@@ -296,6 +297,7 @@ function PModel{FT}(
     ϕa1_c4 = toml_dict["pmodel_ϕa1_c4"],
     ϕa2_c4 = toml_dict["pmodel_ϕa2_c4"],
     α = toml_dict["pmodel_α"],
+    ξ_moisture_exponent = toml_dict["pmodel_xi_moisture_exponent"],
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar,
@@ -311,6 +313,7 @@ function PModel{FT}(
         ϕa1_c4,
         ϕa2_c4,
         α,
+        ξ_moisture_exponent,
     )
 
     return PModel{FT}(fractional_c3, toml_dict, parameters; binarize)
