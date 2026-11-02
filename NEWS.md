@@ -14,6 +14,7 @@ main
   flux. With the stress alone, the savannas transpire less and their surface warms (the
   upwelling longwave flux 1.4% further from ERA5 with prescribed LAI); with 0.005 m the
   soil passes that heat to the air at a lower surface temperature.
+  PR [#1946](https://github.com/CliMA/ClimaLand.jl/pull/1946)
 - ![][badge-🔥behavioralΔ] The ERA5 forcing is applied on time. `LandSimulation` now
   updates the drivers every step (the default `updateat` is `Δt` instead of 3 hours), and
   `prescribed_forcing_era5` and the perturbed variants read ERA5's hourly mean rates
@@ -21,12 +22,14 @@ main
   hour later, as ERA5 stamps them at the end of the hour they average
   (`TimeShiftedInput`). Before, the drivers held for 3 hours the mean of the hour before
   each update, so the light reached the surface about 2 hours late.
+  PR [#1946](https://github.com/CliMA/ClimaLand.jl/pull/1946)
 - ![][badge-🔥behavioralΔ] The albedo of dry snow varies half as much with the sun angle:
   `alpha_0` is 0.70 instead of 0.59 and `delta_alpha` 0.20 instead of 0.40, which keeps
   the albedo at a cosine of the zenith angle of 0.3. It ran from 0.65 under an overhead
   sun to 0.99 at the horizon, while the albedo of dry snow observed on the ice sheets, and
   ERA5's, hardly changes with the sun angle: the summer snow of Antarctica and Greenland was
   too dark, and the snow under a low sun too bright.
+  PR [#1946](https://github.com/CliMA/ClimaLand.jl/pull/1946)
 
 v1.14.0
 ----
