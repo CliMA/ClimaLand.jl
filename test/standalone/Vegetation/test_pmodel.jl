@@ -417,6 +417,50 @@ end
             @test isapprox(outβ.Rd, stressed_full.rd, rtol = FT(1e-4))
             @test isapprox(outβ.gs_co2, stressed_full.gs, rtol = FT(1e-4))
         end
+
+        @testset "Moisture stress on ξ for $FT" begin
+            βs = FT(0.4)
+            unstressed = compute_optimal_capacities(
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                FT(1),
+                APAR,
+            )
+            parameters_ξ = ClimaLand.Canopy.PModelParameters(;
+                (
+                    f => getfield(parameters, f) for
+                    f in fieldnames(typeof(parameters)) if
+                    f != :ξ_moisture_exponent
+                )...,
+                ξ_moisture_exponent = FT(0.5),
+            )
+            inst(β, params) =
+                ClimaLand.Canopy.compute_blended_pmodel_photosynthesis(
+                    unstressed,
+                    FT(1),
+                    P_air,
+                    VPD,
+                    ca,
+                    T_canopy,
+                    APAR,
+                    β,
+                    params,
+                    constants,
+                )
+            # unstressed, the exponent changes nothing
+            @test inst(FT(1), parameters_ξ).gs_co2 ≈
+                  inst(FT(1), parameters).gs_co2
+            # stressed, the stomata close more than the assimilation falls
+            outβ = inst(βs, parameters)
+            outβξ = inst(βs, parameters_ξ)
+            @test outβξ.gs_co2 < outβ.gs_co2
+            @test outβξ.GPP < outβ.GPP
+            @test outβξ.gs_co2 / outβξ.GPP < outβ.gs_co2 / outβ.GPP
+        end
     end
 end
 

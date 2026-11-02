@@ -41,6 +41,10 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
         Setting this to 0 represents no incorporation of past values. Since we update the EMA equation
         once per day, α = 1 day/τ where τ is the acclimation timescale in days."""
     α::FT
+    """Exponent `p` of the soil moisture stress βm on the sensitivity of χ to dryness,
+        which becomes ξ βm^p (unitless): drier soil makes water dearer, lowering the unit
+        cost ratio β and ξ ∝ √β (Lavergne et al. 2020); 0 leaves χ unstressed."""
+    ξ_moisture_exponent::FT = zero(α)
 end
 
 """
@@ -886,6 +890,10 @@ function compute_blended_pmodel_photosynthesis(
     constants,
 ) where {FT}
     (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = acclimated
+    # the acclimated ξ are the well-watered ones
+    ξ_stress = βm^parameters.ξ_moisture_exponent
+    ξ_c3 = ξ_c3 * ξ_stress
+    ξ_c4 = ξ_c4 * ξ_stress
     ca_pp = c_co2_air * P_air # partial pressure of co2
     Γstar = co2_compensation_pmodel(
         T_canopy,

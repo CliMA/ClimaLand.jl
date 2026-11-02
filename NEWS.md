@@ -2,6 +2,18 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Soil water stress also tightens the stomata of the P-model: the
+  sensitivity of ci/ca to dryness becomes ξ βm^p, with the new parameter
+  `pmodel_xi_moisture_exponent` p = 0.5, so that the unit cost ratio β falls in
+  proportion to the moisture stress βm, as Lavergne et al. (2020) find from carbon
+  isotopes. Before, βm scaled the assimilation rates only, and plants on drying soil kept
+  the water use of well-watered ones under a dry atmosphere. The bare-soil scalar
+  roughness length (`soil_scalar_roughness_length`) is 0.005 m instead of 0.00302. It
+  sets the transfer coefficient of the bare soil for heat and water vapour, and so how
+  far above the air temperature the soil surface must warm to give the air a given heat
+  flux. With the stress alone, the savannas transpire less and their surface warms (the
+  upwelling longwave flux 1.4% further from ERA5 with prescribed LAI); with 0.005 m the
+  soil passes that heat to the air at a lower surface temperature.
 - ![][badge-🔥behavioralΔ] The ERA5 forcing is applied on time. `LandSimulation` now
   updates the drivers every step (the default `updateat` is `Δt` instead of 3 hours), and
   `prescribed_forcing_era5` and the perturbed variants read ERA5's hourly mean rates
