@@ -2,6 +2,15 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] The ERA5 forcing is applied on time. `LandSimulation` now
+  updates the drivers every step (the default `updateat` is `Δt` instead of 3 hours), and
+  `prescribed_forcing_era5` and the perturbed variants read ERA5's hourly mean rates
+  (precipitation, snowfall, downward shortwave and longwave, the diffuse fraction) half an
+  hour later, as ERA5 stamps them at the end of the hour they average
+  (`TimeShiftedInput`). Before, the drivers held for 3 hours the mean of the hour before
+  each update, so the light reached the surface about 2 hours late. The quantum yield of the
+  P-model is 7% lower (the `pmodel_ϕa*` coefficients times 0.93), to keep GPP at GOSIF's
+  level now that the light meets the morning's conditions.
 - ![][badge-🔥behavioralΔ] TOPMODEL subsurface runoff drains 100 times faster: the
   default `R_sb` is 1.484e-5 m/s instead of 1.484e-7, between the drainage coefficients
   of CLM4.5 and CLM5. With the old value the water table stayed within about a metre of

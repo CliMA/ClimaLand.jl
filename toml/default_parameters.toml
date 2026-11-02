@@ -573,39 +573,39 @@ description = "Constant intrinsic quantum yield. Skillman (2008)."
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c3"]
-value = 0.044
+value = 0.04092
 type = "float"
-description = "Constant term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.352/8."
+description = "Constant term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.93 * 0.352/8, the factor 0.93 bringing GPP to GOSIF's level with the ERA5 forcing applied on time."
 tag = "PModelParameters"
 
 ["pmodel_ϕa1_c3"]
-value = 0.00275
+value = 0.0025575
 type = "float"
-description = "First order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.022/8."
+description = "First order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.93 * 0.022/8 (see pmodel_ϕa0_c3)."
 tag = "PModelParameters"
 
 ["pmodel_ϕa2_c3"]
-value = -0.0000425
+value = -0.000039525
 type = "float"
-description = "Second order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by -0.00034/8."
+description = "Second order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.93 * -0.00034/8 (see pmodel_ϕa0_c3)."
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c4"]
-value = -0.008
+value = -0.00744
 type = "float"
-description = "Constant term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+description = "Constant term in quadratic intrinsic quantum yield (Cai and Prentice 2020), times 0.93 (see pmodel_ϕa0_c3)."
 tag = "PModelParameters"
 
 ["pmodel_ϕa1_c4"]
-value = 0.00375
+value = 0.0034875
 type = "float"
-description = "First order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+description = "First order term in quadratic intrinsic quantum yield (Cai and Prentice 2020), times 0.93 (see pmodel_ϕa0_c3)."
 tag = "PModelParameters"
 
 ["pmodel_ϕa2_c4"]
-value = -0.000058
+value = -0.00005394
 type = "float"
-description = "Second order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+description = "Second order term in quadratic intrinsic quantum yield (Cai and Prentice 2020), times 0.93 (see pmodel_ϕa0_c3)."
 tag = "PModelParameters"
 
 ["pmodel_α"]
