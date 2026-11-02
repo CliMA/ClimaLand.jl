@@ -3,6 +3,11 @@ ClimaLand.jl Release Notes
 main
 ----
 
+v1.14.1
+----
+- ![][badge-🐛bugfix] Fix broken Box links for modis_clumping_index,
+  bonan_richards_eqn, and lehmann2008_evaporation artifacts.
+
 v1.14.0
 ----
 - ![][badge-💥breaking] API changes of the optimal-LAI model: `optimal_lai_z` is replaced
