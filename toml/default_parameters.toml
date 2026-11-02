@@ -260,15 +260,15 @@ tag = "PlantHydraulicsParameters"
 # ZenithAngleAlbedoModel parameters
 
 ["alpha_0"]
-value = 0.59
+value = 0.70
 type = "float"
-description = "Free parameter controlling the minimum snow albedo"
+description = "Free parameter controlling the minimum snow albedo. With delta_alpha, half the zenith-angle dependence of the calibration of PR #1486 (0.59 and 0.40), with the same albedo at cos(zenith) = 0.3: the albedo of dry snow observed on the ice sheets, and ERA5's, hardly varies with the sun angle."
 tag = "ZenithAngleAlbedoModel"
 
 ["delta_alpha"]
-value = 0.40
+value = 0.20
 type = "float"
-description = "Free parameter controlling the snow albedo when θs = 90∘"
+description = "Free parameter controlling the snow albedo when θs = 90∘ (see alpha_0)"
 tag = "ZenithAngleAlbedoModel"
 
 ["k"]
