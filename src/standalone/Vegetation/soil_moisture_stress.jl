@@ -117,6 +117,7 @@ The parameters should fall within
 the following ranges:
 - θ_high>θ_low should be in (θ_r, ν) where ν is the porosity of the soil
 - c should be positive
+- ψ_wilt should be negative, and measured in `m`.
 
 See Egea et al. (2011) for details.
 Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
@@ -131,15 +132,22 @@ struct PiecewiseMoistureStressModel{
     θ_low::F
     """Curvature parameter (unitless)"""
     c::FT
-
+    """Wilting point (m)"""
+    ψ_wilt::FT
 end
 
 function PiecewiseMoistureStressModel{FT}(;
     θ_high,
     θ_low,
     c::FT,
+    ψ_wilt::FT,
 ) where {FT <: AbstractFloat}
-    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(
+        θ_high,
+        θ_low,
+        c,
+        ψ_wilt,
+    )
 end
 
 ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)

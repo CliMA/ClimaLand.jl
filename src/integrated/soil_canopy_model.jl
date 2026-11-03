@@ -94,7 +94,10 @@ struct SoilCanopyModel{
                 canopy.soil_moisture_stress.θ_low,
                 @. soil.parameters.θ_r +
                    (soil.parameters.ν - soil.parameters.θ_r) *
-                   Soil.wilting_saturation(soil.parameters.hydrology_cm)
+                   Soil.wilting_saturation(
+                    soil.parameters.hydrology_cm;
+                    ψ_wilt = canopy.soil_moisture_stress.ψ_wilt,
+                )
             )
         end
 

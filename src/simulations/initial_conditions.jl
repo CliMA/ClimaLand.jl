@@ -1477,6 +1477,79 @@ function make_set_initial_state_from_atmos_and_parameters(
 end
 
 """
+    make_set_initial_state_from_atmos_and_parameters(land::SoilCanopyModel{FT}) where {FT}
+
+Returns a function which takes (Y,p,t0,land) as arguments, and updates
+the state Y in place with initial conditions from parameter values and the
+atmospheric temperature.
+"""
+function make_set_initial_state_from_atmos_and_parameters(
+    land::SoilCanopyModel{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        atmos = ClimaLand.get_drivers(land)[1]
+        earth_param_set = ClimaLand.get_earth_param_set(land.soil)
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t0)
+            evaluate!(p.drivers.P, atmos.P, t0)
+            evaluate!(p.drivers.q, atmos.q, t0)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
+        end
+        (; θ_r, ν, ρc_ds) = land.soil.parameters
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+        Y.soil.θ_i .= FT(0.0)
+        ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+        Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.drivers.T,
+            earth_param_set,
+        )
+
+        if !isnothing(land.soilco2)
+            Y.soilco2.CO2 .= FT(6e-5)   # ≈ θ_eff · c_atm · P·M_C/(R·T)
+            Y.soilco2.O2 .= FT(0.08)    # ≈ θ_eff · 0.21 · P·M_O2/(R·T)
+            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+        end
+
+
+        # Canopy component IC
+        if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+            Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+        else
+            Y.canopy.hydraulics.ϑ_l .= 0
+        end
+
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.energy,
+            land.canopy,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.biomass,
+            land.canopy;
+            t0,
+        )
+        set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            land.canopy.photosynthesis,
+            land.canopy,
+        )
+
+    end
+    return set_ic!
+end
+
+"""
     set_lake_initial_conditions!(Y, p, t0, model::ClimaLand.InlandWater.SlabLakeModel{FT}) where {FT}
 
 Set initial conditions for the slab lake model.

@@ -12,6 +12,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import Insolation
 using Dates
+using ClimaUtilities.TimeManager: ITime
 
 for FT in (Float32, Float64)
     @testset "Plant hydraulics parameterizations, FT = $FT" begin
@@ -268,6 +269,59 @@ for FT in (Float32, Float64)
             parent(
                 standalone_dY.canopy.hydraulics.ϑ_l .- dY.canopy.hydraulics.ϑ_l,
             ) .≈ FT(0),
+        )
+    end
+
+    @testset "Steady State PH, FT = $FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Point(; z_sfc = FT(0), longlat = FT.((-100, 40)))
+        ground = PrescribedGroundConditions{FT}()
+        LAI = TimeVaryingInput((t) -> 1.0)
+        start_date = DateTime(2005)
+        stop_date = start_date+Day(1)
+        forcing = prescribed_forcing_era5(
+            start_date,
+            stop_date,
+            domain.space.surface,
+            toml_dict,
+            FT;
+            use_lowres_forcing = true,
+        )
+        atmos = forcing[1]
+        radiation = forcing[2]
+        canopy = CanopyModel{FT}(
+            domain,
+            (; atmos, radiation, ground),
+            LAI,
+            toml_dict;
+            hydraulics = SteadyStateModel{FT}(),
+        )
+        @assert canopy.hydraulics isa Canopy.SteadyStateModel
+        Y, p, cds = initialize(canopy);
+        Y.canopy.hydraulics.ϑ_l .= 0
+        t0 = ITime(0, Second(1), start_date)
+        evaluate!(p.drivers.T, atmos.T, t0)
+        evaluate!(p.drivers.P, atmos.P, t0)
+        evaluate!(p.drivers.q, atmos.q, t0)
+        Y.canopy.energy.T .= p.drivers.T
+
+        ClimaLand.Simulations.set_canopy_component_initial_conditions!(
+            Y,
+            p,
+            canopy.photosynthesis,
+            canopy,
+        )
+        set_initial_cache! = make_set_initial_cache(canopy)
+        set_initial_cache!(p, Y, t0)
+        @test p.canopy.turbulent_fluxes.vapor_flux ==
+              p.canopy.hydraulics.fa_roots
+        @test all(parent(p.canopy.hydraulics.ψ) .== 0) # default ground conditions are at saturation, so ψ_plant = 0 also.
+        @test all(
+            parent(
+                Base.materialize(
+                    Canopy.hydraulic_height(p, Y, canopy.hydraulics, canopy),
+                ),
+            ) .== FT(1),
         )
     end
 end

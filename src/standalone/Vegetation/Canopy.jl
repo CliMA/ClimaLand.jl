@@ -133,6 +133,7 @@ function PiecewiseMoistureStressModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
+    ψ_wilt::FT = toml_dict["wilting_potential"],
     soil_params = Soil.soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
@@ -152,13 +153,13 @@ function PiecewiseMoistureStressModel{FT}(
     end
     θ_low = if :hydrology_cm in propertynames(soil_params)
         (; θ_r, ν, hydrology_cm) = soil_params
-        S_wilt = Soil.wilting_saturation(hydrology_cm)
+        S_wilt = Soil.wilting_saturation(hydrology_cm; ψ_wilt)
         @. θ_r + S_wilt * (ν - θ_r)
     else
         copy(soil_params.θ_r)
     end
 
-    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
+    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c, ψ_wilt)
 end
 
 """

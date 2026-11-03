@@ -9,7 +9,7 @@ using Dates
 using ClimaParams
 import SurfaceFluxes
 import ClimaLand.Parameters as LP
-
+using ClimaUtilities
 for FT in (Float32, Float64)
     toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
     @testset "Default constructors, FT = $FT" begin
@@ -66,6 +66,63 @@ for FT in (Float32, Float64)
             0.0,
         )
         @test p.soil.NIR_albedo == α_soil_NIR
+    end
+    @testset "Root extraction with Steady State and Piecewise SMS, FT = $FT" begin
+        domain = ClimaLand.Domains.Column(;
+            zlim = (FT(-2), FT(0)),
+            nelements = 10,
+            longlat = (FT(-92.2), FT(38.7)),
+        )
+        LAI = TimeVaryingInput((t) -> 1.0)
+        start_date = DateTime(2005)
+        stop_date = start_date+Day(1)
+        forcing = prescribed_forcing_era5(
+            start_date,
+            stop_date,
+            domain.space.surface,
+            toml_dict,
+            FT;
+            use_lowres_forcing = true,
+        )
+        model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain)
+        Y, p, cds = initialize(model)
+        set_ic! =
+            ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+                model,
+            )
+        t0 = ClimaUtilities.TimeManager.ITime(0, Second(1), start_date)
+        set_ic!(Y, p, t0, model)
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, t0)
+        z = domain.fields.z
+        norm = p.scratch1 # A surface scratch field
+        (; θ_high, θ_low, c) = model.canopy.soil_moisture_stress
+        βm = @. Canopy.compute_piecewise_moisture_stress(
+            θ_high,
+            θ_low,
+            c,
+            p.soil.θ_l,
+        )
+        root_dryness_weight =
+            @. Canopy.root_distribution(z, model.canopy.biomass.rooting_depth)*βm
+        ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
+        @test all(
+            parent(
+                @. p.root_extraction -
+                   root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux /
+                   (norm+sqrt(eps(FT)))
+            ) .≈ 0,
+        )
+
+        root_weight =
+            @. Canopy.root_distribution(z, model.canopy.biomass.rooting_depth)
+        ClimaCore.Operators.column_integral_definite!(norm, root_weight)
+        tmp = ClimaCore.Fields.zeros(domain.space.surface)
+        ClimaCore.Operators.column_integral_definite!(
+            tmp,
+            βm .* root_weight ./ norm,
+        )
+        @test all(parent(@. p.canopy.soil_moisture_stress.βm - tmp .≈ 0))
     end
 end
 
