@@ -2,6 +2,10 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Print a `LEADERBOARD` line per variable from
+  `compute_rmse_boxplots` with ClimaLand's annual global RMSE and the median
+  and best RMSE of the comparison models, so the numbers in `boxplot_rmse.png`
+  can be tracked across runs from the Buildkite logs.
 
 v1.14.1
 ----

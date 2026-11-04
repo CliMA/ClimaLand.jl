@@ -133,6 +133,33 @@ const _CARBON_PANELS = (
 )
 
 """
+    _print_rmse(p, rmse, units)
+
+Print ClimaLand's annual global RMSE for panel `p` with the median and best
+RMSE of the other models in its cohort, so the numbers in `boxplot_rmse.png`
+can be tracked over time from the logs.
+
+The line starts with `LEADERBOARD` followed by `key=value` pairs, e.g.,
+`LEADERBOARD short_name=shf season=ANN rmse=9.9 other_models_median_rmse=18.0
+other_models_best_rmse=2.07 n_other_models=12 data_source="ERA5"
+other_models_benchmark="vs FLUXCOM" units="W m^-2"` (on one line). The cohort's
+benchmark can differ from the one ClimaLand is compared against, as in the plot.
+"""
+function _print_rmse(p, rmse, units)
+    others = filter(isfinite, p.others)
+    median_rmse = isempty(others) ? NaN : Statistics.median(others)
+    best_rmse = isempty(others) ? NaN : minimum(others)
+    println(
+        "LEADERBOARD short_name=$(p.sim_short_name) season=ANN rmse=$rmse ",
+        "other_models_median_rmse=$median_rmse ",
+        "other_models_best_rmse=$best_rmse n_other_models=$(length(others)) ",
+        "data_source=\"$(p.data_source)\" ",
+        "other_models_benchmark=\"$(p.bench)\" units=\"$units\"",
+    )
+    return nothing
+end
+
+"""
     _annual_global_rmse(diagnostics_folder_path, short_name, data_source;
                         spin_up_months = 12)
 
@@ -405,6 +432,13 @@ function compute_rmse_boxplots(
                 p.data_source;
                 spin_up_months,
             )
+    end
+    for (col, p) in enumerate(all_panels)
+        _print_rmse(
+            p,
+            rmse_current[p.sim_short_name],
+            col <= n_energy ? "W m^-2" : "g m^-2 day^-1",
+        )
     end
 
     function _group_y_max(panels)
