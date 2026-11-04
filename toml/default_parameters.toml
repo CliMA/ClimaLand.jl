@@ -25,7 +25,7 @@ description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["R_sb"]
-value = 1.484e-7
+value = 1.484e-5
 type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
