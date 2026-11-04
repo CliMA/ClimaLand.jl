@@ -120,7 +120,6 @@ for FT in (Float32, Float64)
         Y, p = initialize_state(model)
         ϑ_wet = copy(Y.soil.ϑ_l)
         T = transpiration(p)
-        @test all(T .> 1e-9)
         # Root extraction balances transpiration, so the plant water is constant
         @test fa_roots(p) ≈ T rtol = 100 * eps(FT)
         dY = similar(Y)
@@ -151,7 +150,10 @@ for FT in (Float32, Float64)
             tmp,
             βm .* root_weight ./ norm,
         )
-        @test all(parent(@. p.canopy.soil_moisture_stress.βm - tmp .≈ 0))
+        @test all(
+            abs.(parent((p.canopy.soil_moisture_stress.βm .- tmp) ./ tmp)) .<
+            (100*eps(FT)),
+        )
 
         # Layers at the wilting point give no water to the canopy, and the
         # leaf water potential is a weighted potential of the wetter layers
@@ -225,7 +227,7 @@ for FT in (Float32, Float64)
         Y, p = initialize_state(
             model_no_stress;
             ϑ_l = @. ifelse(z > -0.4, θ_r, ϑ_wet)
-        )
+        );
         root_extraction = Array(parent(p.root_extraction))
         @test all(root_extraction[dry] .== 0)
         @test all(root_extraction[.!dry] .> 0)

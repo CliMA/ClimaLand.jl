@@ -103,22 +103,6 @@ end
 
 ## Soil Moisture Stress
 """
-    piecewise_moisture_stress_thresholds(ν, θ_r, hydrology_cm, ψ_wilt)
-
-Return the thresholds `(θ_high, θ_low)` of the `PiecewiseMoistureStressModel`
-for a soil with porosity `ν`, residual water content `θ_r`, and retention
-model `hydrology_cm`: the water contents at field capacity and at the wilting
-potential `ψ_wilt` (m). The soil parameters may be ClimaCore fields or floats.
-"""
-function piecewise_moisture_stress_thresholds(ν, θ_r, hydrology_cm, ψ_wilt)
-    S_fc = Soil.field_capacity_saturation(hydrology_cm)
-    S_wilt = Soil.wilting_saturation(hydrology_cm, ψ_wilt)
-    θ_high = @. θ_r + S_fc * (ν - θ_r)
-    θ_low = @. θ_r + S_wilt * (ν - θ_r)
-    return θ_high, θ_low
-end
-
-"""
     PiecewiseMoistureStressModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
@@ -1314,6 +1298,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         update_hydraulics!(p, Y, canopy.hydraulics, canopy)
 
         # Update soil moisture stress, used in photosynthesis and conductance
+        # This depends on the outcome of the previous call, so this ordering is important.
         update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
