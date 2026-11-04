@@ -1,6 +1,7 @@
 using Test
 using ClimaLand
 import ClimaComms
+import ClimaCore
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
 using ClimaLand.Soil
@@ -107,11 +108,37 @@ for FT in (Float32, Float64)
         )
         S_fc = hydrology_cm.S_c
         @test Soil.field_capacity_saturation(hydrology_cm) ≈ S_fc
+        @test S_fc ≈ FT(0.464) atol = FT(0.001) # n = 1.5
         @test sms_fc.θ_high ≈ θ_r + S_fc * (ν - θ_r)
         S_wilt = Soil.inverse_matric_potential(hydrology_cm, FT(-153))
         @test Soil.wilting_saturation(hydrology_cm) ≈ S_wilt
         @test sms_fc.θ_low ≈ θ_r + S_wilt * (ν - θ_r)
 
+        # A non-default wilting potential, for a float and a field of
+        # retention models
+        ψ_wilt = FT(-50)
+        S_wilt = Soil.inverse_matric_potential(hydrology_cm, ψ_wilt)
+        @test Soil.wilting_saturation(hydrology_cm, ψ_wilt) ≈ S_wilt
+        column =
+            ClimaLand.Domains.Column(; zlim = (FT(-1), FT(0)), nelements = 2)
+        z = ClimaCore.Fields.coordinate_field(column.space.subsurface).z
+        hydrology_cm_field = (_ -> hydrology_cm).(z)
+        @test all(
+            parent(Soil.wilting_saturation(hydrology_cm_field, ψ_wilt)) .≈
+            S_wilt,
+        )
+        sms_field = PiecewiseMoistureStressModel{FT}(
+            column,
+            toml_dict;
+            ψ_wilt,
+            soil_params = (;
+                ν = ClimaCore.Fields.zeros(column.space.subsurface) .+ ν,
+                θ_r = ClimaCore.Fields.zeros(column.space.subsurface) .+ θ_r,
+                hydrology_cm = hydrology_cm_field,
+            ),
+        )
+        @test all(parent(sms_field.θ_low) .≈ θ_r + S_wilt * (ν - θ_r))
+        @test all(parent(sms_field.θ_high) .≈ θ_r + S_fc * (ν - θ_r))
     end
 
 end

@@ -585,7 +585,7 @@ function root_water_flux_per_ground_area!(
     p::NamedTuple,
     t,
 ) where {FT}
-    p.canopy.hydraulics.fa_roots .= p.canopy.turbulent_fluxes.vapor_flux
+    fa .= p.canopy.turbulent_fluxes.vapor_flux
 end
 
 hydraulic_height(p, Y, hydraulics::SteadyStateModel{FT}, canopy) where {FT} =

@@ -80,7 +80,7 @@ field_capacity_saturation(cm::ClimaCore.Fields.Field) =
     field_capacity_saturation.(cm)
 
 """
-    wilting_saturation(cm::AbstractSoilHydrologyClosure; ψ_wilt = -153)
+    wilting_saturation(cm::AbstractSoilHydrologyClosure, ψ_wilt = -153)
 
 Return the effective saturation at the wilting point, which is given in meters of potential, e.g.
 ρ g ψ_soil = -1.5MPa, or ψ_wilt = -153 m.
@@ -88,9 +88,11 @@ Return the effective saturation at the wilting point, which is given in meters o
 Conversion of ψ_wilt to the correct float type occurs internally.
 """
 wilting_saturation(
-    cm::AbstractSoilHydrologyClosure{FT};
+    cm::AbstractSoilHydrologyClosure{FT},
     ψ_wilt = -153,
 ) where {FT} = Soil.inverse_matric_potential(cm, FT(ψ_wilt))
-# Retention models broadcast as scalars, so a field of them maps elementwise
-wilting_saturation(cm::ClimaCore.Fields.Field; ψ_wilt = -153) =
-    wilting_saturation.(cm; ψ_wilt = -153)
+# Retention models broadcast as scalars, so a field of them maps elementwise;
+# ψ_wilt is positional because keyword arguments in a broadcast are not isbits
+# on Julia < 1.12, which fails on GPUs
+wilting_saturation(cm::ClimaCore.Fields.Field, ψ_wilt = -153) =
+    wilting_saturation.(cm, ψ_wilt)

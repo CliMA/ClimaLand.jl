@@ -732,6 +732,54 @@ function set_canopy_component_initial_conditions!(
 end
 
 """
+    root_weighted_soil_potential(ψ_soil, land)
+
+Return a surface field with the soil water potential `ψ_soil` (m) averaged
+over the root distribution of the canopy of `land`.
+
+This allocates, and should only be used for initialization.
+"""
+function root_weighted_soil_potential(ψ_soil, land)
+    z = land.soil.domain.fields.z
+    root_weight = @. ClimaLand.Canopy.root_distribution(
+        z,
+        land.canopy.biomass.rooting_depth,
+    )
+    norm = ClimaCore.Fields.zeros(land.soil.domain.space.surface)
+    ψ_roots = ClimaCore.Fields.zeros(land.soil.domain.space.surface)
+    ClimaCore.Operators.column_integral_definite!(norm, root_weight)
+    ClimaCore.Operators.column_integral_definite!(
+        ψ_roots,
+        root_weight .* ψ_soil,
+    )
+    @. ψ_roots /= norm
+    return ψ_roots
+end
+
+"""
+    set_plant_water_from_potential!(ϑ_l, hydraulics, ψ)
+
+Set the plant water content `ϑ_l` in place to its value in equilibrium with
+the water potential `ψ` (m) on the retention curve of the plant hydraulics
+model `hydraulics`. The water content is floored at `eps`, as in
+`Canopy.augmented_liquid_fraction`, since the linear retention curve gives
+negative water contents below the potential at zero saturation.
+"""
+function set_plant_water_from_potential!(ϑ_l, hydraulics, ψ)
+    (; retention_model, ν, S_s) = hydraulics.parameters
+    @. ϑ_l = ClimaLand.Canopy.augmented_liquid_fraction(
+        ν,
+        ClimaLand.Canopy.inverse_water_retention_curve(
+            retention_model,
+            ψ,
+            ν,
+            S_s,
+        ),
+    )
+    return nothing
+end
+
+"""
     make_set_initial_state_from_file(
         ic_path,
         land::LandModel{FT};
@@ -851,13 +899,6 @@ function make_set_initial_state_from_file(
                         interpolation_method,
                     ),
                 )
-                Y.canopy.hydraulics.ϑ_l .=
-                    ClimaLand.Canopy.inverse_water_retention_curve.(
-                        land.canopy.hydraulics.parameters.retention_model,
-                        ψ_roots,
-                        land.canopy.hydraulics.parameters.ν,
-                        land.canopy.hydraulics.parameters.S_s,
-                    ) .* land.canopy.hydraulics.parameters.ν
             else
                 @. p.soil.ψ = ClimaLand.Soil.pressure_head(
                     land.soil.parameters.hydrology_cm,
@@ -866,21 +907,13 @@ function make_set_initial_state_from_file(
                     land.soil.parameters.ν - Y.soil.θ_i,
                     land.soil.parameters.S_s,
                 )
-                ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l))
-                z = land.soil.domain.fields.z
-                tmp = @. ClimaLand.Canopy.root_distribution(
-                    z,
-                    land.canopy.biomass.rooting_depth,
-                ) * p.soil.ψ / land.soil.domain.fields.depth
-                ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
-                Y.canopy.hydraulics.ϑ_l .=
-                    ClimaLand.Canopy.inverse_water_retention_curve.(
-                        land.canopy.hydraulics.parameters.retention_model,
-                        ψ_roots,
-                        land.canopy.hydraulics.parameters.ν,
-                        land.canopy.hydraulics.parameters.S_s,
-                    ) .* land.canopy.hydraulics.parameters.ν
+                ψ_roots = root_weighted_soil_potential(p.soil.ψ, land)
             end
+            set_plant_water_from_potential!(
+                Y.canopy.hydraulics.ϑ_l,
+                land.canopy.hydraulics,
+                ψ_roots,
+            )
         else
             Y.canopy.hydraulics.ϑ_l .= 0
         end
@@ -991,13 +1024,6 @@ function make_set_initial_state_from_file(
                         interpolation_method,
                     ),
                 )
-                Y.canopy.hydraulics.ϑ_l .=
-                    ClimaLand.Canopy.inverse_water_retention_curve.(
-                        land.canopy.hydraulics.parameters.retention_model,
-                        ψ_roots,
-                        land.canopy.hydraulics.parameters.ν,
-                        land.canopy.hydraulics.parameters.S_s,
-                    ) .* land.canopy.hydraulics.parameters.ν
             else
                 @. p.soil.ψ = ClimaLand.Soil.pressure_head(
                     land.soil.parameters.hydrology_cm,
@@ -1006,21 +1032,13 @@ function make_set_initial_state_from_file(
                     land.soil.parameters.ν - Y.soil.θ_i,
                     land.soil.parameters.S_s,
                 )
-                ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l))
-                z = land.soil.domain.fields.z
-                tmp = @. ClimaLand.Canopy.root_distribution(
-                    z,
-                    land.canopy.biomass.rooting_depth,
-                ) * p.soil.ψ / land.soil.domain.fields.depth
-                ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
-                Y.canopy.hydraulics.ϑ_l .=
-                    ClimaLand.Canopy.inverse_water_retention_curve.(
-                        land.canopy.hydraulics.parameters.retention_model,
-                        ψ_roots,
-                        land.canopy.hydraulics.parameters.ν,
-                        land.canopy.hydraulics.parameters.S_s,
-                    ) .* land.canopy.hydraulics.parameters.ν
+                ψ_roots = root_weighted_soil_potential(p.soil.ψ, land)
             end
+            set_plant_water_from_potential!(
+                Y.canopy.hydraulics.ϑ_l,
+                land.canopy.hydraulics,
+                ψ_roots,
+            )
         else
             Y.canopy.hydraulics.ϑ_l .= 0
         end

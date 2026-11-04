@@ -81,25 +81,10 @@ struct SoilCanopyModel{
             )
         end
 
-        if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
-            # Note that these functions allocate. These checks should not occur except on initialization.
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_high,
-                @. soil.parameters.θ_r +
-                   (soil.parameters.ν - soil.parameters.θ_r) *
-                   Soil.field_capacity_saturation(soil.parameters.hydrology_cm)
-            )
-
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_low,
-                @. soil.parameters.θ_r +
-                   (soil.parameters.ν - soil.parameters.θ_r) *
-                   Soil.wilting_saturation(
-                    soil.parameters.hydrology_cm;
-                    ψ_wilt = canopy.soil_moisture_stress.ψ_wilt,
-                )
-            )
-        end
+        check_moisture_stress_thresholds(
+            canopy.soil_moisture_stress,
+            soil.parameters,
+        )
 
         return new{FT, MM, SM, VM}(soilco2, soil, canopy)
     end
