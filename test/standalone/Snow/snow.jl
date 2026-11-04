@@ -29,7 +29,7 @@ import ClimaLand.Parameters as LP
     precip = TimeVaryingInput((t) -> eltype(t)(0)) # no precipitation
     T_atmos = TimeVaryingInput((t) -> eltype(t)(290.0))
     u_atmos = TimeVaryingInput((t) -> eltype(t)(10.0))
-    q_atmos = TimeVaryingInput((t) -> eltype(t)(0.0003))
+    q_atmos = TimeVaryingInput((t) -> eltype(t)(0.003)) # surface melts
     h_atmos = FT(3)
     P_atmos = TimeVaryingInput((t) -> eltype(t)(101325))
     atmos = ClimaLand.PrescribedAtmosphere(
