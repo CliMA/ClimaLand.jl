@@ -549,6 +549,12 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     )
 end
 
+"""
+    SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT}
+
+A plant hydraulics parameterization where the root extraction approximately balances
+transpiration at each step so that the plant water is in steady state.
+"""
 struct SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT} end
 
 """
