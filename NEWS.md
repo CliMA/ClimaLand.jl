@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Faster TOPMODEL subsurface drainage: the default `R_sb` is
+  1.484e-5 m/s instead of 1.484e-7.
+  PR [#1945](https://github.com/CliMA/ClimaLand.jl/pull/1945)
 
 v1.14.1
 ----
