@@ -459,7 +459,7 @@ end
         Y.soil.ρe_int = ρe_int0
 
         # Canopy IC
-        ϑ0 = 0
+        ϑ0 = FT(0.1)
         CTemp0 = FT(290.5)
 
         Y.canopy.hydraulics.ϑ_l .= ϑ0

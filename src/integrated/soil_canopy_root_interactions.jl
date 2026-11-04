@@ -91,7 +91,7 @@ function update_root_extraction!(
     FT = eltype(z)
     @. p.root_extraction =
         root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux /
-        (norm+sqrt(eps(FT))) # Integrates to equal transpiration.
+        max(norm, eps(FT)) # Integrates to equal transpiration.
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -104,8 +104,8 @@ end
 
 Computes the root extraction at each level in the soil by assuming a steady state between the canopy and soil layers. This is suitable
 when using a SteadyStateModel and arbitrary moisture stress models that are independent of soil moisture (e.g. the Tuzet model, which depends
-on leaf water potential, or the no stress model).  Here, we weight the flux from each layer using the soil moisture.
-This ensures that layers give water to the canopy in proportion to the root density and the soil moisture available, but it may not be stable
+on leaf water potential, or the no stress model). Here, we weight the flux from each layer by the root density and the liquid water
+above the residual water content, so that layers at the residual water content give no water to the canopy. This may not be stable
 for all situations since we treat root extraction explicitly.
 """
 function update_root_extraction!(
@@ -117,16 +117,17 @@ function update_root_extraction!(
     sms,
 )
     z = land.soil.domain.fields.z
-    norm = p.scratch1 # A surface scratch field
-    root_dryness_weight = @. lazy(
-        Canopy.root_distribution(z, land.canopy.biomass.rooting_depth) *
-        p.soil.θ_l,
-    )
-    ClimaCore.Operators.column_integral_definite!(norm, root_dryness_weight)
     FT = eltype(z)
+    norm = p.scratch1 # A surface scratch field
+    (; θ_r) = land.soil.parameters
+    root_water_weight = @. lazy(
+        Canopy.root_distribution(z, land.canopy.biomass.rooting_depth) *
+        max(Y.soil.ϑ_l - θ_r, FT(0)),
+    )
+    ClimaCore.Operators.column_integral_definite!(norm, root_water_weight)
     @. p.root_extraction =
-        root_dryness_weight * p.canopy.turbulent_fluxes.vapor_flux /
-        (norm+sqrt(eps(FT))) # Integrates to equal transpiration.
+        root_water_weight * p.canopy.turbulent_fluxes.vapor_flux /
+        max(norm, eps(FT)) # Integrates to equal transpiration.
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -294,8 +295,9 @@ end
      update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms::Canopy.PiecewiseMoistureStressModel, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
 Updates the leaf water potential with the estimated steady state value in the case of a prognostic ground condition,
-when the PiecewiseMoistureStress function is chosen. We approximate ψ_leaf as the root distribution and 
-soil moisture stress weighted soil ψ.
+when the PiecewiseMoistureStress function is chosen. We approximate ψ_leaf as the root distribution and
+soil moisture stress weighted soil ψ. When every layer is at or below the wilting point, ψ_leaf is the
+wilting potential `ψ_wilt`, the limit of the weighted soil ψ as the last layer dries.
 """
 function update_steady_state_leaf_water_potential!(
     p,
@@ -307,20 +309,24 @@ function update_steady_state_leaf_water_potential!(
     θ_l = p.soil.θ_l
     cds = ClimaCore.Fields.coordinate_field(axes(θ_l))
     norm = p.scratch1 # A surface scratch field
-    (; θ_high, θ_low, c) = sms
+    (; θ_high, θ_low, c, ψ_wilt) = sms
     root_dryness_weight = @. lazy(
         Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) *
-        compute_piecewise_moisture_stress(θ_high, θ_low, c, p.soil.θ_l),
+        compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
     )
     Operators.column_integral_definite!(norm, root_dryness_weight)
-    field = @. lazy(p.soil.ψ * root_dryness_weight / (norm + sqrt(eps(FT))))
-    Operators.column_integral_definite!(p.canopy.hydraulics.ψ, field)
+    ψ_leaf = p.canopy.hydraulics.ψ
+    Operators.column_integral_definite!(
+        ψ_leaf,
+        @. lazy(p.soil.ψ * root_dryness_weight)
+    )
+    @. ψ_leaf = ifelse(norm > 0, ψ_leaf / norm, ψ_wilt)
 end
 
 """
      update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
-Updates the leaf water potential with the estimated steady state value in the case of a prognostic ground condition for 
+Updates the leaf water potential with the estimated steady state value in the case of a prognostic ground condition for
 arbitrary soil moisture stress parameterizations. Here we weight the potential by the amount of water in each layer.
 """
 function update_steady_state_leaf_water_potential!(
@@ -330,12 +336,40 @@ function update_steady_state_leaf_water_potential!(
     ground::PrognosticGroundConditions{FT},
     canopy,
 ) where {FT}
+    θ_l = p.soil.θ_l
     cds = ClimaCore.Fields.coordinate_field(axes(θ_l))
     norm = p.scratch1 # A surface scratch field
     root_weight = @. lazy(
-        root_distribution(cds.z, canopy.biomass.rooting_depth) * p.soil.θ_l,
+        Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) * θ_l,
     )
     Operators.column_integral_definite!(norm, root_weight)
-    field = @. lazy(p.soil.ψ * root_weight / (norm + sqrt(eps(FT))))
+    field = @. lazy(p.soil.ψ * root_weight / max(norm, eps(FT)))
     Operators.column_integral_definite!(p.canopy.hydraulics.ψ, field)
+end
+
+"""
+    check_moisture_stress_thresholds(sms, soil_parameters)
+
+Check that the thresholds of a `PiecewiseMoistureStressModel` are those that
+`Canopy.piecewise_moisture_stress_thresholds` computes from the soil
+parameters; other soil moisture stress models need no check.
+
+This allocates, and should only be called at initialization.
+"""
+check_moisture_stress_thresholds(sms, soil_parameters) = nothing
+
+function check_moisture_stress_thresholds(
+    sms::Canopy.PiecewiseMoistureStressModel,
+    soil_parameters,
+)
+    (; ν, θ_r, hydrology_cm) = soil_parameters
+    θ_high, θ_low = Canopy.piecewise_moisture_stress_thresholds(
+        ν,
+        θ_r,
+        hydrology_cm,
+        sms.ψ_wilt,
+    )
+    msg = "The thresholds of the PiecewiseMoistureStressModel differ from those of the soil model; construct it with `soil_params = (; ν, θ_r, hydrology_cm)` taken from the soil parameters."
+    check_land_equality(sms.θ_high, θ_high, msg)
+    check_land_equality(sms.θ_low, θ_low, msg)
 end

@@ -275,10 +275,15 @@ for FT in (Float32, Float64)
     @testset "Steady State PH, FT = $FT" begin
         toml_dict = LP.create_toml_dict(FT)
         domain = Point(; z_sfc = FT(0), longlat = FT.((-100, 40)))
-        ground = PrescribedGroundConditions{FT}()
+        # A soil drier than saturation, so that the leaf water potential is negative
+        θ_soil = FT(0.2)
+        ground = PrescribedGroundConditions{FT}(;
+            θ = TimeVaryingInput((t) -> θ_soil),
+        )
         LAI = TimeVaryingInput((t) -> 1.0)
-        start_date = DateTime(2005)
-        stop_date = start_date+Day(1)
+        # Near local solar noon in July, so that the canopy transpires
+        start_date = DateTime(2005, 7, 1, 18)
+        stop_date = start_date + Day(1)
         forcing = prescribed_forcing_era5(
             start_date,
             stop_date,
@@ -296,7 +301,7 @@ for FT in (Float32, Float64)
             toml_dict;
             hydraulics = SteadyStateModel{FT}(),
         )
-        @assert canopy.hydraulics isa Canopy.SteadyStateModel
+        @test canopy.hydraulics isa Canopy.SteadyStateModel
         Y, p, cds = initialize(canopy);
         Y.canopy.hydraulics.ϑ_l .= 0
         t0 = ITime(0, Second(1), start_date)
@@ -313,9 +318,24 @@ for FT in (Float32, Float64)
         )
         set_initial_cache! = make_set_initial_cache(canopy)
         set_initial_cache!(p, Y, t0)
+        @test all(parent(p.canopy.turbulent_fluxes.vapor_flux) .> 1e-9)
+        # Root uptake equals transpiration, so the plant water is constant
         @test p.canopy.turbulent_fluxes.vapor_flux ==
               p.canopy.hydraulics.fa_roots
-        @test all(parent(p.canopy.hydraulics.ψ) .== 0) # default ground conditions are at saturation, so ψ_plant = 0 also.
+        dY = similar(Y)
+        ClimaLand.make_compute_exp_tendency(canopy.hydraulics, canopy)(
+            dY,
+            Y,
+            p,
+            t0,
+        )
+        @test all(parent(dY.canopy.hydraulics.ϑ_l) .== 0)
+        # The leaf is in equilibrium with the prescribed soil
+        S_soil =
+            ClimaLand.Soil.effective_saturation(ground.ν, θ_soil, ground.θ_r)
+        ψ_soil = ClimaLand.Soil.matric_potential(ground.hydrology_cm, S_soil)
+        @test ψ_soil < 0
+        @test all(parent(p.canopy.hydraulics.ψ) .≈ ψ_soil)
         @test all(
             parent(
                 Base.materialize(
