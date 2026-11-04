@@ -694,31 +694,33 @@ function compute_monthly_leaderboard(
 end
 
 """
-    print_rmses(sim_obs_season_comparison_dict, data_source)
+    write_rmses(path, sim_obs_season_comparison_dict, data_source)
 
-Print the global RMSE and bias of each variable and season against
-`data_source`, from the time-averaged simulation and observation maps in
-`sim_obs_season_comparison_dict`, so the numbers can be followed as a time
-series across runs from the logs.
+Write the global RMSE and bias of each variable and season against
+`data_source` to the CSV file `path`, from the time-averaged simulation and
+observation maps in `sim_obs_season_comparison_dict`, so the numbers can be
+followed as a time series across runs.
 
-Each line starts with `LEADERBOARD` followed by `key=value` pairs, e.g.,
-`LEADERBOARD short_name=lhf season=ANN data_source="ERA5" rmse=10.3
-bias=-1.2 units="W m^-2"` (on one line). Seasons without data are `NaN`.
+The columns are `short_name`, `season`, `data_source`, `rmse`, `bias`, and
+`units`. Seasons without data are `NaN`.
 """
-function print_rmses(sim_obs_season_comparison_dict, data_source)
-    for short_name in sort(collect(keys(sim_obs_season_comparison_dict)))
-        for season in ["ANN", "MAM", "JJA", "SON", "DJF"]
-            sim_var, obs_var =
-                sim_obs_season_comparison_dict[short_name][season]
-            has_data = !isempty(sim_var) && !isempty(obs_var)
-            rmse = has_data ? ClimaAnalysis.global_rmse(sim_var, obs_var) : NaN
-            bias = has_data ? ClimaAnalysis.global_bias(sim_var, obs_var) : NaN
-            units = has_data ? ClimaAnalysis.units(sim_var) : ""
-            println(
-                "LEADERBOARD short_name=$short_name season=$season ",
-                "data_source=\"$data_source\" rmse=$rmse bias=$bias ",
-                "units=\"$units\"",
-            )
+function write_rmses(path, sim_obs_season_comparison_dict, data_source)
+    open(path, "w") do io
+        println(io, "short_name,season,data_source,rmse,bias,units")
+        for short_name in sort(collect(keys(sim_obs_season_comparison_dict)))
+            for season in ["ANN", "MAM", "JJA", "SON", "DJF"]
+                sim_var, obs_var =
+                    sim_obs_season_comparison_dict[short_name][season]
+                has_data = !isempty(sim_var) && !isempty(obs_var)
+                rmse =
+                    has_data ? ClimaAnalysis.global_rmse(sim_var, obs_var) : NaN
+                bias =
+                    has_data ? ClimaAnalysis.global_bias(sim_var, obs_var) : NaN
+                units = has_data ? ClimaAnalysis.units(sim_var) : ""
+                row =
+                    (short_name, season, data_source, rmse, bias, "\"$units\"")
+                println(io, join(row, ","))
+            end
         end
     end
     return nothing
@@ -873,7 +875,11 @@ function compute_seasonal_leaderboard(
         sim_obs_time_avg_over_seasons_comparison_dict[short_name] =
             (time_averages_sim_var, time_averages_obs_var)
     end
-    print_rmses(sim_obs_season_comparison_dict, data_source)
+    write_rmses(
+        joinpath(leaderboard_base_path, "$(data_source)_leaderboard_rmse.csv"),
+        sim_obs_season_comparison_dict,
+        data_source,
+    )
 
     # Make global seasonal averages over all years (after removing spinup)
     # Rows correspond to short names
