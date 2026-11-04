@@ -6,6 +6,7 @@ using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
+import Base.Broadcast: materialize
 import Thermodynamics
 import ClimaParams as CP
 using Dates
@@ -364,6 +365,8 @@ end
     @test keys(p.drivers) == (
         :P_liq,
         :P_snow,
+        :E_liq,
+        :E_snow,
         :c_co2,
         :T,
         :P,
@@ -373,6 +376,56 @@ end
         :LW_d,
         :cosθs,
         :frac_diff,
+    )
+end
+
+@testset "CoupledAtmosphere precipitation energy" begin
+    # An unmasked domain, so that every point is set by the broadcasts below
+    domain = ClimaLand.Domains.Plane(;
+        xlim = FT.((1.0, 2.0)),
+        ylim = FT.((1.0, 2.0)),
+        nelements = (1, 1),
+        periodic = (true, true),
+    )
+    coords = ClimaLand.Domains.coordinates(domain)
+    atmos = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
+    p = (; drivers = ClimaLand.initialize_drivers((atmos,), coords))
+
+    # With a coupled atmosphere, the precipitation energy is taken from the drivers
+    earth_param_set = LP.LandParameters(LP.create_toml_dict(FT))
+    p.drivers.T .= FT(280)
+    p.drivers.P_liq .= FT(-1e-6)
+    p.drivers.P_snow .= FT(-2e-6)
+    p.drivers.E_liq .= FT(-0.03)
+    p.drivers.E_snow .= FT(0.7)
+    @test ClimaLand.Snow.energy_flux_falling_rain(atmos, p, earth_param_set) ===
+          p.drivers.E_liq
+    @test ClimaLand.Snow.energy_flux_falling_snow(atmos, p, earth_param_set) ===
+          p.drivers.E_snow
+    ρe_rain = ClimaLand.Soil.volumetric_energy_liquid_precipitation(
+        atmos,
+        p,
+        earth_param_set,
+    )
+    @test all(Array(parent(materialize(ρe_rain))) .≈ FT(-0.03 / -1e-6))
+    lake_flux = ClimaLand.InlandWater.lake_precipitation_energy_flux(
+        atmos,
+        p,
+        earth_param_set,
+    )
+    @test all(Array(parent(materialize(lake_flux))) .≈ FT(-0.03 + 0.7))
+
+    # Without liquid precipitation, the energy per volume falls back to that of
+    # liquid water at the air temperature
+    p.drivers.P_liq .= FT(0)
+    ρe_rain = ClimaLand.Soil.volumetric_energy_liquid_precipitation(
+        atmos,
+        p,
+        earth_param_set,
+    )
+    @test all(
+        Array(parent(materialize(ρe_rain))) .≈
+        ClimaLand.Soil.volumetric_internal_energy_liq(FT(280), earth_param_set),
     )
 end
 

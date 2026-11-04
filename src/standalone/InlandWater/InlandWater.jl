@@ -458,26 +458,49 @@ end
 
 # ─── Tendency ─────────────────────────────────────────────────────────────────
 
+"""
+    lake_precipitation_energy_flux(atmos, p, earth_param_set)
+
+Returns the energy flux of precipitation onto the lake [W m^-2], positive upward.
+Rain arrives as liquid water at the air temperature, and snow as ice at the air
+temperature (including the latent heat of fusion).
+"""
+function lake_precipitation_energy_flux(atmos, p, earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _cp_l = LP.cp_l(earth_param_set)
+    _cp_i = LP.cp_i(earth_param_set)
+    _T_ref = LP.T_0(earth_param_set)
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    return @. lazy(
+        p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
+        p.drivers.P_snow * _ρ_l * (_cp_i * (p.drivers.T - _T_ref) - _LH_f0),
+    )
+end
+
+"""
+    lake_precipitation_energy_flux(atmos::CoupledAtmosphere, p, earth_param_set)
+
+Returns the energy flux of precipitation onto the lake [W m^-2], positive upward,
+computed by the atmosphere model and provided by the coupler in `p.drivers.E_liq`
+and `p.drivers.E_snow`.
+"""
+lake_precipitation_energy_flux(atmos::CoupledAtmosphere, p, earth_param_set) =
+    @. lazy(p.drivers.E_liq + p.drivers.E_snow)
+
 function ClimaLand.make_compute_exp_tendency(
     model::SlabLakeModel{FT},
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        # Precipitation enthalpy: rain arrives as liquid water at air temperature
-        earth_param_set = model.parameters.earth_param_set
-        _ρ_l = LP.ρ_cloud_liq(earth_param_set)
-        _cp_l = LP.cp_l(earth_param_set)
-        _cp_i = LP.cp_i(earth_param_set)
-        _T_ref = LP.T_0(earth_param_set)
-        _LH_f0 = LP.LH_f0(earth_param_set)
-
+        precipitation_energy_flux = lake_precipitation_energy_flux(
+            model.boundary_conditions.atmos,
+            p,
+            model.parameters.earth_param_set,
+        )
         @. dY.lake.U = -(
             p.lake.R_n +
             p.lake.turbulent_fluxes.lhf +
             p.lake.turbulent_fluxes.shf +
-            p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
-            p.drivers.P_snow *
-            _ρ_l *
-            (_cp_i * (p.drivers.T - _T_ref) - _LH_f0) +
+            precipitation_energy_flux +
             p.lake.runoff_energy_flux - p.lake.sediment_heat_flux
         )
     end

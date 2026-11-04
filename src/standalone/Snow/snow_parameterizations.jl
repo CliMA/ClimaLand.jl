@@ -648,6 +648,15 @@ function energy_flux_falling_snow(atmos, p, earth_param_set)
 end
 
 """
+    energy_flux_falling_snow(atmos::CoupledAtmosphere, p, earth_param_set)
+
+Returns the energy flux of falling snow computed by the atmosphere model and
+provided by the coupler in `p.drivers.E_snow`.
+"""
+energy_flux_falling_snow(atmos::ClimaLand.CoupledAtmosphere, p, earth_param_set) =
+    p.drivers.E_snow
+
+"""
     energy_flux_falling_rain(atmos, p, earth_param_set)
 
 Returns the energy flux of falling rain for a PrescribedAtmosphere,
@@ -664,6 +673,15 @@ function energy_flux_falling_rain(atmos, p, earth_param_set)
         p.drivers.P_liq,
     )
 end
+
+"""
+    energy_flux_falling_rain(atmos::CoupledAtmosphere, p, earth_param_set)
+
+Returns the energy flux of falling rain computed by the atmosphere model and
+provided by the coupler in `p.drivers.E_liq`.
+"""
+energy_flux_falling_rain(atmos::ClimaLand.CoupledAtmosphere, p, earth_param_set) =
+    p.drivers.E_liq
 
 """
     update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, earth_param_set)

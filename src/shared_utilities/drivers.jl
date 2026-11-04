@@ -1623,7 +1623,11 @@ end
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
-with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q`, and `u`.
+with variables `P_liq`, `P_snow`, `E_liq`, `E_snow`, `c_co2`, `T`, `P`, `q`, and `u`.
+
+`E_liq` and `E_snow` are the energy fluxes carried by liquid and solid
+precipitation [W m^-2], computed by the atmosphere model and positive upward
+like `P_liq` and `P_snow`.
 
 This is intended to be used in coupled simulations with ClimaCoupler.jl.
 """
@@ -1631,7 +1635,7 @@ function ClimaLand.initialize_drivers(
     a::CoupledAtmosphere{FT},
     coords,
 ) where {FT}
-    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u)
+    keys = (:P_liq, :P_snow, :E_liq, :E_snow, :c_co2, :T, :P, :q, :u)
     types = ([FT for _ in 1:(length(keys) - 1)]..., SVector{2, FT})
     domain_names = ([:surface for _ in keys]...,)
     model_name = :drivers
