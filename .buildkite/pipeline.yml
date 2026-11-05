@@ -91,33 +91,29 @@ steps:
         artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "ozark_test"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_generic_site.jl US-MOz"
+        artifact_paths: "experiments/integrated/fluxnet/out/US-MOz/*png"
 
       - label: "ERA5 Column vs ColumnEnsemble"
         command: "julia --color=yes --project=.buildkite experiments/integrated/era5/column_ensemble_comparison.jl"
 
       - label: "niwot_test"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
-        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_generic_site.jl US-NR1"
+        artifact_paths: "experiments/integrated/fluxnet/out/US-NR1/*png
 
       - label: "harvard_test"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
-        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_generic_site.jl US-Ha1"
+        artifact_paths: "experiments/integrated/fluxnet/out/US-Ha1/*png
 
       # BE-Vie is not in `fluxnet_sites`, so this exercises the `fluxnet2015`
       # metadata and data paths.
       - label: "generic_site BE-Vie run"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/run_generic_site.jl BE-Vie"
-        artifact_paths: "experiments/integrated/generic_site/out/BE-Vie/*png"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_generic_site.jl BE-Vie"
+        artifact_paths: "experiments/integrated/fluxnet/out/BE-Vie/*png"
 
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*png"
-
-      - label: "ozark_pmodel"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pmodel.jl"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/pmodel/out/*png"
 
       - label: "ozark_conservation"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
