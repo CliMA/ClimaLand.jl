@@ -699,7 +699,8 @@ end
 Write the global RMSE and bias of each variable and season against
 `data_source` to the CSV file `path`, from the time-averaged simulation and
 observation maps in `sim_obs_season_comparison_dict`, so the numbers can be
-followed as a time series across runs.
+followed as a time series across runs. The table is also printed to the log,
+which outlives the job's artifacts.
 
 The columns are `short_name`, `season`, `data_source`, `rmse`, `bias`, and
 `units`. Seasons without data are `NaN`.
@@ -723,6 +724,7 @@ function write_rmses(path, sim_obs_season_comparison_dict, data_source)
             end
         end
     end
+    @info "$(basename(path)):\n$(rstrip(read(path, String)))"
     return nothing
 end
 
