@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
+  CES calibration tutorial does not work on Julia 1.13.
+  PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
 
 v1.15.0
 ----

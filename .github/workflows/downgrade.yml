@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ['1.10', '1.12']
+        version: ['1.10', '1.13']
         test_group: ['core', 'simulations']
     steps:
       - uses: actions/checkout@v7
@@ -47,7 +47,7 @@ jobs:
             ubuntu-latest-julia-${{ matrix.version }}-
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
-          skip: Adapt, CalibrateEmulateSample, Dates, LazyArtifacts, LinearAlgebra, Test, Statistics, Printf, InteractiveUtils
+          skip: Adapt, CalibrateEmulateSample, Dates, Downloads, LazyArtifacts, LinearAlgebra, Test, Statistics, Printf, InteractiveUtils
           julia_version: ${{ matrix.version }}
           mode: 'forcedeps'
       - uses: julia-actions/julia-buildpkg@v1
