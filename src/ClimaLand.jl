@@ -433,7 +433,8 @@ import .Canopy:
     update_piecewise_soil_moisture_stress!,
     mask_biomass!,
     root_water_flux_per_ground_area!,
-    update_steady_state_leaf_water_potential!
+    update_steady_state_leaf_water_potential!,
+    update_root_dryness_norm!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
