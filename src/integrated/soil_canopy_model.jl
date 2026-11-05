@@ -221,7 +221,6 @@ function lsm_aux_vars(m::SoilCanopyModel)
     base = (
         :root_extraction,
         :root_energy_extraction,
-        :root_dryness_norm,
         :LW_u,
         :SW_u,
         :T_sfc,
@@ -230,6 +229,11 @@ function lsm_aux_vars(m::SoilCanopyModel)
         :scratch1,
         :scratch2,
     )
+    base =
+        add_root_dryness_norm(
+            m.canopy.soil_moisture_stress,
+            m.canopy.hydraulics,
+        ) ? (base..., :root_dryness_norm) : base
     return has_soil_litter_input(m.canopy.biomass) ?
            (base..., :soil_litter_input) : base
 end
@@ -241,9 +245,15 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 function lsm_aux_types(m::SoilCanopyModel{FT}) where {FT}
-    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    base =
+        add_root_dryness_norm(
+            m.canopy.soil_moisture_stress,
+            m.canopy.hydraulics,
+        ) ? (base..., FT) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
 end
+
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -262,12 +272,15 @@ function lsm_aux_domain_names(m::SoilCanopyModel)
         :surface,
         :surface,
         :surface,
-        :surface,
     )
+    base =
+        add_root_dryness_norm(
+            m.canopy.soil_moisture_stress,
+            m.canopy.hydraulics,
+        ) ? (base..., :surface) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
            base
 end
-
 """
     make_update_boundary_fluxes(
         land::SoilCanopyModel{FT, MM, SM, RM},
