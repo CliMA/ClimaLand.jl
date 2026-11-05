@@ -5,10 +5,11 @@ import ClimaComms: context, device
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaUtilities.FileReaders: close_all_ncfiles
+using LazyBroadcast: lazy
 import ClimaDiagnostics
 using ClimaLand
 import ..Parameters as LP
-export step!, solve!, LandSimulation
+export step!, solve!, LandSimulation, spin_up_carbon_pools!
 using NCDatasets
 include("initial_conditions.jl")
 
@@ -416,4 +417,5 @@ convert_updates(t0::ITime, update_time::AbstractFloat) =
     promote(t0, ITime(update_time, epoch = t0.epoch))[2]
 convert_updates(t0, update_time) = t0 # fallback (used for non convertible Dates.Period(s))
 
+include("carbon_spinup.jl")
 end#module

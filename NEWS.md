@@ -8,6 +8,18 @@ main
   PR [#1945](https://github.com/CliMA/ClimaLand.jl/pull/1945)
 - ![][badge-🔥behavioralΔ] The scalar roughness length of snow is 1 mm instead of
   ClimaParams' 8 cm. PR [#1947](https://github.com/CliMA/ClimaLand.jl/pull/1947)
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
+  four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
+  allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
+  no wood); it respires through `PoolBasedAutotrophicRespirationModel`, and in `LandModel`
+  and `SoilCanopyModel` feeds its litter to a prognostic soil organic carbon
+  (`SoilCarbonLitterInput`). Also adds `Canopy.equilibrium_carbon_pools`,
+  `Simulations.spin_up_carbon_pools!`, which sets the pools to their equilibrium under the
+  mean drivers of a spin-up period, a `biomass` keyword to the integrated-model
+  constructors, and the `crd` (canopy leaf respiration) diagnostic. The long run with
+  prognostic LAI carries the pools, and its vegetation leaderboard compares `cveg` with the
+  live woody carbon of Xu et al. (2021).
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 
 v1.14.1
 ----
