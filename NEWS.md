@@ -2,16 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-💥behavoralΔ] Introduce steady state hydraulics model and make default. Adjust piecewise soil moisture stress low value to be equal to the wilting point; correct bug in the high value.
 - ![][badge-🔥behavioralΔ] Faster TOPMODEL subsurface drainage: the default `R_sb` is
   1.484e-5 m/s instead of 1.484e-7.
   PR [#1945](https://github.com/CliMA/ClimaLand.jl/pull/1945)
 - ![][badge-🔥behavioralΔ] The scalar roughness length of snow is 1 mm instead of
-  ClimaParams' 8 cm, 33 times its momentum roughness length (2.4 mm). The 0.08 of
-  ClimaParams is the ratio z0h/z0m of CLM5's relation z0h = z0m exp(-0.13 (u* z0m/ν)^0.45)
-  at u* = 5 m/s; for u* of 0.2-0.5 m/s the relation gives 0.9-1.3 mm. With 8 cm the snow
-  exchanged heat with the air about twice as fast: winter sensible heat flows into the
-  snow were too large and the spring snowmelt came too early.
-  PR [#1947](https://github.com/CliMA/ClimaLand.jl/pull/1947)
+  ClimaParams' 8 cm. PR [#1947](https://github.com/CliMA/ClimaLand.jl/pull/1947)
 
 v1.14.1
 ----

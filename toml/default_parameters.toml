@@ -5,6 +5,12 @@ type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
 
+[wilting_potential]
+value = -153
+type = "float"
+description = "Wilting potential in m. Below this, transpiration turns off."
+tag = "SoilMoistureStress"
+
 [moisture_stress_sc]
 value = 5.0e-6
 type = "float"

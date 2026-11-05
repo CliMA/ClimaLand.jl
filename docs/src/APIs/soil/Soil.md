@@ -76,6 +76,7 @@ ClimaLand.Soil.impedance_factor
 ClimaLand.Soil.viscosity_factor
 ClimaLand.Soil.effective_saturation
 ClimaLand.Soil.field_capacity_saturation
+ClimaLand.Soil.wilting_saturation
 ClimaLand.Soil.matric_potential
 ClimaLand.Soil.dψdϑ
 ClimaLand.Soil.inverse_matric_potential

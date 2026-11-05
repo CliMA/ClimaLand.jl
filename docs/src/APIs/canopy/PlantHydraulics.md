@@ -7,6 +7,7 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.AbstractPlantHydraulicsModel
+ClimaLand.Canopy.SteadyStateModel
 ClimaLand.Canopy.PlantHydraulicsModel
 ClimaLand.Canopy.PlantHydraulicsParameters
 ```

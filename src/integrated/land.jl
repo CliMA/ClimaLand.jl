@@ -90,13 +90,10 @@ mutable struct LandModel{
                 snow.parameters.earth_param_set
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
-        if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
-            # Note that these functions allocate. These checks should not occur except on initialization.
-            check_land_equality(
-                canopy.soil_moisture_stress.θ_low,
-                soil.parameters.θ_r,
-            )
-        end
+        check_moisture_stress_thresholds(
+            canopy.soil_moisture_stress,
+            soil.parameters,
+        )
 
         # LandModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model
@@ -174,6 +171,7 @@ end
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
+            hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -255,6 +253,7 @@ function LandModel{FT}(
                 hydrology_cm = soil.parameters.hydrology_cm,
             ),
         ),
+        hydraulics = Canopy.SteadyStateModel{FT}(),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -316,6 +315,7 @@ end
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
             biomass = isnothing(biomass) ? Canopy.ZhouOptimalLAIModel{FT}(Domains.obtain_surface_domain(domain), toml_dict) : biomass,
+            hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -396,6 +396,7 @@ function LandModel{FT}(
             Domains.obtain_surface_domain(domain),
             toml_dict,
         ) : biomass,
+        hydraulics = Canopy.SteadyStateModel{FT}(),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -444,6 +445,7 @@ lsm_aux_vars(m::LandModel) = (
     :snow_T_bot,
     :root_extraction,
     :root_energy_extraction,
+    :root_dryness_norm,
     :LW_u,
     :SW_u,
     :scratch1,
@@ -489,6 +491,7 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
     FT,
     FT,
@@ -504,6 +507,7 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :subsurface,
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -563,11 +567,14 @@ function make_update_boundary_fluxes(
         make_update_boundary_fluxes(land.lake)
 
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
-        # update root extraction
-        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
         # The canopy turbulent fluxes come first: the ground skin solves in
         # lsm_radiant_energy_fluxes! read the canopy-air state they produce
         Canopy.canopy_turbulent_fluxes!(p, land.canopy, Y, t)
+
+        # update root extraction
+        # For steady state plant hydraulics, this requires transpiration to be computed first, above
+        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+
         # Radiation - updates Rn for soil, lake, snow also
         lsm_radiant_energy_fluxes!(
             p,
