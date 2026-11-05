@@ -107,22 +107,23 @@ cosθs = cosθs[mask, :];
 xcos = reshape(cosθs, (1,sum(mask),length(hod)));
 α_soil = Float32(0.2)
 struct LandRT
-    GW
-    Gb
-    Aw
-    Ac
-    Ab
+    f_sum_w
+    f_vum_b
+    f_s_w
+    f_s_b
+    a_w
+    a_b
 end
 Flux.@layer LandRT
 
 function (m::LandRT)(x̂,xcos, xLAI, α_soil)
-    χ = sigmoid(m.GW * x̂ .+ m.Gb) .- Float32(0.4) # restricted to -0.4, 0.6
-    ϕ1 = Float32(0.5) .- Float32(0.633) .*χ  .+ Float32(0.33) .* χ.^2
-    ϕ2 = Float32(0.877) .*( 1 .- 2 .* ϕ1)
-    
-    G = ϕ1 .+ ϕ2 .* xcos
+    summed_fraction = sigmoid(m.f_sum_w * x̂ .+ m.f_sum_b)
+    f_s = sigmoid(m.f_s_w * x̂ .+ m.f_s_b) .* summed_fraction
+    f_v = summed_fraction .- f_s
+    f_h = 1 .- f_s .- f_v
+    G = f_s .* 1/2 .+ f_v .* 2/π*xsin .+ f_h .* xcos
     K = min.(G ./ xcos, 1e3)
-    α =  sigmoid(m.Aw * x̂ .+ m.Ab .+ m.Ac .* xcos)
+    α =  sigmoid(m.a_w * x̂ .+ m.a_b)
     transmitted_fraction = @. exp(-K * xLAI);
     reflected_downwards_pass = @. α * (1 - transmitted_fraction);
     upwelling_from_soil = @. α_soil * transmitted_fraction;
@@ -145,52 +146,3 @@ for i in 1:1000
     end 
 end
 
-
-#####
-
-
-struct LandRTNN
-    layers::NamedTuple
-end
-Functors.@functor LandRTNN
-#Flux.trainable(m::LandRTNN) = (Flux.trainable(m.χ)..., Flux.trainable(m.α)...)
-
-
-#
-#Step1: Take Input and compute G, compute α in parallel
-α_leaf_function = Chain(Dense(7 => 14), Dense(15 =>1, sigmoid))
-G_function = Chain(Parallel(-, Dense(7 => 14), Dense(14 =>1, sigmoid), Float32(0.4)),
-                   Parallel(+, ϕ1, 
-step1 = Parallel(land_albedo, G_function, α_leaf_function)
-    
-function (m::LandRTNN)(x̂,xcos, xLAI, α_soil)
-    χ = mm.layers.χ(x̂) .- Float32(0.4) # restricted to -0.4, 0.6
-    ϕ1 = Float32(0.5) .- Float32(0.633) .*χ  .+ Float32(0.33) .* χ.^2
-    ϕ2 = Float32(0.877) .*( 1 .- 2 .* ϕ1)
-    
-    G = ϕ1 .+ ϕ2 .* max.(xcos, Float32(0.001))
-    K = min.(G ./ max.(xcos, Float32(0.01)), 1e3)
-    α = mm.layers.α(x̂)
-    transmitted_fraction = @. exp(-K * xLAI);
-    reflected_downwards_pass = @. α * (1 - transmitted_fraction);
-    upwelling_from_soil = @. α_soil * transmitted_fraction;
-    reflected_upwards_pass =
-        @. upwelling_from_soil * (1 - transmitted_fraction) * α;
-    transmitted_upwards_pass = @. upwelling_from_soil * transmitted_fraction;
-    upwelling_from_land = @. reflected_downwards_pass + reflected_upwards_pass + transmitted_upwards_pass;
-    return mean(upwelling_from_land, dims = 3)[:,:,1]
-end
-c1 = Chain(Dense(7 => 14), Dense(14 => 1, sigmoid));
-c2 = Chain(Dense(7 => 14), Dense(14 => 1, sigmoid));
-layers = (; χ = c1, α = c2);
-mm = LandRTNN(layers);
-
-opt = Flux.setup(Adam(FT(0.005),FT.((0.9,0.99)),FT(1e-8)), mm)
-loss(model, x, obs; xcos=xcos, xLAI=xLAI,α_soil = α_soil) = Flux.mse(model(x, xcos, xLAI,α_soil), obs)
-@show loss(mm, x̂, obs)
-for i in 1:500
-    Flux.train!(loss, mm, [(x̂,obs)], opt)
-    if i %10 == 0
-        @show loss(mm, x̂, obs)
-    end 
-end
