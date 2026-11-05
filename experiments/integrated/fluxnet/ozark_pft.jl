@@ -178,7 +178,7 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 # Setup soil moisture stress and hydraulics to be the defaults we use
 # in global runs
 soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
-    domain,
+    soil_domain,
     toml_dict;
     soil_params = (;
         ν = soil.parameters.ν,
