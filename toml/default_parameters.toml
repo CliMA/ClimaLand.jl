@@ -5,6 +5,12 @@ type = "float"
 description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
 tag = "SoilMoistureStress"
 
+[wilting_potential]
+value = -153
+type = "float"
+description = "Wilting potential in m. Below this, transpiration turns off."
+tag = "SoilMoistureStress"
+
 [moisture_stress_sc]
 value = 5.0e-6
 type = "float"
@@ -25,7 +31,7 @@ description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["R_sb"]
-value = 1.484e-7
+value = 1.484e-5
 type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
@@ -293,6 +299,11 @@ tag = "ZenithAngleAlbedoModel"
 value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
+
+["snow_scalar_roughness_length"]
+value = 1e-3
+type = "float"
+description = "Scalar roughness length for snow (m): z0h = z0m exp(-0.13 (u* z0m / ν)^0.45) (Zeng and Dickinson 1998; CLM5 Technical Note) with the momentum roughness length of snow, 2.4 mm, for u* of 0.2-0.5 m s⁻¹. ClimaParams' 0.08 is the ratio z0h/z0m of this relation at u* = 5 m s⁻¹."
 
 # Snow thermal conductivity parameters
 ["jordan_linear_snow_thermal_conductivity"]

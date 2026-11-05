@@ -163,7 +163,7 @@ NVTX.@annotate function canopy_boundary_fluxes!(
         t,
     )
     canopy_turbulent_fluxes!(p, canopy, Y, t)
-    canopy_root_fluxes!(p, canopy, Y, t)
+    canopy_root_fluxes!(p, canopy, Y, t) # for the steady state option, this requires transpiration, computed above
 end
 
 """

@@ -419,12 +419,15 @@ A pointwise function which returns the subsurface runoff flux,
 given the depth to the water table z∇>0,
 and the TOPMODEL parameters R_sb and f_over.
 
+A negative z∇, which supersaturated layers can give, is treated as a water
+table at the surface, so the flux never exceeds R_sb.
+
 see: Niu et al. (2005),
 "A simple TOPMODEL-based runoff parameterization (SIMTOP) for
 use in global climate models", Equations (12).
 """
 function topmodel_ss_flux(R_sb::FT, f_over::FT, z∇::FT) where {FT}
-    return R_sb * exp(-f_over * z∇)
+    return R_sb * exp(-f_over * max(z∇, zero(FT)))
 end
 
 """

@@ -133,7 +133,9 @@ simulation = run_simulation(land_model, output_vars);
 # we construct its canopy model ourselves and pass it to the `LandModel`.
 # The canopy is coupled to the prognostic soil and snow through
 # `PrognosticGroundConditions`, and its prognostic land components must match
-# those of the `LandModel`.
+# those of the `LandModel`. We also pass the `SteadyStateModel` plant
+# hydraulics of the default `LandModel`, since a standalone `CanopyModel`
+# defaults to the `PlantHydraulicsModel`.
 # Since `solve!` closes all open NetCDF files when the simulation ends,
 # we create the forcing and LAI again.
 forcing, LAI = era5_forcing_and_modis_lai()
@@ -148,6 +150,7 @@ canopy_no_stress = Canopy.CanopyModel{FT}(
     toml_dict;
     prognostic_land_components = (:canopy, :snow, :soil),
     soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
+    hydraulics = Canopy.SteadyStateModel{FT}(),
 );
 land_model_no_stress = LandModel{FT}(
     forcing,
@@ -273,8 +276,8 @@ save("era5_cerrado_timeseries.png", fig);
 # pressure deficit rises as the air becomes hotter and drier, which increases
 # the evaporative demand. From late August, the leaf area grows as well.
 # Without moisture stress, the vegetation keeps transpiring, so its soil is
-# slightly drier at the end of the dry season and takes longer to rewet once
-# the rain returns.
+# drier at the end of the dry season, especially near the surface, and takes
+# longer to rewet once the rain returns.
 
 # To see the relationship directly, we plot the ratio of each variable in the
 # default simulation to its unstressed value against the soil water content

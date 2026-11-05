@@ -14,6 +14,7 @@ using DocStringExtensions
 using LazyBroadcast: lazy
 
 export PlantHydraulicsModel,
+    SteadyStateModel,
     AbstractPlantHydraulicsModel,
     water_flux,
     effective_saturation,
@@ -135,18 +136,18 @@ PlantHydraulicsModel{FT}(parameters) where {FT} =
 A function which returns the names of the prognostic
 variables of the `PlantHydraulicsModel`.
 """
-prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
+prognostic_vars(model::AbstractPlantHydraulicsModel) = (:ϑ_l,)
 
 """
-    auxiliary_vars(model::PlantHydraulicsModel)
+    auxiliary_vars(model::AbstractPlantHydraulicsModel)
 
 A function which returns the names of the auxiliary
 variables of the `PlantHydraulicsModel`,
 the water potential `ψ` (m) and the root water flux per
 unit ground area `fa_roots` (m/s), which is the volume flux
-through the roots multiplied by the harmonic mean of LAI and RAI.
+through the roots per unit area ground.
 """
-auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa_roots)
+auxiliary_vars(model::AbstractPlantHydraulicsModel) = (:ψ, :fa_roots)
 
 
 """
@@ -154,17 +155,19 @@ auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa_roots)
 
 Defines the prognostic types for the PlantHydraulicsModel.
 """
-ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} = (FT,)
-ClimaLand.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
+ClimaLand.prognostic_types(model::AbstractPlantHydraulicsModel{FT}) where {FT} =
+    (FT,)
+ClimaLand.prognostic_domain_names(::AbstractPlantHydraulicsModel) = (:surface,)
 
 """
-    ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
+    ClimaLand.auxiliary_types(model::AbstractPlantHydraulicsModel{FT}) where {FT}
 
-Defines the auxiliary types for the PlantHydraulicsModel.
+Defines the auxiliary types for and AbstractPlantHydraulicsModel.
 """
-ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (FT, FT)
+ClimaLand.auxiliary_types(model::AbstractPlantHydraulicsModel{FT}) where {FT} =
+    (FT, FT)
 
-ClimaLand.auxiliary_domain_names(model::PlantHydraulicsModel) =
+ClimaLand.auxiliary_domain_names(model::AbstractPlantHydraulicsModel) =
     (:surface, :surface)
 
 """
@@ -417,7 +420,7 @@ and both fluxes in the numerator are also zero (they are scaled by area indices)
 To prevent dividing by zero, we use `max(LAI * dz, eps(FT))` in the denominator.
 """
 function make_compute_exp_tendency(
-    model::PlantHydraulicsModel{FT},
+    model::AbstractPlantHydraulicsModel{FT},
     canopy,
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
@@ -501,7 +504,7 @@ end
 """
     ClimaLand.total_liq_water_vol_per_area!(
         surface_field,
-        model::PlantHydraulicsModel,
+        model::AbstractPlantHydraulicsModel,
         canopy,
         Y,
         p,
@@ -513,7 +516,7 @@ the plant hydraulic models total water volume.
 """
 function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
-    model::PlantHydraulicsModel,
+    model::AbstractPlantHydraulicsModel,
     canopy,
     Y,
     p,
@@ -543,5 +546,73 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
         effective_saturation(ν, ϑ_l),
         ν,
         S_s,
+    )
+end
+
+"""
+    SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT}
+
+A plant hydraulics parameterization where the root extraction approximately balances
+transpiration at each step so that the plant water is in steady state.
+"""
+struct SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT} end
+
+"""
+   update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+
+Updates the water potential `p.canopy.hydraulics.ψ` in place for the SteadyStateModel.
+This in turn depends on the configuration for the soil model (prescribed or prognostic).
+
+We do not compute ψ from the canopy water content because in the steady state model we do not require
+the plant retention curve.
+"""
+function update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+    update_steady_state_leaf_water_potential!(
+        p,
+        hydraulics,
+        canopy.soil_moisture_stress,
+        canopy.boundary_conditions.ground,
+        canopy,
+    )
+end
+
+function root_water_flux_per_ground_area!(
+    fa::ClimaCore.Fields.Field,
+    ground::PrescribedGroundConditions,
+    model::SteadyStateModel{FT},
+    canopy,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+) where {FT}
+    fa .= p.canopy.turbulent_fluxes.vapor_flux
+end
+
+hydraulic_height(p, Y, hydraulics::SteadyStateModel{FT}, canopy) where {FT} =
+    @. lazy(max(canopy.biomass.height, FT(1)))
+
+"""
+     update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms, ground::PrescribedGroundConditions{FT}, canopy) where {FT}
+
+Updates the leaf water potential with the estimated steady state value in the case of a prescribed ground condition. Here we simply compute the
+matric potential of the ground and set ψ_leaf = ψ_ground.
+
+"""
+function update_steady_state_leaf_water_potential!(
+    p,
+    hydraulics::SteadyStateModel,
+    sms,
+    ground::PrescribedGroundConditions{FT},
+    canopy,
+) where {FT}
+    @. p.canopy.hydraulics.ψ = Soil.matric_potential(
+        ground.hydrology_cm,
+        max(
+            min(
+                Soil.effective_saturation(ground.ν, p.drivers.θ, ground.θ_r),
+                1,
+            ),
+            eps(FT),
+        ),
     )
 end

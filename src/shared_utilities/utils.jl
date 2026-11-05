@@ -18,7 +18,7 @@ export FTfromY
     partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
 
 Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been
-computed from T and ρ over the correct phase `phase`..
+computed from T and ρ over the correct phase `phase`.
 """
 function partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -31,9 +31,10 @@ function partial_q_sat_partial_T(q_sat, T, phase, earth_param_set)
 end
 
 """
-    check_land_equality(field1, field2)
+    check_land_equality(field1, field2, msg = "the fields differ")
 
-Check that two fields are equal for masked domains;
+Check that two fields are equal for masked domains, and throw an
+`AssertionError` with the message `msg` otherwise;
 this assumes that the underlying space of field1 is the same
 as for field2, and this specific test is only required if
 the two fields have masked spaces, where the masked values
@@ -45,6 +46,7 @@ This allocates two fields equal in size to field1/field2.
 function check_land_equality(
     field1::ClimaCore.Fields.Field,
     field2::ClimaCore.Fields.Field,
+    msg = "the fields differ",
 )
     tmp1 = ClimaCore.Fields.zeros(axes(field1)) # inherits the mask
     tmp2 = ClimaCore.Fields.zeros(axes(field2)) # inherits the mask
@@ -53,20 +55,22 @@ function check_land_equality(
     fill!(ClimaCore.Fields.field_values(tmp2), FT(0)) # fills all values to 0
     tmp1 .= field1 # only sets unmasked values/mask aware operation
     tmp2 .= field2 # only sets unmasked values/mask aware operation
-    @assert tmp1 == tmp2 # checks all values
+    @assert tmp1 == tmp2 msg # checks all values
 end
 
 """
-    check_land_equality(f1::Union{FT, Vector{FT}}, f2::Union{FT, Vector{FT}})
+    check_land_equality(f1::Union{FT, Vector{FT}}, f2::Union{FT, Vector{FT}}, msg = "the values differ")
         where {FT <: AbstractFloat}
 
-Check that two floats or vectors of floats are equal.
+Check that two floats or vectors of floats are equal, and throw an
+`AssertionError` with the message `msg` otherwise.
 """
 function check_land_equality(
     f1::Union{FT, Vector{FT}},
     f2::Union{FT, Vector{FT}},
+    msg = "the values differ",
 ) where {FT <: AbstractFloat}
-    @assert f1 == f2 # checks all values
+    @assert f1 == f2 msg # checks all values
 end
 
 

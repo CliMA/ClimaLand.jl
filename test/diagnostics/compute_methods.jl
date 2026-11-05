@@ -60,7 +60,7 @@ function set_soil_ic!(Y, soil, ::Type{FT}) where {FT}
 end
 
 function set_canopy_ic!(Y, p, canopy, ::Type{FT}) where {FT}
-    Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν
+    Y.canopy.hydraulics.ϑ_l .= 0
     Y.canopy.energy.T = FT(297.5)
     p.canopy.biomass.area_index.leaf .= FT(0.3)
     p.canopy.biomass.area_index.stem .= FT(0)

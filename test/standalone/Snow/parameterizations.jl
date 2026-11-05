@@ -42,9 +42,9 @@ for FT in (Float32, Float64)
             FT(1),
         )
 
-        # These values should match ClimaParams
+        # These values should match the default parameters
         ϵ_snow = FT(0.97)
-        z_0b = FT(8e-2)
+        z_0b = FT(1e-3)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         ΔS = FT(0.1)
@@ -192,10 +192,10 @@ for FT in (Float32, Float64)
             Snow.EquilibriumGradientTemperatureModel{FT}(),
         ).T_sfc
         @test result == T_bulk_test
-        #nonzero depth
+        #nonzero depth, from the initial guess of `update_surf_temp!`
         result = Snow.solve_for_surface_temp_at_a_point(
             Val(false),
-            T_sfc_test,
+            min((T_atmos + T_bulk_test) / 2, _T_freeze),
             T_bulk_test,
             FT(1),
             κ_surf_test,
