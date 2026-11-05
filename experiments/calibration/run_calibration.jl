@@ -72,9 +72,10 @@ loaded, instead of hardcoding a version per backend.
 """
 function _loaded_climacommon()
     loaded = get(ENV, "LOADEDMODULES", "")
-    # Expect entries of the form `climacommon/YYYY_MM_DD`. If multiple are
-    # loaded, the last one wins (matches `module`'s own resolution order).
-    pattern = r"^climacommon/\d{4}_\d{2}_\d{2}$"
+    # Expect entries of the form `climacommon/YYYY_MM_DD`, optionally with a
+    # Julia version suffix (e.g. `climacommon/YYYY_MM_DD-1.13.3`). If multiple
+    # are loaded, the last one wins (matches `module`'s own resolution order).
+    pattern = r"^climacommon/\d{4}_\d{2}_\d{2}(-\d+\.\d+\.\d+)?$"
     matches = filter(mod -> occursin(pattern, mod), split(loaded, ':'))
     isempty(matches) && return "climacommon"
     return String(last(matches))
