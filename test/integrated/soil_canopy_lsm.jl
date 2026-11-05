@@ -132,7 +132,10 @@ for FT in (Float32, Float64)
             p,
             t0,
         )
-        @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l)) .<= 100 * eps(FT) .* T)
+        @test all(
+            abs.(Array(parent(dY.canopy.hydraulics.ϑ_l))) .<=
+            100 * eps(FT) .* T,
+        )
 
         # The root zone stress factor is the root-weighted layer stress factor
         βm = @. Canopy.compute_piecewise_moisture_stress(
@@ -151,8 +154,9 @@ for FT in (Float32, Float64)
             βm .* root_weight ./ norm,
         )
         @test all(
-            abs.(parent((p.canopy.soil_moisture_stress.βm .- tmp) ./ tmp)) .<
-            (100*eps(FT)),
+            abs.(
+                Array(parent((p.canopy.soil_moisture_stress.βm .- tmp) ./ tmp)),
+            ) .< (100*eps(FT)),
         )
 
         # Layers at the wilting point give no water to the canopy, and the
