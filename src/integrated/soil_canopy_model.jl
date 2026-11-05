@@ -194,18 +194,22 @@ in order to emit the same `LW_u` as the land surface does. This is called the
 [effective temperature](https://en.wikipedia.org/wiki/Effective_temperature) in some fields,
 and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """
-lsm_aux_vars(m::SoilCanopyModel) = (
-    :root_extraction,
-    :root_energy_extraction,
-    :root_dryness_norm,
-    :LW_u,
-    :SW_u,
-    :T_sfc,
-    :ϵ_sfc,
-    :α_sfc,
-    :scratch1,
-    :scratch2,
-)
+function lsm_aux_vars(m::SoilCanopyModel)
+    base = (
+        :root_extraction,
+        :root_energy_extraction,
+        :LW_u,
+        :SW_u,
+        :T_sfc,
+        :ϵ_sfc,
+        :α_sfc,
+        :scratch1,
+        :scratch2,
+    )
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., :root_dryness_norm) : base
+end
+
 
 """
     lsm_aux_types(m::SoilCanopyModel)
@@ -213,8 +217,12 @@ lsm_aux_vars(m::SoilCanopyModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+function lsm_aux_types(m::SoilCanopyModel{FT}) where {FT}
+    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., FT) : base
+end
+
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -222,18 +230,22 @@ lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_domain_names(m::SoilCanopyModel) = (
-    :subsurface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-)
+function lsm_aux_domain_names(m::SoilCanopyModel)
+    base = (
+        :subsurface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+    )
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., :surface) : base
+end
+
 
 """
     make_update_boundary_fluxes(

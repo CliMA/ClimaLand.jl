@@ -540,7 +540,13 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
     (; retention_model, S_s, ν) = hydraulics.parameters
-
+    update_root_dryness_norm!(
+        p,
+        hydraulics,
+        canopy.soil_moisture_stress,
+        canopy.boundary_conditions.ground,
+        canopy,
+    )
     @. ψ = water_retention_curve(
         retention_model,
         effective_saturation(ν, ϑ_l),
@@ -567,6 +573,13 @@ We do not compute ψ from the canopy water content because in the steady state m
 the plant retention curve.
 """
 function update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+    update_root_dryness_norm!(
+        p,
+        hydraulics,
+        canopy.soil_moisture_stress,
+        canopy.boundary_conditions.ground,
+        canopy,
+    )
     update_steady_state_leaf_water_potential!(
         p,
         hydraulics,
@@ -615,4 +628,22 @@ function update_steady_state_leaf_water_potential!(
             eps(FT),
         ),
     )
+end
+
+"""
+     update_root_dryness_norm!(p, hydraulics::AbstractPlantHydraulicsModel, sms, ground::PrescribedGroundConditions{FT}, canopy) where {FT}
+
+Does nothing in the case of a prescribed ground; in prognostic ground cases, this updates
+p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
+is the soil layer specific water stress. This is computed as part of plant hydraulics
+and not soil moisture stress because it determines root extraction in some cases.
+"""
+function update_root_dryness_norm!(
+    p,
+    hydraulics::AbstractPlantHydraulicsModel,
+    sms,
+    ground::PrescribedGroundConditions{FT},
+    canopy,
+) where {FT}
+    nothing
 end

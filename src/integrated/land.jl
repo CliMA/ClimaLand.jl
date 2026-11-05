@@ -441,61 +441,67 @@ end
 The names of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_vars(m::LandModel) = (
-    :snow_T_bot,
-    :root_extraction,
-    :root_energy_extraction,
-    :root_dryness_norm,
-    :LW_u,
-    :SW_u,
-    :scratch1,
-    :scratch2,
-    :scratch3,
-    :excess_water_flux,
-    :excess_heat_flux,
-    :ground_heat_flux,
-    :effective_soil_sfc_T,
-    :sfc_scratch,
-    :subsfc_scratch,
-    :effective_soil_sfc_depth,
-    :T_sfc,
-    :ϵ_sfc,
-    :α_sfc,
-    :α_ground,
-    :bare_soil_fraction,
-    :lake_fraction,
-)
-
+function lsm_aux_vars(m::LandModel)
+    base = (
+        :snow_T_bot,
+        :root_extraction,
+        :root_energy_extraction,
+        :LW_u,
+        :SW_u,
+        :scratch1,
+        :scratch2,
+        :scratch3,
+        :excess_water_flux,
+        :excess_heat_flux,
+        :ground_heat_flux,
+        :effective_soil_sfc_T,
+        :sfc_scratch,
+        :subsfc_scratch,
+        :effective_soil_sfc_depth,
+        :T_sfc,
+        :ϵ_sfc,
+        :α_sfc,
+        :α_ground,
+        :bare_soil_fraction,
+        :lake_fraction,
+    )
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., :root_dryness_norm) : base
+end
 """
     lsm_aux_types(m::LandModel)
 
 The types of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_types(m::LandModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
-    FT,
-    FT,
-)
+function lsm_aux_types(m::LandModel{FT}) where {FT}
+    base = (
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+        FT,
+        FT,
+    )
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., FT) : base
+end
+
 
 """
     lsm_aux_domain_names(m::LandModel)
@@ -503,30 +509,34 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
 The domain names of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_domain_names(m::LandModel) = (
-    :surface,
-    :subsurface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-)
+function lsm_aux_domain_names(m::LandModel)
+    base = (
+        :surface,
+        :subsurface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+    )
+    add_root_dryness_norm(m.canopy.soil_moisture_stress, m.canopy.hydraulics) ?
+    (base..., :surface) : base
+end
+
 
 """
     make_update_boundary_fluxes(

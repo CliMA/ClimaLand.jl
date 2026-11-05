@@ -1,4 +1,10 @@
 nonzero_norm(norm::FT) where {FT} = norm == 0 ? eps(FT) : norm
+add_root_dryness_norm(sms, hydraulics) = false
+add_root_dryness_norm(
+    sms::Canopy.PiecewiseMoistureStressModel,
+    hydraulics::Canopy.PlantHydraulicsModel,
+) = true
+add_root_dryness_norm(sms, hydraulics::Canopy.SteadyStateModel) = true
 
 """
     update_root_extraction!(p, Y, t, land)
@@ -118,12 +124,11 @@ function update_root_extraction!(
 )
     z = land.soil.domain.fields.z
     FT = eltype(z)
-    norm = p.scratch1 # A surface scratch field
+    norm = p.root_dryness_norm # this was computed in Canopy update aux, = ∫ p(z) K(z) dz = ∫ root dryness weight dz
     root_water_weight = @. lazy(
         Canopy.root_distribution(z, land.canopy.biomass.rooting_depth) *
         p.soil.K,
     )
-    ClimaCore.Operators.column_integral_definite!(norm, root_water_weight)
     @. p.root_extraction =
         root_water_weight * p.canopy.turbulent_fluxes.vapor_flux /
         nonzero_norm(norm) # Integrates to equal transpiration.
@@ -279,7 +284,7 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     ClimaCore.Operators.column_integral_definite!(root_norm, root_dist)
     # root dryness norm was precomputed in the Canopy update_hydraulics! call
     # It is equal to ∫ β(z) p(z) dz. Therefore, the below is the average β.
-    @. p.canopy.soil_moisture_stress.βm = p.root_dryness_norm / root_norm
+    @. p.canopy.soil_moisture_stress.βm = p.root_dryness_norm / root_norm # Root dryness norm was computed in Canopy update aux, = ∫ p(z) β(z) dz = ∫ root dryness weight dz
 
 end
 
@@ -299,14 +304,14 @@ function update_steady_state_leaf_water_potential!(
     canopy,
 ) where {FT}
     θ_l = p.soil.θ_l
+
     cds = ClimaCore.Fields.coordinate_field(axes(θ_l))
-    norm = p.root_dryness_norm # A surface scratch field
+    norm = p.root_dryness_norm # this was computed in Canopy update aux, = ∫ p(z) β(z) dz = ∫ root dryness weight dz
     (; θ_high, θ_low, c, ψ_wilt) = sms
     root_dryness_weight = @. lazy(
         Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) *
         compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
     )
-    Operators.column_integral_definite!(norm, root_dryness_weight)
     ψ_leaf = p.canopy.hydraulics.ψ
     Operators.column_integral_definite!(
         ψ_leaf,
@@ -316,7 +321,34 @@ function update_steady_state_leaf_water_potential!(
 end
 
 """
-     update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+     update_root_dryness_norm!(p, hydraulics::Union{SteadyStateModel, PlantHydraulicsModel}, sms::Canopy.PiecewiseMoistureStressModel, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+
+Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
+is the soil layer specific water stress. This is used to compute 
+- root extraction, soil moisture stress, and the steady state
+water potential of the leaf (Steady state hydraulics)
+- soil moisture stress (Plant Hydraulics)
+"""
+function update_root_dryness_norm!(
+    p,
+    hydraulics::Union{SteadyStateModel, PlantHydraulicsModel},
+    sms::Canopy.PiecewiseMoistureStressModel,
+    ground::PrognosticGroundConditions{FT},
+    canopy,
+) where {FT}
+    θ_l = p.soil.θ_l
+    cds = ClimaCore.Fields.coordinate_field(axes(θ_l))
+    norm = p.root_dryness_norm # A surface scratch field
+    (; θ_high, θ_low, c, ψ_wilt) = sms
+    root_dryness_weight = @. lazy(
+        Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) *
+        compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
+    )
+    Operators.column_integral_definite!(norm, root_dryness_weight)
+end
+
+"""
+     update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel},, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
 Updates the leaf water potential with the estimated steady state value in the case of a prognostic ground condition for
 arbitrary soil moisture stress parameterizations. Here we weight the potential by the hydraulic conductivity in each layer
@@ -324,19 +356,63 @@ arbitrary soil moisture stress parameterizations. Here we weight the potential b
 function update_steady_state_leaf_water_potential!(
     p,
     hydraulics::Canopy.SteadyStateModel,
-    sms,
+    sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel},
     ground::PrognosticGroundConditions{FT},
     canopy,
 ) where {FT}
     K = p.soil.K
     cds = ClimaCore.Fields.coordinate_field(axes(K))
-    norm = p.scratch1 # A surface scratch field
-    root_weight = @. lazy(
+    norm = p.root_dryness_norm # this was precomputed just prior in `update_root_dryness_norm!`
+    root_dryness_weight = @. lazy(
         Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) * K,
     )
-    Operators.column_integral_definite!(norm, root_weight)
-    field = @. lazy(p.soil.ψ * root_weight / nonzero_norm(norm))
+    field = @. lazy(p.soil.ψ * root_dryness_weight / nonzero_norm(norm))
     Operators.column_integral_definite!(p.canopy.hydraulics.ψ, field)
+end
+
+"""
+     update_root_dryness_norm!(p, hydraulics::SteadyStateModel, sms:::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel}, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+
+Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
+is the soil layer specific water stress. This is used to compute
+- root extraction
+- steady state water potential of the leaf
+
+The β factor is compute with Tuzet or set equal to 1.
+"""
+function update_root_dryness_norm!(
+    p,
+    hydraulics::SteadyStateModel,
+    sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel},
+    ground::PrognosticGroundConditions{FT},
+    canopy,
+) where {FT}
+    K = p.soil.K
+    cds = ClimaCore.Fields.coordinate_field(axes(K))
+    norm = p.root_dryness_norm
+    root_dryness_weight = @. lazy(
+        Canopy.root_distribution(cds.z, canopy.biomass.rooting_depth) * K,
+    )
+    Operators.column_integral_definite!(norm, root_dryness_weight)
+end
+
+"""
+     update_root_dryness_norm!(p, hydraulics::PlantHydraulicsModel, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+
+Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
+is the soil layer specific water stress.
+
+For arbirtary moisture stress + PlantHydraulics, we do not need this function to do anything because ψ is computed using the
+retention curve, and the root extraction is computed using the Darcy flux.
+"""
+function update_root_dryness_norm!(
+    p,
+    hydraulics::PlantHydraulicsModel,
+    sms,
+    ground::PrognosticGroundConditions{FT},
+    canopy,
+) where {FT}
+    nothing
 end
 
 """
