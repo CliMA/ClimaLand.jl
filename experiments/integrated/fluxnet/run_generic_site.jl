@@ -29,7 +29,6 @@ toml_dict = LP.create_toml_dict(FT)
 
 site_ID = length(ARGS) >= 1 ? ARGS[1] : "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
-duration = Day(7)
 
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
@@ -39,7 +38,6 @@ duration = Day(7)
 (start_date, stop_date) = FluxnetSimulations.get_data_dates(
     site_ID,
     time_offset;
-    duration,
     required_columns = FluxnetSimulations.FLUXNET_FORCING_COLUMNS,
 )
 data_dt = FluxnetSimulations.get_data_dt(site_ID)
@@ -96,6 +94,7 @@ diags = ClimaLand.default_diagnostics(
         "swc",
         "tsoil",
         "swe",
+        "lai",
     ],
     reduction_period = data_dt == 3600 ? :hourly : :halfhourly,
 )
@@ -119,16 +118,38 @@ LandSimVis.make_diurnal_timeseries(
     start_date;
     savedir,
     short_names = ["gpp", "er", "lhf", "shf", "swu", "lwu"],
-    spinup_date = start_date + Day(1),
+    spinup_date = start_date + Day(30),
     comparison_data,
+)
+tsoil_depths = FluxnetSimulations.get_sensor_depths(FT, Val(site_ID_val)).tsoil
+swc_depths = FluxnetSimulations.get_sensor_depths(FT, Val(site_ID_val)).swc
+LandSimVis.make_timeseries(
+    domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["tsoil"],
+    spinup_date = start_date + Day(30),
+    comparison_data,
+    depth = isnothing(tsoil_depths) ? nothing : tsoil_depths[1],
 )
 LandSimVis.make_timeseries(
     domain,
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe"],
-    spinup_date = start_date + Day(1),
+    short_names = ["swc"],
+    spinup_date = start_date + Day(30),
+    comparison_data,
+    depth = isnothing(swc_depths) ? nothing : tsoil_depths[1],
+)
+LandSimVis.make_timeseries(
+    domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["swe", "lai"],
+    spinup_date = start_date + Day(10),
     comparison_data,
 )
 @info "Wrote plots to $savedir"

@@ -49,11 +49,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     ν_ss_quartz,
     ν_ss_om,
     ν_ss_gravel,
-    z_0m_soil,
-    z_0b_soil,
-    soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
     Ω,
     χl,
     α_PAR_leaf,
@@ -150,19 +145,6 @@ pft_pcts = [
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
-
-runoff = ClimaLand.Soil.Runoff.SurfaceRunoff()
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-)
-composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
@@ -170,14 +152,6 @@ soil = Soil.EnergyHydrology{FT}(
     toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
-    albedo = soil_albedo,
-    runoff,
-    retention_parameters,
-    composition_parameters,
-    S_s = soil_S_s,
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
 )
 
 # Soil microbes model
@@ -201,9 +175,20 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
     radiation_parameters,
     ϵ_canopy,
 )
-
+# Setup soil moisture stress and hydraulics to be the defaults we use
+# in global runs
+soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
+    soil_domain,
+    toml_dict;
+    soil_params = (;
+        ν = soil.parameters.ν,
+        θ_r = soil.parameters.θ_r,
+        hydrology_cm = soil.parameters.hydrology_cm,
+    ),
+)
+hydraulics = Canopy.SteadyStateModel{FT}()
 # Set up conductance
-conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(land_domain, toml_dict; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25)
@@ -219,20 +204,9 @@ LAI =
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
-hydraulics = Canopy.PlantHydraulicsModel{FT}(
-    canopy_domain,
-    toml_dict;
-    ν = plant_ν,
-    S_s = plant_S_s,
-    conductivity_model,
-    retention_model,
-)
 height = h_canopy
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
-
-# Set up energy model
-energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
@@ -246,9 +220,9 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
-    hydraulics,
-    energy,
     biomass,
+    hydraulics,
+    soil_moisture_stress,
 )
 
 # Integrated plant hydraulics and soil model
