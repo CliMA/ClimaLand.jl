@@ -64,7 +64,7 @@ function profile_and_benchmark(
             elseif average_timing_s < reference_time - std_timing_s
                 device_suffix =
                     device isa ClimaComms.AbstractCPUDevice ? "CPU" : "GPU"
-                @info "Possible significant performance improvement, please update PREVIOUS_$(device_suffix)_TIME in $(@__DIR__)"
+                @info "Possible significant performance improvement, please update PREVIOUS_$(device_suffix)_TIME_S from $(reference_time) to $(average_timing_s) in $(@__DIR__)"
             end
             # cpu benchmarks seem to have more variation because less samples are taken
             N_ALLOWED_STDV = device isa ClimaComms.CUDADevice ? 2 : 3
