@@ -1,7 +1,7 @@
 agents:
   queue: central
   slurm_mem: 24G
-  modules: climacommon/2026_02_18
+  modules: climacommon/2026_10_30-1.13.3
 
 env:
   JULIA_NVTX_CALLBACKS: gc
