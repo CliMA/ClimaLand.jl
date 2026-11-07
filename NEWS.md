@@ -2,9 +2,15 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- ![][badge-💥behavoralΔ] Introduce steady state hydraulics model and make default. Adjust piecewise soil moisture stress low value to be equal to the wilting point; correct bug in the high value.
-- ![][badge-🔥behavioralΔ] Faster TOPMODEL subsurface drainage: the default `R_sb` is
-  1.484e-5 m/s instead of 1.484e-7.
+
+v1.15.0
+----
+- ![][badge-🔥behavioralΔ] Introduce steady state hydraulics model and make default.
+  Adjust piecewise soil moisture stress low value to be equal to the wilting point;
+  correct bug in the high value.
+  PR [#1937](https://github.com/CliMA/ClimaLand.jl/pull/1937)
+- ![][badge-🐛bugfix] TOPMODEL subsurface runoff treats a water table above the
+  surface as one at the surface, so the flux never exceeds `R_sb`.
   PR [#1945](https://github.com/CliMA/ClimaLand.jl/pull/1945)
 - ![][badge-🔥behavioralΔ] The scalar roughness length of snow is 1 mm instead of
   ClimaParams' 8 cm. PR [#1947](https://github.com/CliMA/ClimaLand.jl/pull/1947)
