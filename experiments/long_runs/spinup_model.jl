@@ -125,7 +125,31 @@ function copy_fields!(field::Fields.Field, dataset)
     return nothing
 end
 
-restart_file = ClimaLand.find_restart(diagnostics_root)
+checkpoint_seconds(file) =
+    let m = match(r"^day(\d+)\.(\d+)\.hdf5$", basename(file))
+        86400 * parse(Int, m[1]) + parse(Int, m[2])
+    end
+
+"""
+    latest_checkpoint(dir)
+
+Return the checkpoint with the latest simulation time in the output folders of
+`dir`, or `nothing` if there is none.
+"""
+function latest_checkpoint(dir)
+    # Not `ClimaLand.find_restart`: it calls `stat` on bare file names, so from
+    # another directory it sorts alphabetically and day730 comes after day3652
+    checkpoints = [
+        joinpath(dir, folder, file) for
+        folder in filter(contains(r"^output_\d+$"), readdir(dir)) for
+        file in readdir(joinpath(dir, folder)) if
+        contains(file, r"^day\d+\.\d+\.hdf5$")
+    ]
+    return isempty(checkpoints) ? nothing :
+           argmax(checkpoint_seconds, checkpoints)
+end
+
+restart_file = latest_checkpoint(diagnostics_root)
 if isnothing(restart_file) && haskey(ENV, "RESTART_FILE")
     restart_file = ENV["RESTART_FILE"]
 end
