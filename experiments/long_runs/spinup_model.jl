@@ -256,6 +256,11 @@ simulation = LandSimulation(
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 solve!(simulation)
 
+# solve! logs a crash instead of throwing: fail the job, which stops the chain
+reached = date(simulation._integrator.t)
+reached < chunk_stop && error("Chunk stopped at $reached, before $chunk_stop")
+abort_on_nan(simulation._integrator)
+
 # A checkpoint at the end of the chunk, in case the callback did not fire there
 ClimaLand.save_checkpoint(
     simulation._integrator.u,
