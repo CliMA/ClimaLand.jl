@@ -1269,8 +1269,7 @@ julia> using ClimaLand
 julia> domain = ClimaLand.Domains.SphericalShell(;
         radius = 6300e3,
         depth = 15.,
-        nelements = (10, 3),
-        dz_tuple = ((1.0, 0.05)));
+        nelements = (10, 3));
 
 julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
 (9.0, 9.0)
