@@ -694,6 +694,41 @@ function compute_monthly_leaderboard(
 end
 
 """
+    write_rmses(path, sim_obs_season_comparison_dict, data_source)
+
+Write the global RMSE and bias of each variable and season against
+`data_source` to the CSV file `path`, from the time-averaged simulation and
+observation maps in `sim_obs_season_comparison_dict`, so the numbers can be
+followed as a time series across runs. The table is also printed to the log,
+which outlives the job's artifacts.
+
+The columns are `short_name`, `season`, `data_source`, `rmse`, `bias`, and
+`units`. Seasons without data are `NaN`.
+"""
+function write_rmses(path, sim_obs_season_comparison_dict, data_source)
+    open(path, "w") do io
+        println(io, "short_name,season,data_source,rmse,bias,units")
+        for short_name in sort(collect(keys(sim_obs_season_comparison_dict)))
+            for season in ["ANN", "MAM", "JJA", "SON", "DJF"]
+                sim_var, obs_var =
+                    sim_obs_season_comparison_dict[short_name][season]
+                has_data = !isempty(sim_var) && !isempty(obs_var)
+                rmse =
+                    has_data ? ClimaAnalysis.global_rmse(sim_var, obs_var) : NaN
+                bias =
+                    has_data ? ClimaAnalysis.global_bias(sim_var, obs_var) : NaN
+                units = has_data ? ClimaAnalysis.units(sim_var) : ""
+                row =
+                    (short_name, season, data_source, rmse, bias, "\"$units\"")
+                println(io, join(row, ","))
+            end
+        end
+    end
+    @info "$(basename(path)):\n$(rstrip(read(path, String)))"
+    return nothing
+end
+
+"""
     compute_seasonal_leaderboard(leaderboard_base_path,
                                  diagnostics_folder_path,
                                  data_source;
@@ -842,6 +877,11 @@ function compute_seasonal_leaderboard(
         sim_obs_time_avg_over_seasons_comparison_dict[short_name] =
             (time_averages_sim_var, time_averages_obs_var)
     end
+    write_rmses(
+        joinpath(leaderboard_base_path, "$(data_source)_leaderboard_rmse.csv"),
+        sim_obs_season_comparison_dict,
+        data_source,
+    )
 
     # Make global seasonal averages over all years (after removing spinup)
     # Rows correspond to short names
