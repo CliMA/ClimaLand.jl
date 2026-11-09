@@ -30,6 +30,14 @@ FT = Float32
     @test f_frz(FT(1.2)) == f_frz(FT(1))
     @test issorted(f_frz.(FT.(0:0.1:1)))
     @test f_frz(FT(0.5)) < FT(0.2)
+
+    @test Runoff.is_frozen(FT(0.3), FT(0.1), FT(0.05))
+    @test !Runoff.is_frozen(FT(0.1), FT(0.3), FT(0.05))
+    @test !Runoff.is_frozen(FT(0), FT(0.3), FT(0.05))
+    R_sb, f_over = FT(1.484e-7), FT(3.28)
+    @test Runoff.perched_drainage(R_sb, f_over, FT(1), FT(0)) == 0
+    @test Runoff.perched_drainage(R_sb, f_over, FT(1), FT(0.5)) ==
+          Runoff.topmodel_ss_flux(R_sb, f_over, FT(0.5))
 end
 
 @testset "Richards model, no runoff FT =$FT" begin
@@ -118,6 +126,7 @@ end
         :R_ess,
         :h∇,
         :subsfc_scratch,
+        :ss_sink,
     )
     @test Runoff.runoff_var_domain_names(runoff_model) == (
         :surface,
@@ -127,9 +136,10 @@ end
         :surface,
         :surface,
         :subsurface,
+        :subsurface,
     )
     @test Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT, FT)
+          (FT, FT, FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
@@ -195,10 +205,14 @@ end
         (model.parameters.ν .- model.parameters.θ_r),
     )
     @test scratch == p.soil.h∇
-    @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
-        runoff_model.subsurface_source.R_sb,
-        runoff_model.f_over,
-        model.domain.depth .- p.soil.h∇,
+    @test Array(parent(p.soil.R_ss)) ≈ Array(
+        parent(
+            Runoff.topmodel_ss_flux.(
+                runoff_model.subsurface_source.R_sb,
+                runoff_model.f_over,
+                model.domain.depth .- p.soil.h∇,
+            ),
+        ),
     )
     ic = Runoff.soil_infiltration_capacity(model, Y, p)
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
@@ -278,10 +292,14 @@ end
         (model.parameters.ν .- model.parameters.θ_r),
     )
     @test scratch == p.soil.h∇
-    @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
-        runoff_model.subsurface_source.R_sb,
-        runoff_model.f_over,
-        model.domain.depth .- p.soil.h∇,
+    @test Array(parent(p.soil.R_ss)) ≈ Array(
+        parent(
+            Runoff.topmodel_ss_flux.(
+                runoff_model.subsurface_source.R_sb,
+                runoff_model.f_over,
+                model.domain.depth .- p.soil.h∇,
+            ),
+        ),
     )
     ic = Runoff.soil_infiltration_capacity(model, Y, p)
     @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
@@ -303,7 +321,8 @@ end
             model.parameters.earth_param_set,
         ),
     )
-    @test p.soil.R_ess == scratch2 .* (p.soil.R_ss ./ max.(p.soil.h∇, eps(FT)))
+    @test Array(parent(p.soil.R_ess)) ≈
+          Array(parent(scratch2 .* (p.soil.R_ss ./ max.(p.soil.h∇, eps(FT)))))
     @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
     @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
@@ -311,6 +330,43 @@ end
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. runoff_model.f_max *
              exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+
+    # Water perched on frozen layers drains from the frost table
+    ν = model.parameters.ν
+    θ_r = model.parameters.θ_r
+    frozen = z .< FT(-2)
+    @. Y.soil.θ_i = ifelse(frozen, FT(0.8) * (ν - θ_r), FT(0))
+    @. Y.soil.ϑ_l = ifelse(frozen, θ_r + FT(0.01), ν + FT(0.01))
+    @. Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy(
+        Y.soil.θ_i,
+        ClimaLand.Soil.volumetric_heat_capacity(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            model.parameters.earth_param_set,
+        ),
+        ifelse(frozen, FT(265), FT(275)),
+        model.parameters.earth_param_set,
+    )
+    set_initial_cache!(p, Y, FT(0))
+    frozen_layers = Array(parent(frozen)) .== 1
+    @test all(
+        Runoff.is_frozen.(
+            Array(parent(Y.soil.θ_i))[frozen_layers],
+            Array(parent(Y.soil.ϑ_l))[frozen_layers],
+            Array(parent(θ_r))[frozen_layers],
+        ),
+    )
+    integral = ClimaCore.zeros(surface_space)
+    ClimaCore.Operators.column_integral_definite!(integral, p.soil.ss_sink)
+    @test Array(parent(integral)) ≈ Array(parent(p.soil.R_ss))
+    @test all(iszero, Array(parent(p.soil.ss_sink))[frozen_layers])
+    deep_table = Runoff.topmodel_ss_flux.(
+        runoff_model.subsurface_source.R_sb,
+        runoff_model.f_over,
+        model.domain.depth .- p.soil.h∇,
+    )
+    @test all(Array(parent(p.soil.R_ss)) .> 100 .* Array(parent(deep_table)))
 
     # A saturated surface layer takes no water: all liquid input runs off
     ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l) .=

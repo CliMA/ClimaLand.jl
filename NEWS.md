@@ -10,6 +10,9 @@ main
   permeable fraction of the surface, `1 - f_frz`, with the impermeable fraction of
   Niu and Yang (2006), instead of `K_sat` times the ice impedance. With TOPMODEL
   runoff, a surface layer saturated with liquid and ice takes no water.
+- ![][badge-🔥behavioralΔ] TOPMODEL: water perched on frozen layers drains as a water
+  table perched on the frost table, instead of being taken as a water table near the
+  bottom of the column, which does not drain.
 
 v1.15.0
 ----

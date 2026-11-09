@@ -2,7 +2,7 @@ module Runoff
 using DocStringExtensions
 using LazyBroadcast: lazy
 using ClimaCore
-using ClimaCore.Operators: column_integral_definite!
+using ClimaCore.Operators: column_integral_definite!, column_accumulate!
 using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
@@ -268,33 +268,127 @@ function update_infiltration_water_flux!(
     @. p.soil.is_saturated =
         is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
-    @. p.soil.R_ss = topmodel_ss_flux(
-        runoff.subsurface_source.R_sb,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-    )
+    update_subsurface_drainage!(p, runoff, θ_i, ϑ_l, θ_r, model)
     update_subsurface_energy_runoff!(p, model)
 end
+
+"""
+    is_frozen(θ_i, ϑ_l, θ_r)
+
+Whether ice makes up more than half of the water of a soil layer, which makes
+its conductivity negligible (the ice impedance 10^(-Ω f_i) is below 10^-3 for
+Ω = 7).
+"""
+is_frozen(θ_i, ϑ_l, θ_r) = θ_i > (ϑ_l + θ_i - θ_r) / 2 && θ_i > zero(θ_i)
+
+"""
+    update_subsurface_drainage!(p, runoff::TOPMODELRunoff, θ_i, ϑ_l, θ_r, model)
+
+Sets the TOPMODEL subsurface runoff `p.soil.R_ss` and its sink per layer,
+`p.soil.ss_sink`, from the liquid-saturated layers weighted in
+`p.soil.is_saturated`.
+
+The layers above the frost table (the shallowest frozen layer, see `is_frozen`)
+drain as a water table perched on it: their depth to the water table is that of
+the frost table minus their saturated thickness. The layers below drain as the
+standard TOPMODEL water table, measured from the bottom of the column. Without
+frozen layers, all layers are above the frost table, which is then the bottom of
+the column, and this is the standard TOPMODEL drainage. Water perched on frozen
+ground (permafrost, or seasonal frost after the surface thaws) would otherwise
+be taken as a water table at the depth of the bottom of the column, which does
+not drain.
+"""
+function update_subsurface_drainage!(
+    p,
+    runoff::TOPMODELRunoff,
+    θ_i,
+    ϑ_l,
+    θ_r,
+    model,
+)
+    FT = eltype(ϑ_l)
+    (; R_sb) = runoff.subsurface_source
+    (; f_over) = runoff
+    depth = model.domain.fields.depth
+    # 1 down to the frost table, 0 below
+    above_frost = p.soil.subsfc_scratch
+    unfrozen = @. lazy(FT(!is_frozen(θ_i, ϑ_l, θ_r)))
+    column_accumulate!(
+        (above, layer_unfrozen) -> above * layer_unfrozen,
+        above_frost,
+        unfrozen;
+        init = one(FT),
+        reverse = true,
+    )
+    # Depth of the frost table and saturated thickness above it; R_ss and R_ess
+    # hold them until they are set
+    d_frost = p.soil.R_ss
+    h_perched = p.soil.R_ess
+    column_integral_definite!(d_frost, above_frost)
+    saturated_above_frost = @. lazy(above_frost * p.soil.is_saturated)
+    column_integral_definite!(h_perched, saturated_above_frost)
+    @. p.soil.ss_sink =
+        p.soil.is_saturated * ifelse(
+            above_frost > 0,
+            perched_drainage(R_sb, f_over, d_frost, h_perched) /
+            max(h_perched, eps(FT)),
+            topmodel_ss_flux(R_sb, f_over, depth - (p.soil.h∇ - h_perched)) /
+            max(p.soil.h∇ - h_perched, eps(FT)),
+        )
+    @. p.soil.R_ss =
+        perched_drainage(R_sb, f_over, d_frost, h_perched) + ifelse(
+            p.soil.h∇ - h_perched > 0,
+            topmodel_ss_flux(R_sb, f_over, depth - (p.soil.h∇ - h_perched)),
+            zero(FT),
+        )
+end
+
+"""
+    perched_drainage(R_sb, f_over, d_frost, h_perched)
+
+TOPMODEL subsurface runoff from the saturated thickness `h_perched` above a frost
+table at depth `d_frost` (the bottom of the column when no layer is frozen);
+zero without saturated layers there.
+"""
+perched_drainage(R_sb, f_over, d_frost, h_perched) =
+    h_perched > 0 ? topmodel_ss_flux(R_sb, f_over, d_frost - h_perched) :
+    zero(h_perched)
 
 function update_subsurface_energy_runoff!(
     p,
     model::EnergyHydrology{FT},
 ) where {FT}
-    @. p.soil.subsfc_scratch =
-        p.soil.is_saturated * volumetric_internal_energy_liq(
+    energy_sink = @. lazy(
+        p.soil.ss_sink * volumetric_internal_energy_liq(
             p.soil.T,
             model.parameters.earth_param_set,
-        )
-    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actual just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
-    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
+        ),
+    )
+    column_integral_definite!(p.soil.R_ess, energy_sink)
 end
-update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
+update_subsurface_energy_runoff!(p, model::RichardsModel) = (p.soil.R_ess .= 0)
 
-runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :subsfc_scratch)
-runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :surface, :subsurface)
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT)
+runoff_vars(::TOPMODELRunoff) = (
+    :infiltration,
+    :is_saturated,
+    :R_s,
+    :R_ss,
+    :R_ess,
+    :h∇,
+    :subsfc_scratch,
+    :ss_sink,
+)
+runoff_var_domain_names(::TOPMODELRunoff) = (
+    :surface,
+    :subsurface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :subsurface,
+    :subsurface,
+)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -319,11 +413,10 @@ model_agnostic_volumetric_ice_content(Y, FT) =
 Adjusts dY.soil.ϑ_l in place to account for the loss of
 water due to subsurface runoff.
 
-The sink term is given by - R_ss/h∇ H(twc - ν),
-where H is the Heaviside function, h∇ is the water table
-thickness (defined to be where twc>ν), where twc is the total water content,
- and R_ss is the runoff as a
-flux(m/s).
+The sink term is `p.soil.ss_sink`: in each saturated layer, the runoff
+of its saturated zone (above or below the frost table, see
+`update_subsurface_drainage!`) divided by the thickness of that zone, weighted by
+how much the layer is above saturation.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -332,9 +425,7 @@ function ClimaLand.source!(
     p::NamedTuple,
     model::RichardsModel{FT},
 ) where {FT}
-    h∇ = p.soil.h∇
-    ϵ = eps(FT)
-    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ϑ_l -= p.soil.ss_sink
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
 end
 
@@ -348,7 +439,8 @@ end
     ) where {FT}
 
 Adjusts dY.soil.ϑ_l and dY.soil.ρe_int in place
- to account for the loss of water and energy due to subsurface runoff.
+ to account for the loss of water and energy due to subsurface runoff: each
+layer loses its sink `p.soil.ss_sink` of liquid water, with that water's energy.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -357,10 +449,12 @@ function ClimaLand.source!(
     p::NamedTuple,
     model::EnergyHydrology{FT},
 ) where {FT}
-    h∇ = p.soil.h∇
-    ϵ = eps(FT)
-    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ϑ_l -= p.soil.ss_sink
+    @. dY.soil.ρe_int -=
+        p.soil.ss_sink * volumetric_internal_energy_liq(
+            p.soil.T,
+            model.parameters.earth_param_set,
+        )
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
     @. dY.soil.∫F_e_dt -= p.soil.R_ess # the integral is designed to be this flux
 end
