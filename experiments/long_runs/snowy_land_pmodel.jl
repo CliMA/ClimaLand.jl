@@ -166,6 +166,11 @@ LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 leaderboard_data_sources = ["ERA5", "FlagshipCarbonMetrics"]
 PROGNOSTIC_LAI && push!(leaderboard_data_sources, "FlagshipVegetationMetrics")
+# Observations of the water table leaderboard, a copy until they are an artifact
+haskey(ENV, "CLIMALAND_WATER_TABLE_OBS") || (
+    ENV["CLIMALAND_WATER_TABLE_OBS"] =
+        joinpath(@__DIR__, "fan2017_wtd_1deg.nc")
+)
 LandSimVis.make_leaderboard_plots(
     simulation;
     savedir = root_path,

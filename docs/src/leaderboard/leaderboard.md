@@ -186,6 +186,8 @@ grid-mean water table of TOPMODEL stands for. Its columns are
 
 The leaderboard runs only when the environment variable
 `CLIMALAND_WATER_TABLE_OBS` gives a NetCDF file with `wtd_mean15(lon, lat)` in m,
-and the simulation outputs `wtd`. Frozen ground without water perched on it has
-no liquid water table, so over permafrost `wtd` is close to the depth of the
-column.
+and the simulation outputs `wtd`. Until the observations are an artifact, the
+long run `experiments/long_runs/snowy_land_pmodel.jl` points it to the copy in
+`experiments/long_runs/fan2017_wtd_1deg.nc`. Frozen ground without water
+perched on it has no liquid water table, so over permafrost `wtd` is close to
+the depth of the column.
