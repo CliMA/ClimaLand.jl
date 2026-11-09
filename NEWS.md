@@ -6,6 +6,7 @@ main
   or where the data give `fmax = 0`, get the mean `fmax` instead of 0. With
   `fmax = 0` a saturated column has no saturation-excess runoff, and where rain
   minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
+  PR [#1957](https://github.com/CliMA/ClimaLand.jl/pull/1957)
 
 v1.15.0
 ----
