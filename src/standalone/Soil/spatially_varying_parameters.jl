@@ -447,6 +447,12 @@ Returns the spatially varying parameter `fmax` of the TOPMODEL
 parameterization; this is read from a nc file and then regridded
 to the simulation grid.
 
+The TOPMODEL data have their own land mask, which differs from the model's at
+coasts. Points outside it, and points where the data give `fmax = 0`, get the
+mean `fmax` of the other points. With `fmax = 0` a saturated column has no
+saturation-excess runoff and keeps taking rain, so where rain minus
+evapotranspiration exceeds `R_sb` it fills without bound.
+
 The keyword arguments `regridder_type`, `extrapolation_bc`, and
 `interpolation_method`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
@@ -475,6 +481,8 @@ function topmodel_fmax(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    f_max = masked_to_value.(f_max, topmodel_params_mask, FT(0))
+    has_f_max = @. FT((topmodel_params_mask == 1) & (f_max > 0))
+    f_max_mean = sum(f_max .* has_f_max) / sum(has_f_max)
+    @. f_max = ifelse(has_f_max == 1, f_max, f_max_mean)
     return f_max
 end
