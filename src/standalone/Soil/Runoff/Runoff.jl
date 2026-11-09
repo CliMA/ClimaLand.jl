@@ -244,32 +244,31 @@ function update_infiltration_water_flux!(
     θ_r = model.parameters.θ_r
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
-    # Surface runoff first
-    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
+    # A surface layer saturated with liquid and ice takes no water, whatever the
+    # water table; `infiltration` holds that flag until it is set
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r)
+    p.soil.infiltration .=
+        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated)
+    # The water table, perched on the frost table or not, holds liquid water only
     @. p.soil.is_saturated =
-        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
+        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
-    # A saturated surface layer takes no water, whatever the water table
-    is_saturated_sfc =
-        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
+    update_subsurface_drainage!(p, runoff, θ_i, ϑ_l, θ_r, model)
+    update_subsurface_energy_runoff!(p, model)
+    # The capacity uses `subsfc_scratch`, so it comes after the drainage
+    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
     @. p.soil.infiltration = ifelse(
-        is_saturated_sfc > 0,
+        p.soil.infiltration > 0,
         zero(FT),
         topmodel_surface_infiltration(
             runoff.f_max,
             runoff.f_over,
-            model.domain.fields.depth - p.soil.h∇,
+            p.soil.z∇,
             ic,
             input,
         ),
     )
     @. p.soil.R_s = abs(input - p.soil.infiltration)
-    # eek! now do it again but use only liquid water for subsurface runoff
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
-    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
-    update_subsurface_drainage!(p, runoff, θ_i, ϑ_l, θ_r, model)
-    update_subsurface_energy_runoff!(p, model)
 end
 
 """
@@ -612,13 +611,13 @@ get_water_table_depth(runoff_model::TOPMODELRunoff, Y, p) = p.soil.z∇
     get_soil_fsat(runoff_model, Y, p, depth)
 
 A helper function which returns the surface saturated fraction
- based on the type of runoff model being used.
+ based on the type of runoff model being used. For TOPMODEL, it is the one of
+ `topmodel_surface_infiltration`, from the depth to the water table `p.soil.z∇`.
 """
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
     @. lazy(
-        runoff_model.f_max *
-        exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
+        min(runoff_model.f_max * exp(-runoff_model.f_over / 2 * p.soil.z∇), 1),
     )
 end
 

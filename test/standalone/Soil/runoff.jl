@@ -221,7 +221,7 @@ end
     @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
         f_max,
         f_over,
-        model.domain.depth - p.soil.h∇,
+        p.soil.z∇,
         ic,
         precip_field,
     )
@@ -234,8 +234,10 @@ end
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
     tmp = p.soil.R_s
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
-    @test tmp == @. runoff_model.f_max *
-             exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+    @test tmp == @. min(
+        runoff_model.f_max * exp(-runoff_model.f_over / 2 * p.soil.z∇),
+        1,
+    )
 
 end
 
@@ -309,7 +311,7 @@ end
     @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
         runoff_model.f_max,
         runoff_model.f_over,
-        model.domain.depth - p.soil.h∇,
+        p.soil.z∇,
         ic,
         p.drivers.P_liq,
     )
@@ -334,8 +336,10 @@ end
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
     tmp = p.soil.R_s
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
-    @test tmp == @. runoff_model.f_max *
-             exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+    @test tmp == @. min(
+        runoff_model.f_max * exp(-runoff_model.f_over / 2 * p.soil.z∇),
+        1,
+    )
 
     # Water perched on frozen layers drains from the frost table
     ν = model.parameters.ν
@@ -376,6 +380,29 @@ end
     # The water table is that of the perched water: at the surface here
     @test all(iszero, Array(parent(p.soil.z∇)))
     @test Runoff.get_water_table_depth(runoff_model, Y, p) === p.soil.z∇
+
+    # Pores filled with ice below a dry surface make no water table: nothing is
+    # saturated, and the input infiltrates up to the capacity
+    @. Y.soil.θ_i = ifelse(frozen, ν - θ_r, FT(0))
+    @. Y.soil.ϑ_l = ifelse(frozen, θ_r + FT(0.01), θ_r + FT(0.1))
+    @. Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy(
+        Y.soil.θ_i,
+        ClimaLand.Soil.volumetric_heat_capacity(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            model.parameters.earth_param_set,
+        ),
+        ifelse(frozen, FT(265), FT(275)),
+        model.parameters.earth_param_set,
+    )
+    set_initial_cache!(p, Y, FT(0))
+    @test all(Array(parent(p.soil.z∇)) .≈ model.domain.depth)
+    tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
+    @test all(Array(parent(tmp)) .< eps(FT))
+    ic = Runoff.soil_infiltration_capacity(model, Y, p)
+    @test Array(parent(p.soil.infiltration)) ≈
+          Array(parent(max.(ic, p.drivers.P_liq)))
 
     # A saturated surface layer takes no water: all liquid input runs off
     ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l) .=

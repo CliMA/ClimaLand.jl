@@ -16,6 +16,9 @@ main
 - ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
   runoff (output by default with TOPMODEL), and a water table leaderboard against
   Fan et al. (2017), run when `CLIMALAND_WATER_TABLE_OBS` gives the observations.
+- ![][badge-🔥behavioralΔ] TOPMODEL: the saturated area of the surface runoff, and
+  `sfsat`, come from the depth to the liquid or perched water table, not from the
+  saturated thickness of liquid plus ice.
 
 v1.15.0
 ----
