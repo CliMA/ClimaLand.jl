@@ -90,15 +90,15 @@ ground = ClimaLand.PrognosticGroundConditions{FT}();
 canopy_forcing = (; atmos, radiation, ground);
 soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm))
 # Combine the components into a CanopyModel
-radiation_parameters = (; Ω = 1.0,  α_NIR_leaf = 0.21,  α_PAR_leaf = 0.35, G_Function = CLMGFunction(-0.3))
-rad = Canopy.BeerLambertModel{FT}(ClimaLand.Domains.obtain_surface_domain(land_domain), toml_dict; radiation_parameters)
+#radiation_parameters = (; Ω = 1.0,  α_NIR_leaf = 0.21,  α_PAR_leaf = 0.35, G_Function = CLMGFunction(-0.3))
+#rad = Canopy.BeerLambertModel{FT}(ClimaLand.Domains.obtain_surface_domain(land_domain), toml_dict; radiation_parameters)
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
     LAI,
     toml_dict;
     prognostic_land_components,
-    radiative_transfer = rad,
+    #radiative_transfer = rad,
     soil_moisture_stress
 );
 
@@ -261,7 +261,7 @@ GPP_data_monthly = compute_monthly_avg(GPP_data, data_dates)
 #
 SW_u_model_monthly = compute_monthly_avg(SW_u, model_dates)
 SW_u_data = comparison_data.swu[data_id_post_spinup]
-SW_u_data_monthly = compute_monthly_avg(SW_u_data, model_dates)
+SW_u_data_monthly = compute_monthly_avg(SW_u_data, data_dates)
 
 LHF_data = comparison_data.lhf[data_id_post_spinup]
 LHF_model_monthly = compute_monthly_avg(LHF, model_dates)
@@ -280,6 +280,8 @@ LAI_monthly = compute_monthly_avg([
         sv.saveval[k].canopy.biomass.area_index.leaf,
     )[1] for k in model_idx1:1:model_idxend
 ], model_dates)
+
+scf_monthly = compute_monthly_avg([parent(sv.saveval[k].snow.snow_cover_fraction)[1] for  k in model_idx1:1:model_idxend], model_dates)
 msf_monthly = compute_monthly_avg([
     parent(
         sv.saveval[k].canopy.soil_moisture_stress.βm,
@@ -439,7 +441,15 @@ lines!(
     color = "blue",
     linewidth = 3,
 )
-
+lines!(
+    ax0,
+    collect(1:12),
+    scf_monthly,
+    label = "",
+    color = "red",
+    linewidth = 3,
+)
+#=
 ax0b = Axis(
     fig[6, 1],
     xlabel = "Month of year",
@@ -472,6 +482,7 @@ lines!(
     color = "blue",
     linewidth = 3,
 )
+    =#
 CairoMakie.save(joinpath(savedir, "vaira_monthly.png"), fig)
 
 fig = Figure(size = (800, 800), fontsize = 24)
