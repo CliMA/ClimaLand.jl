@@ -22,6 +22,14 @@ FT = Float32
     srcs = (1, 2, 3)
     @test ClimaLand.Soil.append_source(nothing, srcs) == srcs
     @test ClimaLand.Soil.append_source(Foo{FT}(), srcs) == (srcs..., Foo{FT}())
+
+    f_frz = Runoff.frozen_impermeable_fraction
+    @test f_frz(FT(0)) ≈ 0 atol = eps(FT)
+    @test f_frz(FT(1)) ≈ 1
+    @test f_frz(FT(-0.1)) == f_frz(FT(0))
+    @test f_frz(FT(1.2)) == f_frz(FT(1))
+    @test issorted(f_frz.(FT.(0:0.1:1)))
+    @test f_frz(FT(0.5)) < FT(0.2)
 end
 
 @testset "Richards model, no runoff FT =$FT" begin
@@ -303,6 +311,13 @@ end
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. runoff_model.f_max *
              exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+
+    # A saturated surface layer takes no water: all liquid input runs off
+    ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l) .=
+        ClimaLand.Domains.top_center_to_surface(model.parameters.ν) .+ FT(0.05)
+    set_initial_cache!(p, Y, FT(0))
+    @test all(iszero, parent(p.soil.infiltration))
+    @test p.soil.R_s == abs.(p.drivers.P_liq)
 end
 
 @testset "Richards model, Site level runoff FT =$FT" begin

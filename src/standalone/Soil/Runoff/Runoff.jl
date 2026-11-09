@@ -249,12 +249,19 @@ function update_infiltration_water_flux!(
     @. p.soil.is_saturated =
         is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
-    @. p.soil.infiltration = topmodel_surface_infiltration(
-        runoff.f_max,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-        ic,
-        input,
+    # A saturated surface layer takes no water, whatever the water table
+    is_saturated_sfc =
+        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
+    @. p.soil.infiltration = ifelse(
+        is_saturated_sfc > 0,
+        zero(FT),
+        topmodel_surface_infiltration(
+            runoff.f_max,
+            runoff.f_over,
+            model.domain.fields.depth - p.soil.h∇,
+            ic,
+            input,
+        ),
     )
     @. p.soil.R_s = abs(input - p.soil.infiltration)
     # eek! now do it again but use only liquid water for subsurface runoff
@@ -394,21 +401,38 @@ end
 Computes the soil infiltration capacity on the surface space
  for the full soil model.
 
-Currently approximates i_c = -K_sat*F(θ_i)*G(T) at the surface, where F and G
-are the functions which adjust the conductivity for the presence ice and taking into
-account the temperature dependence of the viscosity of water.
+Approximates i_c = -K_sat*(1 - f_frz)*G(T) at the surface, where f_frz is the
+fraction of the surface made impermeable by ice (see
+`frozen_impermeable_fraction`) and G accounts for the temperature dependence of
+the viscosity of water.
 """
 function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
-    (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
+    (; K_sat, ν, γ, γT_ref) = model.parameters
 
     @. p.soil.subsfc_scratch =
         -K_sat *
-        ClimaLand.Soil.impedance_factor(
-            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
-            Ω,
-        ) *
+        (1 - frozen_impermeable_fraction(Y.soil.θ_i / ν)) *
         ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+end
+
+"""
+    frozen_impermeable_fraction(F_ice::FT) where {FT}
+
+Returns the fraction of the soil surface made impermeable by ice, given the
+fraction of the pore space filled with ice `F_ice`, following Niu and Yang
+(2006), "Effects of frozen soil on snowmelt runoff and soil water storage at a
+continental scale", Equation (6), with their α = 3.
+
+Frozen ground is patchy: water still infiltrates, at the conductivity of
+unfrozen soil, over the permeable fraction. Reducing the conductivity of the
+whole surface by the ice impedance instead makes a frozen surface layer
+impermeable, so that all snowmelt runs off.
+"""
+function frozen_impermeable_fraction(F_ice::FT) where {FT}
+    α = FT(3)
+    F = clamp(F_ice, zero(FT), one(FT))
+    return (exp(-α * (1 - F)) - exp(-α)) / (1 - exp(-α))
 end
 
 

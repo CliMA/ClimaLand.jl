@@ -6,6 +6,10 @@ main
   or where the data give `fmax = 0`, get the mean `fmax` instead of 0. With
   `fmax = 0` a saturated column has no saturation-excess runoff, and where rain
   minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
+- ![][badge-🔥behavioralΔ] Frozen soil: the infiltration capacity is `K_sat` over the
+  permeable fraction of the surface, `1 - f_frz`, with the impermeable fraction of
+  Niu and Yang (2006), instead of `K_sat` times the ice impedance. With TOPMODEL
+  runoff, a surface layer saturated with liquid and ice takes no water.
 
 v1.15.0
 ----
