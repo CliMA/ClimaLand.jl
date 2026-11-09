@@ -109,12 +109,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # For example, if you are calibrating 3 parameters and are using
     # EKP.TransformUnscented, then the number of tasks should be 7, since
     # 3 * 2 + 1 = 7
+    # A config may set the learning-rate scheduler as `EKP_SCHEDULER`
+    scheduler =
+        isdefined(@__MODULE__, :EKP_SCHEDULER) ? EKP_SCHEDULER :
+        EKP.DataMisfitController(terminate_at = 100)
     ekp = EKP.EnsembleKalmanProcess(
         obs_series,
         EKP.TransformUnscented(prior, impose_prior = true);
         verbose = true,
         rng,
-        scheduler = EKP.DataMisfitController(terminate_at = 100),
+        scheduler,
     )
 
     curr_backend = ClimaCalibrate.get_backend()
