@@ -194,6 +194,19 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
         by = ClimaAnalysis.Index(),
     )
 
+    # Give every time slice the union of the NaN cells of all of them:
+    # observations whose coverage varies with season and year (GOSIF GPP)
+    # would otherwise flatten to samples of different lengths
+    time_index = var.dim2index[ClimaAnalysis.time_name(var)]
+    nan_anywhere =
+        reduce((a, b) -> a .| b, eachslice(isnan.(var.data); dims = time_index))
+    data = copy(var.data)
+    for time_slice in eachslice(data; dims = time_index)
+        time_slice[nan_anywhere] .= NaN
+    end
+    var = ClimaAnalysis.remake(var; data)
+    @info "preprocess_single_obs_var[$short_name]: $(count(.!nan_anywhere)) cells with data at every time"
+
     var.attributes["short_name"] = short_name
     return var
 end

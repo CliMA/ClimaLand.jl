@@ -16,6 +16,37 @@
 # Jacobian update: every new Newton iteration
 # Atmos forcing update: every 3 hours
 
+"""Observation short names whose model diagnostic has another name."""
+const OBS_ALIAS_TO_DIAGNOSTIC =
+    Dict("sif_gpp" => "gpp", "inv_nee" => "nee", "res_er" => "er")
+
+"""Calibrated factor that multiplies the default PAR and NIR reflectances of
+stems, so that the two change together."""
+const STEM_REFLECTANCE_SCALE = "stem_reflectance_scale"
+
+"""
+    model_parameters_path(calibrate_params_path, member_path)
+
+Return the path of a TOML file with the model parameters of an ensemble member.
+The calibrated `STEM_REFLECTANCE_SCALE` multiplies the default values of
+`stem_PAR_reflectance` and `stem_NIR_reflectance`; these are written, with the
+other calibrated parameters, to `model_parameters.toml` in `member_path`.
+Without that scale, the calibrated parameters are the model parameters.
+"""
+function model_parameters_path(calibrate_params_path, member_path)
+    parameters = TOML.parsefile(calibrate_params_path)
+    haskey(parameters, STEM_REFLECTANCE_SCALE) || return calibrate_params_path
+    scale = pop!(parameters, STEM_REFLECTANCE_SCALE)["value"]
+    default_toml = LP.create_toml_dict(FT)
+    for name in ("stem_PAR_reflectance", "stem_NIR_reflectance")
+        parameters[name] =
+            Dict("value" => scale * default_toml[name], "type" => "float")
+    end
+    path = joinpath(member_path, "model_parameters.toml")
+    open(io -> TOML.print(io, parameters), path, "w")
+    return path
+end
+
 function setup_model(
     ::Type{FT},
     start_date,
@@ -96,8 +127,9 @@ function ClimaCalibrate.forward_model(
 
     calibrate_params_path =
         ClimaCalibrate.parameter_path(output_dir, iteration, member)
-    toml_dict =
-        LP.create_toml_dict(FT, override_files = [calibrate_params_path])
+    model_params_path =
+        model_parameters_path(calibrate_params_path, ensemble_member_path)
+    toml_dict = LP.create_toml_dict(FT, override_files = [model_params_path])
 
     model = setup_model(
         FT,
@@ -115,7 +147,7 @@ function ClimaCalibrate.forward_model(
     (; short_names) = config
     short_names = unique!(
         [
-            short_names
+            [get(OBS_ALIAS_TO_DIAGNOSTIC, name, name) for name in short_names]
             ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
         ],
     )
@@ -128,12 +160,20 @@ function ClimaCalibrate.forward_model(
         reduction_type = :average,
     )
 
+    ic_path = something(
+        config.ic_path,
+        ClimaLand.Artifacts.rosetta_spunup_ic_path(; context),
+    )
     simulation = LandSimulation(
         t0,
         tf,
         Δt,
         model;
         outdir,
+        set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+            ic_path,
+            model,
+        ),
         user_callbacks = (ClimaLand.ReportCallback(div((tf - t0), 10), t0),),
         diagnostics = diagnostics,
     )
@@ -142,11 +182,12 @@ function ClimaCalibrate.forward_model(
     @info "Timestep: $Δt s"
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
+    @info "Initial conditions: $ic_path"
     CP.log_parameter_information(
         toml_dict,
         joinpath(ensemble_member_path, "log_params_$member.toml"),
     )
-    params = keys(TOML.parsefile(calibrate_params_path))
+    params = keys(TOML.parsefile(model_params_path))
     strict = true
     CP.check_override_parameter_usage(toml_dict, params, strict)
     ClimaLand.Simulations.solve!(simulation)

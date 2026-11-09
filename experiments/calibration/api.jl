@@ -57,6 +57,10 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
 
     """Type of model to use"""
     model_type::MODEL
+
+    "Initial conditions file of the simulations, or `nothing` for the
+    `rosetta_spunup_ic` artifact"
+    ic_path::Union{Nothing, String}
 end
 
 """
@@ -76,6 +80,7 @@ end
             "land_observation_vector.jld2",
         ),
         model_type = ClimaLand.LandModel,
+        ic_path = nothing,
     )
 
 Initializes a CalibrateConfig, which is of interest to a user running
@@ -117,6 +122,9 @@ Keyword arguments
 
 - `model_type`: A type indicating which model to use. The only supported
   models are "ClimaLand.LandModel" and "ClimaLand.Bucket.BucketModel".
+
+- `ic_path`: The initial conditions file of the `LandModel` simulations, or
+  `nothing` for the `rosetta_spunup_ic` artifact.
 """
 function CalibrateConfig(;
     short_names,
@@ -134,6 +142,7 @@ function CalibrateConfig(;
         "land_observation_vector.jld2",
     ),
     model_type = ClimaLand.LandModel,
+    ic_path = nothing,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
 
@@ -186,6 +195,7 @@ function CalibrateConfig(;
         rng_seed,
         obs_vec_filepath,
         model_type,
+        ic_path,
     )
 
 end

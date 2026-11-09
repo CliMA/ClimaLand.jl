@@ -69,10 +69,22 @@ function ClimaCalibrate.observation_map(
         end
     end
 
+    # A member that dies late writes valid but truncated NetCDF files, which
+    # leave its column partly filled without raising; treat it as failed.
+    for m in 1:ensemble_size
+        missing_names = EnsembleBuilder.missing_short_names(g_ens_builder, m)
+        if !isempty(missing_names)
+            @error "Member $m has incomplete data for $(join(sort!(collect(missing_names)), ", ")); filling observation map entry with NaNs"
+            EnsembleBuilder.fill_g_ens_col!(g_ens_builder, m, NaN)
+        end
+    end
+
     if EnsembleBuilder.is_complete(g_ens_builder)
         return EnsembleBuilder.get_g_ensemble(g_ens_builder)
     else
-        @error "G ensemble matrix is not completed. You may find it useful to call `EnsembleBuilder.missing_short_names(g_ens_builder, 1) or display g_ens_builder in the REPL"
+        error(
+            "G ensemble matrix is incomplete. You may find it useful to call `EnsembleBuilder.missing_short_names(g_ens_builder, 1) or display g_ens_builder in the REPL",
+        )
     end
 end
 
@@ -103,8 +115,12 @@ function process_member_data!(
 
     simdir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     vars = map(short_names) do short_name
-        var = get(simdir, short_name)
+        # Observations such as GOSIF GPP (`sif_gpp`) are compared to a model
+        # diagnostic of another name
+        diagnostic_name = get(OBS_ALIAS_TO_DIAGNOSTIC, short_name, short_name)
+        var = get(simdir, diagnostic_name)
         var = preprocess_sim_var(var)
+        var.attributes["short_name"] = short_name
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         # To prevent double counting along the longitudes since -180 and 180
@@ -177,38 +193,10 @@ function ClimaCalibrate.analyze_iteration(
 )
     plot_output_path = ClimaCalibrate.path_to_iteration(output_dir, iteration)
     plot_constrained_params_and_errors(plot_output_path, ekp, prior)
-
-    # Leaderboard plots can only be plotted when the model saves swu, lwu, shf, lhf diagnostics
-    # Plot ERA5 bias plots for only the first ensemble member
-    # This can take a while to plot, so we plot only one of the members.
-    # We choose the first ensemble member because the parameters for the first
-    # ensemble member are supposed to be the mean of the parameters of the
-    # ensemble members if it is EKP.TransformUnscented
-    output_path =
-        ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, 1)
-
-    diagnostics_folder_path =
-        joinpath(output_path, "global_diagnostics", "output_active")
-    ext.compute_monthly_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ERA5",
-    )
-    ext.compute_seasonal_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ERA5",
-    )
-    ext.compute_monthly_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ILAMB",
-    )
-    ext.compute_seasonal_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ILAMB",
-    )
+    # The leaderboard plots of member 1 are not made here: on Derecho they
+    # crash the orchestrator. Make them afterwards from
+    # member_001/global_diagnostics/output_active.
+    return nothing
 end
 
 """
