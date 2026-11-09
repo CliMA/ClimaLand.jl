@@ -284,9 +284,12 @@ is_frozen(θ_i, ϑ_l, θ_r) = θ_i > (ϑ_l + θ_i - θ_r) / 2 && θ_i > zero(θ_
 """
     update_subsurface_drainage!(p, runoff::TOPMODELRunoff, θ_i, ϑ_l, θ_r, model)
 
-Sets the TOPMODEL subsurface runoff `p.soil.R_ss` and its sink per layer,
-`p.soil.ss_sink`, from the liquid-saturated layers weighted in
-`p.soil.is_saturated`.
+Sets the TOPMODEL subsurface runoff `p.soil.R_ss`, its sink per layer
+`p.soil.ss_sink`, and the depth to the water table `p.soil.z∇`, from the
+liquid-saturated layers weighted in `p.soil.is_saturated`. The water table is
+the one perched on the frost table when there is one, otherwise the one measured
+from the bottom of the column; without saturated layers, `z∇` is the depth of
+the column.
 
 The layers above the frost table (the shallowest frozen layer, see `is_frozen`)
 drain as a water table perched on it: their depth to the water table is that of
@@ -335,6 +338,11 @@ function update_subsurface_drainage!(
             topmodel_ss_flux(R_sb, f_over, depth - (p.soil.h∇ - h_perched)) /
             max(p.soil.h∇ - h_perched, eps(FT)),
         )
+    @. p.soil.z∇ = ifelse(
+        h_perched > 0,
+        max(d_frost - h_perched, zero(FT)),
+        max(depth - (p.soil.h∇ - h_perched), zero(FT)),
+    )
     @. p.soil.R_ss =
         perched_drainage(R_sb, f_over, d_frost, h_perched) + ifelse(
             p.soil.h∇ - h_perched > 0,
@@ -377,6 +385,7 @@ runoff_vars(::TOPMODELRunoff) = (
     :h∇,
     :subsfc_scratch,
     :ss_sink,
+    :z∇,
 )
 runoff_var_domain_names(::TOPMODELRunoff) = (
     :surface,
@@ -387,8 +396,9 @@ runoff_var_domain_names(::TOPMODELRunoff) = (
     :surface,
     :subsurface,
     :subsurface,
+    :surface,
 )
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -587,6 +597,15 @@ saturated soil based on the type of runoff model being used.
 """
 get_saturated_height(runoff_model::AbstractRunoffModel, Y, p) = nothing
 get_saturated_height(runoff_model::TOPMODELRunoff, Y, p) = p.soil.h∇
+
+"""
+    get_water_table_depth(runoff_model, Y, p)
+
+Returns the depth to the water table (see `update_subsurface_drainage!`), or
+`nothing` for runoff models without one.
+"""
+get_water_table_depth(runoff_model::AbstractRunoffModel, Y, p) = nothing
+get_water_table_depth(runoff_model::TOPMODELRunoff, Y, p) = p.soil.z∇
 
 
 """

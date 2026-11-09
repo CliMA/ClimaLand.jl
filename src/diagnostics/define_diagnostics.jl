@@ -1094,6 +1094,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_subsurface_runoff!(out, Y, p, t, land_model),
     )
 
+    # Water table depth
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "wtd",
+        long_name = "Water Table Depth",
+        standard_name = "water_table_depth",
+        units = "m",
+        comments = "Depth below the surface of the water table of TOPMODEL runoff: of the water perched on the frost table when there is any, otherwise of the saturated zone measured from the bottom of the soil column, whose depth it is when no layer is saturated.",
+        compute! = (out, Y, p, t) ->
+            compute_water_table_depth!(out, Y, p, t, land_model),
+    )
+
     # Total runoff
     conditional_add_diagnostic_variable!(
         possible_diags;

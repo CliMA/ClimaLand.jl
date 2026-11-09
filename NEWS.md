@@ -13,6 +13,9 @@ main
 - ![][badge-🔥behavioralΔ] TOPMODEL: water perched on frozen layers drains as a water
   table perched on the frost table, instead of being taken as a water table near the
   bottom of the column, which does not drain.
+- ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
+  runoff (output by default with TOPMODEL), and a water table leaderboard against
+  Fan et al. (2017), run when `CLIMALAND_WATER_TABLE_OBS` gives the observations.
 
 v1.15.0
 ----

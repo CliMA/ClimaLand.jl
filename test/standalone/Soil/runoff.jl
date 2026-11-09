@@ -127,6 +127,7 @@ end
         :h∇,
         :subsfc_scratch,
         :ss_sink,
+        :z∇,
     )
     @test Runoff.runoff_var_domain_names(runoff_model) == (
         :surface,
@@ -137,9 +138,10 @@ end
         :surface,
         :subsurface,
         :subsurface,
+        :surface,
     )
     @test Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT, FT, FT)
+          (FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
@@ -226,6 +228,8 @@ end
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
 
     @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
+    @test Array(parent(p.soil.z∇)) ≈
+          Array(parent(max.(model.domain.depth .- p.soil.h∇, 0)))
     @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
     tmp = p.soil.R_s
@@ -324,6 +328,8 @@ end
     @test Array(parent(p.soil.R_ess)) ≈
           Array(parent(scratch2 .* (p.soil.R_ss ./ max.(p.soil.h∇, eps(FT)))))
     @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
+    @test Array(parent(p.soil.z∇)) ≈
+          Array(parent(max.(model.domain.depth .- p.soil.h∇, 0)))
     @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
     tmp = p.soil.R_s
@@ -367,6 +373,9 @@ end
         model.domain.depth .- p.soil.h∇,
     )
     @test all(Array(parent(p.soil.R_ss)) .> 100 .* Array(parent(deep_table)))
+    # The water table is that of the perched water: at the surface here
+    @test all(iszero, Array(parent(p.soil.z∇)))
+    @test Runoff.get_water_table_depth(runoff_model, Y, p) === p.soil.z∇
 
     # A saturated surface layer takes no water: all liquid input runs off
     ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l) .=
