@@ -10,15 +10,19 @@ main
   permeable fraction of the surface, `1 - f_frz`, with the impermeable fraction of
   Niu and Yang (2006), instead of `K_sat` times the ice impedance. With TOPMODEL
   runoff, a surface layer saturated with liquid and ice takes no water.
+  PR [#1958](https://github.com/CliMA/ClimaLand.jl/pull/1958)
 - ![][badge-🔥behavioralΔ] TOPMODEL: water perched on frozen layers drains as a water
   table perched on the frost table, instead of being taken as a water table near the
   bottom of the column, which does not drain.
+  PR [#1958](https://github.com/CliMA/ClimaLand.jl/pull/1958)
 - ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
   runoff (output by default with TOPMODEL), and a water table leaderboard against
   Fan et al. (2017), run when `CLIMALAND_WATER_TABLE_OBS` gives the observations.
+  PR [#1958](https://github.com/CliMA/ClimaLand.jl/pull/1958)
 - ![][badge-🔥behavioralΔ] TOPMODEL: the saturated area of the surface runoff, and
   `sfsat`, come from the depth to the liquid or perched water table, not from the
   saturated thickness of liquid plus ice.
+  PR [#1958](https://github.com/CliMA/ClimaLand.jl/pull/1958)
 
 v1.15.0
 ----
