@@ -5,6 +5,20 @@ main
 - Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
   CES calibration tutorial does not work on Julia 1.13.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
+- ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
+  four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
+  allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
+  no wood); it respires through `PoolBasedAutotrophicRespirationModel`, and in `LandModel`
+  and `SoilCanopyModel` feeds its litter to a prognostic soil organic carbon
+  (`PrognosticSoilOrganicCarbon`). Also adds `Canopy.equilibrium_carbon_pools`,
+  `Simulations.spin_up_carbon_pools!`, which sets the pools to their equilibrium under the
+  mean drivers of a spin-up period, a `biomass` keyword to the integrated-model
+  constructors, and the `crd` (canopy leaf respiration) diagnostic. The long run with
+  prognostic LAI carries the pools, and its vegetation leaderboard compares `cveg` with the
+  live woody carbon of Xu et al. (2021).
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 
 v1.15.0
 ----

@@ -16,8 +16,9 @@ using Dates
     # experiments/long_runs/snowy_land_pmodel.jl) for `n_steps`, saving a checkpoint
     # after `n_steps_to_checkpoint`. Then restart from that checkpoint and integrate
     # to the same final time, and compare against the uninterrupted simulation.
-    # With `prognostic_lai`, LAI comes from the `ZhouOptimalLAIModel`, whose
-    # time-integrated variables are part of the state.
+    # With `prognostic_lai`, LAI comes from the `ZhouOptimalLAIModel`, wrapped in the
+    # carbon pools of `PrognosticCarbonModel` as in the long run, whose time-integrated
+    # variables and pools are part of the state.
     FT = Float64
     context = ClimaComms.context()
     start_date = DateTime(2008, 3, 1)
@@ -63,6 +64,13 @@ using Dates
             domain,
             Δt;
             prognostic_land_components,
+            biomass = ClimaLand.Canopy.PrognosticCarbonModel{FT}(
+                ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                    ClimaLand.Domains.obtain_surface_domain(domain),
+                    toml_dict,
+                ),
+                toml_dict,
+            ),
         )
     else
         LAI = ClimaLand.Canopy.prescribed_lai_modis(
@@ -80,7 +88,7 @@ using Dates
         )
     end
     @test model.canopy.photosynthesis isa ClimaLand.Canopy.PModel
-    @test (model.canopy.biomass isa ClimaLand.Canopy.ZhouOptimalLAIModel) ==
+    @test (model.canopy.biomass isa ClimaLand.Canopy.PrognosticCarbonModel) ==
           prognostic_lai
     if prognostic_lai
         # A `canopy` passed with a `biomass` must use it.
@@ -98,7 +106,7 @@ using Dates
         @test with_biomass(model.canopy.biomass).canopy === model.canopy
         @test_throws ErrorException with_biomass(
             ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
-                model.canopy.biomass.parameters;
+                model.canopy.biomass.lai_model.parameters;
                 SAI = FT(0),
                 RAI = FT(1),
                 rooting_depth = FT(1),
@@ -226,6 +234,8 @@ using Dates
               Array(parent(Y_checkpoint.canopy.biomass.LAI))
         @test Array(parent(restart._integrator.u.canopy.biomass.A0c4_annual)) !=
               Array(parent(Y_checkpoint.canopy.biomass.A0c4_annual))
+        @test Array(parent(restart._integrator.u.canopy.biomass.C_leaf)) !=
+              Array(parent(Y_checkpoint.canopy.biomass.C_leaf))
     end
 
     # Only the state is checkpointed, so the restarted simulation rebuilds its cache

@@ -1,4 +1,5 @@
-export AutotrophicRespirationParameters, AutotrophicRespirationModel
+export AutotrophicRespirationParameters,
+    AutotrophicRespirationModel, PoolBasedAutotrophicRespirationModel
 
 abstract type AbstractAutotrophicRespirationModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -54,10 +55,12 @@ end
 
 ClimaLand.name(model::AbstractAutotrophicRespirationModel) =
     :autotrophic_respiration
-ClimaLand.auxiliary_vars(model::AutotrophicRespirationModel) = (:Ra,) # Ra = Rpm + Rg
-ClimaLand.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
-    (FT,)
-ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
+ClimaLand.auxiliary_vars(model::AbstractAutotrophicRespirationModel) = (:Ra,)
+ClimaLand.auxiliary_types(
+    model::AbstractAutotrophicRespirationModel{FT},
+) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::AbstractAutotrophicRespirationModel) =
+    (:surface,)
 
 
 
@@ -177,3 +180,46 @@ function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
     Rg = Rel * max(An - Rpm, FT(0))
     return Rg
 end
+
+"""
+    PoolBasedAutotrophicRespirationModel{FT} <: AbstractAutotrophicRespirationModel{FT}
+
+Autotrophic respiration of the carbon pools of a [`PrognosticCarbonModel`](@ref), which
+it requires: `Ra = Rm + Rg`, the maintenance respiration of the leaves, sapwood and fine
+roots plus the growth respiration, as computed by `update_carbon_pools!`. Unlike
+[`AutotrophicRespirationModel`](@ref), which respires prescribed stem and root area
+indices, it vanishes where the pools are empty.
+"""
+struct PoolBasedAutotrophicRespirationModel{FT} <:
+       AbstractAutotrophicRespirationModel{FT} end
+
+"""
+    update_autotrophic_respiration!(p, Y, model::PoolBasedAutotrophicRespirationModel, canopy)
+
+Sets `Ra` (mol CO2 m^-2 s^-1) to the respiration of the carbon pools.
+"""
+function update_autotrophic_respiration!(
+    p,
+    Y,
+    model::PoolBasedAutotrophicRespirationModel,
+    canopy,
+)
+    M_C = canopy.biomass.parameters.M_C
+    @. p.canopy.autotrophic_respiration.Ra = p.canopy.biomass.carbon.Ra / M_C
+    return nothing
+end
+
+"""
+    default_autotrophic_respiration(biomass, toml_dict)
+
+The autotrophic respiration model used with `biomass` by default: that of the carbon
+pools for a `PrognosticCarbonModel`, and `AutotrophicRespirationModel` otherwise.
+"""
+default_autotrophic_respiration(
+    ::AbstractBiomassModel{FT},
+    toml_dict,
+) where {FT} = AutotrophicRespirationModel{FT}(toml_dict)
+default_autotrophic_respiration(
+    ::PrognosticCarbonModel{FT},
+    toml_dict,
+) where {FT} = PoolBasedAutotrophicRespirationModel{FT}()

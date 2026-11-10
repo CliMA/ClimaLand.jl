@@ -57,7 +57,8 @@ const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 # (Zhou et al. 2025, `ZhouOptimalLAIModel`) instead of prescribed MODIS LAI,
 # type `export PROGNOSTIC_LAI=""` in the terminal and run this script, or pass
 # `PROGNOSTIC_LAI=""` as an environment variable on Buildkite. The default
-# (unset) prescribes MODIS LAI.
+# (unset) prescribes MODIS LAI. With prognostic LAI, the canopy also carries the
+# carbon pools (`PrognosticCarbonModel`), spun up over the first two years.
 const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
@@ -94,13 +95,21 @@ function setup_model(
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
     if prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
-        # prescribed LAI is passed.
+        # prescribed LAI is passed; the carbon pools wrap it.
+        biomass = ClimaLand.Canopy.PrognosticCarbonModel{FT}(
+            ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                ClimaLand.Domains.obtain_surface_domain(domain),
+                toml_dict,
+            ),
+            toml_dict,
+        )
         land = LandModel{FT}(
             forcing,
             toml_dict,
             domain,
             Δt;
             prognostic_land_components,
+            biomass,
         )
     else
         # Prescribed LAI (default): read LAI from MODIS data.
@@ -122,16 +131,16 @@ function setup_model(
 end
 
 # If not LONGER_RUN, run for 2 years (3 with prognostic LAI, whose canopy composition
-# relaxes over 2 years); note that the forcing from 2008 is repeated. The leaderboard
-# compares the last year. If LONGER run, run for 19 years, with the correct forcing
-# each year. Note that since the Northern hemisphere's winter season is defined as
+# and carbon pools relax over 2 years); note that the forcing from 2008 is repeated.
+# The leaderboard compares the last year. If LONGER run, run for 19 years, with the
+# correct forcing each year, and leave out the first year (two with prognostic LAI). Note that since the Northern hemisphere's winter season is defined as
 # DJF, we simulate from and until the beginning of March so that a full season is
 # included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date =
     LONGER_RUN ? DateTime("2019-03-01") :
     PROGNOSTIC_LAI ? DateTime("2011-03-01") : DateTime("2010-03-01")
-spin_up_months = !LONGER_RUN && PROGNOSTIC_LAI ? 24 : 12
+spin_up_months = PROGNOSTIC_LAI ? 24 : 12
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -160,6 +169,19 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
+# The pools do not feed back on GPP, so their equilibrium under the mean drivers of a
+# year is analytic (`Canopy.equilibrium_carbon_pools`) and two simulated years replace
+# decades of wood growth. The pools are set to it under the first year, then under the
+# second, which follows the transient of the initial state; the leaderboards leave out
+# both years
+if PROGNOSTIC_LAI
+    for spinup_years in 1:2
+        ClimaLand.Simulations.spin_up_carbon_pools!(
+            simulation,
+            start_date + Year(spinup_years),
+        )
+    end
+end
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
