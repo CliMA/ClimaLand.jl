@@ -1,6 +1,6 @@
 agents:
   queue: clima
-  modules: climacommon/2026_02_18 nsight-systems/2024.6.1
+  modules: climacommon/2026_11_06-1.13.3 nsight-systems/2024.6.1
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
