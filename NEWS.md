@@ -5,6 +5,7 @@ main
 - ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
   runoff (output by default with TOPMODEL), and a water table leaderboard against
   Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 
 v1.16.0
 ----
