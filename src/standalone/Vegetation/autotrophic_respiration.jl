@@ -55,10 +55,12 @@ end
 
 ClimaLand.name(model::AbstractAutotrophicRespirationModel) =
     :autotrophic_respiration
-ClimaLand.auxiliary_vars(model::AutotrophicRespirationModel) = (:Ra,) # Ra = Rpm + Rg
-ClimaLand.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
-    (FT,)
-ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
+ClimaLand.auxiliary_vars(model::AbstractAutotrophicRespirationModel) = (:Ra,)
+ClimaLand.auxiliary_types(
+    model::AbstractAutotrophicRespirationModel{FT},
+) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::AbstractAutotrophicRespirationModel) =
+    (:surface,)
 
 
 
@@ -184,19 +186,12 @@ end
 
 Autotrophic respiration of the carbon pools of a [`PrognosticCarbonModel`](@ref), which
 it requires: `Ra = Rm + Rg`, the maintenance respiration of the leaves, sapwood and fine
-roots plus the growth respiration, as computed by `update_carbon_fluxes!`. Unlike
+roots plus the growth respiration, as computed by `update_carbon_pools!`. Unlike
 [`AutotrophicRespirationModel`](@ref), which respires prescribed stem and root area
 indices, it vanishes where the pools are empty.
 """
 struct PoolBasedAutotrophicRespirationModel{FT} <:
        AbstractAutotrophicRespirationModel{FT} end
-
-ClimaLand.auxiliary_vars(model::PoolBasedAutotrophicRespirationModel) = (:Ra,)
-ClimaLand.auxiliary_types(
-    model::PoolBasedAutotrophicRespirationModel{FT},
-) where {FT} = (FT,)
-ClimaLand.auxiliary_domain_names(::PoolBasedAutotrophicRespirationModel) =
-    (:surface,)
 
 """
     update_autotrophic_respiration!(p, Y, model::PoolBasedAutotrophicRespirationModel, canopy)

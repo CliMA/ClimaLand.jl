@@ -11,7 +11,7 @@ export prescribed_lai_era5,
     prescribed_lai_modis,
     prescribed_climatological_lai_modis,
     PrescribedAreaIndices,
-    update_biomass!,
+    update_plant_area_indices!,
     ZhouOptimalLAIModel,
     PrognosticCarbonParameters,
     PrognosticCarbonModel,
@@ -305,9 +305,12 @@ The prescribed LAI `TimeVaryingInput` of a biomass model, including one wrapped 
 `PrognosticCarbonModel`.
 """
 prescribed_lai_input(model::PrescribedBiomassModel) = model.plant_area_index.LAI
+prescribed_lai_input(model::AbstractBiomassModel) = error(
+    "$(nameof(typeof(model))) has no prescribed LAI: build the canopy without passing an `LAI`",
+)
 
 """
-    update_biomass!(
+    update_plant_area_indices!(
         p,
         Y,
         t,
@@ -325,7 +328,7 @@ Please see Issue #644
 or PR #645 for details.
 For now, this clipping is similar to what CLM and NOAH MP do.
 """
-function update_biomass!(
+function update_plant_area_indices!(
     p,
     Y,
     t,
@@ -702,7 +705,7 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
   the steady-state LAI, the leaf area trees retain and the stem and root area indices
   of `AreaIndexFromMaxLAI`
 
-`GSL`, `vpd_gs`, `f0`, `composition` and `LAI_max` are derived in `update_biomass!`
+`GSL`, `vpd_gs`, `f0`, `composition` and `LAI_max` are derived in `update_plant_area_indices!`
 from the trailing totals in `Y`.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
@@ -736,7 +739,7 @@ ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
     ClimaLand.time_integrated_prognostic_domain_names(m.time_integrated_vars)
 
 """
-    update_biomass!(
+    update_plant_area_indices!(
         p,
         Y,
         t,
@@ -756,7 +759,7 @@ are absent (`clip_absent_plant_area!`) and all area indices where a lake is pres
 (`mask_biomass!`). This runs first in `update_aux`, before radiative transfer and
 photosynthesis read the area index and C3 fraction.
 """
-function update_biomass!(
+function update_plant_area_indices!(
     p,
     Y,
     t,
@@ -1247,7 +1250,7 @@ Base.@kwdef struct PrognosticCarbonParameters{FT <: AbstractFloat}
     "Leaf turnover time (s)"
     τ_leaf::FT
     "Wood turnover time at mean annual temperatures at or above `T_ref_τ_stem` (s)"
-    τ_stem::FT
+    τ_stem0::FT
     "Fine-root turnover time (s)"
     τ_root::FT
     "Sapwood maintenance respiration rate at `T_ref` (s^-1)"
@@ -1298,7 +1301,7 @@ function PrognosticCarbonParameters(
     f_stem_tree = toml_dict["carbon_f_stem_tree"],
     f_leaf_grass = toml_dict["carbon_f_leaf_grass"],
     τ_leaf = toml_dict["carbon_tau_leaf"],
-    τ_stem = toml_dict["carbon_tau_stem"],
+    τ_stem0 = toml_dict["carbon_tau_stem"],
     τ_root = toml_dict["carbon_tau_root"],
     r_stem = toml_dict["carbon_r_stem"],
     r_root = toml_dict["carbon_r_root"],
@@ -1322,7 +1325,7 @@ function PrognosticCarbonParameters(
         f_stem_tree,
         f_leaf_grass,
         τ_leaf,
-        τ_stem,
+        τ_stem0,
         τ_root,
         r_stem,
         r_root,
@@ -1348,18 +1351,19 @@ Live vegetation carbon in four prognostic pools (kg C m^-2): `C_sugar` (non-stru
 carbon), `C_leaf`, `C_stem` (wood) and `C_root` (fine roots), driven by the GPP of the
 canopy:
 
-    dC_sugar/dt = GPP - Rm - S
-    dC_leaf/dt  = a f_leaf S - C_leaf/τ_leaf
-    dC_stem/dt  = a f_stem S - C_stem/τ_stem
-    dC_root/dt  = a f_root S - C_root/τ_root
+    dC_sugar/dt = GPP - Rm - G
+    dC_leaf/dt  = a f_leaf G - C_leaf/τ_leaf
+    dC_stem/dt  = a f_stem G - C_stem/τ_stem,  τ_stem = s τ_stem0
+    dC_root/dt  = a f_root G - C_root/τ_root
 
-`S` is the sugar allocated to growth, `(1 - a) S` the growth respiration, `Rm` the
+`G` is the sugar allocated to growth, `(1 - a) G` the growth respiration, `Rm` the
 maintenance respiration, and the turnover terms are the litter passed to soil carbon;
-see [`update_carbon_fluxes!`](@ref). The allocation fractions are those of trees and
+see [`update_carbon_pools!`](@ref). The allocation fractions are those of trees and
 grasses weighted by the tree share of the vegetation ([`leaf_allocation`](@ref),
-[`stem_allocation`](@ref)): only trees build wood. Wood turnover time increases in cold climates
-([`tau_stem_scale`](@ref)), from the mean annual temperature carried as a
-time-integrated variable (`T_annual`).
+[`stem_allocation`](@ref)): only trees build wood. The wood turnover time is that of warm
+climates, `τ_stem0`, lengthened in cold climates by the factor `s`
+([`tau_stem_scale`](@ref)) of the mean annual temperature carried as a time-integrated
+variable (`T_annual`).
 
 The pools wrap an LAI model, `lai_model` (`PrescribedBiomassModel` or
 `ZhouOptimalLAIModel`), which still sets the area indices: GPP and LAI are the same
@@ -1489,9 +1493,9 @@ ClimaLand.prognostic_domain_names(m::PrognosticCarbonModel) = (
     ClimaLand.auxiliary_vars(model::PrognosticCarbonModel)
 
 Adds to the auxiliary variables of the LAI model:
-- `carbon`: the carbon fluxes (kg C m^-2 s^-1) of [`update_carbon_fluxes!`](@ref):
-  maintenance, growth and total respiration `Rm`, `Rg`, `Ra`, the allocation `S`,
-  and the litter `L_leaf`, `L_stem`, `L_root`
+- `carbon`: the carbon fluxes (kg C m^-2 s^-1) of [`update_carbon_pools!`](@ref):
+  maintenance, growth and total respiration `Rm`, `Rg`, `Ra`, the allocation to growth
+  `G`, and the litter `L_leaf`, `L_stem`, `L_root`
 - `cVeg`: the live carbon (kg C m^-2), the sum of the pools
 - `σl_implied`: the carbon per unit leaf area implied by the leaf pool and the LAI
   model, `C_leaf/LAI` (kg C m^-2 leaf), zero where there is no leaf area
@@ -1500,7 +1504,7 @@ ClimaLand.auxiliary_vars(model::PrognosticCarbonModel) =
     (ClimaLand.auxiliary_vars(model.lai_model)..., :carbon, :cVeg, :σl_implied)
 ClimaLand.auxiliary_types(model::PrognosticCarbonModel{FT}) where {FT} = (
     ClimaLand.auxiliary_types(model.lai_model)...,
-    NamedTuple{(:Rm, :Rg, :Ra, :S, :L_leaf, :L_stem, :L_root), NTuple{7, FT}},
+    NamedTuple{(:Rm, :Rg, :Ra, :G, :L_leaf, :L_stem, :L_root), NTuple{7, FT}},
     FT,
     FT,
 )
@@ -1584,20 +1588,44 @@ function tau_stem_scale(MAT::FT, T_ref::FT, q::FT) where {FT}
 end
 
 """
-    update_biomass!(p, Y, t, component::PrognosticCarbonModel, canopy)
+    update_plant_area_indices!(p, Y, t, component::PrognosticCarbonModel, canopy)
 
-Updates the area indices with the LAI model, then the live carbon `cVeg` and
-`σl_implied` from the pools.
+Updates the area indices with the LAI model; the pools do not change them.
 """
-function update_biomass!(
+update_plant_area_indices!(p, Y, t, component::PrognosticCarbonModel, canopy) =
+    update_plant_area_indices!(p, Y, t, component.lai_model, canopy)
+
+"""
+    update_carbon_pools!(p, Y, biomass, canopy)
+
+Updates the auxiliary variables of the carbon pools: the fluxes
+`p.canopy.biomass.carbon` (kg C m^-2 s^-1, [`carbon_pool_fluxes`](@ref)), the live
+carbon `cVeg` and `σl_implied`. Does nothing for a biomass model without pools. Called in
+`update_aux` after photosynthesis, which supplies the leaf respiration `Rd`, and after
+[`update_plant_area_indices!`](@ref), which sets the LAI.
+"""
+update_carbon_pools!(p, Y, biomass::AbstractBiomassModel, canopy) = nothing
+
+function update_carbon_pools!(
     p,
     Y,
-    t,
-    component::PrognosticCarbonModel{FT},
+    biomass::PrognosticCarbonModel{FT},
     canopy,
 ) where {FT}
-    update_biomass!(p, Y, t, component.lai_model, canopy)
-    (; C_sugar, C_leaf, C_stem, C_root) = Y.canopy.biomass
+    (; C_sugar, C_leaf, C_stem, C_root, T_annual) = Y.canopy.biomass
+    # Accessors resolved outside `@.`, which would otherwise broadcast over `p`.
+    Rd = get_Rd_canopy(p, canopy.photosynthesis)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    @. p.canopy.biomass.carbon = carbon_pool_fluxes(
+        biomass.parameters,
+        C_sugar,
+        C_leaf,
+        C_stem,
+        C_root,
+        T_annual,
+        Rd,
+        T_canopy,
+    )
     @. p.canopy.biomass.cVeg = C_sugar + C_leaf + C_stem + C_root
     LAI = p.canopy.biomass.area_index.leaf
     @. p.canopy.biomass.σl_implied =
@@ -1606,78 +1634,75 @@ function update_biomass!(
 end
 
 """
-    update_carbon_fluxes!(p, Y, biomass, canopy)
+    carbon_pool_fluxes(
+        parameters::PrognosticCarbonParameters,
+        C_sugar,
+        C_leaf,
+        C_stem,
+        C_root,
+        MAT,
+        Rd,
+        T_canopy,
+    )
 
-Updates the carbon fluxes of the pools, `p.canopy.biomass.carbon` (kg C m^-2 s^-1);
-does nothing for a biomass model without pools. Called in `update_aux` after
-photosynthesis, which supplies GPP and the leaf respiration `Rd`.
+The carbon fluxes of the pools at a point (kg C m^-2 s^-1), as
+`(; Rm, Rg, Ra, G, L_leaf, L_stem, L_root)`, for the pools (kg C m^-2), the mean annual
+temperature `MAT` (K), the leaf respiration `Rd` (mol CO2 m^-2 s^-1) and the canopy
+temperature `T_canopy` (K).
 
 Maintenance respiration is that of the leaves, `Rd`, plus that of the sapwood and fine
-roots, at rates `r_stem` and `r_root` scaled by a Q10 of the canopy temperature:
+roots, at rates `r_stem` and `r_root` scaled by a Q10 of the canopy temperature, as soil
+temperature is not available to a standalone canopy (`Rd` has its own temperature
+response):
 
-    Rm = g(C_sugar/C_sugar_ref) [Rd + Q10^((T - T_ref)/10) (r_stem C_sap + r_root C_root)]
+    Rm = g(C_sugar/C_sugar_ref) [M_C Rd + Q10^((T_canopy - T_ref)/10) (r_stem C_sap + r_root C_root)]
 
-with `C_sap` the sapwood carbon (`sapwood_carbon`) and `g` the ramp `allocation_ramp`,
-which stops respiration as the sugar pool empties. Allocation draws the sugar pool toward a
-target `c_nsc (C_leaf + C_sap + C_root)`:
+with `C_sap` the sapwood carbon ([`sapwood_carbon`](@ref)) and `g` the ramp
+[`allocation_ramp`](@ref), which stops respiration as the sugar pool empties. Allocation
+to growth draws the sugar pool toward a target `c_nsc (C_leaf + C_sap + C_root)`:
 
-    S = C_sugar/τ_alloc g(C_sugar/(c_nsc (C_leaf + C_sap + C_root)))
+    G = C_sugar/τ_alloc g(C_sugar/(c_nsc (C_leaf + C_sap + C_root)))
 
-The litter is the turnover of each structural pool, with the wood turnover time scaled
-by [`tau_stem_scale`](@ref).
+of which `Rg = (1 - a) G` is respired. The litter is the turnover of each structural
+pool, `L_i = C_i/τ_i`, with the wood turnover time `τ_stem = s τ_stem0`, `s` being
+[`tau_stem_scale`](@ref).
 """
-update_carbon_fluxes!(p, Y, biomass::AbstractBiomassModel, canopy) = nothing
-
-function update_carbon_fluxes!(
-    p,
-    Y,
-    biomass::PrognosticCarbonModel{FT},
-    canopy,
+function carbon_pool_fluxes(
+    parameters::PrognosticCarbonParameters{FT},
+    C_sugar::FT,
+    C_leaf::FT,
+    C_stem::FT,
+    C_root::FT,
+    MAT::FT,
+    Rd::FT,
+    T_canopy::FT,
 ) where {FT}
-    (;
-        a,
-        τ_leaf,
-        τ_stem,
-        τ_root,
-        r_stem,
-        r_root,
-        C_sap_half,
-        c_nsc,
-        τ_alloc,
-        n_alloc,
-        C_sugar_ref,
-        Q10,
-        T_ref,
-        q_τ_stem,
-        T_ref_τ_stem,
-        M_C,
-    ) = biomass.parameters
-    (; C_sugar, C_leaf, C_stem, C_root, T_annual) = Y.canopy.biomass
-    carbon = p.canopy.biomass.carbon
-    # Accessors resolved outside `@.`, which would otherwise broadcast over `p`.
-    Rd = get_Rd_canopy(p, canopy.photosynthesis)
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    C_sap = @. lazy(sapwood_carbon(C_stem, C_sap_half))
-
-    # Rd has its own temperature response. The roots use the canopy temperature,
-    # as soil temperature is not available to a standalone canopy.
-    @. carbon.Rm =
+    (; a, τ_leaf, τ_stem0, τ_root, r_stem, r_root, C_sap_half, c_nsc) =
+        parameters
+    (; τ_alloc, n_alloc, C_sugar_ref, Q10, T_ref, q_τ_stem, T_ref_τ_stem, M_C) =
+        parameters
+    C_sap = sapwood_carbon(C_stem, C_sap_half)
+    Rm =
         allocation_ramp(C_sugar / C_sugar_ref, n_alloc) * (
             M_C * Rd +
             Q10^((T_canopy - T_ref) / 10) * (r_stem * C_sap + r_root * C_root)
         )
-    @. carbon.S =
+    G =
         max(C_sugar, 0) / τ_alloc * allocation_ramp(
             C_sugar / max(c_nsc * (C_leaf + C_sap + C_root), eps(FT)),
             n_alloc,
         )
-    @. carbon.Rg = (1 - a) * carbon.S
-    @. carbon.Ra = carbon.Rm + carbon.Rg
-    @. carbon.L_leaf = C_leaf / τ_leaf
-    @. carbon.L_stem =
-        C_stem / (τ_stem * tau_stem_scale(T_annual, T_ref_τ_stem, q_τ_stem))
-    @. carbon.L_root = C_root / τ_root
-    return nothing
+    Rg = (1 - a) * G
+    τ_stem = τ_stem0 * tau_stem_scale(MAT, T_ref_τ_stem, q_τ_stem)
+    return (;
+        Rm,
+        Rg,
+        Ra = Rm + Rg,
+        G,
+        L_leaf = C_leaf / τ_leaf,
+        L_stem = C_stem / τ_stem,
+        L_root = C_root / τ_root,
+    )
 end
 
 """
@@ -1690,10 +1715,10 @@ sapwood and fine-root respiration, the mean annual temperature `MAT` (K), and th
 share. For periodic forcing, pass the means over the period.
 
 In steady state, each structural pool is its allocation times its turnover time,
-`C_i = a f_i τ_i S`, and the allocation `S` is the GPP left after maintenance
-respiration, `S = M_C (GPP - Rd) - f_T (r_stem C_sap + r_root C_root)`. As the sapwood
-`C_sap` saturates with `C_stem = a f_stem τ_stem S`, this is a quadratic in `S`. The
-sugar pool is the one whose allocation is `S` ([`equilibrium_sugar`](@ref)); the
+`C_i = a f_i τ_i G`, and the allocation to growth `G` is the GPP left after maintenance
+respiration, `G = M_C (GPP - Rd) - f_T (r_stem C_sap + r_root C_root)`. As the sapwood
+`C_sap` saturates with `C_stem = a f_stem τ_stem G`, this is a quadratic in `G`. The
+sugar pool is the one whose allocation is `G` ([`equilibrium_sugar`](@ref)); the
 limitation of respiration by an empty sugar pool is neglected.
 """
 function equilibrium_carbon_pools(
@@ -1704,27 +1729,27 @@ function equilibrium_carbon_pools(
     MAT,
     tree_share,
 ) where {FT}
-    (; a, τ_leaf, τ_stem, τ_root, r_stem, r_root) = parameters
+    (; a, τ_leaf, τ_stem0, τ_root, r_stem, r_root) = parameters
     (; C_sap_half, q_τ_stem, T_ref_τ_stem, M_C) = parameters
     f_leaf = leaf_allocation(tree_share, parameters)
     f_stem = stem_allocation(tree_share, parameters)
     f_root = 1 - f_leaf - f_stem
     A = max(M_C * (GPP - Rd), zero(FT))
     # wood per unit allocation
-    k = a * f_stem * τ_stem * tau_stem_scale(MAT, T_ref_τ_stem, q_τ_stem)
+    k = a * f_stem * τ_stem0 * tau_stem_scale(MAT, T_ref_τ_stem, q_τ_stem)
     ρ = f_T * r_root * a * f_root * τ_root # root respiration per unit allocation
-    # (1 + ρ) S + f_T r_stem k S/(1 + k S/C_sap_half) = A, i.e. α S^2 + β S - A = 0
+    # (1 + ρ) G + f_T r_stem k G/(1 + k G/C_sap_half) = A, i.e. α G^2 + β G - A = 0
     α = (1 + ρ) * k / C_sap_half
     β = 1 + ρ + f_T * r_stem * k - A * k / C_sap_half
-    S = 2 * A / (β + sqrt(β^2 + 4 * α * A))
-    C_leaf = a * f_leaf * τ_leaf * S
-    C_stem = k * S
-    C_root = a * f_root * τ_root * S
+    G = 2 * A / (β + sqrt(β^2 + 4 * α * A))
+    C_leaf = a * f_leaf * τ_leaf * G
+    C_stem = k * G
+    C_root = a * f_root * τ_root * G
     target =
         parameters.c_nsc *
         (C_leaf + sapwood_carbon(C_stem, C_sap_half) + C_root)
     return (;
-        C_sugar = equilibrium_sugar(S, target, parameters),
+        C_sugar = equilibrium_sugar(G, target, parameters),
         C_leaf,
         C_stem,
         C_root,
@@ -1732,26 +1757,36 @@ function equilibrium_carbon_pools(
 end
 
 """
-    equilibrium_sugar(S, target, parameters::PrognosticCarbonParameters)
+    equilibrium_sugar(G, target, parameters::PrognosticCarbonParameters)
 
-Sugar pool (kg C m^-2) whose allocation, `C_sugar/τ_alloc g(C_sugar/target)` with `g`
-the `allocation_ramp`, is `S` (kg C m^-2 s^-1), for the target pool `target`; zero
-without allocation or living biomass.
+Sugar pool (kg C m^-2) whose allocation to growth, `C_sugar/τ_alloc g(C_sugar/target)`
+with `g` the `allocation_ramp`, is `G` (kg C m^-2 s^-1), for the target pool `target`;
+zero without allocation or living biomass.
+
+With `x = C_sugar/target`, this solves `x g(x) = r = G τ_alloc/target` by Newton's
+method. As `x^(n+1)/(1 + x^n)` is below both `x` and `x^(n+1)`, the root lies above
+`max(r, r^(1/(n+1)))`, where the iteration starts and converges in a few steps.
 """
 function equilibrium_sugar(
-    S::FT,
+    G::FT,
     target::FT,
     parameters::PrognosticCarbonParameters,
 ) where {FT}
     (; τ_alloc, n_alloc) = parameters
-    r = S * τ_alloc / max(target, eps(FT))
-    # x g(x) = r is increasing in x = C_sugar/target, and x g(x) < x
-    lo, hi = zero(FT), max(one(FT), r + 1)
-    for _ in 1:50
-        x = (lo + hi) / 2
-        x * allocation_ramp(x, n_alloc) < r ? (lo = x) : (hi = x)
+    r = max(G, zero(FT)) * τ_alloc / max(target, eps(FT))
+    function residual_and_derivative(x)
+        xn = max(x, zero(FT))^n_alloc
+        return (x * xn / (1 + xn) - r, xn * (n_alloc + 1 + xn) / (1 + xn)^2)
     end
-    return ifelse(S > 0 && target > 0, target * (lo + hi) / 2, zero(FT))
+    x0 = max(r, r^(1 / (n_alloc + 1)))
+    sol = RootSolvers.find_zero(
+        residual_and_derivative,
+        RootSolvers.NewtonsMethod(x0),
+        RootSolvers.CompactSolution(),
+        RootSolvers.RelativeSolutionTolerance(sqrt(eps(FT))),
+        20,
+    )
+    return ifelse(G > 0 && target > 0, target * sol.root, zero(FT))
 end
 
 """
@@ -1759,7 +1794,7 @@ end
 
 Advances the prognostic variables of the LAI model, then the carbon pools (see
 [`PrognosticCarbonModel`](@ref)) and the mean annual temperature. The fluxes are
-those computed by [`update_carbon_fluxes!`](@ref).
+those computed by [`update_carbon_pools!`](@ref).
 """
 function ClimaLand.make_compute_exp_tendency(
     component::PrognosticCarbonModel{FT},
@@ -1772,15 +1807,15 @@ function ClimaLand.make_compute_exp_tendency(
     tivs = component.time_integrated_vars
     function compute_exp_tendency!(dY, Y, p, t)
         lai_tendency!(dY, Y, p, t)
-        (; S, Rm, L_leaf, L_stem, L_root) = p.canopy.biomass.carbon
+        (; G, Rm, L_leaf, L_stem, L_root) = p.canopy.biomass.carbon
         GPP = get_GPP(p, canopy.photosynthesis)
         tree_share = carbon_tree_share(component, p)
         f_leaf = @. lazy(leaf_allocation(tree_share, parameters))
         f_stem = @. lazy(stem_allocation(tree_share, parameters))
-        @. dY.canopy.biomass.C_sugar = M_C * GPP - Rm - S
-        @. dY.canopy.biomass.C_leaf = a * f_leaf * S - L_leaf
-        @. dY.canopy.biomass.C_stem = a * f_stem * S - L_stem
-        @. dY.canopy.biomass.C_root = a * (1 - f_leaf - f_stem) * S - L_root
+        @. dY.canopy.biomass.C_sugar = M_C * GPP - Rm - G
+        @. dY.canopy.biomass.C_leaf = a * f_leaf * G - L_leaf
+        @. dY.canopy.biomass.C_stem = a * f_stem * G - L_stem
+        @. dY.canopy.biomass.C_root = a * (1 - f_leaf - f_stem) * G - L_root
         @. dY.canopy.biomass.T_annual = apply_time_reduction(
             p.drivers.T,
             Y.canopy.biomass.T_annual,

@@ -89,8 +89,8 @@ mutable struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
         if !isnothing(soilco2)
-            @assert (SoilCarbonLitterInput{FT}() in soilco2.sources) ==
-                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include SoilCarbonLitterInput if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+            @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
+                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
         end
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
@@ -218,7 +218,7 @@ A biomass model other than the default `PrescribedBiomassModel`, e.g. a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
-soil organic carbon prognostic (`SoilCarbonLitterInput`).
+soil organic carbon prognostic (`PrognosticSoilOrganicCarbon`).
 """
 function LandModel{FT}(
     forcing,
@@ -471,31 +471,34 @@ end
 The names of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_vars(m::LandModel) = (
-    :snow_T_bot,
-    :soil_litter_input,
-    :root_extraction,
-    :root_energy_extraction,
-    :root_dryness_norm,
-    :LW_u,
-    :SW_u,
-    :scratch1,
-    :scratch2,
-    :scratch3,
-    :excess_water_flux,
-    :excess_heat_flux,
-    :ground_heat_flux,
-    :effective_soil_sfc_T,
-    :sfc_scratch,
-    :subsfc_scratch,
-    :effective_soil_sfc_depth,
-    :T_sfc,
-    :ϵ_sfc,
-    :α_sfc,
-    :α_ground,
-    :bare_soil_fraction,
-    :lake_fraction,
-)
+function lsm_aux_vars(m::LandModel)
+    base = (
+        :snow_T_bot,
+        :root_extraction,
+        :root_energy_extraction,
+        :root_dryness_norm,
+        :LW_u,
+        :SW_u,
+        :scratch1,
+        :scratch2,
+        :scratch3,
+        :excess_water_flux,
+        :excess_heat_flux,
+        :ground_heat_flux,
+        :effective_soil_sfc_T,
+        :sfc_scratch,
+        :subsfc_scratch,
+        :effective_soil_sfc_depth,
+        :T_sfc,
+        :ϵ_sfc,
+        :α_sfc,
+        :α_ground,
+        :bare_soil_fraction,
+        :lake_fraction,
+    )
+    return has_soil_litter_input(m.canopy.biomass) ?
+           (base..., :soil_litter_input) : base
+end
 
 """
     lsm_aux_types(m::LandModel)
@@ -503,31 +506,33 @@ lsm_aux_vars(m::LandModel) = (
 The types of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_types(m::LandModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
-    FT,
-    FT,
-)
+function lsm_aux_types(m::LandModel{FT}) where {FT}
+    base = (
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+        FT,
+        FT,
+    )
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+end
 
 """
     lsm_aux_domain_names(m::LandModel)
@@ -535,31 +540,34 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
 The domain names of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_domain_names(m::LandModel) = (
-    :surface,
-    :subsurface,
-    :subsurface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-)
+function lsm_aux_domain_names(m::LandModel)
+    base = (
+        :surface,
+        :subsurface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+    )
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
+           base
+end
 
 """
     make_update_boundary_fluxes(

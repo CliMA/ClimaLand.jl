@@ -146,7 +146,7 @@ for FT in (Float32, Float64)
             set_state!(Y_i, p_i, model, t0)
             dY_i = similar(Y_i)
             make_compute_exp_tendency(model)(dY_i, Y_i, p_i, t0)
-            (; Rm, Rg, Ra, S, L_leaf, L_stem, L_root) =
+            (; Rm, Rg, Ra, G, L_leaf, L_stem, L_root) =
                 p_i.canopy.biomass.carbon
             GPP = M_C .* Canopy.get_GPP(p_i, model.photosynthesis)
             dC = @. dY_i.canopy.biomass.C_sugar +
@@ -157,9 +157,9 @@ for FT in (Float32, Float64)
             scale = maximum(abs, parent(GPP)) + maximum(abs, parent(dC))
             @test maximum(abs, parent(residual)) <= 10 * eps(FT) * scale
             @test all(parent(GPP) .> 0)
-            @test all(parent(S) .> 0)
+            @test all(parent(G) .> 0)
             @test parent(Ra) ≈ parent(Rm) .+ parent(Rg)
-            @test parent(Rg) ≈ (1 - a) .* parent(S)
+            @test parent(Rg) ≈ (1 - a) .* parent(G)
             @test parent(p_i.canopy.autotrophic_respiration.Ra) ≈
                   parent(Ra) ./ M_C
             @test all(parent(p_i.canopy.biomass.cVeg) .≈ FT(6.5))
@@ -224,9 +224,9 @@ for FT in (Float32, Float64)
         # Trees allocate to wood their share of the allocation
         set_state!(Y, p, canopy, t0)
         exp_tendency!(dY, Y, p, t0)
-        (; S, L_stem, L_root) = p.canopy.biomass.carbon
+        (; G, L_stem, L_root) = p.canopy.biomass.carbon
         @test parent(dY.canopy.biomass.C_stem) ≈
-              parent(@. a * tree_share * f_stem_tree * S - L_stem)
+              parent(@. a * tree_share * f_stem_tree * G - L_stem)
 
         # Grasses build no wood: their allocation goes to leaves and roots
         Y_g, p_g, _ = initialize(grassland)
@@ -236,7 +236,7 @@ for FT in (Float32, Float64)
         carbon = p_g.canopy.biomass.carbon
         @test dY_g.canopy.biomass.C_stem == @. -carbon.L_stem
         @test parent(dY_g.canopy.biomass.C_root) ≈
-              parent(@. a * (1 - f_leaf_grass) * carbon.S - carbon.L_root)
+              parent(@. a * (1 - f_leaf_grass) * carbon.G - carbon.L_root)
     end
 
     @testset "Equilibrium pools, FT = $FT" begin
@@ -277,6 +277,15 @@ for FT in (Float32, Float64)
         @test eq_grass.C_stem == 0
         @test eq_grass.C_root > 0
         @test Canopy.equilibrium_sugar(FT(0), FT(1), biomass.parameters) == 0
+        # The sugar pool's allocation to growth is the one asked for
+        (; τ_alloc, n_alloc) = biomass.parameters
+        for G in FT.(10.0 .^ (-12:-6)), target in FT.((0.01, 0.1, 1))
+            C_sugar = Canopy.equilibrium_sugar(G, target, biomass.parameters)
+            allocation =
+                C_sugar / τ_alloc *
+                Canopy.allocation_ramp(C_sugar / target, n_alloc)
+            @test allocation ≈ G rtol = 10 * sqrt(eps(FT))
+        end
         @test Canopy.equilibrium_carbon_pools(
             biomass.parameters,
             Rd,
@@ -389,6 +398,9 @@ for FT in (Float32, Float64)
             ClimaLand.prognostic_vars(zhou),
             ClimaLand.prognostic_vars(wrapped),
         )
+        # The optimal LAI is not prescribed
+        @test_throws ErrorException Canopy.prescribed_lai_input(wrapped)
+        @test Canopy.prescribed_lai_input(biomass) === LAI
         canopy_z =
             Canopy.CanopyModel{FT}(pt, forcing, toml_dict; biomass = zhou)
         canopy_w =

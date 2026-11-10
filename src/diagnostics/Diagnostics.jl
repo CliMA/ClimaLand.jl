@@ -32,6 +32,7 @@ import ..Canopy:
     MedlynConductanceModel,
     PModelConductance,
     canopy_temperature,
+    PrescribedBiomassModel,
     ZhouOptimalLAIModel,
     PrognosticCarbonModel
 import ..Domains:

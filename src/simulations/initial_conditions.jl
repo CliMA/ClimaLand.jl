@@ -675,26 +675,26 @@ end
     set_canopy_component_initial_conditions!(
         Y,
         p,
-        model::ClimaLand.Canopy.PrognosticCarbonModel,
+        component::ClimaLand.Canopy.PrognosticCarbonModel,
         canopy;
         kwargs...,
     )
 
-Sets the initial state of the LAI model wrapped by `model`, to which the keyword
+Sets the initial state of the LAI model wrapped by `component`, to which the keyword
 arguments are passed, then that of the carbon pools, which start empty, with their mean
 annual temperature `T_annual` at the air temperature.
 """
 function set_canopy_component_initial_conditions!(
     Y,
     p,
-    model::ClimaLand.Canopy.PrognosticCarbonModel,
+    component::ClimaLand.Canopy.PrognosticCarbonModel,
     canopy;
     kwargs...,
 )
     set_canopy_component_initial_conditions!(
         Y,
         p,
-        model.lai_model,
+        component.lai_model,
         canopy;
         kwargs...,
     )

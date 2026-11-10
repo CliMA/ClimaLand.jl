@@ -13,6 +13,7 @@ import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 import StaticArrays
 import SurfaceFluxes
+import RootSolvers
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
@@ -961,7 +962,7 @@ function CanopyModel{FT}(
     end
 
     # Confirm that the LAI passed agrees with the LAI of the biomass model
-    @assert prescribed_lai_input(biomass) == LAI
+    @assert prescribed_lai_input(biomass) == LAI "The `LAI` passed is not the one of the biomass model"
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
@@ -1323,7 +1324,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
     NVTX.@annotate function update_aux!(p, Y, t)
 
         # This updates LAI; it must come first.
-        update_biomass!(p, Y, t, canopy.biomass, canopy)
+        update_plant_area_indices!(p, Y, t, canopy.biomass, canopy)
 
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
@@ -1345,8 +1346,8 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # update stomatal conductance
         update_canopy_conductance!(p, Y, canopy.conductance, canopy)
 
-        # update the carbon pool fluxes (after photosynthesis, before respiration)
-        update_carbon_fluxes!(p, Y, canopy.biomass, canopy)
+        # update the carbon pools (after photosynthesis, before respiration)
+        update_carbon_pools!(p, Y, canopy.biomass, canopy)
 
         # update autotrophic respiration
         update_autotrophic_respiration!(

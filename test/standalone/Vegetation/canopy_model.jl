@@ -277,7 +277,7 @@ end
         fake_canopy = (;
             boundary_conditions = (; prognostic_land_components = (:canopy,))
         )
-        Canopy.update_biomass!(p, nothing, t0, biomass, fake_canopy)
+        Canopy.update_plant_area_indices!(p, nothing, t0, biomass, fake_canopy)
         @test all(
             Array(parent(p.canopy.biomass.area_index.leaf)) .==
             FT(LAI * sin(t0 * 2π / 365)),
@@ -286,7 +286,13 @@ end
         @test all(Array(parent(p.canopy.biomass.area_index.root)) .== FT(1.0))
 
         # Test that LAI is updated
-        Canopy.update_biomass!(p, nothing, FT(200), biomass, fake_canopy)
+        Canopy.update_plant_area_indices!(
+            p,
+            nothing,
+            FT(200),
+            biomass,
+            fake_canopy,
+        )
         @test all(
             Array(parent(p.canopy.biomass.area_index.leaf)) .==
             ClimaLand.Canopy.clip(FT(LAI * sin(200 * 2π / 365)), FT(0.05)),

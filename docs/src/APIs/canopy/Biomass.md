@@ -28,7 +28,7 @@ ClimaLand.Canopy.AreaIndexFromMaxLAI
 ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
 ClimaLand.Canopy.prescribed_climatological_lai_modis
-ClimaLand.Canopy.update_biomass!
+ClimaLand.Canopy.update_plant_area_indices!
 ClimaLand.Canopy.clip_absent_plant_area!
 ClimaLand.Canopy.PrognosticCarbonModel
 ClimaLand.Canopy.PrognosticCarbonModel{FT}(
@@ -37,7 +37,10 @@ ClimaLand.Canopy.PrognosticCarbonModel{FT}(
 ) where {FT}
 ClimaLand.Canopy.PrognosticCarbonParameters
 ClimaLand.Canopy.PrognosticCarbonParameters(toml_dict::CP.ParamDict)
-ClimaLand.Canopy.update_carbon_fluxes!
+ClimaLand.Canopy.update_carbon_pools!
+ClimaLand.Canopy.carbon_pool_fluxes
+ClimaLand.Canopy.sapwood_carbon
+ClimaLand.Canopy.allocation_ramp
 ClimaLand.Canopy.leaf_allocation
 ClimaLand.Canopy.stem_allocation
 ClimaLand.Canopy.tau_stem_scale

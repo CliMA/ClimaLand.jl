@@ -12,10 +12,10 @@ and the leaf, wood (stem) and fine-root carbon it is allocated to:
 
 ```math
 \begin{align}
-\frac{dC_{sugar}}{dt} &= M_C\,\text{GPP} - R_m - S \\
-\frac{dC_{leaf}}{dt}  &= a f_{leaf} S - C_{leaf}/\tau_{leaf} \\
-\frac{dC_{stem}}{dt}  &= a f_{stem} S - C_{stem}/(s\,\tau_{stem}) \\
-\frac{dC_{root}}{dt}  &= a f_{root} S - C_{root}/\tau_{root}
+\frac{dC_{sugar}}{dt} &= M_C\,\text{GPP} - R_m - G \\
+\frac{dC_{leaf}}{dt}  &= a f_{leaf} G - C_{leaf}/\tau_{leaf} \\
+\frac{dC_{stem}}{dt}  &= a f_{stem} G - C_{stem}/\tau_{stem} \\
+\frac{dC_{root}}{dt}  &= a f_{root} G - C_{root}/\tau_{root}
 \end{align}
 ```
 
@@ -24,42 +24,48 @@ where we have:
 - the gross primary production of the canopy, GPP (mol CO₂ m⁻² s⁻¹), from the photosynthesis model
 - the molar mass of carbon, ``M_C`` (kg C mol⁻¹), which converts GPP to kg C
 - the maintenance respiration, ``R_m`` (kg C m⁻² s⁻¹)
-- the allocation to growth, ``S`` (kg C m⁻² s⁻¹)
+- the allocation to growth, ``G`` (kg C m⁻² s⁻¹)
 - the allocation fractions of leaves, wood and fine roots, ``f_{leaf}``, ``f_{stem}`` and ``f_{root}`` (-), which sum to one
-- the factor lengthening the wood turnover time in cold climates, ``s`` (-)
+- the turnover times of leaves and fine roots, ``\tau_{leaf}`` and ``\tau_{root}`` (s)
+- the wood turnover time, ``\tau_{stem} = s\,\tau_{stem,0}`` (s), that of warm climates, ``\tau_{stem,0}``, lengthened by the factor ``s`` (-) in cold climates
 
-The allocation becomes structure with efficiency ``a``, and the rest, ``(1-a)S``, is growth
+The allocation becomes structure with efficiency ``a``, and the rest, ``(1-a)G``, is growth
 respiration. The turnover terms are the litter passed to the soil,
-``L_i = C_i/\tau_i`` (kg C m⁻² s⁻¹), with ``s\,\tau_{stem}`` for wood. The autotrophic
-respiration of the canopy is that of the pools, ``R_a = R_m + (1-a)S``. The sections below
-give ``R_m``, ``S``, the fractions ``f_i`` and ``s``; the parameters, such as ``a`` and the
-turnover times ``\tau_i``, are in the table at the end of the page.
+``L = \sum_i L_i`` with ``L_i = C_i/\tau_i`` (kg C m⁻² s⁻¹) for ``i`` the leaves, wood
+and fine roots. The autotrophic respiration of the canopy is that of the pools,
+``R_a = R_m + (1-a)G``. The sections below give ``R_m``, ``G``, the fractions ``f_i`` and
+``s``; the parameters, such as ``a`` and the turnover times, are in the table at the end
+of the page.
 
 ### Maintenance respiration
 
 ```math
 R_m = g\left(\frac{C_{sugar}}{C_{sugar,ref}}\right)\left[M_C R_d + Q_{10}^{(T - T_{ref})/10}\left(r_{stem} C_{sap} + r_{root} C_{root}\right)\right],
-\qquad C_{sap} = \frac{C_{stem}}{1 + C_{stem}/C_{sap,half}}
+\qquad C_{sap} = f_{sap} C_{stem}, \qquad f_{sap} = \frac{1}{1 + C_{stem}/C_{sap,half}}
 ```
 
 where we have:
 - the dark respiration of the leaves, ``R_d`` (mol CO₂ m⁻² s⁻¹), from the photosynthesis model, which has its own temperature response
 - the canopy temperature, ``T`` (K)
-- the sapwood carbon, ``C_{sap}`` (kg C m⁻²), the living part of the wood
+- the sapwood carbon, ``C_{sap}`` (kg C m⁻²), the living part of the wood, and its fraction of the wood, ``f_{sap}`` (-)
 - the ramp ``g(x) = x^n/(1+x^n)`` (-)
 
 The sapwood and the fine roots both respire at rates scaled by a ``Q_{10}`` of the canopy
 temperature, so that the formulation is the same in a standalone canopy, which has no soil
-temperature. Only sapwood respires, and it saturates as the stem grows
-into mostly dead heartwood. The ramp shuts respiration down as the sugar pool empties, so
-the pool cannot become negative.
+temperature. Only sapwood respires, and the wood of a large stem is mostly dead
+heartwood. The sapwood fraction ``f_{sap}`` takes the simplest form with these limits: it
+is one in a small stem, half when ``C_{stem} = C_{sap,half}``, and falls as
+``C_{sap,half}/C_{stem}`` in a large one. The sapwood carbon ``C_{sap}`` thus grows
+linearly with a small stem and saturates at ``C_{sap,half}``, a Michaelis-Menten form. The
+ramp shuts respiration down as the sugar pool empties, so the pool cannot become
+negative.
 
 ### Allocation
 
 Allocation draws the sugar pool toward a target proportional to the living biomass,
 
 ```math
-S = \frac{C_{sugar}}{\tau_{alloc}}\, g\left(\frac{C_{sugar}}{c_{nsc}\,(C_{leaf} + C_{sap} + C_{root})}\right),
+G = \frac{C_{sugar}}{\tau_{alloc}}\, g\left(\frac{C_{sugar}}{c_{nsc}\,(C_{leaf} + C_{sap} + C_{root})}\right),
 ```
 
 so growth slows when reserves fall below the target, and the sugar pool oscillates
@@ -86,7 +92,7 @@ under the same annual rainfall.
 ### Wood turnover
 
 Trees live longer in cold climates. Below a reference mean annual temperature
-``T_{\tau}``, the wood turnover time is multiplied by
+``T_{\tau}``, the wood turnover time ``\tau_{stem} = s\,\tau_{stem,0}`` is lengthened by
 
 ```math
 s = \min\left(q^{\max(T_{\tau} - T_{annual},\, 0)/10},\ 10\right),
@@ -103,28 +109,28 @@ of two years, a time-integrated variable:
 ## Soil carbon
 
 In `LandModel` and `SoilCanopyModel`, the litter makes the soil organic carbon prognostic:
-``dSOC/dt = I_{litter}(z) - S_m``, with the microbial respiration ``S_m`` of the
+``dSOC/dt = S_{litter}(z) - S_m``, with the microbial respiration ``S_m`` of the
 [Soil Biogeochemistry](../../soil/biogeochemistry/DAMM_model.md) model. Leaf and stem
 litter enter on a shallow exponential profile and root litter follows the root
 distribution, each normalized by its integral over the soil column so the soil receives
 exactly the litter the pools shed:
 
 ```math
-I_{litter}(z) = \left(L_{leaf} + L_{stem}\right)\frac{p(z; d_{litter})}{\int p(z; d_{litter})\,dz}
+S_{litter}(z) = \left(L_{leaf} + L_{stem}\right)\frac{p(z; d_{litter})}{\int p(z; d_{litter})\,dz}
 + L_{root}\,\frac{p(z; d_{root})}{\int p(z; d_{root})\,dz},
 \qquad p(z; d) = \frac{e^{z/d}}{d},
 ```
 
 where we have:
 - the soil organic carbon, SOC (kg C m⁻³), and the microbial respiration, ``S_m`` (kg C m⁻³ s⁻¹)
-- the litter input to the soil organic carbon, ``I_{litter}`` (kg C m⁻³ s⁻¹)
+- the litter input to the soil organic carbon, ``S_{litter}`` (kg C m⁻³ s⁻¹), whose integral over the soil column, ``\int S_{litter}\,dz = \sum_i L_i``, is the litter of the pools: what leaves the pools enters the soil
 - the leaf, wood and fine-root litter of the pools, ``L_{leaf}``, ``L_{stem}`` and ``L_{root}`` (kg C m⁻² s⁻¹)
 - the depth coordinate, ``z`` (m), negative below the surface, the integrals being over the soil column
 - the litter e-folding depth, ``d_{litter}`` (m), and the rooting depth of the LAI model, ``d_{root}`` (m)
 
 Vegetation and soil carbon together then change by
 ``M_C\,\text{GPP} - R_a - \int S_m\,dz``. These models include the coupling
-(`SoilCarbonLitterInput`) when the canopy carries the pools; without them, SOC is held at
+(`PrognosticSoilOrganicCarbon`) when the canopy carries the pools; without them, SOC is held at
 its initial condition.
 
 ## Equilibrium and spin-up
@@ -134,22 +140,23 @@ forcing averaged over its period, each structural pool is its allocation times i
 turnover time,
 
 ```math
-C_{leaf} = a f_{leaf} \tau_{leaf} S, \qquad C_{stem} = k S, \qquad C_{root} = a f_{root} \tau_{root} S,
-\qquad k = a f_{stem}\, s\, \tau_{stem},
+C_{leaf} = a f_{leaf} \tau_{leaf} G, \qquad C_{stem} = k G, \qquad C_{root} = a f_{root} \tau_{root} G,
+\qquad k = a f_{stem} \tau_{stem},
 ```
 
 and the allocation is the GPP left after maintenance respiration,
-``S = M_C(\text{GPP} - R_d) - f_T\,(r_{stem} C_{sap} + r_{root} C_{root})``, with ``f_T``
+``G = M_C(\text{GPP} - R_d) - f_T\,(r_{stem} C_{sap} + r_{root} C_{root})``, with ``f_T``
 the mean of ``Q_{10}^{(T - T_{ref})/10}``. The limitation of respiration by an empty sugar
-pool (``g \approx 1``) is neglected. As the sapwood saturates with the wood pool, ``S``
+pool (``g \approx 1``) is neglected. As the sapwood saturates with the wood pool, ``G``
 solves
 
 ```math
-(1 + \rho)\, S + \frac{f_T\, r_{stem}\, k S}{1 + k S / C_{sap,half}} = M_C\,(\text{GPP} - R_d),
+(1 + \rho)\, G + \frac{f_T\, r_{stem}\, k G}{1 + k G / C_{sap,half}} = M_C\,(\text{GPP} - R_d),
 \qquad \rho = f_T\, r_{root}\, a f_{root} \tau_{root},
 ```
 
-a quadratic in ``S`` (`Canopy.equilibrium_carbon_pools`).
+a quadratic in ``G`` (`Canopy.equilibrium_carbon_pools`). The sugar pool is the one
+whose allocation is ``G``, found by Newton's method (`Canopy.equilibrium_sugar`).
 
 The pools start empty, and wood takes decades to fill. `spin_up_carbon_pools!` replaces
 that transient: it advances a simulation over a spin-up period, averaging the drivers of
@@ -187,7 +194,7 @@ their sum, which the vegetation leaderboard compares with the live woody carbon 
 | Leaf / wood allocation of trees | ``f_{leaf,tree}``, ``f_{stem,tree}`` | - | 0.3, 0.32 |
 | Leaf allocation of grasses | ``f_{leaf,grass}`` | - | 0.4 |
 | Leaf / fine-root turnover time | ``\tau_{leaf}``, ``\tau_{root}`` | yr | 1.5, 2 |
-| Wood turnover time | ``\tau_{stem}`` | yr | 24 |
+| Wood turnover time in warm climates | ``\tau_{stem,0}`` | yr | 24 |
 | Sapwood / fine-root respiration rate | ``r_{stem}``, ``r_{root}`` | yr⁻¹ | 0.1, 0.75 |
 | Sapwood saturation | ``C_{sap,half}`` | kg C m⁻² | 2 |
 | Maintenance respiration ``Q_{10}``, ``T_{ref}`` | | -, K | 2, 298.15 |

@@ -169,7 +169,9 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
-# The carbon pools are set to their equilibrium under the first year, then under the
+# The pools do not feed back on GPP, so their equilibrium under the mean drivers of a
+# year is analytic (`Canopy.equilibrium_carbon_pools`) and two simulated years replace
+# decades of wood growth. The pools are set to it under the first year, then under the
 # second, which follows the transient of the initial state; the leaderboards leave out
 # both years
 if PROGNOSTIC_LAI

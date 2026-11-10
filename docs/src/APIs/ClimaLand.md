@@ -62,7 +62,7 @@ ClimaLand.RunoffBC
 
 ```@docs
 ClimaLand.RootExtraction
-ClimaLand.SoilCarbonLitterInput
+ClimaLand.PrognosticSoilOrganicCarbon
 ```
 
 ## SoilSnowModel

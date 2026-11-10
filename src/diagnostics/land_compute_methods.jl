@@ -449,7 +449,12 @@ end
 vegetation_carbon!(out, p, canopy, ::PrognosticCarbonModel) =
     (out .= p.canopy.biomass.cVeg)
 
-function vegetation_carbon!(out, p, canopy, biomass)
+function vegetation_carbon!(
+    out,
+    p,
+    canopy,
+    biomass::Union{PrescribedBiomassModel, ZhouOptimalLAIModel},
+)
     σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
     ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
     LAI = p.canopy.biomass.area_index.leaf

@@ -43,8 +43,12 @@ for FT in (Float32, Float64)
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
         # Without canopy carbon pools, SOC is not prognostic
-        @test !(ClimaLand.SoilCarbonLitterInput{FT}() in model.soilco2.sources)
+        @test !(
+            ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+            model.soilco2.sources
+        )
         Y, p, cds = initialize(model)
+        @test !haskey(p, :soil_litter_input)
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
@@ -289,7 +293,8 @@ for FT in (Float32, Float64)
         )
         model =
             SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain; soil, canopy)
-        @test ClimaLand.SoilCarbonLitterInput{FT}() in model.soilco2.sources
+        @test ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+              model.soilco2.sources
         # The litter source is required with the pools
         soilco2_without_litter = Soil.Biogeochemistry.SoilCO2Model{FT}(
             domain,

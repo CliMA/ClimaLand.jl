@@ -66,7 +66,15 @@ The second term represents O₂ consumption by microbial respiration. The stoich
 
 ### Soil Organic Carbon
 
-By default, the $Y_{C_{som}}$ pool is held fixed at its initial value under the assumption of steady state:
+The soil organic carbon pool $Y_{C_{som}}$ enters the DAMM substrate kinetics (below). It
+is set from the SoilGrids organic carbon density at the start of the simulation, providing
+the spatial structure of carbon availability, and is either held in steady state or
+prognostic.
+
+#### Steady state
+
+By default, $Y_{C_{som}}$ is held fixed at its initial value under the assumption of
+steady state:
 
 ```math
 \begin{equation}
@@ -74,17 +82,27 @@ By default, the $Y_{C_{som}}$ pool is held fixed at its initial value under the 
 \end{equation}
 ```
 
-The pool $Y_{C_{som}}$ then enters the DAMM substrate kinetics (below) but is not depleted by respiration. Its value is set from the SoilGrids organic carbon density at the start of the simulation, providing the spatial structure of carbon availability.
+so it is not depleted by respiration. When running the soil biogeochemistry model alone or
+with only a prognostic soil model, only this steady-state assumption is supported.
 
-In `LandModel` and `SoilCanopyModel`, when the canopy carries prognostic carbon pools (`PrognosticCarbonModel`), the soil CO₂ model includes the source `SoilCarbonLitterInput`, and the pool gains the litter of the canopy and loses the carbon respired by microbes:
+#### Prognostic organic carbon
+
+In `LandModel` and `SoilCanopyModel`, when the canopy carries prognostic carbon pools
+(`PrognosticCarbonModel`), the soil CO₂ model includes the source
+`PrognosticSoilOrganicCarbon`, and the pool gains the litter of the canopy and loses the
+carbon respired by microbes:
 
 ```math
 \begin{equation}
-\frac{\partial Y_{C_{som}}}{\partial t} = I_{litter}(z) - S_m
+\frac{\partial Y_{C_{som}}}{\partial t} = S_{litter}(z) - S_m
 \end{equation}
 ```
 
-where $I_{litter}$ (kg C m⁻³ s⁻¹) is the litter of the leaf, wood and fine-root pools distributed over depth (see [Prognostic carbon](../../vegetation/canopy_structure/prognostic_carbon.md)). It still starts from the SoilGrids organic carbon density.
+where $S_{litter}$ (kg C m⁻³ s⁻¹) is the litter of the leaf, wood and fine-root pools
+distributed over depth (see
+[Prognostic carbon](../../vegetation/canopy_structure/prognostic_carbon.md)). The carbon
+the microbes respire, $S_m$, is the CO₂ source above, so soil carbon and CO₂ together
+conserve carbon.
 
 ## Microbial Respiration: DAMM Model
 
@@ -343,7 +361,7 @@ At the bottom boundary, a zero-flux condition is applied: $F_{O_2,{\rm bottom}} 
 | Total CO₂ | $Y_{CO_2}$ | kg C m⁻³ soil | Gas plus dissolved, $\theta_{\rm eff} c_g$ |
 | Air-phase CO₂ | $c_g$ | kg C m⁻³ air | Diagnosed as $Y_{CO_2}/\theta_{\rm eff}$ |
 | O₂ volumetric fraction | $O_{2,f}$ | dimensionless | O₂ fraction in soil air |
-| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids; fixed unless the canopy carries carbon pools |
+| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids and assumed to be in steady state unless the canopy models carbon pools |
 | Microbial respiration | $S_m$ | kg C m⁻³ s⁻¹ | CO₂ production rate |
 
 ### Drivers

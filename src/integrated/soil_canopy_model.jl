@@ -68,8 +68,8 @@ struct SoilCanopyModel{
         # SoilCanopyModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
-        @assert (SoilCarbonLitterInput{FT}() in soilco2.sources) ==
-                (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include SoilCarbonLitterInput if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+        @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
+                (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
         @assert Soil.PhaseChange{FT}() in soil.sources
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa PrognosticMet
@@ -142,7 +142,7 @@ A biomass model other than the default `PrescribedBiomassModel`, e.g. a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
-soil organic carbon prognostic (`SoilCarbonLitterInput`).
+soil organic carbon prognostic (`PrognosticSoilOrganicCarbon`).
 """
 function SoilCanopyModel{FT}(
     forcing,
@@ -217,19 +217,22 @@ in order to emit the same `LW_u` as the land surface does. This is called the
 [effective temperature](https://en.wikipedia.org/wiki/Effective_temperature) in some fields,
 and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """
-lsm_aux_vars(m::SoilCanopyModel) = (
-    :soil_litter_input,
-    :root_extraction,
-    :root_energy_extraction,
-    :root_dryness_norm,
-    :LW_u,
-    :SW_u,
-    :T_sfc,
-    :ϵ_sfc,
-    :α_sfc,
-    :scratch1,
-    :scratch2,
-)
+function lsm_aux_vars(m::SoilCanopyModel)
+    base = (
+        :root_extraction,
+        :root_energy_extraction,
+        :root_dryness_norm,
+        :LW_u,
+        :SW_u,
+        :T_sfc,
+        :ϵ_sfc,
+        :α_sfc,
+        :scratch1,
+        :scratch2,
+    )
+    return has_soil_litter_input(m.canopy.biomass) ?
+           (base..., :soil_litter_input) : base
+end
 
 """
     lsm_aux_types(m::SoilCanopyModel)
@@ -237,8 +240,10 @@ lsm_aux_vars(m::SoilCanopyModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+function lsm_aux_types(m::SoilCanopyModel{FT}) where {FT}
+    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+end
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -246,19 +251,22 @@ lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_domain_names(m::SoilCanopyModel) = (
-    :subsurface,
-    :subsurface,
-    :subsurface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-)
+function lsm_aux_domain_names(m::SoilCanopyModel)
+    base = (
+        :subsurface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+    )
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
+           base
+end
 
 """
     make_update_boundary_fluxes(
