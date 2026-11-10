@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
+  CES calibration tutorial does not work on Julia 1.13.
+  PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
 - ![][badge-🐛bugfix] TOPMODEL: points outside the TOPMODEL data's own land mask,
   or where the data give `fmax = 0`, get the mean `fmax` instead of 0. With
   `fmax = 0` a saturated column has no saturation-excess runoff, and where rain

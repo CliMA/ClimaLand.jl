@@ -141,12 +141,12 @@ if !isnothing(SNOTELScraperExt)
 
         test_data5 = DataTools.hourly2daily(test_data3)
         @test sum(test_data5[!, :z]) == 1168
-        @test sum(test_data5[!, :rel_hum_avg]) == 2593
+        @test sum(test_data5[!, :rel_hum_avg]) ≈ 2593
         @test sum(describe(test_data5, :nmissing)[!, 2]) == 0
 
         test_data6 = DataTools.rectify_daily_hourly(test_data2, test_data5)
         @test sum(test_data6[!, :z]) == 1168
-        @test sum(test_data6[!, :rel_hum_avg]) == 2593
+        @test sum(test_data6[!, :rel_hum_avg]) ≈ 2593
         inch2meter = 0.0254
         kmphr2mps = 5.0 / 18.0
         scales = Dict{Symbol, Real}(
@@ -851,12 +851,14 @@ if !isnothing(SNOTELScraperExt)
             context = context,
         )
         sdata = CNM.load_model(test_structure_path)
-        @test collect(keys(sdata)) ==
-              ["build_func", "accept_num_params", "metadata"]
+        @test issetequal(
+            keys(sdata),
+            ["build_func", "accept_num_params", "metadata"],
+        )
         @test sdata["accept_num_params"] == 325
         @test sdata["build_func"] isa Flux.Optimisers.Restructure
         pdata = CNM.load_model(test_params_path)
-        @test collect(keys(pdata)) == ["trainable_params", "metadata"]
+        @test issetequal(keys(pdata), ["trainable_params", "metadata"])
         @test length(pdata["trainable_params"]) == 325
 
         load_ps = pdata["trainable_params"]
