@@ -2,9 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
-  CES calibration tutorial does not work on Julia 1.13.
-  PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
+- Run CI on Julia 1.13 instead of 1.12.
+  PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
   four prognostic pools (sugar, leaf, wood, fine roots) around an LAI model, with the
   allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
