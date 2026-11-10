@@ -848,6 +848,27 @@ function compute_subsurface_runoff!(
     return out
 end
 
+function compute_water_table_depth!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .= Runoff.get_water_table_depth(
+        soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+        soil.domain.fields.depth,
+    )
+    return out
+end
+
 function compute_total_runoff!(
     out,
     Y,

@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
+  runoff (output by default with TOPMODEL), and a water table leaderboard against
+  Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`.
 - Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
   CES calibration tutorial does not work on Julia 1.13.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
