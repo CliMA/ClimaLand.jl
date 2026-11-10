@@ -18,6 +18,7 @@ include("land_sim_vis/leaderboard/data_sources.jl")
 include("land_sim_vis/plotting_utils.jl")
 include("land_sim_vis/leaderboard/leaderboard.jl")
 include("land_sim_vis/leaderboard/partitioning.jl")
+include("land_sim_vis/leaderboard/water_table.jl")
 include("land_sim_vis/leaderboard/rmse_boxplots.jl")
 """
     make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"], spin_up_months = 12)
@@ -104,6 +105,11 @@ function LandSimVis.make_leaderboard_plots(
         spin_up_months,
     )
     compute_partitioning_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path;
+        spin_up_months,
+    )
+    compute_water_table_leaderboard(
         leaderboard_base_path,
         diagnostics_folder_path;
         spin_up_months,

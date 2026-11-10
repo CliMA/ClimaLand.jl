@@ -116,6 +116,7 @@ _water_volume_flux_to_mm_per_day(var) =
 
 _preprocess_sim_var(var, ::Val{:sr}) = _water_volume_flux_to_mm_per_day(var)
 _preprocess_sim_var(var, ::Val{:ssr}) = _water_volume_flux_to_mm_per_day(var)
+_preprocess_sim_var(var, ::Val{:wtd}) = var
 
 # `compute_canopy_transpiration!` returns a mass flux, so `m s^-1` in older
 # output denotes the same quantity as `kg m^-2 s^-1`.
