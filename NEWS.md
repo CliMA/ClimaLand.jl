@@ -11,6 +11,11 @@ main
   of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
   rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🔥behavioralΔ] `solve!` rethrows the error of a crashed simulation after
+  logging it and closing the output writers, instead of returning normally. Scripts
+  and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
+  crashed ensemble member as failed.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 
 v1.16.0
 ----
