@@ -151,5 +151,11 @@ end
         diagnostics = nothing,
         user_callbacks = (crash_cb,),
     )
-    @test_logs (:error, r"crashed") match_mode = :any solve!(simulation)
+    crash = nothing
+    @test_logs (:error, r"crashed") match_mode = :any try
+        solve!(simulation)
+    catch e
+        crash = e
+    end
+    @test crash isa ErrorException && occursin("Simulated crash", crash.msg)
 end

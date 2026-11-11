@@ -11,6 +11,11 @@ main
   of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
   rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🔥behavioralΔ] `solve!` rethrows the error of a crashed simulation after
+  logging it and closing the output writers, instead of returning normally. Scripts
+  and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
+  crashed ensemble member as failed.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 - Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
   CES calibration tutorial does not work on Julia 1.13.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
