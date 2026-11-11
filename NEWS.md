@@ -16,6 +16,12 @@ main
   and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
   crashed ensemble member as failed.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] `find_restart` needs ClimaUtilities 0.1.34, which sorts the
+  restart files by the creation time of their full paths
+  ([ClimaUtilities#262](https://github.com/CliMA/ClimaUtilities.jl/pull/262)). With
+  older versions, called from another directory, it returned the last file by name
+  (`day730` over `day3652`).
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 - Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
   CES calibration tutorial does not work on Julia 1.13.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
