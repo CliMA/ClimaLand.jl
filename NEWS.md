@@ -6,6 +6,11 @@ main
   runoff (output by default with TOPMODEL), and a water table leaderboard against
   Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] TOPMODEL: points outside the TOPMODEL data's own land mask,
+  or where the data give `fmax = 0`, get 0.39, the mean `fmax` of the data, instead
+  of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
+  rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 - Run CI on Julia 1.13 instead of 1.12. The docs build stays on 1.12 because the
   CES calibration tutorial does not work on Julia 1.13.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955)
