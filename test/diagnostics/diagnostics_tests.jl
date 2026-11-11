@@ -545,9 +545,9 @@ end
         model_topmodelrunoff =
             Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
 
-        # Set up diagnostics with variables "sr" and "ssr"
+        # Set up diagnostics with variables "sr", "ssr", and "wtd"
         output_writer = ClimaDiagnostics.Writers.DictWriter()
-        output_vars = ["sr", "ssr"]
+        output_vars = ["sr", "ssr", "wtd"]
         reduction_period = :every_dt
         reduction_type = :instantaneous
         diagnostics = ClimaLand.Diagnostics.default_diagnostics(
@@ -571,7 +571,7 @@ end
 
         # Test that the diagnostics were correctly created
         @test keys(simulation.diagnostics[1].output_writer.dict) ==
-              Set(["sr_1000s_inst", "ssr_1000s_inst"])
+              Set(["sr_1000s_inst", "ssr_1000s_inst", "wtd_1000s_inst"])
 
         # SurfaceRunoff
         model_surfacerunoff = Soil.EnergyHydrology{FT}(

@@ -151,5 +151,25 @@ end
         diagnostics = nothing,
         user_callbacks = (crash_cb,),
     )
-    @test_logs (:error, r"crashed") match_mode = :any solve!(simulation)
+    crash = nothing
+    @test_logs (:error, r"crashed") match_mode = :any try
+        solve!(simulation)
+    catch e
+        crash = e
+    end
+    @test crash isa ErrorException && occursin("Simulated crash", crash.msg)
+end
+
+@testset "find_restart picks the newest checkpoint" begin
+    mktempdir() do base_dir
+        output_dir = joinpath(base_dir, "output_0000")
+        mkdir(output_dir)
+        # By name, day730 sorts after day3652, which is newer; some file
+        # systems store the creation time in whole seconds
+        touch(joinpath(output_dir, "day730.0.hdf5"))
+        sleep(1.1)
+        touch(joinpath(output_dir, "day3652.0.hdf5"))
+        restart_file = cd(() -> ClimaLand.find_restart(base_dir), mktempdir())
+        @test restart_file == joinpath(output_dir, "day3652.0.hdf5")
+    end
 end
