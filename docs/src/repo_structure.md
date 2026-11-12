@@ -67,6 +67,8 @@ fluxtower site
 The `experiments` folder also contains a `benchmarks` folder and a `long_runs` folder. These contain experiments that are run as part of CI on the Caltech cluster. `benchmarks` is ran to ensure the model runs in a similar amount of time after changes are made. `long_runs` create
 outputs that can be checked for validity.
 
+The `ilamb` and `trendy` folders post-process the monthly diagnostics of a global run: `ilamb/ilamb_conversion.jl` writes files that ILAMB can read, and `trendy/trendy_output.jl` writes a TRENDY (Global Carbon Budget) submission, with its tests in `trendy/test_trendy_output.jl`.
+
 ## /src folder
 
 The `/src` folder contains the source code of `ClimaLand` models. It contains 4 folders:
