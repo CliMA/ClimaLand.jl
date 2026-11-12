@@ -570,3 +570,199 @@ end
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
 end
+
+@testset "Cos-zenith distribution of interval-mean shortwave" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    import Insolation
+    FT = Float64
+    insol_params = LP.LandParameters(LP.create_toml_dict(FT)).insol_params
+    # Equator, mid-latitudes, polar day (89.9°N in June), polar night (89.9°S)
+    # with a nonzero and with a zero interval mean
+    latitude = FT[0, 45, -30, 89.9, -89.9, -89.9]
+    longitude = FT[0, -120, 150, 10, 10, 10]
+    polar_day, polar_night, dark_zero = 4, 5, 6
+    cosθs(date) = [
+        Insolation.insolation(date, φ, λ, insol_params).μ for
+        (φ, λ) in zip(latitude, longitude)
+    ]
+    # Interval means that differ between intervals, stamped at the interval start
+    interval_mean(date) =
+        (FT(100) + Dates.hour(floor(date, Dates.Hour(6)))) .*
+        FT[1, 1.5, 0.5, 2, 1, 0]
+    start_date = DateTime(2003, 6, 21)
+    step = Dates.Minute(15)
+    half_step = Dates.Millisecond(step) ÷ 2
+    sw_input(updateat; start_date = start_date) =
+        ClimaLand.CosZenithWeightedInput(
+            TimeVaryingInput(interval_mean),
+            start_date,
+            latitude,
+            longitude,
+            insol_params;
+            updateat,
+        )
+    @test_throws ErrorException ClimaLand.CosZenithWeightedInput(
+        TimeVaryingInput(interval_mean),
+        start_date,
+        latitude,
+        longitude,
+        insol_params;
+        quadrature_step = Dates.Minute(7),
+    )
+    @test_throws ErrorException sw_input(Dates.Hour(0))
+    @test_throws ErrorException sw_input([0.0, 3600.0])
+    dest = zeros(FT, length(latitude))
+    ndark = 0
+    # Mean over each 6-hour interval of the values held between updates
+    for updateat in (Dates.Minute(15), Dates.Hour(1), Dates.Hour(3))
+        sw = sw_input(updateat)
+        nwindows = div(Dates.Hour(6), updateat)
+        for interval_start in start_date .+ Dates.Hour(6) .* (0:7)
+            window_starts = interval_start .+ updateat .* (0:(nwindows - 1))
+            values = map(window_starts) do date
+                evaluate!(dest, sw, date)
+                copy(dest)
+            end
+            @test sum(values) / nwindows ≈ interval_mean(interval_start) rtol =
+                10eps(FT)
+            @test all(v -> all(>=(0), v), values)
+            # Polar night: the zero mean stays zero; a nonzero mean is spread
+            # evenly over the interval
+            @test all(v[dark_zero] == 0 for v in values)
+            @test all(
+                v[polar_night] ≈ interval_mean(interval_start)[polar_night] for
+                v in values
+            )
+            # Polar day: nearly constant sun, nearly constant shortwave
+            @test all(
+                isapprox(
+                    v[polar_day],
+                    interval_mean(interval_start)[polar_day];
+                    rtol = 0.01,
+                ) for v in values
+            )
+            # Sun down over the whole window, but up at some time in the
+            # interval: no shortwave
+            interval_cosθs =
+                sum(o -> cosθs(interval_start + o), step .* (0:23) .+ half_step)
+            offsets = step .* (0:(div(updateat, step) - 1)) .+ half_step
+            for (date, value) in zip(window_starts, values)
+                window_cosθs = sum(o -> cosθs(date + o), offsets)
+                dark = (window_cosθs .== 0) .& (interval_cosθs .> 0)
+                ndark += count(dark)
+                @test all(value[dark] .== 0)
+            end
+        end
+    end
+    @test ndark > 0
+    # At 15-minute updates, 45°N 120°W is dark before its sunrise in the
+    # 12–18 UTC interval (≈ 04:25 local solar time), and the equator gets more
+    # than the interval mean at noon
+    sw = sw_input(Dates.Minute(15))
+    evaluate!(dest, sw, DateTime(2003, 6, 21, 12))
+    @test dest[2] == 0
+    @test sw.window_cosθs[2] == 0
+    @test dest[1] > interval_mean(DateTime(2003, 6, 21, 12))[1]
+    # The held zenith angle is the shortwave-weighted mean over the window
+    sw = sw_input(Dates.Hour(3))
+    date = DateTime(2003, 6, 21, 6)
+    evaluate!(dest, sw, date)
+    nodes = date .+ step .* (0:11) .+ half_step
+    μ = [cosθs(d)[1] for d in nodes]
+    @test sw.window_cosθs[1] ≈ sum(μ .^ 2) / sum(μ)
+    @test 0 < sw.window_cosθs[1] < 1
+    # Windows that cross interval boundaries and midnight UTC: the mean over the
+    # window is the mean of its parts
+    sw2 = sw_input(Dates.Hour(2))
+    sw1 = sw_input(Dates.Hour(1))
+    window = DateTime(2003, 6, 21, 23)
+    evaluate!(dest, sw2, window)
+    crossing = copy(dest)
+    evaluate!(dest, sw1, window)
+    first_hour = copy(dest)
+    evaluate!(dest, sw1, window + Dates.Hour(1))
+    @test crossing ≈ (first_hour .+ dest) ./ 2 rtol = 10eps(FT)
+    # and energy is conserved over whole days with misaligned 2-hour windows
+    sw2 = sw_input(Dates.Hour(2))
+    windows = DateTime(2003, 6, 21, 1) .+ Dates.Hour(2) .* (0:11)
+    energy = sum(windows) do date
+        evaluate!(dest, sw2, date)
+        copy(dest)
+    end
+    intervals = DateTime(2003, 6, 21) .+ Dates.Hour(6) .* (0:4)
+    sw1 = sw_input(Dates.Hour(1))
+    expected = sum(DateTime(2003, 6, 21, 1) .+ Dates.Hour(1) .* (0:23)) do date
+        evaluate!(dest, sw1, date)
+        copy(dest)
+    end
+    @test energy .* 2 ≈ expected rtol = 10eps(FT)
+    # Simulation times in seconds and as ITime
+    sw = sw_input(Dates.Hour(3))
+    date = DateTime(2003, 6, 22, 15)
+    evaluate!(dest, sw, date)
+    expected = copy(dest)
+    seconds = Dates.value(Dates.Millisecond(date - start_date)) / 1000
+    evaluate!(dest, sw, seconds)
+    @test dest == expected
+    evaluate!(dest, sw, ITime(seconds; epoch = start_date))
+    @test dest == expected
+    # The diffuse fraction is constant over each interval
+    diffuse(date) = fill(FT(Dates.hour(date) + Dates.minute(date) / 60), 2)
+    frac_diff =
+        ClimaLand.IntervalStartInput(TimeVaryingInput(diffuse), start_date)
+    fd = zeros(FT, 2)
+    for date in start_date .+ Dates.Minute(15) .* (0:47)
+        evaluate!(fd, frac_diff, date)
+        @test all(fd .== Dates.hour(floor(date, Dates.Hour(6))))
+    end
+end
+
+@testset "Cos-zenith shortwave in PrescribedRadiativeFluxes" begin
+    import ClimaUtilities.TimeManager: ITime
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    insol_params = LP.LandParameters(toml_dict).insol_params
+    start_date = DateTime(2003, 3, 20)
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0, 9)),
+        ylim = FT.((0, 9)),
+        zlim = FT.((1, 2)),
+        nelements = (2, 2, 1),
+        longlat = FT.((30, 10)),
+    )
+    coords = ClimaLand.Domains.coordinates(domain)
+    sw = ClimaLand.CosZenithWeightedInput(
+        TimeVaryingInput((t) -> FT(400)),
+        start_date,
+        coords.surface.lat,
+        coords.surface.long,
+        insol_params,
+    )
+    radiation = ClimaLand.PrescribedRadiativeFluxes(
+        FT,
+        sw,
+        TimeVaryingInput((t) -> FT(300)),
+        start_date;
+        cosθs = ClimaLand.WindowCosZenith(sw),
+        toml_dict,
+        frac_diff = ClimaLand.IntervalStartInput(
+            TimeVaryingInput((t) -> FT(0.3)),
+            start_date,
+        ),
+    )
+    p = (; drivers = ClimaLand.initialize_drivers((radiation,), coords))
+    update! = ClimaLand.make_update_drivers((radiation,))
+    sw_sum = zero(FT)
+    for k in 0:7
+        update!(p, ITime(3 * 3600 * k; epoch = start_date))
+        sw_sum += sum(ClimaCore.Fields.field2array(p.drivers.SW_d)) / 4
+        @test ClimaCore.Fields.field2array(p.drivers.cosθs) ==
+              ClimaCore.Fields.field2array(sw.window_cosθs)
+        if k == 4 # 12 UTC, near local noon: sun up, cosθs between 0 and 1
+            @test all(>(0), ClimaCore.Fields.field2array(p.drivers.cosθs))
+        end
+    end
+    @test sw_sum / 8 ≈ 400 rtol = 1e-5
+    @test all(==(FT(0.3)), ClimaCore.Fields.field2array(p.drivers.frac_diff))
+end

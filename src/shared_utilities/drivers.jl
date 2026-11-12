@@ -2211,6 +2211,9 @@ end
                               reference = SurfaceFluxes.ReferenceAboveApparentSink(),
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                               time_interpolation_method = LinearInterpolation(),
+                              sw_time_interpolation = :coszen,
+                              updateat = Dates.Hour(3),
+                              sw_quadrature_step = Dates.Minute(15),
                               regridder_type = :InterpolationsRegridder,
                               context = nothing,
                              )
@@ -2220,6 +2223,22 @@ the CRU-JRA reanalysis NetCDF data.
 
 Time handling
 - Defaults to `LinearInterpolation()` in time (no periodic extrapolation).
+- The CRU-JRA shortwave radiation is a mean over the 6 hours that start at its
+    time stamp. With `sw_time_interpolation = :coszen` (the default), each
+    6-hour mean is distributed within its interval in proportion to the cosine
+    of the solar zenith angle, as the `coszen` time interpolation of the CESM
+    data atmosphere (CDEPS) that CLM uses for CRU-JRA. The drivers are held
+    between updates, so the shortwave given at an update is the mean of this
+    distribution over the time until the next update, and the cosine of the
+    zenith angle is its shortwave-weighted mean over the same window (see
+    [`ClimaLand.CosZenithWeightedInput`](@ref)). `updateat` must be the driver
+    update interval of the simulation (`updateat` of `LandSimulation`, 3 hours
+    by default). The 6-hour energy is then conserved exactly when the updates
+    fall on multiples of `sw_quadrature_step` after 00 UTC. The diffuse fraction
+    is constant over each 6-hour interval. `sw_time_interpolation = :linear`
+    recovers the earlier behaviour: the 6-hour means are interpolated linearly
+    in time with `time_interpolation_method`, as if they were instantaneous
+    values, and the zenith angle is the one at the update time.
 
 How it differs from `prescribed_forcing_era5`
 - CRU-JRA provides scalar 10 m wind speed (`"wind"`), so no u/v combination is
@@ -2244,9 +2263,14 @@ function prescribed_forcing_crujra(
     reference = SurfaceFluxes.ReferenceAboveApparentSink(),
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(),
+    sw_time_interpolation = :coszen,
+    updateat = Dates.Hour(3),
+    sw_quadrature_step = Dates.Minute(15),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
 )
+    sw_time_interpolation in (:coszen, :linear) ||
+        error("`sw_time_interpolation` must be `:coszen` or `:linear`")
 
     crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
         start_date,
@@ -2392,14 +2416,31 @@ function prescribed_forcing_crujra(
         file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
-    cos_zenith_angle =
-        (t, s) -> default_cos_zenith_angle(
-            t,
-            s;
-            latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-            longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-            insol_params = earth_param_set.insol_params,
+    latitude = ClimaCore.Fields.coordinate_field(surface_space).lat
+    longitude = ClimaCore.Fields.coordinate_field(surface_space).long
+    insol_params = earth_param_set.insol_params
+    if sw_time_interpolation == :coszen
+        SW_d = CosZenithWeightedInput(
+            SW_d,
+            start_date,
+            latitude,
+            longitude,
+            insol_params;
+            updateat,
+            quadrature_step = sw_quadrature_step,
         )
+        frac_diff = IntervalStartInput(frac_diff, start_date)
+        cos_zenith_angle = WindowCosZenith(SW_d)
+    else
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
+                t,
+                s;
+                latitude,
+                longitude,
+                insol_params,
+            )
+    end
 
     radiation = PrescribedRadiativeFluxes(
         FT,
@@ -2411,4 +2452,296 @@ function prescribed_forcing_crujra(
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
+end
+
+"""
+    simulation_date(start_date, t)
+
+Return the date of the simulation time `t`, given as seconds since
+`start_date`, as an `ITime`, or as a `DateTime`.
+"""
+simulation_date(start_date, t::DateTime) = t
+simulation_date(start_date, t::ITime) =
+    isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+simulation_date(start_date, t::Number) =
+    start_date + Dates.Millisecond(round(Int64, 1000 * float(t)))
+
+"""
+    hold_length(updateat)
+
+Return the driver update interval `updateat` (a `Dates.Period`, seconds, or an
+`ITime`) as a number of milliseconds.
+"""
+hold_length(updateat::Dates.Period) = Dates.Millisecond(updateat)
+hold_length(updateat::ITime) =
+    Dates.Millisecond(updateat.counter * updateat.period)
+hold_length(updateat::Real) = Dates.Millisecond(round(Int64, 1000 * updateat))
+hold_length(updateat) = error(
+    "`updateat` must be a single update interval (a `Dates.Period`, seconds, or an `ITime`)",
+)
+
+"""
+    IntervalStartInput{I, D} <: AbstractTimeVaryingInput
+
+A time-varying input that is constant over each interval of length `period`
+(counted from 00 UTC) and equal to `input` at the start of the interval. Used
+for quantities given as means over intervals stamped at their start, such as
+the diffuse fraction of the 6-hourly CRU-JRA shortwave radiation.
+
+Construct it with `IntervalStartInput(input, start_date; period = Dates.Hour(6))`.
+$(DocStringExtensions.FIELDS)
+"""
+struct IntervalStartInput{I <: AbstractTimeVaryingInput, D} <:
+       AbstractTimeVaryingInput
+    "Time-varying input stamped at the start of each interval"
+    input::I
+    "Date of `t = 0` of the simulation"
+    start_date::D
+    "Length of the intervals"
+    period::Dates.Millisecond
+end
+
+IntervalStartInput(input, start_date; period = Dates.Hour(6)) =
+    IntervalStartInput(input, start_date, Dates.Millisecond(period))
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::IntervalStartInput,
+    t,
+    args...;
+    kwargs...,
+)
+    interval_start = floor(simulation_date(input.start_date, t), input.period)
+    TimeVaryingInputs.evaluate!(
+        dest,
+        input.input,
+        interval_start,
+        args...;
+        kwargs...,
+    )
+    return nothing
+end
+
+"""
+    CosZenithWeightedInput{I, D, LA, LO, P, C} <: AbstractTimeVaryingInput
+
+A time-varying input for a solar flux given as means over intervals of length
+`period` (counted from 00 UTC) stamped at the start of each interval, such as
+the 6-hourly CRU-JRA shortwave radiation, for drivers that are updated every
+`updateat` and held in between.
+
+Within an interval, the mean `F̄` is distributed in proportion to the cosine of
+the solar zenith angle `μ(s)` (zero when the sun is below the horizon), as in
+the `coszen` time interpolation of the CESM data models (CDEPS):
+
+    F(s) = F̄ μ(s) / μ̄,
+
+where `μ̄` is the mean of `μ` over the interval. Evaluated at time `t`, the
+input returns the mean of `F` over the hold window `[t, t + updateat)`, which
+may span several intervals. Means are taken with the midpoint rule on a grid of
+spacing `gcd(updateat, quadrature_step)` (15 minutes by default). When the
+updates fall on this grid (counted from 00 UTC), the windows and the interval
+means use the same points, and the energy of each interval is conserved to
+rounding error. Otherwise it is conserved up to the quadrature error.
+
+If the sun is below the horizon at all points of an interval (`μ̄ = 0`), for
+example in polar night, `F = F̄` over that interval, so that a nonzero mean is
+not lost.
+
+The shortwave-weighted mean of `μ` over the last window, `Σ F μ / Σ F` (or the
+mean of `μ` if `Σ F = 0`), is stored in `window_cosθs`; see
+[`ClimaLand.WindowCosZenith`](@ref).
+
+Construct it with
+`CosZenithWeightedInput(input, start_date, latitude, longitude, insol_params;
+period = Dates.Hour(6), updateat = Dates.Hour(3), quadrature_step =
+Dates.Minute(15))`, where `input` evaluated at the start of an interval gives
+its mean, `latitude` and `longitude` (degrees) are fields or arrays shaped like
+the destination, and `updateat` is the driver update interval of the simulation.
+A warning is shown once if the input is evaluated at a spacing other than
+`updateat`.
+$(DocStringExtensions.FIELDS)
+"""
+struct CosZenithWeightedInput{I <: AbstractTimeVaryingInput, D, LA, LO, P, C} <:
+       AbstractTimeVaryingInput
+    "Time-varying input of the interval means, stamped at the start of each interval"
+    input::I
+    "Date of `t = 0` of the simulation"
+    start_date::D
+    "Latitude (degrees)"
+    latitude::LA
+    "Longitude (degrees)"
+    longitude::LO
+    "Insolation parameters"
+    insol_params::P
+    "Length of the intervals"
+    period::Dates.Millisecond
+    "Hold window: time between driver updates"
+    updateat::Dates.Millisecond
+    "Spacing of the quadrature points"
+    quadrature_step::Dates.Millisecond
+    "Cache: mean flux of the current interval"
+    interval_mean::C
+    "Cache: mean cosine of the zenith angle over the current interval"
+    interval_mean_cosθs::C
+    "Scratch: cosine of the zenith angle at a quadrature point"
+    cosθs::C
+    "Scratch: sum of the cosine of the zenith angle over the window"
+    window_sum_cosθs::C
+    "Shortwave-weighted mean cosine of the zenith angle over the last window"
+    window_cosθs::C
+    "Scratch destination used by `WindowCosZenith`"
+    scratch::C
+    "Start of the interval of the cached values"
+    interval_start::Base.RefValue{DateTime}
+    "Start of the last evaluated window"
+    window_start::Base.RefValue{DateTime}
+end
+
+function CosZenithWeightedInput(
+    input,
+    start_date,
+    latitude,
+    longitude,
+    insol_params;
+    period = Dates.Hour(6),
+    updateat = Dates.Hour(3),
+    quadrature_step = Dates.Minute(15),
+)
+    period = Dates.Millisecond(period)
+    updateat = hold_length(updateat)
+    quadrature_step = Dates.Millisecond(quadrature_step)
+    Dates.value(updateat) > 0 || error("`updateat` must be positive")
+    Dates.value(quadrature_step) > 0 &&
+    Dates.value(period) % Dates.value(quadrature_step) == 0 ||
+        error("`quadrature_step` must divide the interval length $period")
+    step = Dates.Millisecond(
+        gcd(Dates.value(updateat), Dates.value(quadrature_step)),
+    )
+    caches = ntuple(_ -> zero(latitude), 6)
+    return CosZenithWeightedInput(
+        input,
+        start_date,
+        latitude,
+        longitude,
+        insol_params,
+        period,
+        updateat,
+        step,
+        caches...,
+        Ref(typemin(DateTime)),
+        Ref(typemin(DateTime)),
+    )
+end
+
+cos_zenith(date, latitude, longitude, insol_params) =
+    Insolation.insolation(date, latitude, longitude, insol_params).μ
+
+cos_zenith_weight(cosθs, mean_cosθs) =
+    ifelse(mean_cosθs > 0, cosθs / max(mean_cosθs, eps(mean_cosθs)), one(cosθs))
+
+quadrature_offset(input::CosZenithWeightedInput) =
+    Dates.Millisecond(div(Dates.value(input.quadrature_step), 2))
+
+function update_interval!(
+    input::CosZenithWeightedInput,
+    interval_start,
+    args...;
+    kwargs...,
+)
+    (; latitude, longitude, insol_params, interval_mean_cosθs) = input
+    TimeVaryingInputs.evaluate!(
+        input.interval_mean,
+        input.input,
+        interval_start,
+        args...;
+        kwargs...,
+    )
+    n = div(input.period, input.quadrature_step)
+    offset = quadrature_offset(input)
+    interval_mean_cosθs .= 0
+    for i in 0:(n - 1)
+        date_i = interval_start + i * input.quadrature_step + offset
+        @. interval_mean_cosθs +=
+            cos_zenith(date_i, latitude, longitude, insol_params)
+    end
+    interval_mean_cosθs ./= n
+    input.interval_start[] = interval_start
+    return nothing
+end
+
+function check_update_spacing!(input::CosZenithWeightedInput, window_start)
+    last_start = input.window_start[]
+    if last_start != typemin(DateTime) &&
+       window_start > last_start &&
+       window_start - last_start != input.updateat
+        @warn "CosZenithWeightedInput: drivers updated $(window_start - last_start) apart, but `updateat` is $(input.updateat); the shortwave energy is not conserved" maxlog =
+            1
+    end
+    if floor(window_start, input.quadrature_step) != window_start
+        @warn "CosZenithWeightedInput: update at $window_start is not on the $(input.quadrature_step) quadrature grid; the shortwave energy is conserved only approximately" maxlog =
+            1
+    end
+    input.window_start[] = window_start
+    return nothing
+end
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::CosZenithWeightedInput,
+    t,
+    args...;
+    kwargs...,
+)
+    (; latitude, longitude, insol_params, cosθs) = input
+    (; interval_mean, interval_mean_cosθs) = input
+    (; window_sum_cosθs, window_cosθs) = input
+    window_start = simulation_date(input.start_date, t)
+    check_update_spacing!(input, window_start)
+    n = div(input.updateat, input.quadrature_step)
+    offset = quadrature_offset(input)
+    dest .= 0
+    window_cosθs .= 0
+    window_sum_cosθs .= 0
+    for j in 0:(n - 1)
+        date_j = window_start + j * input.quadrature_step + offset
+        interval_start = floor(date_j, input.period)
+        interval_start == input.interval_start[] ||
+            update_interval!(input, interval_start, args...; kwargs...)
+        @. cosθs = cos_zenith(date_j, latitude, longitude, insol_params)
+        @. dest += interval_mean * cos_zenith_weight(cosθs, interval_mean_cosθs)
+        @. window_cosθs +=
+            interval_mean *
+            cos_zenith_weight(cosθs, interval_mean_cosθs) *
+            cosθs
+        @. window_sum_cosθs += cosθs
+    end
+    @. window_cosθs = ifelse(
+        dest > 0,
+        window_cosθs / max(dest, eps(dest)),
+        window_sum_cosθs / n,
+    )
+    dest ./= n
+    return nothing
+end
+
+"""
+    WindowCosZenith{I <: CosZenithWeightedInput} <: Function
+
+The cosine of the solar zenith angle held with the shortwave radiation of a
+[`ClimaLand.CosZenithWeightedInput`](@ref): called as `f(t, start_date)`, it
+returns the shortwave-weighted mean cosine of the zenith angle over the hold
+window that starts at `t`. Pass it as `cosθs` to `PrescribedRadiativeFluxes`
+so that the canopy sees the zenith angle of the light it receives.
+"""
+struct WindowCosZenith{I <: CosZenithWeightedInput} <: Function
+    input::I
+end
+
+function (f::WindowCosZenith)(t, start_date)
+    input = f.input
+    window_start = simulation_date(start_date, t)
+    window_start == input.window_start[] ||
+        TimeVaryingInputs.evaluate!(input.scratch, input, window_start)
+    return input.window_cosθs
 end

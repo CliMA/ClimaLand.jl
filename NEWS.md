@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] `prescribed_forcing_crujra` distributes each 6-hourly mean
+  shortwave radiation of CRU-JRA within its interval in proportion to the cosine of the
+  solar zenith angle (the `coszen` method of CLM's data atmosphere), instead of
+  interpolating the means linearly in time. The shortwave given at a driver update is
+  the mean over the time until the next update (`updateat`, 3 hours by default, which
+  must match `updateat` of `LandSimulation`), so the 6-hour energy is conserved and no
+  shortwave falls at night; the zenith angle is the shortwave-weighted mean over the
+  same window, and the diffuse fraction is constant over each 6-hour interval. Adds
+  `CosZenithWeightedInput`, `WindowCosZenith` and `IntervalStartInput`.
+  `sw_time_interpolation = :linear` recovers the earlier behaviour.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
