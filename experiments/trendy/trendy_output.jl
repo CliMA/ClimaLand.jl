@@ -725,6 +725,8 @@ regular grid of `resolution` degrees (1 or 0.5), and write
 `<output_root>/<model>/<model>_zonalNBP_<simulation>.txt` and, if missing, a
 README template `<output_root>/<model>/README_<model>.txt`.
 
+`model` is the TRENDY model name, without underscores: `ClimaLand` for the runs with
+prognostic vegetation and `ClimaLand-OBS` for those with prescribed vegetation.
 `variables` restricts the TRENDY variables written (default: all that can be
 computed from the files present). `oceanCoverFrac` is 1 where the model has no
 land and 0 elsewhere. Returns the paths of the files written.
