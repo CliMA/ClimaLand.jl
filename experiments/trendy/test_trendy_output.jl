@@ -150,6 +150,24 @@ end
 
     @test layer_thickness(z) ≈ [0.1, 0.225, 0.675, 1.0]
     @test layer_thickness(z; soil_depth = 3.0) ≈ [0.1, 0.225, 0.675, 2.0]
+    @test layer_faces(z; soil_depth = 3.0) ≈ [0.0, -0.1, -0.325, -1.0, -3.0]
+    @test top_layer_weights(z, 0.1) ≈ [1.0, 0.0, 0.0, 0.0]
+    @test top_layer_weights(z, 0.2) ≈ [1.0, 0.1 / 0.225, 0.0, 0.0]
+    # Land fraction: a 1° land cell centred on integer degrees covers a quarter of
+    # each of the four 1° TRENDY cells it overlaps; totals are conserved
+    tlon, tlat = trendy_grid(1.0)
+    ilon = collect(-180.0:179.0)
+    ilat = collect(-90.0:89.0)
+    src = zeros(360, 180)
+    src[181, 101] = 1.0 # centred at 0°E, 10°N
+    frac = land_fraction_on_grid(src, ilon, ilat, tlon, tlat)
+    @test sum(frac .> 0) == 4
+    @test sum(frac .* grid_cell_area(tlon, tlat)) ≈
+          EARTH_RADIUS^2 * deg2rad(1) * (sind(10.5) - sind(9.5)) rtol = 1e-10
+    # The source grid has no row at 90°N, so the band 89.5–90°N is not covered
+    full = land_fraction_on_grid(ones(360, 180), ilon, ilat, tlon, tlat)
+    @test full[:, 1:179] ≈ ones(360, 179)
+    @test full[:, 180] ≈ fill((sind(89.5) - sind(89)) / (1 - sind(89)), 360)
     lon, lat = trendy_grid(0.5)
     @test length(lon) == 720 && length(lat) == 360
     @test lon[1] == -179.75 && lat[end] == 89.75
@@ -182,6 +200,7 @@ end
         "tas",
         "cSoil",
         "mrso",
+        "mrsos",
         "tsl",
         "msl",
         "oceanCoverFrac",
@@ -226,6 +245,17 @@ end
     end
     NCDatasets.NCDataset(joinpath(sim_dir, "ClimaLand-OBS_S2_mrso.nc")) do ds
         @test ds["mrso"].var[100, 90, 1] ≈ (300.0 + 91.67) * 2.0 rtol = 1e-6
+        @test ds["mrso"].attrib["soil_column_depth"] ≈ 2.0
+    end
+    NCDatasets.NCDataset(joinpath(sim_dir, "ClimaLand-OBS_S2_mrsos.nc")) do ds
+        @test ds["mrsos"].var[100, 90, 1] ≈ (300.0 + 91.67) * 0.1 rtol = 1e-6
+        @test ds["mrsos"].attrib["soil_depth"] ≈ 0.1
+    end
+    NCDatasets.NCDataset(joinpath(sim_dir, "ClimaLand-OBS_S2_msl.nc")) do ds
+        @test ds["smlayer_bnds"][:, :] ≈
+              [0.0 0.1 0.325 1.0; 0.1 0.325 1.0 2.0]
+        @test sum(ds["msl"].var[100, 90, :, 1]) ≈ (300.0 + 91.67) * 2.0 rtol =
+            1e-5
     end
     NCDatasets.NCDataset(joinpath(sim_dir, "ClimaLand-OBS_S2_tsl.nc")) do ds
         @test NCDatasets.dimnames(ds["tsl"]) ==
@@ -246,8 +276,8 @@ end
               ds["oceanCoverFrac"][100, 90] == 0
     end
 
-    # Zonal NBP: only the complete year 2003; uniform sink over the land, which the
-    # bilinear regridding extends from the 2° centres at ±59° to the 1° cells at ±60.5°
+    # Zonal NBP: only the complete year 2003; uniform sink over the land, whose 2°
+    # cells (centres up to ±59°) end at ±60°; the land fraction conserves that area
     zonal = readlines(
         joinpath(output_root, "ClimaLand-OBS", "ClimaLand-OBS_zonalNBP_S2.txt"),
     )
@@ -256,8 +286,8 @@ end
     values = parse.(Float64, split(zonal[2], '\t')[2:end])
     land_area(φ1, φ2) = 2π * EARTH_RADIUS^2 * (sind(φ2) - sind(φ1))
     flux = 0.1gpp_mol * KG_C_PER_MOL_CO2 * 365 * 86400 * 1e-12
-    @test values[1] ≈ flux * land_area(-61, 61) rtol = 1e-3
-    @test values[2] ≈ flux * land_area(30, 61) rtol = 1e-3
+    @test values[1] ≈ flux * land_area(-60, 60) rtol = 1e-3
+    @test values[2] ≈ flux * land_area(30, 60) rtol = 1e-3
     @test values[3] ≈ flux * land_area(-30, 30) rtol = 1e-3
     @test values[1] ≈ sum(values[2:4]) rtol = 1e-4
 

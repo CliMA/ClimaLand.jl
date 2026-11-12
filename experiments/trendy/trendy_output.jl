@@ -88,18 +88,46 @@ centres, and the bottom of the soil at `-soil_depth`, or, if `soil_depth` is
 `nothing`, the bottom centre extended by half of the last spacing.
 """
 function layer_thickness(z; soil_depth = nothing)
+    faces = layer_faces(z; soil_depth)
+    return faces[1:(end - 1)] .- faces[2:end]
+end
+
+"""
+    layer_faces(z; soil_depth = nothing)
+
+Depths (m, negative below the surface) of the boundaries of the soil layers whose
+centres are at `z`, from the surface (0) to the bottom of the soil; see
+`layer_thickness`.
+"""
+function layer_faces(z; soil_depth = nothing)
     zs = sort(z; rev = true)
     zs == z || error("Expected depths ordered from the surface downward")
     n = length(z)
-    n == 1 && return [isnothing(soil_depth) ? -2z[1] : soil_depth]
+    n == 1 && return [0.0, isnothing(soil_depth) ? 2z[1] : -soil_depth]
     faces = zeros(n + 1)
     for i in 2:n
         faces[i] = (z[i - 1] + z[i]) / 2
     end
     faces[n + 1] =
         isnothing(soil_depth) ? z[n] - (z[n - 1] - z[n]) / 2 : -soil_depth
-    return faces[1:n] .- faces[2:(n + 1)]
+    return faces
 end
+
+"""
+    top_layer_weights(z, depth; soil_depth = nothing)
+
+Fraction of each soil layer (centres `z`) that lies within `depth` (m) of the
+surface.
+"""
+function top_layer_weights(z, depth; soil_depth = nothing)
+    faces = layer_faces(z; soil_depth)
+    top = -faces[1:(end - 1)]
+    bottom = -faces[2:end]
+    return clamp.((min.(bottom, depth) .- top) ./ (bottom .- top), 0, 1)
+end
+
+"""Depth (m) of the top soil layer used for `mrsos`, as in CMIP6."""
+const MRSOS_DEPTH = 0.1
 
 """
     column_integral(v::ClimaVariable; soil_depth = nothing)
@@ -161,7 +189,32 @@ function trendy_variables(; soil_depth = nothing)
             1,
             ["swc", "si"],
             vars -> dropdims(sum(layer_mass(vars); dims = 3); dims = 3),
-            "sum over soil layers of (`swc` ρ_liquid + `si` ρ_ice) Δz",
+            "sum over all soil layers (the full soil column, see soil_column_depth) of (`swc` ρ_liquid + `si` ρ_ice) Δz",
+        ),
+        TRENDYVariable(
+            "mrsos",
+            "Moisture in Upper Portion of Soil Column",
+            "kg m-2",
+            2,
+            ["swc", "si"],
+            vars -> dropdims(
+                sum(
+                    layer_mass(vars) .* reshape(
+                        top_layer_weights(
+                            vars["swc"].z,
+                            MRSOS_DEPTH;
+                            soil_depth,
+                        ),
+                        1,
+                        1,
+                        :,
+                        1,
+                    );
+                    dims = 3,
+                );
+                dims = 3,
+            ),
+            "(`swc` ρ_liquid + `si` ρ_ice) Δz summed over the top 0.1 m of soil (as CMIP6 mrsos)",
         ),
         TRENDYVariable(
             "mrros",
@@ -451,6 +504,64 @@ function regrid(v::ClimaVariable, lon, lat)
 end
 
 """
+    cell_edges(centres; periodic = false)
+
+Edges of the cells of the regular grid `centres` (midpoints, with half a spacing
+added at both ends; latitudes are clipped to ±90).
+"""
+function cell_edges(centres; periodic = false)
+    Δ = centres[2] - centres[1]
+    edges = [centres .- Δ / 2; centres[end] + Δ / 2]
+    return periodic ? edges : clamp.(edges, -90, 90)
+end
+
+"""
+    overlap_matrix(src_edges, dst_edges; period = nothing)
+
+Matrix (destination, source) of the lengths of overlap between source and
+destination intervals, periodic with `period` if given.
+"""
+function overlap_matrix(src_edges, dst_edges; period = nothing)
+    shifts = isnothing(period) ? (0.0,) : (-period, 0.0, period)
+    O = zeros(length(dst_edges) - 1, length(src_edges) - 1)
+    for a in 1:(length(src_edges) - 1), s in shifts,
+        i in 1:(length(dst_edges) - 1)
+
+        lo = max(src_edges[a] + s, dst_edges[i])
+        hi = min(src_edges[a + 1] + s, dst_edges[i + 1])
+        hi > lo && (O[i, a] += hi - lo)
+    end
+    return O
+end
+
+"""
+    land_fraction_on_grid(src_land, src_lon, src_lat, lon, lat)
+
+Area fraction of each cell of the regular grid `lon`, `lat` covered by the source
+cells where `src_land` (longitude, latitude; 1 land, 0 not) is 1. Source and
+destination grids are regular in longitude and latitude.
+"""
+function land_fraction_on_grid(src_land, src_lon, src_lat, lon, lat)
+    src_lon = mod.(src_lon .+ 180, 360) .- 180
+    perm = sortperm(src_lon)
+    src_lon = src_lon[perm]
+    src_land = src_land[perm, :]
+    issorted(src_lat) || error("Expected increasing latitudes")
+    Olon = overlap_matrix(
+        cell_edges(src_lon; periodic = true),
+        cell_edges(lon; periodic = true);
+        period = 360.0,
+    )
+    # Overlap in sin(latitude), proportional to area
+    Olat = overlap_matrix(sind.(cell_edges(src_lat)), sind.(cell_edges(lat)))
+    covered = Olon * src_land * transpose(Olat)
+    dst_area =
+        diff(cell_edges(lon; periodic = true)) .*
+        transpose(diff(sind.(cell_edges(lat))))
+    return clamp.(covered ./ dst_area, 0, 1)
+end
+
+"""
     month_midpoint_days(year, month)
 
 Days since 1700-01-01 of the middle of `month` of `year` in the 365-day
@@ -551,7 +662,15 @@ function write_trendy_variable(
     months,
     attributes;
     z = nothing,
+    soil_depth = nothing,
 )
+    var_attributes = variable_attributes(var)
+    if !isnothing(z) && "swc" in var.inputs
+        faces = layer_faces(z; soil_depth)
+        push!(var_attributes, "soil_column_depth" => Float32(-faces[end]))
+        var.name == "mrsos" &&
+            push!(var_attributes, "soil_depth" => Float32(MRSOS_DEPTH))
+    end
     NCDatasets.NCDataset(path, "c"; attrib = attributes) do ds
         write_coordinates!(ds, lon, lat)
         write_time!(ds, months)
@@ -567,6 +686,18 @@ function write_trendy_variable(
                     "units" => "m",
                     "positive" => "down",
                     "axis" => "Z",
+                    "bounds" => var.layer_dim * "_bnds",
+                ],
+            )
+            faces = layer_faces(z; soil_depth)
+            NCDatasets.defVar(
+                ds,
+                var.layer_dim * "_bnds",
+                permutedims(hcat(-faces[1:(end - 1)], -faces[2:end])),
+                ("bnds", var.layer_dim);
+                attrib = [
+                    "long_name" => "depths of the top and bottom of the soil layer",
+                    "units" => "m",
                 ],
             )
             dims = ("longitude", "latitude", var.layer_dim, "time")
@@ -576,7 +707,7 @@ function write_trendy_variable(
             var.name,
             to_fill(data),
             dims;
-            attrib = variable_attributes(var),
+            attrib = var_attributes,
         )
     end
 end
@@ -792,10 +923,22 @@ function write_trendy_output(
     )
     mask_name == 0 &&
         error("No diagnostic to find the land in $diagnostics_dir")
-    mask_source = input(["tair", "gpp", "swc", "et"][mask_name])
-    land = .!isnan.(selectdim(mask_source.data, ndims(mask_source.data), 1))
-    ndims(land) == 3 && (land = land[:, :, 1])
-    land_fraction = Float64.(land)
+    # Land fraction of each TRENDY cell = area fraction covered by model land cells
+    # (exactly 0 or 1 when the diagnostics are on the TRENDY grid). Values are kept
+    # wherever the fraction is > 0; global totals need area × (1 - oceanCoverFrac).
+    mask_source =
+        read_clima_variable(available[["tair", "gpp", "swc", "et"][mask_name]])
+    source_land =
+        .!isnan.(selectdim(mask_source.data, ndims(mask_source.data), 1))
+    ndims(source_land) == 3 && (source_land = source_land[:, :, 1])
+    land_fraction = land_fraction_on_grid(
+        Float64.(source_land),
+        mask_source.lon,
+        mask_source.lat,
+        lon,
+        lat,
+    )
+    land = land_fraction .> 1e-6
     months = nothing
     nbp = nothing
     for var in selected
@@ -817,6 +960,7 @@ function write_trendy_output(
             months,
             attributes;
             z = first_input.z,
+            soil_depth,
         )
         push!(written, path)
         var.name == "nbp" && (nbp = data)
