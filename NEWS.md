@@ -20,6 +20,7 @@ main
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - `Canopy.PrescribedBiomassModel`, which prescribes area indices rather than biomass, is
   renamed `Canopy.PrescribedAreaIndexModel`; the old name is a deprecated alias.
+  PR [#1966](https://github.com/CliMA/ClimaLand.jl/pull/1966)
 
 v1.15.0
 ----
