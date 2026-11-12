@@ -2212,6 +2212,8 @@ end
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                               time_interpolation_method = LinearInterpolation(),
                               sw_time_interpolation = :coszen,
+                              state_time_interpolation = :cubic,
+                              flux_time_interpolation = :interval,
                               updateat = Dates.Hour(3),
                               sw_quadrature_step = Dates.Minute(15),
                               regridder_type = :InterpolationsRegridder,
@@ -2222,23 +2224,40 @@ Construct `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` drivers from
 the CRU-JRA reanalysis NetCDF data.
 
 Time handling
-- Defaults to `LinearInterpolation()` in time (no periodic extrapolation).
-- The CRU-JRA shortwave radiation is a mean over the 6 hours that start at its
-    time stamp. With `sw_time_interpolation = :coszen` (the default), each
+- CRU-JRA gives temperature, humidity, pressure and wind as instantaneous values
+    at 00, 06, 12 and 18 UTC, and shortwave and longwave radiation and
+    precipitation as means over the 6 hours that start at the time stamp. The
+    drivers are updated every `updateat` and held in between; `updateat` must
+    be the driver update interval of the simulation (`updateat` of
+    `LandSimulation`, 3 hours by default; 1 hour is recommended with CRU-JRA).
+- Shortwave: with `sw_time_interpolation = :coszen` (the default), each
     6-hour mean is distributed within its interval in proportion to the cosine
     of the solar zenith angle, as the `coszen` time interpolation of the CESM
-    data atmosphere (CDEPS) that CLM uses for CRU-JRA. The drivers are held
-    between updates, so the shortwave given at an update is the mean of this
-    distribution over the time until the next update, and the cosine of the
-    zenith angle is its shortwave-weighted mean over the same window (see
-    [`ClimaLand.CosZenithWeightedInput`](@ref)). `updateat` must be the driver
-    update interval of the simulation (`updateat` of `LandSimulation`, 3 hours
-    by default). The 6-hour energy is then conserved exactly when the updates
-    fall on multiples of `sw_quadrature_step` after 00 UTC. The diffuse fraction
-    is constant over each 6-hour interval. `sw_time_interpolation = :linear`
-    recovers the earlier behaviour: the 6-hour means are interpolated linearly
-    in time with `time_interpolation_method`, as if they were instantaneous
-    values, and the zenith angle is the one at the update time.
+    data atmosphere (CDEPS) that CLM uses for CRU-JRA. The shortwave given at an
+    update is the mean of this distribution over the time until the next update,
+    and the cosine of the zenith angle is its shortwave-weighted mean over the
+    same window (see [`ClimaLand.CosZenithWeightedInput`](@ref)). The 6-hour
+    energy is conserved exactly when the updates fall on multiples of
+    `sw_quadrature_step` after 00 UTC. The diffuse fraction is constant over
+    each 6-hour interval.
+- Longwave radiation and precipitation: with `flux_time_interpolation =
+    :interval` (the default), each 6-hour mean is held constant over its
+    interval, and the value given at an update is the mean over the time until
+    the next update (see [`ClimaLand.IntervalMeanInput`](@ref)), so the energy
+    and water of each interval stay in that interval.
+- Temperature, humidity, pressure and wind: with `state_time_interpolation =
+    :cubic` (the default), the value given at an update is the Catmull-Rom
+    cubic through the 6-hourly samples at the middle of the hold window (see
+    [`ClimaLand.HoldWindowStateInput`](@ref)). Linear interpolation between
+    6-hourly samples cuts the afternoon temperature peak, which lowers the
+    daytime vapor pressure deficit. `state_time_interpolation =
+    :linear_midpoint` interpolates linearly, also at the middle of the window.
+- `:linear` for any of the three keywords recovers the earlier behaviour for
+    those variables: the records are interpolated linearly in time with
+    `time_interpolation_method` (defaults to `LinearInterpolation()`, no
+    periodic extrapolation), as if they were instantaneous values, and taken
+    at the update time (for the shortwave, the zenith angle is the one at the
+    update time).
 
 How it differs from `prescribed_forcing_era5`
 - CRU-JRA provides scalar 10 m wind speed (`"wind"`), so no u/v combination is
@@ -2264,6 +2283,8 @@ function prescribed_forcing_crujra(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(),
     sw_time_interpolation = :coszen,
+    state_time_interpolation = :cubic,
+    flux_time_interpolation = :interval,
     updateat = Dates.Hour(3),
     sw_quadrature_step = Dates.Minute(15),
     regridder_type = :InterpolationsRegridder,
@@ -2271,6 +2292,11 @@ function prescribed_forcing_crujra(
 )
     sw_time_interpolation in (:coszen, :linear) ||
         error("`sw_time_interpolation` must be `:coszen` or `:linear`")
+    state_time_interpolation in (:cubic, :linear_midpoint, :linear) || error(
+        "`state_time_interpolation` must be `:cubic`, `:linear_midpoint` or `:linear`",
+    )
+    flux_time_interpolation in (:interval, :linear) ||
+        error("`flux_time_interpolation` must be `:interval` or `:linear`")
 
     crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
         start_date,
@@ -2362,21 +2388,6 @@ function prescribed_forcing_crujra(
     )
     h_atmos = FT(10)
 
-    atmos = PrescribedAtmosphere(
-        precip,
-        snow_precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
-        start_date,
-        h_atmos,
-        toml_dict;
-        gustiness,
-        reference,
-        c_co2 = c_co2,
-    )
-
     SW_d = TimeVaryingInput(
         crujra_ncdata_path,
         "msdwswrf",
@@ -2419,6 +2430,42 @@ function prescribed_forcing_crujra(
     latitude = ClimaCore.Fields.coordinate_field(surface_space).lat
     longitude = ClimaCore.Fields.coordinate_field(surface_space).long
     insol_params = earth_param_set.insol_params
+    if state_time_interpolation != :linear
+        method = state_time_interpolation == :cubic ? :cubic : :linear
+        state(input; nonnegative = false) = HoldWindowStateInput(
+            input,
+            start_date,
+            zero(latitude);
+            updateat,
+            method,
+            nonnegative,
+        )
+        T_atmos = state(T_atmos)
+        q_atmos = state(q_atmos; nonnegative = true)
+        P_atmos = state(P_atmos)
+        u_atmos = state(u_atmos; nonnegative = true)
+    end
+    if flux_time_interpolation == :interval
+        interval_mean(input) =
+            IntervalMeanInput(input, start_date, zero(latitude); updateat)
+        precip = interval_mean(precip)
+        snow_precip = interval_mean(snow_precip)
+        LW_d = interval_mean(LW_d)
+    end
+    atmos = PrescribedAtmosphere(
+        precip,
+        snow_precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        start_date,
+        h_atmos,
+        toml_dict;
+        gustiness,
+        reference,
+        c_co2 = c_co2,
+    )
     if sw_time_interpolation == :coszen
         SW_d = CosZenithWeightedInput(
             SW_d,
@@ -2744,4 +2791,216 @@ function (f::WindowCosZenith)(t, start_date)
     window_start == input.window_start[] ||
         TimeVaryingInputs.evaluate!(input.scratch, input, window_start)
     return input.window_cosθs
+end
+
+"""
+    IntervalMeanInput{I, D, C} <: AbstractTimeVaryingInput
+
+A time-varying input for a flux given as means over intervals of length
+`period` (counted from 00 UTC) stamped at the start of each interval, such as
+the 6-hourly CRU-JRA longwave radiation and precipitation, for drivers that are
+updated every `updateat` and held in between.
+
+The flux is taken as constant within each interval, equal to the interval mean.
+Evaluated at time `t`, the input returns the mean of this piecewise-constant
+flux over the hold window `[t, t + updateat)`, weighting each interval by its
+overlap with the window. Each interval keeps its own amount (energy or water)
+exactly, for any `updateat`, as long as the windows tile time.
+
+Construct it with `IntervalMeanInput(input, start_date, scratch; period =
+Dates.Hour(6), updateat = Dates.Hour(3))`, where `input` evaluated at the start
+of an interval gives its mean and `scratch` is a field or array shaped like the
+destination.
+$(DocStringExtensions.FIELDS)
+"""
+struct IntervalMeanInput{I <: AbstractTimeVaryingInput, D, C} <:
+       AbstractTimeVaryingInput
+    "Time-varying input of the interval means, stamped at the start of each interval"
+    input::I
+    "Date of `t = 0` of the simulation"
+    start_date::D
+    "Length of the intervals"
+    period::Dates.Millisecond
+    "Hold window: time between driver updates"
+    updateat::Dates.Millisecond
+    "Scratch: mean of one interval"
+    scratch::C
+end
+
+function IntervalMeanInput(
+    input,
+    start_date,
+    scratch;
+    period = Dates.Hour(6),
+    updateat = Dates.Hour(3),
+)
+    updateat = hold_length(updateat)
+    Dates.value(updateat) > 0 || error("`updateat` must be positive")
+    return IntervalMeanInput(
+        input,
+        start_date,
+        Dates.Millisecond(period),
+        updateat,
+        scratch,
+    )
+end
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::IntervalMeanInput,
+    t,
+    args...;
+    kwargs...,
+)
+    (; period, updateat, scratch) = input
+    window_start = simulation_date(input.start_date, t)
+    window_end = window_start + updateat
+    interval_start = floor(window_start, period)
+    FT = eltype(dest)
+    dest .= 0
+    while interval_start < window_end
+        overlap =
+            min(window_end, interval_start + period) -
+            max(window_start, interval_start)
+        weight = FT(Dates.value(overlap) / Dates.value(updateat))
+        TimeVaryingInputs.evaluate!(
+            scratch,
+            input.input,
+            interval_start,
+            args...;
+            kwargs...,
+        )
+        @. dest += weight * scratch
+        interval_start += period
+    end
+    return nothing
+end
+
+"""
+    HoldWindowStateInput{I, D, C} <: AbstractTimeVaryingInput
+
+A time-varying input for a state variable sampled at the start of intervals of
+length `period` (counted from 00 UTC), such as the 6-hourly CRU-JRA
+temperature, humidity, pressure and wind, which are instantaneous values at
+00, 06, 12 and 18 UTC, for drivers that are updated every `updateat` and held
+in between.
+
+Evaluated at time `t`, the input returns the value at the middle of the hold
+window, `t + updateat / 2`, which approximates the mean over the window. With
+`method = :cubic` (the default), the value is the Catmull-Rom cubic through
+the four samples around it (at `k - period`, `k`, `k + period` and `k + 2
+period`, with `k` the start of the interval), which passes through the samples
+and, unlike linear interpolation, does not flatten the diurnal cycle between
+them. Samples outside the dates of the data are replaced by the nearest sample
+of the interval. With `method = :linear`, the value is interpolated linearly
+between the two samples of the interval. If `nonnegative` is true, negative
+values (cubic overshoots of humidity or wind speed) are set to zero.
+
+Construct it with `HoldWindowStateInput(input, start_date, scratch; period =
+Dates.Hour(6), updateat = Dates.Hour(3), method = :cubic, nonnegative =
+false)`, where `input` evaluated at a sample time gives the sample and
+`scratch` is a field or array shaped like the destination.
+$(DocStringExtensions.FIELDS)
+"""
+struct HoldWindowStateInput{I <: AbstractTimeVaryingInput, D, C} <:
+       AbstractTimeVaryingInput
+    "Time-varying input of the samples"
+    input::I
+    "Date of `t = 0` of the simulation"
+    start_date::D
+    "Spacing of the samples"
+    period::Dates.Millisecond
+    "Hold window: time between driver updates"
+    updateat::Dates.Millisecond
+    "Interpolation between the samples: `:cubic` or `:linear`"
+    method::Symbol
+    "Whether negative values are set to zero"
+    nonnegative::Bool
+    "Cache: samples at `k - period`, `k`, `k + period` and `k + 2 period`"
+    samples::NTuple{4, C}
+    "Start `k` of the interval of the cached samples"
+    interval_start::Base.RefValue{DateTime}
+end
+
+function HoldWindowStateInput(
+    input,
+    start_date,
+    scratch;
+    period = Dates.Hour(6),
+    updateat = Dates.Hour(3),
+    method = :cubic,
+    nonnegative = false,
+)
+    method in (:cubic, :linear) ||
+        error("`method` must be `:cubic` or `:linear`")
+    updateat = hold_length(updateat)
+    Dates.value(updateat) > 0 || error("`updateat` must be positive")
+    return HoldWindowStateInput(
+        input,
+        start_date,
+        Dates.Millisecond(period),
+        updateat,
+        method,
+        nonnegative,
+        ntuple(_ -> zero(scratch), 4),
+        Ref(typemin(DateTime)),
+    )
+end
+
+in_data_range(input, date) =
+    hasproperty(input, :data_handler) ? date in input : true
+
+function update_samples!(
+    input::HoldWindowStateInput,
+    interval_start,
+    args...;
+    kwargs...,
+)
+    (; period, samples) = input
+    dates = interval_start .+ period .* (-1, 0, 1, 2)
+    # Outside the data, fall back on the nearest sample of the interval
+    fallback = (dates[2], dates[2], dates[3], dates[3])
+    for i in 1:4
+        date = in_data_range(input.input, dates[i]) ? dates[i] : fallback[i]
+        TimeVaryingInputs.evaluate!(
+            samples[i],
+            input.input,
+            date,
+            args...;
+            kwargs...,
+        )
+    end
+    input.interval_start[] = interval_start
+    return nothing
+end
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::HoldWindowStateInput,
+    t,
+    args...;
+    kwargs...,
+)
+    (; period, samples) = input
+    midpoint =
+        simulation_date(input.start_date, t) +
+        Dates.Millisecond(div(Dates.value(input.updateat), 2))
+    interval_start = floor(midpoint, period)
+    interval_start == input.interval_start[] ||
+        update_samples!(input, interval_start, args...; kwargs...)
+    FT = eltype(dest)
+    s = FT(Dates.value(midpoint - interval_start) / Dates.value(period))
+    p0, p1, p2, p3 = samples
+    if input.method == :cubic
+        # Catmull-Rom weights
+        w0 = (-s^3 + 2s^2 - s) / 2
+        w1 = (3s^3 - 5s^2 + 2) / 2
+        w2 = (-3s^3 + 4s^2 + s) / 2
+        w3 = (s^3 - s^2) / 2
+        @. dest = w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3
+    else
+        @. dest = (1 - s) * p1 + s * p2
+    end
+    input.nonnegative && (@. dest = max(dest, zero(dest)))
+    return nothing
 end

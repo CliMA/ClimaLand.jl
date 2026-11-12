@@ -12,6 +12,17 @@ main
   same window, and the diffuse fraction is constant over each 6-hour interval. Adds
   `CosZenithWeightedInput`, `WindowCosZenith` and `IntervalStartInput`.
   `sw_time_interpolation = :linear` recovers the earlier behaviour.
+- ![][badge-🔥behavioralΔ] `prescribed_forcing_crujra` also follows the time definition of
+  the other CRU-JRA variables. Longwave radiation and precipitation, which are 6-hour means
+  stamped at the start of their interval, are held constant over their interval (the value
+  at a driver update is the mean until the next update), so each interval keeps its energy
+  and water (`flux_time_interpolation = :interval`). Temperature, humidity, pressure and
+  wind, which are instantaneous 6-hourly values, are taken at the middle of the hold window
+  from a cubic through the samples (`state_time_interpolation = :cubic`), which keeps the
+  afternoon temperature peak that linear interpolation cuts. Adds `IntervalMeanInput` and
+  `HoldWindowStateInput`. `:linear` for either keyword recovers the earlier behaviour. With
+  ERA5 hourly degraded to CRU-JRA's 6-hourly conventions, these changes and 1-hour driver
+  updates bring global GPP and ET within about 1 % of the hourly run.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
