@@ -570,3 +570,73 @@ end
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
 end
+
+@testset "CRU-JRA versions and cycled years" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    @test ClimaLand.Artifacts.crujra_years() == 1901:2023
+    @test ClimaLand.Artifacts.crujra_years("4.10") == 1901:2025
+    @test_throws ErrorException ClimaLand.Artifacts.crujra_years("3.0")
+    @test_throws ErrorException ClimaLand.Artifacts.crujra_forcing_data_folder_path(;
+        version = "4.10",
+    )
+
+    crujra_path = mktempdir()
+    for year in 2024:2025
+        touch(joinpath(crujra_path, "crujra_forcing_data_$(year)_0.5x0.5.nc"))
+    end
+    find_paths(start_date, stop_date; version = "4.10") =
+        ClimaLand.Artifacts.find_crujra_year_paths(
+            start_date,
+            stop_date;
+            version,
+            crujra_path,
+        )
+    @test basename.(find_paths(DateTime(2024), DateTime(2025, 6))) == [
+        "crujra_forcing_data_2024_0.5x0.5.nc",
+        "crujra_forcing_data_2025_0.5x0.5.nc",
+    ]
+    @test length(find_paths(DateTime(2025), DateTime(2026))) == 1
+    @test_throws ErrorException find_paths(DateTime(2025), DateTime(2026, 2))
+    @test_throws ErrorException find_paths(DateTime(2023), DateTime(2025))
+    @test_throws ErrorException find_paths(
+        DateTime(2024),
+        DateTime(2025);
+        version = "2.5",
+    )
+
+    years = 1901:1920
+    @test ClimaLand.cycled_date(DateTime(1700, 3, 5, 6), years) ==
+          DateTime(1920, 3, 5, 6)
+    @test ClimaLand.cycled_date(DateTime(1901, 1, 1), years) == DateTime(1901)
+    @test ClimaLand.cycled_date(DateTime(1921, 1, 1), years) == DateTime(1901)
+    @test ClimaLand.cycled_date(DateTime(2025, 12, 31, 18), years) ==
+          DateTime(1905, 12, 31, 18)
+    @test ClimaLand.cycled_date(DateTime(1720, 2, 29), years) ==
+          DateTime(1920, 2, 29)
+    @test ClimaLand.cycled_date(DateTime(1712, 2, 29), years) ==
+          DateTime(1912, 2, 29)
+    @test ClimaLand.cycled_date(DateTime(1716, 2, 29), years) ==
+          DateTime(1916, 2, 29)
+    @test ClimaLand.cycled_date(DateTime(1704, 2, 29), years) ==
+          DateTime(1904, 2, 29)
+    @test ClimaLand.cycled_date(DateTime(1724, 2, 29), years) ==
+          DateTime(1904, 2, 29)
+    @test ClimaLand.cycled_date(DateTime(1800, 3, 1), years) ==
+          DateTime(1920, 3, 1)
+    @test ClimaLand.cycled_date(DateTime(1802, 2, 28), years) ==
+          DateTime(1902, 2, 28)
+
+    year_and_day = TimeVaryingInput(
+        (date) -> Dates.year(date) + Dates.dayofyear(date) / 1000,
+    )
+    start_date = DateTime(1700)
+    cycled = ClimaLand.CycledYearsInput(year_and_day, start_date, years)
+    dest = zeros(1)
+    seconds =
+        Dates.value(Dates.Millisecond(DateTime(1745, 2, 1) - start_date)) / 1000
+    evaluate!(dest, cycled, seconds)
+    @test dest[1] ≈ 1905.032
+    evaluate!(dest, cycled, ITime(seconds; epoch = start_date))
+    @test dest[1] ≈ 1905.032
+end

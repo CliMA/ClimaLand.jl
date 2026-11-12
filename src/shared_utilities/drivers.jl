@@ -2,7 +2,8 @@ import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput,
     AbstractTimeVaryingInput,
     LinearInterpolation,
-    PeriodicCalendar
+    PeriodicCalendar,
+    Flat
 import Interpolations: Constant
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.FileReaders: NCFileReader, read
@@ -36,7 +37,8 @@ export AbstractAtmosphericDrivers,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
     default_cos_zenith_angle,
-    prescribed_forcing_crujra
+    prescribed_forcing_crujra,
+    CycledYearsInput
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -2210,7 +2212,11 @@ end
                               gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
                               reference = SurfaceFluxes.ReferenceAboveApparentSink(),
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                              time_interpolation_method = LinearInterpolation(),
+                              version = "2.5",
+                              crujra_path = nothing,
+                              cycle_years = nothing,
+                              time_interpolation_method = isnothing(cycle_years) ?
+                                  LinearInterpolation() : LinearInterpolation(Flat()),
                               regridder_type = :InterpolationsRegridder,
                               context = nothing,
                              )
@@ -2218,8 +2224,23 @@ end
 Construct `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` drivers from
 the CRU-JRA reanalysis NetCDF data.
 
+Data version
+- `version` is the CRU-JRA version, `"2.5"` (the `crujra_forcing_data`
+    artifact, 1901–2023) or `"4.10"` (1901–2025, the forcing of the TRENDY v15 /
+    Global Carbon Budget 2026 protocol). See `ClimaLand.Artifacts.crujra_years`.
+- `crujra_path`, if given, is the directory of the yearly files
+    `crujra_forcing_data_YYYY_0.5x0.5.nc`, used instead of the artifact. v4.10
+    is not an artifact yet, so it needs `crujra_path`.
+
 Time handling
 - Defaults to `LinearInterpolation()` in time (no periodic extrapolation).
+- With `cycle_years`, e.g. `1901:1920`, the forcing of a year `y` is read from
+    year `first(cycle_years) + mod(y - first(cycle_years), length(cycle_years))`,
+    on the same day and time, as for the pre-industrial climate of the TRENDY
+    protocol (1901–1920 cycled); a February 29 that maps to a non-leap year uses
+    February 28. The default time interpolation is then
+    `LinearInterpolation(Flat())`, so that the last 6 hours of the last cycled
+    year use its last record.
 
 How it differs from `prescribed_forcing_era5`
 - CRU-JRA provides scalar 10 m wind speed (`"wind"`), so no u/v combination is
@@ -2243,16 +2264,27 @@ function prescribed_forcing_crujra(
     gustiness = SurfaceFluxes.FlooredDeardorffGustinessSpec(FT(1)),
     reference = SurfaceFluxes.ReferenceAboveApparentSink(),
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(),
+    version = "2.5",
+    crujra_path = nothing,
+    cycle_years = nothing,
+    time_interpolation_method = isnothing(cycle_years) ? LinearInterpolation() :
+                                LinearInterpolation(Flat()),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
 )
-
+    data_start_date, data_stop_date =
+        isnothing(cycle_years) ? (start_date, stop_date) :
+        (DateTime(first(cycle_years)), DateTime(last(cycle_years), 12, 31))
     crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
-        start_date,
-        stop_date;
+        data_start_date,
+        data_stop_date;
         context,
+        version,
+        crujra_path,
     )
+    cycle(input) =
+        isnothing(cycle_years) ? input :
+        CycledYearsInput(input, start_date, cycle_years)
 
     interpolation_method = Interpolations.Constant()
 
@@ -2339,12 +2371,12 @@ function prescribed_forcing_crujra(
     h_atmos = FT(10)
 
     atmos = PrescribedAtmosphere(
-        precip,
-        snow_precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
+        cycle(precip),
+        cycle(snow_precip),
+        cycle(T_atmos),
+        cycle(u_atmos),
+        cycle(q_atmos),
+        cycle(P_atmos),
         start_date,
         h_atmos,
         toml_dict;
@@ -2403,12 +2435,77 @@ function prescribed_forcing_crujra(
 
     radiation = PrescribedRadiativeFluxes(
         FT,
-        SW_d,
-        LW_d,
+        cycle(SW_d),
+        cycle(LW_d),
         start_date;
         cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
-        frac_diff = frac_diff,
+        frac_diff = cycle(frac_diff),
     )
     return (; atmos, radiation)
 end
+
+"""
+    CycledYearsInput{I, D} <: AbstractTimeVaryingInput
+
+A time-varying input that evaluates `input` in a cycle of years: at a date of
+year `y`, `input` is evaluated on the same day and time of year
+`first(years) + mod(y - first(years), length(years))`. February 29 uses
+February 28 when the cycled year is not a leap year.
+
+Used for the pre-industrial climate of the TRENDY protocol, which cycles the
+forcing of 1901–1920 (see `prescribed_forcing_crujra`).
+$(DocStringExtensions.FIELDS)
+"""
+struct CycledYearsInput{I <: AbstractTimeVaryingInput, D} <:
+       AbstractTimeVaryingInput
+    "Time-varying input that covers `years`"
+    input::I
+    "Date of `t = 0` of the simulation"
+    start_date::D
+    "Years that are cycled"
+    years::UnitRange{Int}
+end
+
+"""
+    cycled_date(date, years)
+
+Return the date in the cycle of `years` that corresponds to `date`, as defined
+in [`CycledYearsInput`](@ref).
+"""
+function cycled_date(date::DateTime, years)
+    y = Dates.year(date)
+    cycled_year = first(years) + mod(y - first(years), length(years))
+    return date + Dates.Year(cycled_year - y)
+end
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::CycledYearsInput,
+    date::DateTime,
+    args...;
+    kwargs...,
+)
+    TimeVaryingInputs.evaluate!(
+        dest,
+        input.input,
+        cycled_date(date, input.years),
+        args...;
+        kwargs...,
+    )
+    return nothing
+end
+
+TimeVaryingInputs.evaluate!(
+    dest,
+    input::CycledYearsInput,
+    t::Union{Number, ITime},
+    args...;
+    kwargs...,
+) = TimeVaryingInputs.evaluate!(
+    dest,
+    input,
+    input.start_date + Dates.Millisecond(round(Int64, 1000 * float(t))),
+    args...;
+    kwargs...,
+)

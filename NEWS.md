@@ -2,6 +2,13 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] `prescribed_forcing_crujra` and `Artifacts.find_crujra_year_paths` take a
+  `version` (`"2.5"`, the default and the `crujra_forcing_data` artifact, 1901–2023, or `"4.10"`,
+  1901–2025, the forcing of the TRENDY v15 / Global Carbon Budget 2026 protocol) and a `crujra_path`
+  to read the yearly files from a directory instead of the artifact. `prescribed_forcing_crujra`
+  also takes `cycle_years` (e.g. `1901:1920`) to cycle the forcing of those years, as for the
+  pre-industrial climate of TRENDY, through the new `CycledYearsInput`. A `stop_date` on January 1
+  of the year after the data now needs only the files up to the last year.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

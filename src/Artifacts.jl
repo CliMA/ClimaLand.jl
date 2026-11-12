@@ -833,40 +833,84 @@ function era5_surface_data_1979_2024_path(; context = nothing)
 end
 
 """
-    crujra_forcing_data_folder_path(; context = nothing)
+    crujra_years(version = "2.5")
 
-Return the path to the directory that contains the forty years of CRU-JRA forcing
-data.
+Return the years of the CRU-JRA forcing data of `version`: 1901–2023 for v2.5,
+the version of the `crujra_forcing_data` artifact, and 1901–2025 for v4.10, the
+forcing of the TRENDY v15 / Global Carbon Budget 2026 protocol.
 """
-function crujra_forcing_data_folder_path(; context = nothing)
+function crujra_years(version = "2.5")
+    version == "2.5" && return 1901:2023
+    version == "4.10" && return 1901:2025
+    error("Unknown CRU-JRA version $version; use \"2.5\" or \"4.10\"")
+end
+
+"""
+    crujra_forcing_data_folder_path(; context = nothing, version = "2.5")
+
+Return the path to the directory that contains the yearly CRU-JRA forcing data
+files of `version`.
+
+Only v2.5 is available as an artifact (`crujra_forcing_data`). For v4.10, pass
+the directory of its yearly files as `crujra_path` to
+`find_crujra_year_paths` or `prescribed_forcing_crujra`.
+"""
+function crujra_forcing_data_folder_path(; context = nothing, version = "2.5")
+    crujra_years(version)
+    version == "2.5" ||
+        error("""CRU-JRA v$version is not available as an artifact; pass the \
+              directory of its yearly files as `crujra_path`""")
     @clima_artifact("crujra_forcing_data", context)
 end
 
 """
-    find_crujra_year_paths(start_date, stop_date; context = nothing)
+    find_crujra_year_paths(start_date, stop_date; context = nothing, version = "2.5", crujra_path = nothing)
 
 Find the appropriate files of CRU-JRA forcing data to run a simuation starting on
 `start_date` and ending on `stop_date`. These will be returned as a list of paths,
-one for each year of data needed. The artifact contains data from 1901 to 2023.
+one for each year of data needed. The years available depend on the `version`
+(see `crujra_years`).
 
-We add 1 year to the final date to ensure that everything between
+The files are named `crujra_forcing_data_YYYY_0.5x0.5.nc` and are read from the
+artifact of `version`, or from the directory `crujra_path` if given.
+
+The file of the year of `stop_date` is included, to ensure that everything between
 start_date and stop_date is covered. (This is needed, e.g., if the last file
-is up to Dec 15th but we want to simulate past that date.)
+is up to Dec 31st 18:00 but we want to simulate past that date.) The one exception is
+a `stop_date` on January 1st 00:00 of the year after the last year of the data,
+for example `DateTime(2026)` with v4.10, for which the time interpolation must
+then extrapolate (e.g. `LinearInterpolation(Flat())`) over the last 6 hours.
 """
-function find_crujra_year_paths(start_date, stop_date; context = nothing)
+function find_crujra_year_paths(
+    start_date,
+    stop_date;
+    context = nothing,
+    version = "2.5",
+    crujra_path = nothing,
+)
+    available_years = crujra_years(version)
     year0 = Dates.year(start_date)
     yearf = Dates.year(stop_date)
-    crujra_path = crujra_forcing_data_folder_path(context = context)
-    years = collect(
+    if yearf == last(available_years) + 1 && stop_date == Dates.DateTime(yearf)
+        yearf -= 1
+    end
+    year0 in available_years && yearf in available_years || error(
+        "The CRU-JRA v$version forcing data covers $(first(available_years)) to $(last(available_years)); got dates from $start_date to $stop_date.",
+    )
+    isnothing(crujra_path) && (
+        crujra_path =
+            crujra_forcing_data_folder_path(; context = context, version)
+    )
+    paths = collect(
         joinpath(crujra_path, "crujra_forcing_data_$(year)_0.5x0.5.nc") for
         year in year0:yearf
     )
-    for year in years
-        isfile(year) || error(
-            "The year $year does not exist in the CRU-JRA forcing data artifact; please use dates between 1901 and 2023.",
+    for path in paths
+        isfile(path) || error(
+            "The CRU-JRA v$version forcing data file $path does not exist.",
         )
     end
-    return years
+    return paths
 end
 
 """
