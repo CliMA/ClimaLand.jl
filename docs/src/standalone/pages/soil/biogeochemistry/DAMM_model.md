@@ -89,7 +89,7 @@ with only a prognostic soil model, only this steady-state assumption is supporte
 
 In `LandModel` and `SoilCanopyModel`, when the canopy carries prognostic carbon pools
 (`PrognosticCarbonModel`), the soil CO₂ model includes the source
-`PrognosticSoilOrganicCarbon`, and the pool gains the litter of the canopy and loses the
+`LitterInputMinusMicrobialDecomposition`, and the pool gains the litter of the canopy and loses the
 carbon respired by microbes:
 
 ```math

@@ -130,7 +130,7 @@ where we have:
 
 Vegetation and soil carbon together then change by
 ``M_C\,\text{GPP} - R_a - \int S_m\,dz``. These models include the coupling
-(`PrognosticSoilOrganicCarbon`) when the canopy carries the pools; without them, SOC is held at
+(`LitterInputMinusMicrobialDecomposition`) when the canopy carries the pools; without them, SOC is held at
 its initial condition.
 
 ## Equilibrium and spin-up

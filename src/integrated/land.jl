@@ -89,8 +89,9 @@ mutable struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
         if !isnothing(soilco2)
-            @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
-                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+            @assert (
+                LitterInputMinusMicrobialDecomposition{FT}() in soilco2.sources
+            ) == (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include LitterInputMinusMicrobialDecomposition if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
         end
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
@@ -218,7 +219,7 @@ A biomass model other than the default `PrescribedBiomassModel`, e.g. a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
-soil organic carbon prognostic (`PrognosticSoilOrganicCarbon`).
+soil organic carbon prognostic (source `LitterInputMinusMicrobialDecomposition`).
 """
 function LandModel{FT}(
     forcing,

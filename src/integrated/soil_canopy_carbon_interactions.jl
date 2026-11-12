@@ -1,10 +1,11 @@
-export PrognosticSoilOrganicCarbon
+export LitterInputMinusMicrobialDecomposition
 
 """
-    PrognosticSoilOrganicCarbon{FT} <: Soil.Biogeochemistry.AbstractCarbonSource{FT}
+    LitterInputMinusMicrobialDecomposition{FT} <: Soil.Biogeochemistry.AbstractCarbonSource{FT}
 
-Makes the soil organic carbon of the soil CO2 model prognostic, coupled to the carbon
-pools of a `Canopy.PrognosticCarbonModel`. This source holds the whole SOC budget,
+The litter input minus the microbial decomposition of soil organic carbon (SOC), the source
+that makes the SOC of the soil CO2 model prognostic, coupled to the carbon pools of a
+`Canopy.PrognosticCarbonModel`. This source holds the whole SOC budget,
 
     dSOC/dt = S_litter - Sm,
 
@@ -15,17 +16,17 @@ every configuration. Without this source, SOC is held at its initial condition (
 state), the only option for the soil CO2 model alone, with a prognostic soil, or with
 a canopy without carbon pools.
 """
-struct PrognosticSoilOrganicCarbon{FT} <:
+struct LitterInputMinusMicrobialDecomposition{FT} <:
        Soil.Biogeochemistry.AbstractCarbonSource{FT} end
 
 """
-    ClimaLand.source!(dY, src::PrognosticSoilOrganicCarbon, Y, p, params)
+    ClimaLand.source!(dY, src::LitterInputMinusMicrobialDecomposition, Y, p, params)
 
 Adds the litter input minus the microbial respiration to the SOC tendency.
 """
 NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::PrognosticSoilOrganicCarbon,
+    src::LitterInputMinusMicrobialDecomposition,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     params,
@@ -44,7 +45,7 @@ soilco2_sources(::Canopy.AbstractBiomassModel{FT}) where {FT} =
     (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
 soilco2_sources(::Canopy.PrognosticCarbonModel{FT}) where {FT} = (
     Soil.Biogeochemistry.MicrobeProduction{FT}(),
-    PrognosticSoilOrganicCarbon{FT}(),
+    LitterInputMinusMicrobialDecomposition{FT}(),
 )
 
 """

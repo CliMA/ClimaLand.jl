@@ -44,7 +44,7 @@ for FT in (Float32, Float64)
         # components, so we don't need to check them again here.
         # Without canopy carbon pools, SOC is not prognostic
         @test !(
-            ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+            ClimaLand.LitterInputMinusMicrobialDecomposition{FT}() in
             model.soilco2.sources
         )
         Y, p, cds = initialize(model)
@@ -293,7 +293,7 @@ for FT in (Float32, Float64)
         )
         model =
             SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain; soil, canopy)
-        @test ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+        @test ClimaLand.LitterInputMinusMicrobialDecomposition{FT}() in
               model.soilco2.sources
         # The litter source is required with the pools
         soilco2_without_litter = Soil.Biogeochemistry.SoilCO2Model{FT}(
