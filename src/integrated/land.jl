@@ -89,8 +89,9 @@ mutable struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
         if !isnothing(soilco2)
-            @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
-                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+            @assert (
+                LitterInputMinusMicrobialDecomposition{FT}() in soilco2.sources
+            ) == (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include LitterInputMinusMicrobialDecomposition if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
         end
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
@@ -167,7 +168,7 @@ end
             toml_dict;
             prognostic_land_components,
             soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
-            biomass = isnothing(biomass) ? Canopy.PrescribedBiomassModel{FT}(Domains.obtain_surface_domain(domain), LAI, Canopy.modis_max_lai(Domains.obtain_surface_domain(domain).space.surface), toml_dict) : biomass,
+            biomass = isnothing(biomass) ? Canopy.PrescribedAreaIndexModel{FT}(Domains.obtain_surface_domain(domain), LAI, Canopy.modis_max_lai(Domains.obtain_surface_domain(domain).space.surface), toml_dict) : biomass,
             hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
         soilco2 = :soilco2 in prognostic_land_components ?
@@ -214,11 +215,11 @@ inland water points, include `:lake` in `prognostic_land_components`.
 If you wish to include a lake or soilco2 model which is not the default, provide the model as a keyword
 argument and add :lake, :soilco2 to `prognostic_land_components`.
 
-A biomass model other than the default `PrescribedBiomassModel`, e.g. a
+A biomass model other than the default `PrescribedAreaIndexModel`, e.g. a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
-soil organic carbon prognostic (`PrognosticSoilOrganicCarbon`).
+soil organic carbon prognostic (source `LitterInputMinusMicrobialDecomposition`).
 """
 function LandModel{FT}(
     forcing,
@@ -259,7 +260,7 @@ function LandModel{FT}(
             ),
         ),
         biomass = isnothing(biomass) ?
-                  Canopy.PrescribedBiomassModel{FT}(
+                  Canopy.PrescribedAreaIndexModel{FT}(
             Domains.obtain_surface_domain(domain),
             LAI,
             Canopy.modis_max_lai(
@@ -366,7 +367,7 @@ end
 A convenience constructor for setting up the default LandModel using prognostic (modeled) LAI
 via the `ZhouOptimalLAIModel`. This is identical to the LAI-prescribing constructor, except
 that `LAI` is not a required argument and the default canopy model does not take an LAI as input.
-Instead it uses `ZhouOptimalLAIModel` for the biomass component instead of `PrescribedBiomassModel`.
+Instead it uses `ZhouOptimalLAIModel` for the biomass component instead of `PrescribedAreaIndexModel`.
 A different biomass model, e.g. a `ZhouOptimalLAIModel` with a prescribed tree share, or a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
@@ -495,9 +496,10 @@ function lsm_aux_vars(m::LandModel)
         :α_ground,
         :bare_soil_fraction,
         :lake_fraction,
+        :root_profile_norm,
     )
     return has_soil_litter_input(m.canopy.biomass) ?
-           (base..., :soil_litter_input) : base
+           (base..., :soil_litter_input, :litter_profile_norm) : base
 end
 
 """
@@ -530,8 +532,9 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
         FT,
         FT,
+        FT,
     )
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT, FT) : base
 end
 
 """
@@ -564,9 +567,10 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
         :surface,
         :surface,
+        :surface,
     )
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
-           base
+    return has_soil_litter_input(m.canopy.biomass) ?
+           (base..., :subsurface, :surface) : base
 end
 
 """

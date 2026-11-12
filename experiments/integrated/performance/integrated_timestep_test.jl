@@ -256,7 +256,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 rooting_depth = FT(0.5)
 height = FT(18.5)
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Put all the components together to form the canopy model
 canopy_domain = obtain_surface_domain(land_domain)

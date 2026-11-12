@@ -86,7 +86,7 @@ for FT in (Float32, Float64)
     rooting_depth = FT(0.5)
     h_canopy = FT(2)
 
-    biomass = Canopy.PrescribedBiomassModel{FT}(;
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI,
         RAI,

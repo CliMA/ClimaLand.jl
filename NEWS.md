@@ -9,7 +9,7 @@ main
   allocation of trees and grasses weighted by the tree share of the LAI model (grasses build
   no wood); it respires through `PoolBasedAutotrophicRespirationModel`, and in `LandModel`
   and `SoilCanopyModel` feeds its litter to a prognostic soil organic carbon
-  (`PrognosticSoilOrganicCarbon`). Also adds `Canopy.equilibrium_carbon_pools`,
+  (`LitterInputMinusMicrobialDecomposition`). Also adds `Canopy.equilibrium_carbon_pools`,
   `Simulations.spin_up_carbon_pools!`, which sets the pools to their equilibrium under the
   mean drivers of a spin-up period, a `biomass` keyword to the integrated-model
   constructors, and the `crd` (canopy leaf respiration) diagnostic. The long run with
@@ -18,6 +18,9 @@ main
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- `Canopy.PrescribedBiomassModel`, which prescribes area indices rather than biomass, is
+  renamed `Canopy.PrescribedAreaIndexModel`; the old name is a deprecated alias.
+  PR [#1966](https://github.com/CliMA/ClimaLand.jl/pull/1966)
 
 v1.15.0
 ----

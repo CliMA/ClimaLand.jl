@@ -171,7 +171,7 @@ for FT in (Float32, Float64)
             height = FT(1),
         )
 
-        biomass = Canopy.PrescribedBiomassModel{FT}(;
+        biomass = Canopy.PrescribedAreaIndexModel{FT}(;
             LAI = TimeVaryingInput(LAI),
             SAI,
             RAI,
