@@ -63,8 +63,9 @@ has_soil_litter_input(::Canopy.PrognosticCarbonModel) = true
 Sets `p.soil_litter_input` (kg C m^-3 s^-1), the litter of the canopy carbon pools
 distributed in the soil, `S_litter`: leaf and stem litter on an exponential profile with e-folding
 depth `soil_litter_depth`, root litter on the root distribution. Each profile is
-normalized by its column integral, so the soil receives exactly the litter the pools
-shed. Does nothing for a canopy without carbon pools.
+normalized by its column integral (`p.litter_profile_norm`, `p.root_profile_norm`), so the
+soil receives exactly the litter the pools shed. Does nothing for a canopy without carbon
+pools.
 """
 update_soil_litter_input!(p, Y, t, land) =
     update_soil_litter_input!(p, land, land.canopy.biomass)
@@ -80,15 +81,33 @@ function update_soil_litter_input!(
     (; rooting_depth) = biomass
     (; soil_litter_depth) = biomass.parameters
     (; L_leaf, L_stem, L_root) = p.canopy.biomass.carbon
-    surface_profile = @. lazy(Canopy.root_distribution(z, soil_litter_depth))
+    litter_profile = @. lazy(Canopy.root_distribution(z, soil_litter_depth))
     root_profile = @. lazy(Canopy.root_distribution(z, rooting_depth))
-    # Surface scratch fields, included in lsm_aux_vars
-    surface_norm = p.scratch1
-    root_norm = p.scratch2
-    ClimaCore.Operators.column_integral_definite!(surface_norm, surface_profile)
-    ClimaCore.Operators.column_integral_definite!(root_norm, root_profile)
     @. p.soil_litter_input =
-        (L_leaf + L_stem) * surface_profile / surface_norm +
-        L_root * root_profile / root_norm
+        (L_leaf + L_stem) * litter_profile / p.litter_profile_norm +
+        L_root * root_profile / p.root_profile_norm
+    return nothing
+end
+
+"""
+    set_litter_profile_norm!(lsm_aux, land, biomass)
+
+Sets `lsm_aux.litter_profile_norm`, the column integral of the distribution of the leaf and
+stem litter in the soil, for a canopy with carbon pools; does nothing otherwise.
+"""
+set_litter_profile_norm!(lsm_aux, land, ::Canopy.AbstractBiomassModel) = nothing
+
+function set_litter_profile_norm!(
+    lsm_aux,
+    land,
+    biomass::Canopy.PrognosticCarbonModel,
+)
+    z = land.soil.domain.fields.z
+    (; soil_litter_depth) = biomass.parameters
+    litter_profile = @. lazy(Canopy.root_distribution(z, soil_litter_depth))
+    ClimaCore.Operators.column_integral_definite!(
+        lsm_aux.litter_profile_norm,
+        litter_profile,
+    )
     return nothing
 end

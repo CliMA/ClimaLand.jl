@@ -146,8 +146,19 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords)
     additional_aux = map(zip(types, domains)) do (T, domain)
         zeros(T, axes(getproperty(land_coords, domain)))
     end
-    return NamedTuple{vars}(additional_aux)
+    lsm_aux = NamedTuple{vars}(additional_aux)
+    set_time_invariant_lsm_aux!(lsm_aux, land)
+    return lsm_aux
 end
+
+"""
+    set_time_invariant_lsm_aux!(lsm_aux, land::AbstractLandModel)
+
+Sets the additional auxiliary variables `lsm_aux` of `land` that do not change in time.
+They are set once, when the cache is created, so every way of starting a simulation
+(including restarts and coupled runs) has them. Does nothing by default.
+"""
+set_time_invariant_lsm_aux!(lsm_aux, land::AbstractLandModel) = nothing
 
 
 function make_compute_imp_tendency(land::AbstractLandModel)

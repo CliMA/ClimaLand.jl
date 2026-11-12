@@ -49,6 +49,12 @@ for FT in (Float32, Float64)
         )
         Y, p, cds = initialize(model)
         @test !haskey(p, :soil_litter_input)
+        @test !haskey(p, :litter_profile_norm)
+        # The root profile norm is set when the cache is created, on land points
+        is_land = Array(
+            parent(model.soil.domain.space.surface.grid.mask.is_active)[:],
+        )
+        @test all(vec(parent(p.root_profile_norm))[is_land] .> 0)
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
@@ -315,6 +321,9 @@ for FT in (Float32, Float64)
         )
 
         Y, p, _ = initialize(model)
+        # The profile norms are set when the cache is created, without set_initial_cache!
+        @test all(0 .< parent(p.root_profile_norm) .< 1)
+        @test all(0 .< parent(p.litter_profile_norm) .< 1)
         Y.soil.ϑ_l .= FT(0.3)
         ρc_s = Soil.volumetric_heat_capacity.(
             FT(0.3),

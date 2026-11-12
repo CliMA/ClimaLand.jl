@@ -230,9 +230,10 @@ function lsm_aux_vars(m::SoilCanopyModel)
         :α_sfc,
         :scratch1,
         :scratch2,
+        :root_profile_norm,
     )
     return has_soil_litter_input(m.canopy.biomass) ?
-           (base..., :soil_litter_input) : base
+           (base..., :soil_litter_input, :litter_profile_norm) : base
 end
 
 """
@@ -242,8 +243,8 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 function lsm_aux_types(m::SoilCanopyModel{FT}) where {FT}
-    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+    base = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT, FT) : base
 end
 
 """
@@ -264,9 +265,10 @@ function lsm_aux_domain_names(m::SoilCanopyModel)
         :surface,
         :surface,
         :surface,
+        :surface,
     )
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
-           base
+    return has_soil_litter_input(m.canopy.biomass) ?
+           (base..., :subsurface, :surface) : base
 end
 
 """

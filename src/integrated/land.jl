@@ -496,9 +496,10 @@ function lsm_aux_vars(m::LandModel)
         :α_ground,
         :bare_soil_fraction,
         :lake_fraction,
+        :root_profile_norm,
     )
     return has_soil_litter_input(m.canopy.biomass) ?
-           (base..., :soil_litter_input) : base
+           (base..., :soil_litter_input, :litter_profile_norm) : base
 end
 
 """
@@ -531,8 +532,9 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
         FT,
         FT,
+        FT,
     )
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT, FT) : base
 end
 
 """
@@ -565,9 +567,10 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
         :surface,
         :surface,
+        :surface,
     )
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
-           base
+    return has_soil_litter_input(m.canopy.biomass) ?
+           (base..., :subsurface, :surface) : base
 end
 
 """
