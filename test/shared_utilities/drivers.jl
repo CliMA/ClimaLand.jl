@@ -570,3 +570,84 @@ end
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
 end
+
+@testset "Annual CO₂ driver" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    co2_file = tempname()
+    write(
+        co2_file,
+        "# year ppm\n1700  277.58\n1701  277.57\n1702  277.62\n\n1703  277.68\n",
+    )
+    years, co2 = ClimaLand.read_annual_co2(co2_file)
+    @test years == 1700:1703
+    @test co2 ≈ [277.58, 277.57, 277.62, 277.68] .* 1e-6
+
+    dest = zeros(1)
+    seconds_since(start, date) =
+        Dates.value(Dates.Millisecond(date - start)) / 1000
+    start_date = DateTime(1701, 7, 1)
+    step = ClimaLand.prescribed_co2_annual(co2_file, start_date)
+    for (date, expected) in (
+        (DateTime(1701, 1, 1), 277.57),
+        (DateTime(1701, 12, 31, 23, 59), 277.57),
+        (DateTime(1702, 1, 1), 277.62),
+        (DateTime(1699, 6, 1), 277.58),
+        (DateTime(1710, 1, 1), 277.68),
+    )
+        evaluate!(dest, step, seconds_since(start_date, date))
+        @test dest[1] ≈ expected * 1e-6
+    end
+    evaluate!(
+        dest,
+        step,
+        ITime(
+            seconds_since(start_date, DateTime(1702, 3, 1));
+            epoch = start_date,
+        ),
+    )
+    @test dest[1] ≈ 277.62e-6
+
+    linear = ClimaLand.prescribed_co2_annual(
+        co2_file,
+        start_date;
+        interpolation = :linear,
+    )
+    mid_1702 = DateTime(1702, 7, 2, 12)
+    evaluate!(dest, linear, seconds_since(start_date, mid_1702))
+    @test dest[1] ≈ 277.62e-6
+    evaluate!(dest, linear, seconds_since(start_date, DateTime(1703, 1, 1)))
+    @test dest[1] ≈ (277.62 + 277.68) / 2 * 1e-6
+    evaluate!(dest, linear, seconds_since(start_date, DateTime(1720, 1, 1)))
+    @test dest[1] ≈ 277.68e-6
+
+    fixed = ClimaLand.prescribed_co2_annual(
+        co2_file,
+        DateTime(2003);
+        fixed_year = 1700,
+    )
+    evaluate!(dest, fixed, 1e9)
+    @test dest[1] ≈ 277.58e-6
+    @test_throws ErrorException ClimaLand.prescribed_co2_annual(
+        co2_file,
+        start_date;
+        fixed_year = 1650,
+    )
+    @test_throws ErrorException ClimaLand.prescribed_co2_annual(
+        co2_file,
+        start_date;
+        interpolation = :spline,
+    )
+
+    domain = ClimaLand.Domains.Plane(;
+        xlim = FT.((1.0, 2.0)),
+        ylim = FT.((1.0, 2.0)),
+        nelements = (1, 1),
+        periodic = (true, true),
+    )
+    field = ClimaCore.Fields.zeros(
+        axes(ClimaLand.Domains.coordinates(domain).surface),
+    )
+    evaluate!(field, step, seconds_since(start_date, DateTime(1703, 5, 1)))
+    @test all(parent(field) .≈ FT(277.68e-6))
+end
