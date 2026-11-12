@@ -22,7 +22,7 @@ import ClimaLand.Parameters as LP
 
 const FT = Float64
 
-@testset "PrescribedBiomassModel with scalar height" begin
+@testset "PrescribedAreaIndexModel with scalar height" begin
     context = ClimaComms.context()
     ClimaComms.init(context)
 
@@ -44,7 +44,7 @@ const FT = Float64
 
     # Test with scalar height
     scalar_height = FT(2.5)
-    biomass = Canopy.PrescribedBiomassModel{FT}(
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(
         surface_domain,
         LAI,
         toml_dict;
@@ -56,7 +56,7 @@ const FT = Float64
     @test typeof(biomass.height) == FT
 end
 
-@testset "PrescribedBiomassModel with Field height" begin
+@testset "PrescribedAreaIndexModel with Field height" begin
     context = ClimaComms.context()
     ClimaComms.init(context)
 
@@ -81,7 +81,7 @@ end
     field_height = coords.lat .* 0 .+ FT(3.0)  # Constant field of 3m for testing
 
     # Test with Field height (main-branch pattern)
-    biomass = Canopy.PrescribedBiomassModel{FT}(
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(
         surface_domain,
         LAI,
         toml_dict;
@@ -164,7 +164,7 @@ end
     )
 
     # Create biomass model with spatially-varying height
-    biomass = Canopy.PrescribedBiomassModel{FT}(
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(
         surface_domain,
         LAI,
         toml_dict;

@@ -2,7 +2,7 @@
 
 The prognostic carbon model (`PrognosticCarbonModel`) carries the live vegetation carbon
 in four prognostic pools and predicts biomass from the carbon the canopy fixes. It wraps
-an LAI model (`PrescribedBiomassModel` or `ZhouOptimalLAIModel`), which still sets the
+an LAI model (`PrescribedAreaIndexModel` or `ZhouOptimalLAIModel`), which still sets the
 leaf, stem and root area indices: GPP and LAI are the same with or without the pools.
 
 ## Pools and fluxes

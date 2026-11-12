@@ -20,7 +20,7 @@ for FT in (Float32, Float64)
         LAI = TimeVaryingInput((t) -> FT(1.0))
         Δt = FT(450)
         # Choose a canopy height such that h_atmos > displ
-        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(;
+        biomass = ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(;
             LAI,
             SAI = FT(0),
             RAI = FT(1),
@@ -265,7 +265,7 @@ for FT in (Float32, Float64)
         )
         surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
         lai_model =
-            Canopy.PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict)
+            Canopy.PrescribedAreaIndexModel{FT}(surface_domain, LAI, toml_dict)
         canopy = Canopy.CanopyModel{FT}(
             surface_domain,
             (;
@@ -431,7 +431,7 @@ end
     )
     forcing = (; atmos, radiation)
     LAI = TimeVaryingInput((t) -> FT(2))
-    biomass = Canopy.PrescribedBiomassModel{FT}(;
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI = FT(0.5),
         RAI = FT(1),

@@ -18,6 +18,8 @@ main
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- `Canopy.PrescribedBiomassModel`, which prescribes area indices rather than biomass, is
+  renamed `Canopy.PrescribedAreaIndexModel`; the old name is a deprecated alias.
 
 v1.15.0
 ----

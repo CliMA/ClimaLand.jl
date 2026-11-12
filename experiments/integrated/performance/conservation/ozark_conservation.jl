@@ -204,7 +204,7 @@ for float_type in (Float32, Float64)
         retention_model,
     )
     height = h_canopy
-    biomass = Canopy.PrescribedBiomassModel{FT}(;
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI,
         RAI,

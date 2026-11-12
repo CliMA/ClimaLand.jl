@@ -49,7 +49,7 @@ import ClimaParams
         LAI_fun = t -> FT(8) # m2 [leaf] m-2 [ground]
         LAI = TimeVaryingInput(LAI_fun)
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)
-        biomass = Canopy.PrescribedBiomassModel{FT}(
+        biomass = Canopy.PrescribedAreaIndexModel{FT}(
             domain,
             LAI,
             toml_dict;
@@ -250,7 +250,7 @@ end
         SAI = FT(1)
         lai_fun = TimeVaryingInput(t -> LAI * sin(t * 2π / 365))
         rooting_depth = FT(0.5)
-        biomass = Canopy.PrescribedBiomassModel{FT}(;
+        biomass = Canopy.PrescribedAreaIndexModel{FT}(;
             LAI = lai_fun,
             SAI,
             RAI,
@@ -428,7 +428,7 @@ end
         soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = Canopy.PlantHydraulicsModel{FT}(param_set)
         autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
-        biomass = Canopy.PrescribedBiomassModel{FT}(;
+        biomass = Canopy.PrescribedAreaIndexModel{FT}(;
             LAI = lai_fun,
             SAI,
             RAI,
@@ -578,7 +578,7 @@ end
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos, radiation, ground)
     biomass =
-        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
+        ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(domain, LAI, toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         domain,
         forcing,
@@ -636,7 +636,7 @@ end
 
     # The stem area of a canopy below the plants_present threshold is clipped,
     # so it is transparent and does not emit
-    sparse_biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+    sparse_biomass = ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(
         domain,
         LAI,
         toml_dict;
@@ -683,7 +683,7 @@ end
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)
         soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
-        biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
+        biomass = Canopy.PrescribedAreaIndexModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
 
         # Use simple analytic forcing for atmosphere and radiation
@@ -861,4 +861,8 @@ end
         @test getproperty(prognostic_types(canopy), component) ==
               prognostic_types(getproperty(canopy, component))
     end
+end
+
+@testset "Deprecated name of PrescribedAreaIndexModel" begin
+    @test Canopy.PrescribedBiomassModel === Canopy.PrescribedAreaIndexModel
 end

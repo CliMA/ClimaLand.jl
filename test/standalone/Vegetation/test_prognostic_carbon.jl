@@ -108,7 +108,7 @@ for FT in (Float32, Float64)
     )
     forcing = (; atmos, radiation, ground = PrescribedGroundConditions{FT}())
     LAI = TimeVaryingInput((t) -> FT(3))
-    lai_model = Canopy.PrescribedBiomassModel{FT}(;
+    lai_model = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI = FT(1),
         RAI = FT(1),

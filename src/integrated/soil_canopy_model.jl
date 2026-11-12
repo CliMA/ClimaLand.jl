@@ -118,7 +118,7 @@ end
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
             soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict; soil_params = (;ν = soil.parameters.ν, θ_r = soil.parameters.θ_r, hydrology_cm = soil.parameters.hydrology_cm)),
-            biomass = isnothing(biomass) ? Canopy.PrescribedBiomassModel{FT}(Domains.obtain_surface_domain(domain), LAI, Canopy.modis_max_lai(Domains.obtain_surface_domain(domain).space.surface), toml_dict) : biomass,
+            biomass = isnothing(biomass) ? Canopy.PrescribedAreaIndexModel{FT}(Domains.obtain_surface_domain(domain), LAI, Canopy.modis_max_lai(Domains.obtain_surface_domain(domain).space.surface), toml_dict) : biomass,
             hydraulics = Canopy.SteadyStateModel{FT}(),
         ),
         soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
@@ -139,7 +139,7 @@ correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedT
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
 as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
-A biomass model other than the default `PrescribedBiomassModel`, e.g. a
+A biomass model other than the default `PrescribedAreaIndexModel`, e.g. a
 `PrognosticCarbonModel`, can be passed as `biomass`, which the default canopy then uses; a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
@@ -178,7 +178,7 @@ function SoilCanopyModel{FT}(
             ),
         ),
         biomass = isnothing(biomass) ?
-                  Canopy.PrescribedBiomassModel{FT}(
+                  Canopy.PrescribedAreaIndexModel{FT}(
             Domains.obtain_surface_domain(domain),
             LAI,
             Canopy.modis_max_lai(

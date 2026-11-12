@@ -320,7 +320,7 @@ import ClimaUtilities.TimeManager: ITime
 
             # The prescribed-LAI model weights the same factors by the CLM tree share
             LAI = TimeVaryingInput((t) -> FT(2))
-            biomass = Canopy.PrescribedBiomassModel{FT}(
+            biomass = Canopy.PrescribedAreaIndexModel{FT}(
                 domain,
                 LAI,
                 max_LAI,
