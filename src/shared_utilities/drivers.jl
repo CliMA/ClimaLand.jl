@@ -2250,8 +2250,10 @@ Time handling
     cubic through the 6-hourly samples at the middle of the hold window (see
     [`ClimaLand.HoldWindowStateInput`](@ref)). Linear interpolation between
     6-hourly samples cuts the afternoon temperature peak, which lowers the
-    daytime vapor pressure deficit. `state_time_interpolation =
-    :linear_midpoint` interpolates linearly, also at the middle of the window.
+    daytime vapor pressure deficit. `state_time_interpolation = :harmonic`
+    uses a constant plus diurnal and semidiurnal harmonics through the same
+    samples instead, and `:linear_midpoint` interpolates linearly, also at the
+    middle of the window.
 - `:linear` for any of the three keywords recovers the earlier behaviour for
     those variables: the records are interpolated linearly in time with
     `time_interpolation_method` (defaults to `LinearInterpolation()`, no
@@ -2292,8 +2294,9 @@ function prescribed_forcing_crujra(
 )
     sw_time_interpolation in (:coszen, :linear) ||
         error("`sw_time_interpolation` must be `:coszen` or `:linear`")
-    state_time_interpolation in (:cubic, :linear_midpoint, :linear) || error(
-        "`state_time_interpolation` must be `:cubic`, `:linear_midpoint` or `:linear`",
+    state_time_interpolation in
+    (:cubic, :harmonic, :linear_midpoint, :linear) || error(
+        "`state_time_interpolation` must be `:cubic`, `:harmonic`, `:linear_midpoint` or `:linear`",
     )
     flux_time_interpolation in (:interval, :linear) ||
         error("`flux_time_interpolation` must be `:interval` or `:linear`")
@@ -2431,7 +2434,9 @@ function prescribed_forcing_crujra(
     longitude = ClimaCore.Fields.coordinate_field(surface_space).long
     insol_params = earth_param_set.insol_params
     if state_time_interpolation != :linear
-        method = state_time_interpolation == :cubic ? :cubic : :linear
+        method =
+            state_time_interpolation == :linear_midpoint ? :linear :
+            state_time_interpolation
         state(input; nonnegative = false) = HoldWindowStateInput(
             input,
             start_date,
@@ -2891,7 +2896,11 @@ window, `t + updateat / 2`, which approximates the mean over the window. With
 the four samples around it (at `k - period`, `k`, `k + period` and `k + 2
 period`, with `k` the start of the interval), which passes through the samples
 and, unlike linear interpolation, does not flatten the diurnal cycle between
-them. Samples outside the dates of the data are replaced by the nearest sample
+them. With `method = :harmonic`, it is the sum of a constant, a diurnal and a
+semidiurnal harmonic through the same four samples, `a + b cos θ + c sin θ +
+d cos 2θ`, with `θ` the phase in a cycle of four periods (one day for 6-hourly
+samples); this follows the diurnal cycle of temperature more closely, but does
+not reproduce linear trends between the samples. Samples outside the dates of the data are replaced by the nearest sample
 of the interval. With `method = :linear`, the value is interpolated linearly
 between the two samples of the interval. If `nonnegative` is true, negative
 values (cubic overshoots of humidity or wind speed) are set to zero.
@@ -2931,8 +2940,8 @@ function HoldWindowStateInput(
     method = :cubic,
     nonnegative = false,
 )
-    method in (:cubic, :linear) ||
-        error("`method` must be `:cubic` or `:linear`")
+    method in (:cubic, :harmonic, :linear) ||
+        error("`method` must be `:cubic`, `:harmonic` or `:linear`")
     updateat = hold_length(updateat)
     Dates.value(updateat) > 0 || error("`updateat` must be positive")
     return HoldWindowStateInput(
@@ -2997,6 +3006,16 @@ function TimeVaryingInputs.evaluate!(
         w1 = (3s^3 - 5s^2 + 2) / 2
         w2 = (-3s^3 + 4s^2 + s) / 2
         w3 = (s^3 - s^2) / 2
+        @. dest = w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3
+    elseif input.method == :harmonic
+        # a + b cos θ + c sin θ + d cos 2θ through the samples at θ = -π/2, 0,
+        # π/2 and π (a 6-hour period is a quarter of the diurnal cycle)
+        sinθ, cosθ = sincospi(s / 2)
+        cos2θ = cospi(s)
+        w0 = (1 - 2sinθ - cos2θ) / 4
+        w1 = (1 + 2cosθ + cos2θ) / 4
+        w2 = (1 + 2sinθ - cos2θ) / 4
+        w3 = (1 - 2cosθ + cos2θ) / 4
         @. dest = w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3
     else
         @. dest = (1 - s) * p1 + s * p2

@@ -880,9 +880,25 @@ end
         evaluate!(dest, state(line; updateat, method = :linear), date)
         @test dest ≈ line(midpoint) rtol = 1e-12
     end
-    # Both pass through the samples
+    # The harmonic interpolation is exact for a mean, a diurnal and a
+    # semidiurnal cosine
+    harmonics(date) =
+        FT[1, 2] .* (
+            3 +
+            2 * cospi(hours(date) / 12) +
+            sinpi(hours(date) / 12) +
+            0.5 * cospi(hours(date) / 6)
+        )
+    for updateat in (Dates.Hour(1), Dates.Hour(3)),
+        date in start_date .+ Dates.Minute(45) .* (0:40)
+
+        evaluate!(dest, state(harmonics; updateat, method = :harmonic), date)
+        @test dest ≈ harmonics(date + Dates.Millisecond(updateat) ÷ 2) rtol =
+            1e-12
+    end
+    # All pass through the samples
     sample(date) = FT[sin(hours(date)), cos(hours(date))]
-    for method in (:cubic, :linear)
+    for method in (:cubic, :harmonic, :linear)
         input = state(sample; updateat = Dates.Hour(2), method)
         evaluate!(dest, input, start_date + Dates.Hour(5))
         @test dest ≈ sample(start_date + Dates.Hour(6))
