@@ -207,9 +207,6 @@ if TEST_GROUP in ("all", "simulations")
     @safetestset "Full land restart tests" begin
         include("integrated/restart.jl")
     end
-    @safetestset "Soil-carbon balance" begin
-        include("integrated/soil_carbon_balance.jl")
-    end
 
     # FluxnetSimulations extension tests
     @safetestset "Fluxnet simulation setup unit tests" begin

@@ -24,18 +24,12 @@
 #   and 1-hour driver updates in both the reader and the simulation.
 # - CO2: the annual global means of the protocol (`prescribed_co2_annual`).
 #
-# Spin-up, in a separate simulation without output that starts at `--start`:
-# 1. the vegetation carbon pools are set to their equilibrium under the mean
-#    drivers of the first `--veg-spinup-months` months (default 12),
-#    `spin_up_carbon_pools!`;
-# 2. over the next `--soil-spinup-months` months (default 12), the soil organic
-#    carbon is held at the SoilGrids stock of the initial conditions and the
-#    decomposition rate of each soil layer is set so that its respiration
-#    equals its litter input, `balance_soil_carbon!`. As in CARDAMOM, the stock
-#    is observed and the turnover follows from it: the SOC has no spin-up trend.
-# The TRENDY simulation then starts at `--start` from the state reached at the
-# end of the spin-up (soil water, temperature, snow and carbon pools) with the
-# rates of step 2.
+# Spin-up: the vegetation carbon pools are set to their equilibrium under the
+# mean drivers of the first `--veg-spinup-months` months (default 12) in a
+# separate simulation without output (`spin_up_carbon_pools!`); the TRENDY
+# simulation then starts at `--start` from the state reached at the end of that
+# spin-up (soil water, temperature, snow and carbon pools). The soil organic
+# carbon is NOT spun up here (it starts from the default initial conditions).
 #
 # Usage, from the repository root (GPU strongly recommended):
 # ```
@@ -117,10 +111,6 @@ function parse_commandline(args = ARGS)
         default = get(ENV, "MODIS_LAI_V061_PATH", "")
         "--veg-spinup-months"
         help = "months of the vegetation-pool spin-up before the start (0: none)"
-        arg_type = Int
-        default = 12
-        "--soil-spinup-months"
-        help = "months of the soil-carbon balance after the vegetation spin-up (0: none, SOC drifts)"
         arg_type = Int
         default = 12
         "--dt"
@@ -295,12 +285,7 @@ function main(options)
         )
         toml_dict = LP.create_toml_dict(FT)
         spinup_months = options["veg-spinup-months"]
-        soil_months = options["soil-spinup-months"]
-        soil_months > 0 &&
-            spinup_months == 0 &&
-            error("The soil-carbon balance needs the vegetation spin-up first")
-        veg_end = start_date + Month(spinup_months)
-        spinup_end = veg_end + Month(soil_months)
+        spinup_end = start_date + Month(spinup_months)
         # The drivers cover both the spin-up and the simulation
         model, lai_paths = configuration_a_model(
             domain,
@@ -310,9 +295,8 @@ function main(options)
             toml_dict,
             options,
         )
-        @info "TRENDY run" model_name simulation_name start_date stop_date resolution spinup_months updateat options["crujra-path"] options["co2-file"] lai_paths soil_months
+        @info "TRENDY run" model_name simulation_name start_date stop_date resolution spinup_months updateat options["crujra-path"] options["co2-file"] lai_paths
         state = nothing
-        ln_rate_factor = nothing
         if spinup_months > 0
             spinup = LandSimulation(
                 start_date,
@@ -323,34 +307,10 @@ function main(options)
                 diagnostics = (),
                 updateat,
             )
-            # SoilGrids SOC of the initial conditions, the stock held by step 2
-            SOC_initial = copy(spinup._integrator.u.soilco2.SOC)
             t0 = time()
-            ClimaLand.Simulations.spin_up_carbon_pools!(spinup, veg_end)
-            @info "Vegetation-pool spin-up done" veg_end wall_minutes =
+            ClimaLand.Simulations.spin_up_carbon_pools!(spinup, spinup_end)
+            @info "Vegetation-pool spin-up done" spinup_end wall_minutes =
                 round((time() - t0) / 60; digits = 1)
-            if soil_months > 0
-                t0 = time()
-                spinup._integrator.u.soilco2.SOC .= SOC_initial
-                ClimaLand.Simulations.balance_soil_carbon!(spinup, spinup_end)
-                ln_rate_factor =
-                    copy(spinup._integrator.p.soilco2.ln_rate_factor)
-                # Distribution of the factor over the soil layers with SOC
-                # (ocean points of the mask and unchanged layers have 0)
-                lf = vec(Array(parent(ln_rate_factor)))
-                soc = vec(Array(parent(SOC_initial)))
-                set = @. isfinite(soc) & (soc > 0) & (lf != 0)
-                f = sort(exp.(lf[set]))
-                q(x) = round(
-                    f[clamp(round(Int, x * length(f)), 1, length(f))];
-                    sigdigits = 3,
-                )
-                @info "Soil-carbon balance done" spinup_end wall_minutes =
-                    round((time() - t0) / 60; digits = 1) n_layers = length(f) factor_quantiles_1_10_50_90_99 =
-                    q.((0.01, 0.1, 0.5, 0.9, 0.99)) share_below_0_01 =
-                    round(count(<(0.01), f) / length(f); digits = 3) share_at_cap_100 =
-                    round(count(>=(99.9), f) / length(f); digits = 4)
-            end
             state = copy(spinup._integrator.u)
             spinup = nothing
             GC.gc()
@@ -360,13 +320,7 @@ function main(options)
             ClimaLand.Simulations.make_set_initial_state_from_file(
                 ClimaLand.Artifacts.rosetta_spunup_ic_path(; context),
                 model,
-            ) :
-            function (Y, p, t0, model)
-                Y .= state
-                isnothing(ln_rate_factor) ||
-                    (p.soilco2.ln_rate_factor .= ln_rate_factor)
-                return nothing
-            end
+            ) : (Y, p, t0, model) -> (Y .= state)
         mkpath(diagnostics_dir)
         space = domain.space.subsurface
         output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
