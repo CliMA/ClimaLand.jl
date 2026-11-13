@@ -5,12 +5,31 @@ using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
 using Dates
 import SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
+
+# A time-varying input defined only between two dates, like one read from files
+struct BoundedTestInput{F} <:
+       ClimaUtilities.TimeVaryingInputs.AbstractTimeVaryingInput
+    data_handler::Tuple{DateTime, DateTime}
+    f::F
+end
+Base.in(date::DateTime, input::BoundedTestInput) =
+    input.data_handler[1] <= date <= input.data_handler[2]
+function ClimaUtilities.TimeVaryingInputs.evaluate!(
+    dest,
+    input::BoundedTestInput,
+    date,
+)
+    date in input || error("$date is outside the data")
+    dest .= input.f(date)
+    return nothing
+end
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
@@ -639,4 +658,439 @@ end
     @test dest[1] ≈ 1905.032
     evaluate!(dest, cycled, ITime(seconds; epoch = start_date))
     @test dest[1] ≈ 1905.032
+
+    # The hold-window interpolation of the state variables runs on the cycled
+    # records: after the last cycled year, its samples come from the first one
+    year_and_hour =
+        TimeVaryingInput((date) -> Dates.year(date) + Dates.hour(date) / 100)
+    held = ClimaLand.HoldWindowStateInput(
+        ClimaLand.CycledYearsInput(year_and_hour, start_date, years),
+        start_date,
+        zeros(1);
+        updateat = Dates.Hour(3),
+        method = :linear,
+    )
+    sec_of(date) = Dates.value(Dates.Millisecond(date - start_date)) / 1000
+    # Window 21:00-24:00 of 1720-12-31 (cycled 1920): midpoint 22:30, between
+    # the samples of 1920-12-31 18:00 and of 1721-01-01 00:00 (cycled 1901)
+    evaluate!(dest, held, sec_of(DateTime(1720, 12, 31, 21)))
+    @test dest[1] ≈ 0.25 * 1920.18 + 0.75 * 1901
+    @test ClimaLand.in_data_range(
+        ClimaLand.CycledYearsInput(year_and_hour, start_date, years),
+        DateTime(1721),
+    )
+end
+
+@testset "Cos-zenith distribution of interval-mean shortwave" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    import Insolation
+    FT = Float64
+    insol_params = LP.LandParameters(LP.create_toml_dict(FT)).insol_params
+    # Equator, mid-latitudes, polar day (89.9°N in June), polar night (89.9°S)
+    # with a nonzero and with a zero interval mean
+    latitude = FT[0, 45, -30, 89.9, -89.9, -89.9]
+    longitude = FT[0, -120, 150, 10, 10, 10]
+    polar_day, polar_night, dark_zero = 4, 5, 6
+    cosθs(date) = [
+        Insolation.insolation(date, φ, λ, insol_params).μ for
+        (φ, λ) in zip(latitude, longitude)
+    ]
+    # Interval means that differ between intervals, stamped at the interval start
+    interval_mean(date) =
+        (FT(100) + Dates.hour(floor(date, Dates.Hour(6)))) .*
+        FT[1, 1.5, 0.5, 2, 1, 0]
+    start_date = DateTime(2003, 6, 21)
+    step = Dates.Minute(15)
+    half_step = Dates.Millisecond(step) ÷ 2
+    sw_input(updateat; start_date = start_date) =
+        ClimaLand.CosZenithWeightedInput(
+            TimeVaryingInput(interval_mean),
+            start_date,
+            latitude,
+            longitude,
+            insol_params;
+            updateat,
+        )
+    @test_throws ErrorException ClimaLand.CosZenithWeightedInput(
+        TimeVaryingInput(interval_mean),
+        start_date,
+        latitude,
+        longitude,
+        insol_params;
+        quadrature_step = Dates.Minute(7),
+    )
+    @test_throws ErrorException sw_input(Dates.Hour(0))
+    @test_throws ErrorException sw_input([0.0, 3600.0])
+    dest = zeros(FT, length(latitude))
+    ndark = 0
+    # Mean over each 6-hour interval of the values held between updates
+    for updateat in (Dates.Minute(15), Dates.Hour(1), Dates.Hour(3))
+        sw = sw_input(updateat)
+        nwindows = div(Dates.Hour(6), updateat)
+        for interval_start in start_date .+ Dates.Hour(6) .* (0:7)
+            window_starts = interval_start .+ updateat .* (0:(nwindows - 1))
+            values = map(window_starts) do date
+                evaluate!(dest, sw, date)
+                copy(dest)
+            end
+            @test sum(values) / nwindows ≈ interval_mean(interval_start) rtol =
+                10eps(FT)
+            @test all(v -> all(>=(0), v), values)
+            # Polar night: the zero mean stays zero; a nonzero mean is spread
+            # evenly over the interval
+            @test all(v[dark_zero] == 0 for v in values)
+            @test all(
+                v[polar_night] ≈ interval_mean(interval_start)[polar_night] for
+                v in values
+            )
+            # Polar day: nearly constant sun, nearly constant shortwave
+            @test all(
+                isapprox(
+                    v[polar_day],
+                    interval_mean(interval_start)[polar_day];
+                    rtol = 0.01,
+                ) for v in values
+            )
+            # Sun down over the whole window, but up at some time in the
+            # interval: no shortwave
+            interval_cosθs =
+                sum(o -> cosθs(interval_start + o), step .* (0:23) .+ half_step)
+            offsets = step .* (0:(div(updateat, step) - 1)) .+ half_step
+            for (date, value) in zip(window_starts, values)
+                window_cosθs = sum(o -> cosθs(date + o), offsets)
+                dark = (window_cosθs .== 0) .& (interval_cosθs .> 0)
+                ndark += count(dark)
+                @test all(value[dark] .== 0)
+            end
+        end
+    end
+    @test ndark > 0
+    # At 15-minute updates, 45°N 120°W is dark before its sunrise in the
+    # 12–18 UTC interval (≈ 04:25 local solar time), and the equator gets more
+    # than the interval mean at noon
+    sw = sw_input(Dates.Minute(15))
+    evaluate!(dest, sw, DateTime(2003, 6, 21, 12))
+    @test dest[2] == 0
+    @test sw.window_cosθs[2] == 0
+    @test dest[1] > interval_mean(DateTime(2003, 6, 21, 12))[1]
+    # The held zenith angle is the shortwave-weighted mean over the window
+    sw = sw_input(Dates.Hour(3))
+    date = DateTime(2003, 6, 21, 6)
+    evaluate!(dest, sw, date)
+    nodes = date .+ step .* (0:11) .+ half_step
+    μ = [cosθs(d)[1] for d in nodes]
+    @test sw.window_cosθs[1] ≈ sum(μ .^ 2) / sum(μ)
+    @test 0 < sw.window_cosθs[1] < 1
+    # Windows that cross interval boundaries and midnight UTC: the mean over the
+    # window is the mean of its parts
+    sw2 = sw_input(Dates.Hour(2))
+    sw1 = sw_input(Dates.Hour(1))
+    window = DateTime(2003, 6, 21, 23)
+    evaluate!(dest, sw2, window)
+    crossing = copy(dest)
+    evaluate!(dest, sw1, window)
+    first_hour = copy(dest)
+    evaluate!(dest, sw1, window + Dates.Hour(1))
+    @test crossing ≈ (first_hour .+ dest) ./ 2 rtol = 10eps(FT)
+    # and energy is conserved over whole days with misaligned 2-hour windows
+    sw2 = sw_input(Dates.Hour(2))
+    windows = DateTime(2003, 6, 21, 1) .+ Dates.Hour(2) .* (0:11)
+    energy = sum(windows) do date
+        evaluate!(dest, sw2, date)
+        copy(dest)
+    end
+    intervals = DateTime(2003, 6, 21) .+ Dates.Hour(6) .* (0:4)
+    sw1 = sw_input(Dates.Hour(1))
+    expected = sum(DateTime(2003, 6, 21, 1) .+ Dates.Hour(1) .* (0:23)) do date
+        evaluate!(dest, sw1, date)
+        copy(dest)
+    end
+    @test energy .* 2 ≈ expected rtol = 10eps(FT)
+    # Simulation times in seconds and as ITime
+    sw = sw_input(Dates.Hour(3))
+    date = DateTime(2003, 6, 22, 15)
+    evaluate!(dest, sw, date)
+    expected = copy(dest)
+    seconds = Dates.value(Dates.Millisecond(date - start_date)) / 1000
+    evaluate!(dest, sw, seconds)
+    @test dest == expected
+    evaluate!(dest, sw, ITime(seconds; epoch = start_date))
+    @test dest == expected
+    # The diffuse fraction is constant over each interval
+    diffuse(date) = fill(FT(Dates.hour(date) + Dates.minute(date) / 60), 2)
+    frac_diff =
+        ClimaLand.IntervalStartInput(TimeVaryingInput(diffuse), start_date)
+    fd = zeros(FT, 2)
+    for date in start_date .+ Dates.Minute(15) .* (0:47)
+        evaluate!(fd, frac_diff, date)
+        @test all(fd .== Dates.hour(floor(date, Dates.Hour(6))))
+    end
+end
+
+@testset "Cos-zenith shortwave in PrescribedRadiativeFluxes" begin
+    import ClimaUtilities.TimeManager: ITime
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    insol_params = LP.LandParameters(toml_dict).insol_params
+    start_date = DateTime(2003, 3, 20)
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0, 9)),
+        ylim = FT.((0, 9)),
+        zlim = FT.((1, 2)),
+        nelements = (2, 2, 1),
+        longlat = FT.((30, 10)),
+    )
+    coords = ClimaLand.Domains.coordinates(domain)
+    sw = ClimaLand.CosZenithWeightedInput(
+        TimeVaryingInput((t) -> FT(400)),
+        start_date,
+        coords.surface.lat,
+        coords.surface.long,
+        insol_params,
+    )
+    radiation = ClimaLand.PrescribedRadiativeFluxes(
+        FT,
+        sw,
+        TimeVaryingInput((t) -> FT(300)),
+        start_date;
+        cosθs = ClimaLand.WindowCosZenith(sw),
+        toml_dict,
+        frac_diff = ClimaLand.IntervalStartInput(
+            TimeVaryingInput((t) -> FT(0.3)),
+            start_date,
+        ),
+    )
+    p = (; drivers = ClimaLand.initialize_drivers((radiation,), coords))
+    update! = ClimaLand.make_update_drivers((radiation,))
+    sw_sum = zero(FT)
+    for k in 0:7
+        update!(p, ITime(3 * 3600 * k; epoch = start_date))
+        sw_sum += sum(ClimaCore.Fields.field2array(p.drivers.SW_d)) / 4
+        @test ClimaCore.Fields.field2array(p.drivers.cosθs) ==
+              ClimaCore.Fields.field2array(sw.window_cosθs)
+        if k == 4 # 12 UTC, near local noon: sun up, cosθs between 0 and 1
+            @test all(>(0), ClimaCore.Fields.field2array(p.drivers.cosθs))
+        end
+    end
+    @test sw_sum / 8 ≈ 400 rtol = 1e-5
+    @test all(==(FT(0.3)), ClimaCore.Fields.field2array(p.drivers.frac_diff))
+end
+
+@testset "Interval-mean fluxes held between driver updates" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    FT = Float64
+    start_date = DateTime(2003, 1, 1)
+    # Interval means stamped at the interval start, different in every interval
+    interval_mean(date) =
+        FT[1, -2, 0] .* (1 + Dates.value(date - start_date) / 3_600_000)
+    flux(updateat) = ClimaLand.IntervalMeanInput(
+        TimeVaryingInput(interval_mean),
+        start_date,
+        zeros(FT, 3);
+        updateat,
+    )
+    @test_throws ErrorException flux(Dates.Hour(0))
+    dest = zeros(FT, 3)
+    for updateat in (
+            Dates.Minute(15),
+            Dates.Hour(1),
+            Dates.Hour(2),
+            Dates.Hour(3),
+            Dates.Hour(4),
+            Dates.Hour(5),
+            Dates.Hour(6),
+            Dates.Hour(8),
+        ),
+        offset in (Dates.Hour(0), Dates.Hour(1), Dates.Minute(15))
+
+        input = flux(updateat)
+        h = Dates.value(Dates.Millisecond(updateat)) / 3_600_000
+        # Windows that tile more than a day, against the integral of the
+        # piecewise-constant flux over the same span (minute by minute)
+        windows =
+            (start_date + offset) .+ updateat .* (0:div(Dates.Day(1), updateat))
+        total = sum(windows) do date
+            evaluate!(dest, input, date)
+            dest .* h
+        end
+        minutes =
+            windows[1]:Dates.Minute(1):(windows[end] + updateat - Dates.Minute(
+                1,
+            ))
+        expected =
+            sum(m -> interval_mean(floor(m, Dates.Hour(6))) ./ 60, minutes)
+        @test total ≈ expected rtol = 1e-12
+    end
+    # A window inside an interval returns its mean; a window across a boundary
+    # is weighted by the overlaps
+    input = flux(Dates.Hour(2))
+    evaluate!(dest, input, start_date + Dates.Hour(3))
+    @test dest == interval_mean(start_date)
+    evaluate!(dest, input, start_date + Dates.Minute(270))
+    @test dest ≈
+          0.75 .* interval_mean(start_date) .+
+          0.25 .* interval_mean(start_date + Dates.Hour(6))
+    # Seconds, ITime and DateTime times agree
+    input = flux(Dates.Hour(3))
+    evaluate!(dest, input, 5 * 3600.0)
+    seconds = copy(dest)
+    evaluate!(dest, input, ITime(5 * 3600; epoch = start_date))
+    @test dest == seconds
+    evaluate!(dest, input, start_date + Dates.Hour(5))
+    @test dest == seconds
+end
+
+@testset "Sampled states at the middle of the driver hold window" begin
+    import ClimaUtilities.TimeVaryingInputs: evaluate!
+    import ClimaUtilities.TimeManager: ITime
+    FT = Float64
+    start_date = DateTime(2003, 1, 1)
+    hours(date) = Dates.value(date - start_date) / 3_600_000
+    state(f; kwargs...) = ClimaLand.HoldWindowStateInput(
+        TimeVaryingInput(f),
+        start_date,
+        zeros(FT, 2);
+        kwargs...,
+    )
+    @test_throws ErrorException state(identity; method = :spline)
+    @test_throws ErrorException state(identity; updateat = Dates.Hour(0))
+    dest = zeros(FT, 2)
+    # The cubic is exact for quadratics, the linear interpolation for lines,
+    # both evaluated at the middle of the window
+    quadratic(date) =
+        FT[1, -1] .* (280 + 0.5 * hours(date) - 0.01 * hours(date)^2)
+    line(date) = FT[1, 2] .* (3 - 0.1 * hours(date))
+    for updateat in (Dates.Minute(15), Dates.Hour(1), Dates.Hour(3)),
+        date in start_date .+ Dates.Minute(45) .* (0:40)
+
+        midpoint = date + Dates.Millisecond(updateat) ÷ 2
+        evaluate!(dest, state(quadratic; updateat), date)
+        @test dest ≈ quadratic(midpoint) rtol = 1e-12
+        evaluate!(dest, state(line; updateat, method = :linear), date)
+        @test dest ≈ line(midpoint) rtol = 1e-12
+    end
+    # The harmonic interpolation is exact for a mean, a diurnal and a
+    # semidiurnal cosine
+    harmonics(date) =
+        FT[1, 2] .* (
+            3 +
+            2 * cospi(hours(date) / 12) +
+            sinpi(hours(date) / 12) +
+            0.5 * cospi(hours(date) / 6)
+        )
+    for updateat in (Dates.Hour(1), Dates.Hour(3)),
+        date in start_date .+ Dates.Minute(45) .* (0:40)
+
+        evaluate!(dest, state(harmonics; updateat, method = :harmonic), date)
+        @test dest ≈ harmonics(date + Dates.Millisecond(updateat) ÷ 2) rtol =
+            1e-12
+    end
+    # All pass through the samples
+    sample(date) = FT[sin(hours(date)), cos(hours(date))]
+    for method in (:cubic, :harmonic, :linear)
+        input = state(sample; updateat = Dates.Hour(2), method)
+        evaluate!(dest, input, start_date + Dates.Hour(5))
+        @test dest ≈ sample(start_date + Dates.Hour(6))
+    end
+    # A diurnal cycle sampled every 6 hours: the cubic follows it more closely
+    # and keeps more of its range than the linear interpolation
+    diurnal(date) = FT[1, 1] .* cospi((hours(date) - 15) / 12)
+    errors_and_ranges = map((:cubic, :linear)) do method
+        input = state(diurnal; updateat = Dates.Hour(1), method)
+        dates = start_date .+ Dates.Hour.(0:23)
+        values = map(dates) do date
+            evaluate!(dest, input, date)
+            dest[1]
+        end
+        truth = [diurnal(date + Dates.Minute(30))[1] for date in dates]
+        (sum(abs, values .- truth) / 24, maximum(values) - minimum(values))
+    end
+    @test errors_and_ranges[1][1] < errors_and_ranges[2][1] / 2
+    @test errors_and_ranges[1][2] > errors_and_ranges[2][2]
+    # Cubic overshoots below zero are removed if requested
+    spike(date) = fill(FT(Dates.hour(date) in (0, 18) ? 10 : 0), 2)
+    for nonnegative in (false, true)
+        input = state(spike; updateat = Dates.Hour(1), nonnegative)
+        evaluate!(dest, input, start_date + Dates.Hour(8))
+        @test nonnegative ? all(dest .== 0) : all(dest .< 0)
+    end
+    # Samples outside the data fall back on the nearest sample of the interval
+    data_end = start_date + Dates.Hour(12)
+    bounded = BoundedTestInput((start_date, data_end), quadratic)
+    input = ClimaLand.HoldWindowStateInput(
+        bounded,
+        start_date,
+        zeros(FT, 2);
+        updateat = Dates.Hour(1),
+    )
+    evaluate!(dest, input, start_date)
+    @test all(isfinite, dest)
+    evaluate!(dest, input, data_end - Dates.Hour(1))
+    @test all(isfinite, dest)
+    @test minimum(quadratic(data_end)) <= minimum(dest)
+    # Seconds, ITime and DateTime times agree
+    input = state(quadratic; updateat = Dates.Hour(3))
+    evaluate!(dest, input, 7 * 3600.0)
+    seconds = copy(dest)
+    evaluate!(dest, input, ITime(7 * 3600; epoch = start_date))
+    @test dest == seconds
+    evaluate!(dest, input, start_date + Dates.Hour(7))
+    @test dest == seconds
+end
+
+@testset "Interval-mean and hold-window inputs in PrescribedAtmosphere" begin
+    import ClimaUtilities.TimeManager: ITime
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    start_date = DateTime(2003, 3, 20)
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0, 9)),
+        ylim = FT.((0, 9)),
+        zlim = FT.((1, 2)),
+        nelements = (2, 2, 1),
+        longlat = FT.((30, 10)),
+    )
+    coords = ClimaLand.Domains.coordinates(domain)
+    scratch = zero(coords.surface.lat)
+    updateat = Dates.Hour(3)
+    hours(date) = Dates.value(date - start_date) / 3_600_000
+    precip_mean(date) = FT(-1e-7 * (1 + Dates.hour(date) / 6))
+    temperature(date) = FT(280 + 0.5 * hours(date) - 0.01 * hours(date)^2)
+    atmos = ClimaLand.PrescribedAtmosphere(
+        ClimaLand.IntervalMeanInput(
+            TimeVaryingInput(precip_mean),
+            start_date,
+            scratch;
+            updateat,
+        ),
+        TimeVaryingInput((t) -> FT(0)),
+        ClimaLand.HoldWindowStateInput(
+            TimeVaryingInput(temperature),
+            start_date,
+            scratch;
+            updateat,
+        ),
+        TimeVaryingInput((t) -> FT(2)),
+        TimeVaryingInput((t) -> FT(0.005)),
+        TimeVaryingInput((t) -> FT(1e5)),
+        start_date,
+        FT(10),
+        toml_dict,
+    )
+    p = (; drivers = ClimaLand.initialize_drivers((atmos,), coords))
+    update! = ClimaLand.make_update_drivers((atmos,))
+    precip_sum = zero(FT)
+    for k in 0:7
+        date = start_date + updateat * k
+        update!(p, ITime(3 * 3600 * k; epoch = start_date))
+        precip_sum += sum(ClimaCore.Fields.field2array(p.drivers.P_liq)) / 4
+        @test all(
+            ClimaCore.Fields.field2array(p.drivers.T) .≈
+            temperature(date + Dates.Minute(90)),
+        )
+    end
+    expected = sum(precip_mean.(start_date .+ Dates.Hour(6) .* (0:3))) * 2
+    @test precip_sum ≈ expected rtol = 1e-5
 end

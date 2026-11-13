@@ -9,6 +9,28 @@ main
   also takes `cycle_years` (e.g. `1901:1920`) to cycle the forcing of those years, as for the
   pre-industrial climate of TRENDY, through the new `CycledYearsInput`. A `stop_date` on January 1
   of the year after the data now needs only the files up to the last year.
+- ![][badge-🔥behavioralΔ] `prescribed_forcing_crujra` distributes each 6-hourly mean
+  shortwave radiation of CRU-JRA within its interval in proportion to the cosine of the
+  solar zenith angle (the `coszen` method of CLM's data atmosphere), instead of
+  interpolating the means linearly in time. The shortwave given at a driver update is
+  the mean over the time until the next update (`updateat`, 3 hours by default, which
+  must match `updateat` of `LandSimulation`), so the 6-hour energy is conserved and no
+  shortwave falls at night; the zenith angle is the shortwave-weighted mean over the
+  same window, and the diffuse fraction is constant over each 6-hour interval. Adds
+  `CosZenithWeightedInput`, `WindowCosZenith` and `IntervalStartInput`.
+  `sw_time_interpolation = :linear` recovers the earlier behaviour.
+- ![][badge-🔥behavioralΔ] `prescribed_forcing_crujra` also follows the time definition of
+  the other CRU-JRA variables. Longwave radiation and precipitation, which are 6-hour means
+  stamped at the start of their interval, are held constant over their interval (the value
+  at a driver update is the mean until the next update), so each interval keeps its energy
+  and water (`flux_time_interpolation = :interval`). Temperature, humidity, pressure and
+  wind, which are instantaneous 6-hourly values, are taken at the middle of the hold window
+  from a constant plus diurnal and semidiurnal harmonics through the four samples around it
+  (`state_time_interpolation = :harmonic`; `:cubic` uses a Catmull-Rom cubic), which keeps
+  the afternoon temperature peak that linear interpolation cuts. Adds `IntervalMeanInput`
+  and `HoldWindowStateInput`. `:linear` for either keyword recovers the earlier behaviour.
+  1-hour driver updates (`updateat` of both the reader and `LandSimulation`) are
+  recommended with CRU-JRA.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

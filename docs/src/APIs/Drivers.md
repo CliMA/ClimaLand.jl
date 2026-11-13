@@ -34,6 +34,11 @@ ClimaLand.default_cos_zenith_angle
 ClimaLand.prescribed_forcing_era5
 ClimaLand.prescribed_forcing_crujra
 ClimaLand.CycledYearsInput
+ClimaLand.CosZenithWeightedInput
+ClimaLand.WindowCosZenith
+ClimaLand.IntervalStartInput
+ClimaLand.IntervalMeanInput
+ClimaLand.HoldWindowStateInput
 ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5
 ClimaLand.prescribed_analytic_forcing
