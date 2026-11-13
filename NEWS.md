@@ -18,6 +18,15 @@ main
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-🔥behavioralΔ] Add a litter layer on the soil under vegetation
+  (`Soil.SoilLitter`, the `litter` field of `EnergyHydrologyParameters`): a thermal
+  resistance in series between the soil skin and the top soil layer (Napoly et al., 2017).
+  The default soil of `LandModel` and `SoilCanopyModel` carries it wherever the MODIS
+  maximum LAI is positive (`vegetation_litter`), 3 cm thick under trees and 1 cm under
+  grasses, weighted by the CLM tree share, with a conductivity of 0.1 W/m/K. It reduces
+  the diurnal amplitude of the shallow soil temperature, which was 2.6 times that observed
+  at FLUXNET sites. The standalone soil model has no litter (`Soil.NoLitter`) by default.
+  PR [#TBD](https://github.com/CliMA/ClimaLand.jl/pulls)
 - ![][badge-🔥behavioralΔ] `LandSimulation` updates the drivers every time step by default
   (`updateat = Δt`) instead of every 3 hours, which held the forcing for up to 3 hours and
   delayed the diurnal cycle of the surface temperature by about 2 hours.

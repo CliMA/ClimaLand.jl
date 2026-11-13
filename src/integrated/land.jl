@@ -137,6 +137,41 @@ mutable struct LandModel{
 end
 
 """
+    vegetation_litter(
+        surface_space,
+        toml_dict::CP.ParamDict;
+        tree_share = Canopy.clm_tree_share(surface_space),
+        max_lai = Canopy.modis_max_lai(surface_space),
+    )
+
+Return the `Soil.SoilLitter` on the soil under vegetation: wherever the maximum leaf
+area index `max_lai` is positive, a litter layer whose thickness is weighted between that
+under trees (`litter_thickness_tree`) and that under grasses (`litter_thickness_grass`)
+by the `tree_share` of the vegetation, and no litter elsewhere. The litter follows these
+static maps rather than the canopy model, so it is the same for any `biomass` or `canopy`
+passed to the integrated-model constructors.
+"""
+function vegetation_litter(
+    surface_space,
+    toml_dict::CP.ParamDict;
+    tree_share = Canopy.clm_tree_share(surface_space),
+    max_lai = Canopy.modis_max_lai(surface_space),
+)
+    FT = CP.float_type(toml_dict)
+    thickness_tree = FT(toml_dict["litter_thickness_tree"])
+    thickness_grass = FT(toml_dict["litter_thickness_grass"])
+    thickness = @. ifelse(
+        max_lai > 0,
+        tree_share * thickness_tree + (1 - tree_share) * thickness_grass,
+        zero(FT),
+    )
+    return Soil.SoilLitter{FT}(
+        thickness,
+        toml_dict["litter_thermal_conductivity"],
+    )
+end
+
+"""
     LandModel{FT}(
         forcing,
         LAI,
@@ -154,6 +189,10 @@ end
             toml_dict;
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
+            litter = vegetation_litter(
+                Domains.obtain_surface_domain(domain).space.surface,
+                toml_dict,
+            ),
         ),
         biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
@@ -237,6 +276,10 @@ function LandModel{FT}(
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        litter = vegetation_litter(
+            Domains.obtain_surface_domain(domain).space.surface,
+            toml_dict,
+        ),
     ),
     biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(
@@ -320,6 +363,10 @@ end
             toml_dict;
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
+            litter = vegetation_litter(
+                Domains.obtain_surface_domain(domain).space.surface,
+                toml_dict,
+            ),
         ),
         biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
@@ -391,6 +438,10 @@ function LandModel{FT}(
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        litter = vegetation_litter(
+            Domains.obtain_surface_domain(domain).space.surface,
+            toml_dict,
+        ),
     ),
     biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(

@@ -43,6 +43,7 @@ ClimaLand.SoilSnowModel{FT}(
     Δt;
 ) where {FT}
 ClimaLand.LandHydrology
+ClimaLand.vegetation_litter
 ClimaLand.land_components
 ClimaLand.lsm_aux_vars
 ClimaLand.lsm_aux_types

@@ -186,6 +186,7 @@ append_source(src::Nothing, srcs::Tuple)::Tuple = srcs
 
 include("./retention_models.jl")
 include("./rre.jl")
+include("./soil_litter.jl")
 include("./energy_hydrology.jl")
 include("./soil_heat_parameterizations.jl")
 include("Runoff/Runoff.jl")
@@ -281,6 +282,7 @@ function EnergyHydrology{FT}(
     z_0m = toml_dict["soil_momentum_roughness_length"],
     z_0b = toml_dict["soil_scalar_roughness_length"],
     emissivity = toml_dict["emissivity_bare_soil"],
+    litter::AbstractSoilLitter = NoLitter(),
     additional_sources = (),
     bottom_bc = WaterHeatBC(;
         water = WaterFluxBC((p, t) -> 0.0),
@@ -307,6 +309,7 @@ function EnergyHydrology{FT}(
         z_0m,
         z_0b,
         emissivity,
+        litter,
     )
     return EnergyHydrology{FT}(;
         parameters,

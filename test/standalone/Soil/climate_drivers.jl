@@ -321,6 +321,59 @@ for FT in (Float32, Float64)
                 FT(0.01) .* parent(F_scale),
             )
 
+            # A litter layer adds its resistance in series between the skin and
+            # the top layer: the energy balance closes with the larger
+            # resistance, and under the same sunny forcing the skin is warmer
+            # and conducts less heat into the soil than the bare soil skin
+            litter = Soil.SoilLitter{FT}(FT(0.02), FT(0.1))
+            @test Base.Broadcast.materialize(
+                Soil.skin_conduction_resistance(Soil.NoLitter(), Δz_top, κ_top),
+            ) == r_sfc
+            r_litter = Base.Broadcast.materialize(
+                Soil.skin_conduction_resistance(litter, Δz_top, κ_top),
+            )
+            @test parent(r_litter) ≈ parent(r_sfc) .+ FT(0.2)
+            model_litter = Soil.EnergyHydrology{FT}(;
+                parameters = ClimaLand.Soil.EnergyHydrologyParameters(
+                    toml_dict;
+                    ν,
+                    ν_ss_om,
+                    ν_ss_quartz,
+                    ν_ss_gravel,
+                    hydrology_cm = hcm,
+                    K_sat,
+                    S_s,
+                    θ_r,
+                    albedo,
+                    emissivity,
+                    z_0m,
+                    z_0b,
+                    litter,
+                ),
+                domain = domain,
+                boundary_conditions = boundary_fluxes,
+                sources = (),
+            )
+            @test model_litter.parameters.litter === litter
+            Y_litter, p_litter, _ = initialize(model_litter)
+            init_soil!(Y_litter, coords.subsurface.z, model_litter.parameters)
+            make_set_initial_cache(model_litter)(p_litter, Y_litter, t)
+            fluxes_litter = p_litter.soil.turbulent_fluxes
+            T_sfc_litter = fluxes_litter.T_sfc
+            F_litter =
+                @. p_litter.soil.R_n + fluxes_litter.lhf + fluxes_litter.shf
+            G_litter = @. (T_top - T_sfc_litter) / r_litter
+            @test all(
+                abs.(parent(F_litter) .- parent(G_litter)) .<
+                FT(0.01) .* (
+                    abs.(parent(p_litter.soil.R_n)) .+
+                    abs.(parent(fluxes_litter.lhf)) .+
+                    abs.(parent(fluxes_litter.shf))
+                ),
+            )
+            @test all(parent(T_sfc_litter) .> parent(T_sfc))
+            @test all(abs.(parent(G_litter)) .< abs.(parent(G_skin)))
+
             # Over a frozen top cell under strong sunshine and warm air, the
             # skin would rise above the melting point; it is capped at the
             # depressed freezing temperature, and the atmospheric fluxes at
