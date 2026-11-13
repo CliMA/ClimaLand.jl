@@ -348,8 +348,8 @@ function main(options)
                 @info "Soil-carbon balance done" spinup_end wall_minutes =
                     round((time() - t0) / 60; digits = 1) n_layers = length(f) factor_quantiles_1_10_50_90_99 =
                     q.((0.01, 0.1, 0.5, 0.9, 0.99)) share_below_0_01 =
-                    round(count(<(0.01), f) / length(f); digits = 3) share_above_100 =
-                    round(count(>(100), f) / length(f); digits = 3)
+                    round(count(<(0.01), f) / length(f); digits = 3) share_at_cap_100 =
+                    round(count(>=(99.9), f) / length(f); digits = 4)
             end
             state = copy(spinup._integrator.u)
             spinup = nothing

@@ -12,7 +12,7 @@ using Dates
     # The global land model with carbon pools, as in restart.jl, at low resolution.
     # `balance_soil_carbon!` over a few steps must set the log of the respiration
     # factor of each layer to log(litter / respiration) summed over those steps,
-    # and leave the SOC at its state at the start. The pools are set by hand, so the
+    # at most log(100), and leave the SOC at its state at the start. The pools are set by hand, so the
     # litter is far from the respiration and the factors are extreme.
     FT = Float64
     context = ClimaComms.context()
@@ -93,7 +93,11 @@ using Dates
     expected = zero(SOC_start)
     @. expected = ifelse(
         (respiration > 0) & isfinite(respiration) & isfinite(litter),
-        ifelse(litter > 0, log(litter / respiration), log(floatmin(FT))),
+        ifelse(
+            litter > 0,
+            min(log(litter / respiration), log(FT(100))),
+            log(floatmin(FT)),
+        ),
         FT(0),
     )
     ln_factor = parent(p.soilco2.ln_rate_factor)
@@ -116,7 +120,9 @@ using Dates
     # litter input over the same steps (the state differs only by the rebalanced
     # respiration). Large factors are capped by the substrate and O2 limitation.
     lt, rb = parent(litter), parent(respiration_b)
-    moderate = @. (lt > 0) & (abs(ln_factor) < 5)
+    @test maximum(ln_factor) <= log(FT(100)) * (1 + eps(FT))
+    # Capped layers do not reach their litter input by design
+    moderate = @. (lt > 0) & (abs(ln_factor) < 4)
     @test count(moderate) > 0
     @test rb[moderate] ≈ lt[moderate] rtol = 0.02
     @test all(@. abs(rb[moderate] / lt[moderate] - 1) < 0.02)

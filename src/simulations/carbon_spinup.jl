@@ -77,7 +77,7 @@ end
 finite_or_zero(x) = ifelse(isfinite(x), x, zero(x))
 
 """
-    balance_soil_carbon!(landsim::LandSimulation, spinup_end::DateTime)
+    balance_soil_carbon!(landsim::LandSimulation, spinup_end::DateTime; max_factor = 100)
 
 Holds the soil organic carbon (SOC) of `landsim` at its current state, as an
 observed stock, and sets the decomposition rate of each soil layer so that the
@@ -91,12 +91,19 @@ With the new rates, the mean respiration of each layer over the spin-up equals
 its mean litter input, so the SOC has no trend under the drivers of the
 spin-up; it still varies with the climate, the litter and the moisture of the
 other years. A layer without litter input keeps its SOC (factor `floatmin`, in effect 0); a layer
-without respiration keeps its rate. The spin-up should span whole years and
+without respiration keeps its rate. The factor is at most `max_factor`: a layer that
+barely respires during the spin-up (frozen or dry) would otherwise get a factor
+large enough to empty it, numerically, in a warmer or wetter year. Such a layer
+keeps a small gain of SOC. The spin-up should span whole years and
 follow `spin_up_carbon_pools!`, so the litter comes from pools in equilibrium.
 The factor lives in the cache, not in the state: a simulation started from the
 state must set `p.soilco2.ln_rate_factor` again (see `experiments/trendy`).
 """
-function balance_soil_carbon!(landsim::LandSimulation, spinup_end::DateTime)
+function balance_soil_carbon!(
+    landsim::LandSimulation,
+    spinup_end::DateTime;
+    max_factor = 100,
+)
     model = landsim.model
     hasproperty(model, :soilco2) && hasproperty(model, :canopy) ||
         error("The simulation has no soil CO2 model and canopy")
@@ -120,7 +127,7 @@ function balance_soil_carbon!(landsim::LandSimulation, spinup_end::DateTime)
         (respiration > 0) & isfinite(respiration) & isfinite(litter),
         ifelse(
             litter > 0,
-            ln_factor + log(litter / respiration),
+            min(ln_factor + log(litter / respiration), FT(log(max_factor))),
             log(floatmin(FT)),
         ),
         ln_factor,
