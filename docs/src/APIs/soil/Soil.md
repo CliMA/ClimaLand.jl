@@ -66,6 +66,15 @@ ClimaLand.Soil.EnergyHydrologyParameters(
 ) where {FT <: AbstractFloat}
 ```
 
+## Soil Litter
+
+```@docs
+ClimaLand.Soil.AbstractSoilLitter
+ClimaLand.Soil.NoLitter
+ClimaLand.Soil.SoilLitter
+ClimaLand.Soil.skin_conduction_resistance
+```
+
 ## Soil Hydrology Parameterizations
 
 ```@docs

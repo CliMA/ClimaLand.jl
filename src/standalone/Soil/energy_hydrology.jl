@@ -24,6 +24,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     AP,
     C,
     PSE,
+    LT <: AbstractSoilLitter,
 }
     "The dry soil thermal conductivity, W/m/K"
     κ_dry::F
@@ -75,6 +76,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     evap_α::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
+    "The litter on the soil surface"
+    litter::LT = NoLitter()
 end
 
 Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
@@ -92,6 +95,7 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
         S_s,
         θ_r,
         albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
+        litter = Soil.NoLitter(),
         kwargs...,)
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
@@ -125,6 +129,7 @@ function EnergyHydrologyParameters(
     d_ds = toml_dict["maximum_dry_soil_layer_depth"],
     evap_p = toml_dict["evaporation_exponent"],
     evap_α = toml_dict["evaporation_scalar"],
+    litter::AbstractSoilLitter = NoLitter(),
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -180,7 +185,7 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
-    EnergyHydrologyParameters{FT, F, typeof(albedo), C, PSE}(;
+    EnergyHydrologyParameters{FT, F, typeof(albedo), C, PSE, typeof(litter)}(;
         albedo,
         ν,
         ν_ss_om,
@@ -202,6 +207,7 @@ function EnergyHydrologyParameters(
         d_ds,
         evap_p,
         evap_α,
+        litter,
         parameters...,
     )
 end
