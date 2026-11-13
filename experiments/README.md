@@ -39,3 +39,25 @@ The experiments in experiments/long_runs and experiments/standalone have save pa
 the ClimaLand.jl directory. If run from the ClimaLand.jl directory, then the outputs of an experiment will be saved into
 the same directory the experiment script is found in. Otherwise the outputs will be saved to
 the path of the script relative to the ClimaLand.jl directory.
+
+### trendy
+
+`experiments/trendy/run_trendy.jl` runs a TRENDY v15 (Global Carbon Budget 2026)
+simulation and writes the TRENDY files with `experiments/trendy/trendy_output.jl`:
+
+``` bash
+julia --project=.buildkite experiments/trendy/run_trendy.jl \
+    --configuration A --simulation S2 --start 2003-01-01 --stop 2026-01-01 \
+    --outdir /path/to/output
+```
+
+Configuration A (model name `ClimaLand-OBS`) prescribes MODIS LAI (Yuan et al.,
+Collection 6.1, 2000–2025) and carries the live vegetation carbon in prognostic
+pools; the climate is CRU-JRA v4.10 with 1-hour driver updates, and CO₂ the annual
+values of the protocol. Only S2 is implemented; S3 (forest-loss removal) and
+configuration B (`ClimaLand`, prognostic vegetation from 1700) stop with an error.
+The input data are found with `--crujra-path` (or `CRUJRA_V410_PATH`),
+`--co2-file` (or `TRENDY_CO2_FILE`) and `--lai-path` (or `MODIS_LAI_V061_PATH`,
+otherwise the `modis_lai_yuan_v061_0.25deg` artifact by its hash). Outputs are
+written to `<outdir>/diagnostics` (monthly ClimaLand diagnostics) and
+`<outdir>/trendy/<MODEL>/<SIM>/` (TRENDY files); `--help` lists all options.

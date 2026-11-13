@@ -42,6 +42,10 @@ main
   `<MODEL>/<SIM>/<MODEL>_<SIM>_<var>.nc` with the TRENDY names and units, a regular 1° or
   0.5° grid, a 365-day time axis and a fill value of -99999, `oceanCoverFrac`, the zonal NBP
   text file and a README template.
+- ![][badge-✨feature] Add `experiments/trendy/run_trendy.jl`, which runs TRENDY v15
+  configuration A (`ClimaLand-OBS`: prescribed MODIS LAI v6.1 with prognostic vegetation
+  carbon pools, CRU-JRA v4.10 with 1-hour driver updates, annual CO₂ of the protocol), S2,
+  and writes the TRENDY files. S3 and configuration B are not implemented yet.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
