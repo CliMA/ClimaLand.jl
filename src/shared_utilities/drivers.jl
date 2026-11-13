@@ -2212,7 +2212,7 @@ end
                               c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                               time_interpolation_method = LinearInterpolation(),
                               sw_time_interpolation = :coszen,
-                              state_time_interpolation = :cubic,
+                              state_time_interpolation = :harmonic,
                               flux_time_interpolation = :interval,
                               updateat = Dates.Hour(3),
                               sw_quadrature_step = Dates.Minute(15),
@@ -2246,14 +2246,14 @@ Time handling
     the next update (see [`ClimaLand.IntervalMeanInput`](@ref)), so the energy
     and water of each interval stay in that interval.
 - Temperature, humidity, pressure and wind: with `state_time_interpolation =
-    :cubic` (the default), the value given at an update is the Catmull-Rom
-    cubic through the 6-hourly samples at the middle of the hold window (see
+    :harmonic` (the default), the value given at an update is taken at the
+    middle of the hold window from a constant plus diurnal and semidiurnal
+    harmonics through the four 6-hourly samples around it (see
     [`ClimaLand.HoldWindowStateInput`](@ref)). Linear interpolation between
     6-hourly samples cuts the afternoon temperature peak, which lowers the
-    daytime vapor pressure deficit. `state_time_interpolation = :harmonic`
-    uses a constant plus diurnal and semidiurnal harmonics through the same
-    samples instead, and `:linear_midpoint` interpolates linearly, also at the
-    middle of the window.
+    daytime vapor pressure deficit. `state_time_interpolation = :cubic` uses
+    the Catmull-Rom cubic through the same samples, and `:linear_midpoint`
+    interpolates linearly, also at the middle of the window.
 - `:linear` for any of the three keywords recovers the earlier behaviour for
     those variables: the records are interpolated linearly in time with
     `time_interpolation_method` (defaults to `LinearInterpolation()`, no
@@ -2285,7 +2285,7 @@ function prescribed_forcing_crujra(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(),
     sw_time_interpolation = :coszen,
-    state_time_interpolation = :cubic,
+    state_time_interpolation = :harmonic,
     flux_time_interpolation = :interval,
     updateat = Dates.Hour(3),
     sw_quadrature_step = Dates.Minute(15),

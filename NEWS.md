@@ -18,11 +18,12 @@ main
   at a driver update is the mean until the next update), so each interval keeps its energy
   and water (`flux_time_interpolation = :interval`). Temperature, humidity, pressure and
   wind, which are instantaneous 6-hourly values, are taken at the middle of the hold window
-  from a cubic through the samples (`state_time_interpolation = :cubic`), which keeps the
-  afternoon temperature peak that linear interpolation cuts. Adds `IntervalMeanInput` and
-  `HoldWindowStateInput`. `:linear` for either keyword recovers the earlier behaviour. With
-  ERA5 hourly degraded to CRU-JRA's 6-hourly conventions, these changes and 1-hour driver
-  updates bring global GPP and ET within about 1 % of the hourly run.
+  from a constant plus diurnal and semidiurnal harmonics through the four samples around it
+  (`state_time_interpolation = :harmonic`; `:cubic` uses a Catmull-Rom cubic), which keeps
+  the afternoon temperature peak that linear interpolation cuts. Adds `IntervalMeanInput`
+  and `HoldWindowStateInput`. `:linear` for either keyword recovers the earlier behaviour.
+  1-hour driver updates (`updateat` of both the reader and `LandSimulation`) are
+  recommended with CRU-JRA.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
