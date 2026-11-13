@@ -95,6 +95,7 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
         S_s,
         θ_r,
         albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
+        litter = Soil.NoLitter(),
         kwargs...,)
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
