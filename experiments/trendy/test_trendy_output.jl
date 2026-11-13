@@ -252,8 +252,7 @@ end
         @test ds["mrsos"].attrib["soil_depth"] ≈ 0.1
     end
     NCDatasets.NCDataset(joinpath(sim_dir, "ClimaLand-OBS_S2_msl.nc")) do ds
-        @test ds["smlayer_bnds"][:, :] ≈
-              [0.0 0.1 0.325 1.0; 0.1 0.325 1.0 2.0]
+        @test ds["smlayer_bnds"][:, :] ≈ [0.0 0.1 0.325 1.0; 0.1 0.325 1.0 2.0]
         @test sum(ds["msl"].var[100, 90, :, 1]) ≈ (300.0 + 91.67) * 2.0 rtol =
             1e-5
     end

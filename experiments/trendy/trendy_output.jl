@@ -524,7 +524,8 @@ destination intervals, periodic with `period` if given.
 function overlap_matrix(src_edges, dst_edges; period = nothing)
     shifts = isnothing(period) ? (0.0,) : (-period, 0.0, period)
     O = zeros(length(dst_edges) - 1, length(src_edges) - 1)
-    for a in 1:(length(src_edges) - 1), s in shifts,
+    for a in 1:(length(src_edges) - 1),
+        s in shifts,
         i in 1:(length(dst_edges) - 1)
 
         lo = max(src_edges[a] + s, dst_edges[i])
