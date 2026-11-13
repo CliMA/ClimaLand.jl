@@ -38,7 +38,9 @@ export AbstractAtmosphericDrivers,
     prescribed_analytic_forcing,
     default_cos_zenith_angle,
     prescribed_forcing_crujra,
-    CycledYearsInput
+    CycledYearsInput,
+    prescribed_co2_annual,
+    read_annual_co2
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -3146,4 +3148,89 @@ function TimeVaryingInputs.evaluate!(
     end
     input.nonnegative && (@. dest = max(dest, zero(dest)))
     return nothing
+end
+
+"""
+    read_annual_co2(filepath)
+
+Read a text file of annual global mean atmospheric CO₂ and return the years and
+the CO₂ mole fractions (mol/mol).
+
+Each line holds a year and a CO₂ value in ppm separated by white space, as in
+the `global_co2_ann_1700_2025.txt` file of the TRENDY/Global Carbon Budget
+protocol. Empty lines and lines starting with `#` are skipped. The years must be
+consecutive.
+"""
+function read_annual_co2(filepath)
+    years = Int[]
+    co2 = Float64[]
+    for line in eachline(filepath)
+        stripped = strip(line)
+        (isempty(stripped) || startswith(stripped, '#')) && continue
+        parts = split(stripped)
+        push!(years, parse(Int, parts[1]))
+        push!(co2, parse(Float64, parts[2]) * 1e-6)
+    end
+    isempty(years) && error("No CO₂ values found in $filepath")
+    years == first(years):last(years) ||
+        error("The years in $filepath are not consecutive")
+    return years, co2
+end
+
+"""
+    prescribed_co2_annual(filepath, start_date; interpolation = :step, fixed_year = nothing)
+
+Return a `TimeVaryingInput` of the atmospheric CO₂ mole fraction (mol/mol) from a
+file of annual global means (see [`read_annual_co2`](@ref)), for the `c_co2`
+keyword of `PrescribedAtmosphere`, `prescribed_forcing_era5` and
+`prescribed_forcing_crujra`. `start_date` is the date of `t = 0` of the
+simulation.
+
+With `interpolation = :step` (the default), the CO₂ of a year is used from
+January 1 to December 31 of that year, so the mean over each year equals the
+value in the file, as in the TRENDY protocol, which gives one value per year.
+With `interpolation = :linear`, the values are placed at the middle of each year
+and interpolated linearly in between. In both cases, dates before the first year
+or after the last year of the file use the first or the last value.
+
+With `fixed_year`, the CO₂ of that year is used at all times, for example
+`fixed_year = 1700` for the pre-industrial CO₂ of the TRENDY simulations S0, S4
+and S6.
+"""
+function prescribed_co2_annual(
+    filepath,
+    start_date::Dates.DateTime;
+    interpolation::Symbol = :step,
+    fixed_year::Union{Nothing, Integer} = nothing,
+)
+    years, co2 = read_annual_co2(filepath)
+    first_year, last_year = first(years), last(years)
+    if !isnothing(fixed_year)
+        first_year <= fixed_year <= last_year ||
+            error("Year $fixed_year is not in $filepath")
+        fixed_co2 = co2[fixed_year - first_year + 1]
+        return TimeVaryingInput((t) -> fixed_co2)
+    end
+    if interpolation == :step
+        function co2_of_year(t)
+            date = start_date + Dates.Millisecond(round(Int64, 1000 * float(t)))
+            year = clamp(Dates.year(date), first_year, last_year)
+            return co2[year - first_year + 1]
+        end
+        return TimeVaryingInput(co2_of_year)
+    elseif interpolation == :linear
+        mid_year(y) =
+            Dates.DateTime(y) + (Dates.DateTime(y + 1) - Dates.DateTime(y)) ÷ 2
+        times = [
+            Dates.value(Dates.Millisecond(mid_year(y) - start_date)) / 1000
+            for y in years
+        ]
+        return TimeVaryingInput(
+            times,
+            co2;
+            method = LinearInterpolation(Flat()),
+        )
+    else
+        error("interpolation must be :step or :linear, got :$interpolation")
+    end
 end

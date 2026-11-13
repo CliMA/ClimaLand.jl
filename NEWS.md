@@ -31,6 +31,12 @@ main
   and `HoldWindowStateInput`. `:linear` for either keyword recovers the earlier behaviour.
   1-hour driver updates (`updateat` of both the reader and `LandSimulation`) are
   recommended with CRU-JRA.
+- ![][badge-✨feature] Add `prescribed_co2_annual`, a `c_co2` driver that reads annual
+  global mean CO₂ (ppm) from a text file such as `global_co2_ann_1700_2025.txt` of the
+  TRENDY v15 / Global Carbon Budget 2026 protocol, and `read_annual_co2`. Each year's
+  value is held from January 1 to December 31 (`interpolation = :step`, the default) or
+  interpolated between mid-years (`:linear`); `fixed_year = 1700` holds the pre-industrial
+  value for the TRENDY simulations S0, S4 and S6.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

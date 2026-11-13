@@ -39,6 +39,8 @@ ClimaLand.WindowCosZenith
 ClimaLand.IntervalStartInput
 ClimaLand.IntervalMeanInput
 ClimaLand.HoldWindowStateInput
+ClimaLand.prescribed_co2_annual
+ClimaLand.read_annual_co2
 ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5
 ClimaLand.prescribed_analytic_forcing
