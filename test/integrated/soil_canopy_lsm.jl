@@ -352,6 +352,12 @@ for FT in (Float32, Float64)
         @test all(parent(p.soilco2.Sm) .> 0)
         @test parent(dY.soilco2.SOC) ≈
               parent(p.soil_litter_input .- p.soilco2.Sm)
+
+        # The rate factor multiplies the microbial respiration
+        Sm = copy(p.soilco2.Sm)
+        p.soilco2.ln_rate_factor .= log(FT(2))
+        make_set_initial_cache(model)(p, Y, FT(0))
+        @test parent(p.soilco2.Sm) ≈ 2 .* parent(Sm) rtol = 100 * eps(FT)
     end
 
     @testset "Plant water initial conditions from the soil, FT = $FT" begin

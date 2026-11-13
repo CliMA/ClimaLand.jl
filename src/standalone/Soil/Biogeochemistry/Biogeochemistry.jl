@@ -233,6 +233,7 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :T,
     :θ_eff,        # Effective porosity for CO2 (air + dissolved in water)
     :θ_eff_o2,     # Effective porosity for O2 (air + dissolved in water)
+    :ln_rate_factor, # log of the factor on microbial respiration (0: none), see `balance_soil_carbon!`
     # CO2 boundary vars (top_bc, bottom_bc, top_bc_wvec, bottom_bc_wvec)
     ClimaLand.boundary_vars(
         model.boundary_conditions.top.co2,
@@ -264,6 +265,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,  # θ_eff
     FT,  # θ_eff_o2
+    FT,  # ln_rate_factor
     # CO2 boundary var types
     ClimaLand.boundary_var_types(
         model,
@@ -296,6 +298,7 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
     :subsurface,  # θ_eff
     :subsurface,  # θ_eff_o2
+    :subsurface,  # ln_rate_factor
     # CO2 boundary var domain names
     ClimaLand.boundary_var_domain_names(
         model.boundary_conditions.top.co2,
@@ -728,22 +731,24 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
             ),
         )
         (; D_oa) = params
-        @. p.soilco2.Sm = microbe_source(
-            T_soil,
-            θ_l,
-            max(Csom, 0),
-            o2_availability(
-                o2_fraction_from_concentration(
-                    max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2,
-                    T_soil,
-                    P_sfc,
-                    params,
+        # `ln_rate_factor` is zero (factor 1) unless set by `balance_soil_carbon!`
+        @. p.soilco2.Sm =
+            exp(p.soilco2.ln_rate_factor) * microbe_source(
+                T_soil,
+                θ_l,
+                max(Csom, 0),
+                o2_availability(
+                    o2_fraction_from_concentration(
+                        max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2,
+                        T_soil,
+                        P_sfc,
+                        params,
+                    ),
+                    volumetric_air_content(θ_l + θ_i, ν),
+                    D_oa,
                 ),
-                volumetric_air_content(θ_l + θ_i, ν),
-                D_oa,
-            ),
-            params,
-        ) # in case Csom < 0 due to numerical issues
+                params,
+            ) # in case Csom < 0 due to numerical issues
     end
     return update_aux!
 end

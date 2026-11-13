@@ -9,7 +9,7 @@ using LazyBroadcast: lazy
 import ClimaDiagnostics
 using ClimaLand
 import ..Parameters as LP
-export step!, solve!, LandSimulation, spin_up_carbon_pools!
+export step!, solve!, LandSimulation, spin_up_carbon_pools!, balance_soil_carbon!
 using NCDatasets
 include("initial_conditions.jl")
 
