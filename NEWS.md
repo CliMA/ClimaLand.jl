@@ -37,6 +37,11 @@ main
   value is held from January 1 to December 31 (`interpolation = :step`, the default) or
   interpolated between mid-years (`:linear`); `fixed_year = 1700` holds the pre-industrial
   value for the TRENDY simulations S0, S4 and S6.
+- ![][badge-✨feature] Add `experiments/trendy/trendy_output.jl`, which converts the monthly
+  diagnostics of a global run into a TRENDY v15 / Global Carbon Budget 2026 submission:
+  `<MODEL>/<SIM>/<MODEL>_<SIM>_<var>.nc` with the TRENDY names and units, a regular 1° or
+  0.5° grid, a 365-day time axis and a fill value of -99999, `oceanCoverFrac`, the zonal NBP
+  text file and a README template.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
