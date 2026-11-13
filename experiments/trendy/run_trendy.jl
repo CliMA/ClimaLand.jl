@@ -418,8 +418,10 @@ function main(options)
             start_date,
             horizontal_pts = trendy_grid(resolution),
         )
-        extra =
-            filter(!isempty, strip.(split(options["extra-diagnostics"], ",")))
+        # String, not SubString: `default_diagnostics` requires a Vector{String}
+        extra = String.(
+            filter(!isempty, strip.(split(options["extra-diagnostics"], ","))),
+        )
         script_extra = filter(in(("slit", "sdk")), extra)
         possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
         unknown = setdiff(extra, vcat(possible, ["slit", "sdk"]))
