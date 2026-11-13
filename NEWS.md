@@ -27,10 +27,6 @@ main
   the diurnal amplitude of the shallow soil temperature, which was 2.6 times that observed
   at FLUXNET sites. The standalone soil model has no litter (`Soil.NoLitter`) by default.
   PR [#TBD](https://github.com/CliMA/ClimaLand.jl/pulls)
-- ![][badge-🔥behavioralΔ] `LandSimulation` updates the drivers every time step by default
-  (`updateat = Δt`) instead of every 3 hours, which held the forcing for up to 3 hours and
-  delayed the diurnal cycle of the surface temperature by about 2 hours.
-  PR [#TBD](https://github.com/CliMA/ClimaLand.jl/pulls)
 
 v1.15.0
 ----
