@@ -95,7 +95,7 @@ end
             ClimaLand.ReportCallback(div((tf - t0), 10), t0),
         ),
         diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-        updateat = ITime(3600 * 3),
+        updateat = Δt,
         solver_kwargs = (;),
     )
 
@@ -106,7 +106,8 @@ are set using `set_ic!`, and driver and diagnostic callbacks are created.
 If running with a `PrescribedAtmsophere`, the initial cache is set using `make_set_initial_cache(model)`;
 when running with a `CoupledAtmosphere`, the cache is expected to be initialized by the coupler.
 If `updateat` is a vector, the drivers will be updated at those times; if it is a single time,
-the drivers will be updated at that interval.
+the drivers will be updated at that interval. By default, they are updated every time step,
+so that the forcing (e.g., the shortwave radiation) follows its diurnal cycle without lag.
 
 The order the callbacks are called while stepping the simulation is:
 1. user_callbacks
@@ -144,7 +145,7 @@ function LandSimulation(
         ClimaLand.ReportCallback(div((tf - t0), 10), t0),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-    updateat = ITime(3600 * 3),
+    updateat = Δt,
     solver_kwargs = (;),
 )
 
