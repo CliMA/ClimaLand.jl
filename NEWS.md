@@ -26,7 +26,7 @@ main
   grasses, weighted by the CLM tree share, with a conductivity of 0.1 W/m/K. It reduces
   the diurnal amplitude of the shallow soil temperature, which was 2.6 times that observed
   at FLUXNET sites. The standalone soil model has no litter (`Soil.NoLitter`) by default.
-  PR [#TBD](https://github.com/CliMA/ClimaLand.jl/pulls)
+  PR [#1967](https://github.com/CliMA/ClimaLand.jl/pull/1967)
 
 v1.15.0
 ----
