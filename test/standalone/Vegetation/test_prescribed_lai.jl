@@ -15,6 +15,8 @@ FT = Float32
     stop_date = DateTime(2009, 3, 1)
     domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
     surface_space = domain.space.surface
+    is_land = Array(parent(ClimaLand.Domains.landsea_mask(domain))) .> 0.5
+    land(field) = Array(parent(field))[is_land]
     lai = ClimaLand.Canopy.prescribed_lai_modis(
         surface_space,
         start_date,
@@ -32,7 +34,7 @@ FT = Float32
     # The files stamp month k of a year at January 1 + 30(k - 1) days
     @test lai.stamps[7] == DateTime(2008, 6, 29)
     @test lai.middles[7] == DateTime(2008, 7, 16, 12)
-    @test lai.middles[2] == DateTime(2008, 2, 15)
+    @test lai.middles[2] == DateTime(2008, 2, 15, 12)
     @test lai.middles[12] == DateTime(2008, 12, 16, 12)
     @test lai.middles[13] == DateTime(2009, 1, 16, 12)
 
@@ -60,7 +62,7 @@ FT = Float32
         raw,
         Float64(Dates.value(Second(DateTime(2008, 6, 29) - start_date))),
     )
-    @test Array(parent(value)) ≈ Array(parent(expected))
+    @test land(value) ≈ land(expected)
     evaluate!(value, lai, ITime(round(Int, t), Second(1), start_date))
-    @test Array(parent(value)) ≈ Array(parent(expected))
+    @test land(value) ≈ land(expected)
 end
