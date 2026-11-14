@@ -11,6 +11,7 @@ main
   Adds the `slit` (soil litter input) diagnostic; with carbon pools, `soc`, `scms` and
   `slit` are in the short diagnostics, and the leaderboard compares the steady-state soil
   carbon with SoilGrids (`soil_carbon_steady_state.png`).
+  PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
