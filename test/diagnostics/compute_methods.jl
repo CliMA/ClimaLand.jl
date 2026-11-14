@@ -222,3 +222,31 @@ end
     names = check_all_diagnostics(model, Y, p, t0)
     @test "nee" in names
 end
+
+@testset "LandModel with carbon pools diagnostics compute, FT = $FT" begin
+    biomass = Canopy.PrognosticCarbonModel{FT}(
+        Canopy.PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict),
+        toml_dict;
+        tree_share = FT(0.5),
+    )
+    model = ClimaLand.LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        dt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        biomass,
+    )
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            model,
+        )
+    Y, p = initialize_with(set_ic!, model, t0)
+    names = check_all_diagnostics(model, Y, p, t0)
+    @test "slit" in names
+    @test issubset(
+        ["soc", "scms", "slit"],
+        Diagnostics.get_short_diagnostics(model),
+    )
+end
