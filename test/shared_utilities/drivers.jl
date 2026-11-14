@@ -5,6 +5,7 @@ using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeManager: ITime
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
@@ -569,4 +570,142 @@ end
           (1 * 1 + 1 * 3) / 2
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
+end
+
+@testset "ERA5 forcing averaged over the hold window, FT = $FT" begin
+    start_date = DateTime(2008, 7, 1)
+    stop_date = DateTime(2008, 7, 3)
+    domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
+    surface_space = domain.space.surface
+    toml_dict = LP.create_toml_dict(FT)
+    plain = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+    )
+    held = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        hold_window = Hour(3),
+    )
+    @test held.radiation.SW_d isa ClimaLand.HoldWindowMeanInput
+    @test !(plain.radiation.SW_d isa ClimaLand.HoldWindowMeanInput)
+
+    value = ClimaCore.Fields.zeros(surface_space)
+    sample = ClimaCore.Fields.zeros(surface_space)
+    function window_mean(input, t0, offsets)
+        expected = ClimaCore.Fields.zeros(surface_space)
+        for offset in offsets
+            evaluate!(sample, input, t0 + offset)
+            expected .+= sample
+        end
+        return expected ./ length(offsets)
+    end
+    # ERA5 stamps hourly mean rates at the end of the hour they average
+    rate_offsets = 3600.0 .* (1, 2, 3)
+    state_offsets = 3600.0 .* (0.5, 1.5, 2.5)
+    for t0 in (0.0, 7 * 3600.0, 15 * 3600.0)
+        for (name, offsets) in (
+            (:SW_d, rate_offsets),
+            (:LW_d, rate_offsets),
+            (:liquid_precip, rate_offsets),
+            (:snow_precip, rate_offsets),
+            (:T, state_offsets),
+            (:q, state_offsets),
+            (:P, state_offsets),
+            (:u, state_offsets),
+        )
+            drivers = name in (:SW_d, :LW_d) ? :radiation : :atmos
+            plain_input = getproperty(getproperty(plain, drivers), name)
+            held_input = getproperty(getproperty(held, drivers), name)
+            expected = window_mean(plain_input, t0, offsets)
+            evaluate!(value, held_input, t0)
+            @test Array(parent(value)) ≈ Array(parent(expected))
+            evaluate!(value, held_input, ITime(Int(t0), Second(1), start_date))
+            @test Array(parent(value)) ≈ Array(parent(expected))
+        end
+
+        evaluate!(value, held.radiation.frac_diff, t0)
+        @test all(0 .<= Array(parent(value)) .<= 1)
+
+        # Insolation-weighted cos zenith from 12 samples over the window
+        insol_params = LP.LandParameters(toml_dict).insol_params
+        coords = ClimaCore.Fields.coordinate_field(surface_space)
+        sum_μ = ClimaCore.Fields.zeros(surface_space)
+        sum_μ² = ClimaCore.Fields.zeros(surface_space)
+        for k in 1:12
+            μ =
+                ClimaLand.default_cos_zenith_angle(
+                    t0 + (k - 0.5) * 900,
+                    start_date;
+                    latitude = coords.lat,
+                    longitude = coords.long,
+                    insol_params,
+                ) .|> FT
+            sum_μ .+= μ
+            sum_μ² .+= μ .^ 2
+        end
+        expected = @. ifelse(sum_μ > 0, sum_μ² / sum_μ, FT(0))
+        cosθs = FT.(held.radiation.cosθs(t0, start_date))
+        @test Array(parent(cosθs)) ≈ Array(parent(expected)) atol = 1e-5
+    end
+end
+
+@testset "ERA5 shortwave spread by cos zenith within the hour, FT = $FT" begin
+    start_date = DateTime(2008, 7, 1)
+    stop_date = DateTime(2008, 7, 3)
+    domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
+    surface_space = domain.space.surface
+    toml_dict = LP.create_toml_dict(FT)
+    plain = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+    )
+    shaped = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        hold_window = Hour(1),
+        coszen_Δt = Second(900),
+    )
+    @test shaped.radiation.SW_d isa ClimaLand.CosZenithShortwaveInput
+    @test_throws ErrorException ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        coszen_Δt = Second(900),
+    )
+
+    hourly = ClimaCore.Fields.zeros(surface_space)
+    step = ClimaCore.Fields.zeros(surface_space)
+    steps_mean = ClimaCore.Fields.zeros(surface_space)
+    for hour in (5, 12, 18)
+        t0 = 3600.0 * hour
+        # ERA5's mean over [t0, t0 + 1 h) is stamped at t0 + 1 h
+        evaluate!(hourly, plain.radiation.SW_d, t0 + 3600)
+        steps_mean .= 0
+        for i in 0:3
+            evaluate!(step, shaped.radiation.SW_d, t0 + 900 * i)
+            @test all(Array(parent(step)) .>= 0)
+            steps_mean .+= step ./ 4
+        end
+        @test Array(parent(steps_mean)) ≈ Array(parent(hourly)) rtol = 1e-4
+    end
 end
