@@ -689,6 +689,8 @@ function get_possible_diagnostics(model::LandModel)
         "u10m",
         "twsa",
     ]
+    has_soil_litter_input(model.canopy.biomass) &&
+        push!(additional_diagnostics, "slit")
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -762,6 +764,10 @@ function get_short_diagnostics(model::LandModel)
         model.soil,
         model.soil.boundary_conditions.top.runoff,
     )
+    # With carbon pools, the soil carbon and its sources, for the steady-state
+    # soil carbon of the leaderboard
+    has_soil_litter_input(model.canopy.biomass) &&
+        append!(additional_diagnostics, ["soc", "scms", "slit"])
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end

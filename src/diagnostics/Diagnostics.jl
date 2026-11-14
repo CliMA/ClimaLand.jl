@@ -13,6 +13,7 @@ using ..Bucket: BucketModel
 using ..InlandWater: SlabLakeModel
 import ..SoilCanopyModel
 import ..LandModel
+import ..has_soil_litter_input
 import ..SoilSnowModel
 import ..Soil: EnergyHydrology, Runoff
 import ..Soil.Biogeochemistry: SoilCO2Model

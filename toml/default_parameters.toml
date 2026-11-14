@@ -951,7 +951,7 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_reference_rate"]
-value = 3.34e-8
+value = 6.7e-7
 type = "float"
 description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
 tag = "SoilCO2Parameters"
@@ -969,7 +969,7 @@ description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["michaelis_constant"]
-value = 0.0416
+value = 0.70
 type = "float"
 description = "Michaelis constant for substrate (kg C m⁻³)"
 tag = "SoilCO2Parameters"

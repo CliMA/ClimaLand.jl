@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Raise the DAMM reference rate `soilCO2_reference_rate`
+  (3.34e-8 to 6.7e-7 kg C m⁻³ s⁻¹) and the substrate Michaelis constant
+  `michaelis_constant` (0.0416 to 0.70 kg C m⁻³) together, so that soil organic carbon
+  fed by the carbon pools' litter has a steady state near SoilGrids. At observed SOC,
+  where the old Michaelis constant saturated the microbial source, heterotrophic
+  respiration roughly doubles, so `hr`, `er` and `nee` change with prescribed LAI too.
+  Adds the `slit` (soil litter input) diagnostic; with carbon pools, `soc`, `scms` and
+  `slit` are in the short diagnostics, and the leaderboard compares the steady-state soil
+  carbon with SoilGrids (`soil_carbon_steady_state.png`).
+  PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

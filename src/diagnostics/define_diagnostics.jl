@@ -1023,6 +1023,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_soilo2_diffusivity!(out, Y, p, t, land_model),
     )
 
+    # Soil litter input of the canopy carbon pools
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "slit",
+        long_name = "Soil Litter Input",
+        standard_name = "soil_litter_input",
+        units = "kg C m^-3 s^-1",
+        comments = "The litter of the canopy carbon pools passed to soil organic carbon: leaf and stem litter on an exponential profile below the surface, root litter on the root distribution. (depth resolved)",
+        compute! = (out, Y, p, t) ->
+            compute_soil_litter_input!(out, Y, p, t, land_model),
+    )
+
     # Soil CO2 microbial source
     conditional_add_diagnostic_variable!(
         possible_diags;

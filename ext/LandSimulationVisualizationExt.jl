@@ -19,6 +19,7 @@ include("land_sim_vis/plotting_utils.jl")
 include("land_sim_vis/leaderboard/leaderboard.jl")
 include("land_sim_vis/leaderboard/partitioning.jl")
 include("land_sim_vis/leaderboard/rmse_boxplots.jl")
+include("land_sim_vis/leaderboard/soil_carbon.jl")
 """
     make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"], spin_up_months = 12)
 
@@ -104,6 +105,11 @@ function LandSimVis.make_leaderboard_plots(
         spin_up_months,
     )
     compute_partitioning_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path;
+        spin_up_months,
+    )
+    compute_soil_carbon_leaderboard(
         leaderboard_base_path,
         diagnostics_folder_path;
         spin_up_months,
