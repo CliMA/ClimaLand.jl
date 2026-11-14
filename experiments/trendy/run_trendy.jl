@@ -50,8 +50,8 @@
 #   this artifact is not yet in ClimaLand's `Artifacts.toml`, see
 #   CliMA/ClimaArtifacts#199);
 # - `--convert-only`: write the TRENDY files from existing diagnostics;
-# - `--extra-diagnostics`: more monthly diagnostics, e.g. `tsoil,swc,soc,scms,so2,slit,sdk`
-#   for offline soil-carbon studies (`slit` and `sdk` are defined in this script, see
+# - `--extra-diagnostics`: more monthly diagnostics, e.g. `tsoil,swc,soc,scms,so2,slit,sdk,sdka`
+#   for offline soil-carbon studies (`slit`, `sdk` and `sdka` are defined in this script, see
 #   `add_offline_soil_diagnostics!`).
 #
 # Output: `<outdir>/diagnostics/` (monthly ClimaLand diagnostics) and
@@ -131,7 +131,7 @@ function parse_commandline(args = ARGS)
         help = "also write years that are not complete (short tests)"
         action = :store_true
         "--extra-diagnostics"
-        help = "comma-separated extra monthly diagnostics (ClimaLand short names, e.g. tsoil,swc,soc,scms,so2, or `slit`/`sdk` defined in this script)"
+        help = "comma-separated extra monthly diagnostics (ClimaLand short names, e.g. tsoil,swc,soc,scms,so2, or `slit`/`sdk`/`sdka` defined in this script)"
         default = ""
     end
     return ArgParse.parse_args(args, s)
@@ -250,12 +250,16 @@ end
 """
     add_offline_soil_diagnostics!(model)
 
-Defines two diagnostics for offline soil-carbon studies (not TRENDY variables):
+Defines three diagnostics for offline soil-carbon studies (not TRENDY variables):
 - `slit`: the litter input to the soil, `p.soil_litter_input` (kg C m^-3 s^-1, depth resolved);
 - `sdk`: the first-order decomposition rate of DAMM in the low-substrate limit
   (s^-1, depth resolved), `Vmax(T) * p_sx * D_liq * θ_l^3 / kM_sx * O2_avail / (kM_o2 + O2_avail)`,
   so that `Sm ≈ sdk * SOC` when the soluble substrate is far below `kM_sx`. It
   repeats the O2 availability of the soil CO2 model's `update_aux!`.
+- `sdka`: the same rate without the O2 limitation (s^-1, depth resolved),
+  `Vmax(T) * p_sx * D_liq * θ_l^3 / kM_sx`. A rate with an anaerobic fraction `f`,
+  `sdk + f * (sdka - sdk)`, is linear in both, so monthly means of `sdk` and `sdka`
+  give its monthly mean exactly.
 """
 function add_offline_soil_diagnostics!(model)
     soilco2 = model.soilco2
@@ -300,7 +304,36 @@ function add_offline_soil_diagnostics!(model)
             return out
         end,
     )
+    ClimaLand.Diagnostics.add_diagnostic_variable!(;
+        short_name = "sdka",
+        long_name = "Aerobic low-substrate first-order decomposition rate of DAMM",
+        standard_name = "soil_decomposition_rate_low_substrate_no_o2_limit",
+        units = "s^-1",
+        comments = "Vmax(T) p_sx D_liq θ_l^3 / kM_sx (depth resolved)",
+        compute! = (out, Y, p, t) -> begin
+            if isnothing(out)
+                out = zeros(axes(p.soil.T))
+                fill!(ClimaCore.Fields.field_values(out), NaN)
+            end
+            @. out = damm_aerobic_rate(p.soil.T, p.soil.θ_l, params)
+            return out
+        end,
+    )
     return nothing
+end
+
+"""
+    damm_aerobic_rate(T, θ_l, params)
+
+First-order decomposition rate (s^-1) of DAMM (`microbe_source`) in the limit of
+soluble substrate far below `kM_sx`, without the O2 limitation.
+"""
+function damm_aerobic_rate(T, θ_l, params)
+    FT = typeof(T)
+    (; V_ref_sx, T_ref_sx, Ea_sx, kM_sx, D_liq, p_sx) = params
+    R = LP.gas_constant(params.earth_param_set)
+    Vmax = V_ref_sx * exp(-Ea_sx / R * (1 / T - 1 / T_ref_sx))
+    return Vmax * p_sx * D_liq * max(θ_l, FT(0))^3 / kM_sx
 end
 
 """
@@ -311,10 +344,8 @@ soluble substrate far below `kM_sx`, with the O2 limitation of `update_aux!` of 
 soil CO2 model.
 """
 function damm_low_substrate_rate(T, θ_l, θ_i, O2, θ_eff_o2, P_sfc, ν, params)
-    FT = typeof(T)
     BGC = ClimaLand.Soil.Biogeochemistry
-    (; V_ref_sx, T_ref_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, D_oa) = params
-    R = LP.gas_constant(params.earth_param_set)
+    (; kM_o2, D_oa) = params
     O2_avail = BGC.o2_availability(
         BGC.o2_fraction_from_concentration(
             max(O2, 0) / θ_eff_o2,
@@ -325,9 +356,7 @@ function damm_low_substrate_rate(T, θ_l, θ_i, O2, θ_eff_o2, P_sfc, ν, params
         BGC.volumetric_air_content(θ_l + θ_i, ν),
         D_oa,
     )
-    Vmax = V_ref_sx * exp(-Ea_sx / R * (1 / T - 1 / T_ref_sx))
-    return Vmax * p_sx * D_liq * max(θ_l, FT(0))^3 / kM_sx * O2_avail /
-           (kM_o2 + O2_avail)
+    return damm_aerobic_rate(T, θ_l, params) * O2_avail / (kM_o2 + O2_avail)
 end
 
 function git_commit()
@@ -422,9 +451,9 @@ function main(options)
         extra = String.(
             filter(!isempty, strip.(split(options["extra-diagnostics"], ","))),
         )
-        script_extra = filter(in(("slit", "sdk")), extra)
+        script_extra = filter(in(("slit", "sdk", "sdka")), extra)
         possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
-        unknown = setdiff(extra, vcat(possible, ["slit", "sdk"]))
+        unknown = setdiff(extra, vcat(possible, ["slit", "sdk", "sdka"]))
         isempty(unknown) || error("Unknown extra diagnostics: $unknown")
         diagnostics = ClimaLand.default_diagnostics(
             model,
