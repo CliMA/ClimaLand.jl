@@ -1,5 +1,7 @@
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.TimeVaryingInputs
+import ClimaUtilities.DataHandling
 using Dates
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import Interpolations: Constant
@@ -88,6 +90,13 @@ by passing `interpolation_method = Interpolations.Linear()`.
 
 If `modis_lai_ncdata_path` is provided, it will be used directly.
 Otherwise, the path will be inferred from the start and stop dates.
+
+The files hold monthly means, stamped at the start of 30-day steps from
+January 1 (1 Jan, 31 Jan, 2 Mar, …, 27 Nov). With `midmonth = true` (the
+default), each mean is placed at the middle of its calendar month and the LAI is
+interpolated linearly between the middles (see [`MidMonthInput`](@ref)).
+`midmonth = false` reads the stamps as they are, which puts the seasonal cycle
+about half a month early.
 """
 function prescribed_lai_modis(
     surface_space,
@@ -97,6 +106,7 @@ function prescribed_lai_modis(
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
     modis_lai_ncdata_path = nothing,
+    midmonth = true,
     context = ClimaComms.context(surface_space),
 )
     modis_lai_ncdata_path =
@@ -106,7 +116,7 @@ function prescribed_lai_modis(
             start_date,
             stop_date,
         ) : modis_lai_ncdata_path
-    return TimeVaryingInput(
+    lai = TimeVaryingInput(
         modis_lai_ncdata_path,
         ["lai"],
         surface_space;
@@ -115,6 +125,81 @@ function prescribed_lai_modis(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
+    return midmonth ? MidMonthInput(lai) : lai
+end
+
+"""
+    MidMonthInput(input)
+
+The time-varying `input`, which holds at most 12 monthly means per year, with the
+k-th time stamp of each year moved to the middle of month k.
+
+At a date between the middles of two consecutive months, `input` is evaluated
+at the same fraction of the way between their original stamps, so its linear
+interpolation runs between the mid-month values. Before the first middle and
+after the last one, the first and last values are held. Stamps that already
+sit at the middle of their month are left where they are.
+"""
+struct MidMonthInput{I <: AbstractTimeVaryingInput} <: AbstractTimeVaryingInput
+    input::I
+    "Middle of the month of each stamp"
+    middles::Vector{DateTime}
+    "Original time stamps"
+    stamps::Vector{DateTime}
+end
+
+function MidMonthInput(input::AbstractTimeVaryingInput)
+    stamps = collect(DataHandling.available_dates(input.data_handler))
+    middles = similar(stamps)
+    for (i, stamp) in enumerate(stamps)
+        month = count(s -> year(s) == year(stamp), stamps[1:i])
+        month <= 12 || error(
+            "MidMonthInput needs at most 12 time stamps per year; year $(year(stamp)) has more",
+        )
+        days = daysinmonth(year(stamp), month)
+        middles[i] =
+            DateTime(year(stamp), month, 1) + Millisecond(days * 43_200_000)
+    end
+    return MidMonthInput(input, middles, stamps)
+end
+
+"""
+    stamp_date(input::MidMonthInput, date)
+
+The date at which `input.input` is evaluated to give the value of `input` at `date`.
+"""
+function stamp_date(input::MidMonthInput, date::DateTime)
+    (; middles, stamps) = input
+    i = searchsortedlast(middles, date)
+    i == 0 && return stamps[begin]
+    i == length(middles) && return stamps[end]
+    fraction =
+        Dates.value(date - middles[i]) /
+        Dates.value(middles[i + 1] - middles[i])
+    return stamps[i] + Millisecond(
+        round(Int, fraction * Dates.value(stamps[i + 1] - stamps[i])),
+    )
+end
+
+_date(input::MidMonthInput, t::ITime) = date(t)
+_date(input::MidMonthInput, t::Number) =
+    input.input.data_handler.start_date + Millisecond(round(Int, 1_000 * t))
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::MidMonthInput,
+    t,
+    args...;
+    kwargs...,
+)
+    TimeVaryingInputs.evaluate!(
+        dest,
+        input.input,
+        stamp_date(input, _date(input, t)),
+        args...;
+        kwargs...,
+    )
+    return nothing
 end
 
 """
