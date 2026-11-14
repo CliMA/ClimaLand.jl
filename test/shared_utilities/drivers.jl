@@ -578,6 +578,9 @@ end
     domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
     surface_space = domain.space.surface
     toml_dict = LP.create_toml_dict(FT)
+    # Fields are only defined over land on the masked domain
+    is_land = Array(parent(ClimaLand.Domains.landsea_mask(domain))) .> 0.5
+    land(field) = Array(parent(field))[is_land]
     plain = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
@@ -611,7 +614,8 @@ end
     # ERA5 stamps hourly mean rates at the end of the hour they average
     rate_offsets = 3600.0 .* (1, 2, 3)
     state_offsets = 3600.0 .* (0.5, 1.5, 2.5)
-    for t0 in (0.0, 7 * 3600.0, 15 * 3600.0)
+    # Hold windows start at start_date + k hold_window
+    for t0 in (0.0, 6 * 3600.0, 15 * 3600.0)
         for (name, offsets) in (
             (:SW_d, rate_offsets),
             (:LW_d, rate_offsets),
@@ -627,13 +631,16 @@ end
             held_input = getproperty(getproperty(held, drivers), name)
             expected = window_mean(plain_input, t0, offsets)
             evaluate!(value, held_input, t0)
-            @test Array(parent(value)) ≈ Array(parent(expected))
+            @test land(value) ≈ land(expected)
             evaluate!(value, held_input, ITime(Int(t0), Second(1), start_date))
-            @test Array(parent(value)) ≈ Array(parent(expected))
+            @test land(value) ≈ land(expected)
+            # Later in the same window: the same mean
+            evaluate!(value, held_input, t0 + 2 * 3600 + 900)
+            @test land(value) ≈ land(expected)
         end
 
         evaluate!(value, held.radiation.frac_diff, t0)
-        @test all(0 .<= Array(parent(value)) .<= 1)
+        @test all(0 .<= land(value) .<= 1)
 
         # Insolation-weighted cos zenith from 12 samples over the window
         insol_params = LP.LandParameters(toml_dict).insol_params
@@ -654,7 +661,7 @@ end
         end
         expected = @. ifelse(sum_μ > 0, sum_μ² / sum_μ, FT(0))
         cosθs = FT.(held.radiation.cosθs(t0, start_date))
-        @test Array(parent(cosθs)) ≈ Array(parent(expected)) atol = 1e-5
+        @test land(cosθs) ≈ land(expected) atol = 1e-5
     end
 end
 
@@ -664,6 +671,9 @@ end
     domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
     surface_space = domain.space.surface
     toml_dict = LP.create_toml_dict(FT)
+    # Fields are only defined over land on the masked domain
+    is_land = Array(parent(ClimaLand.Domains.landsea_mask(domain))) .> 0.5
+    land(field) = Array(parent(field))[is_land]
     plain = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
@@ -703,9 +713,9 @@ end
         steps_mean .= 0
         for i in 0:3
             evaluate!(step, shaped.radiation.SW_d, t0 + 900 * i)
-            @test all(Array(parent(step)) .>= 0)
+            @test all(land(step) .>= 0)
             steps_mean .+= step ./ 4
         end
-        @test Array(parent(steps_mean)) ≈ Array(parent(hourly)) rtol = 1e-4
+        @test land(steps_mean) ≈ land(hourly) rtol = 1e-4
     end
 end
