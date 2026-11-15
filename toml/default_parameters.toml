@@ -36,6 +36,26 @@ type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
 
+# GradualFrozenInfiltration (HTESSEL frozen fraction; IFS CY41R2 Part IV Eqs. 8.70, 8.88)
+
+["frozen_infiltration_thaw_offset"]
+value = 1.0
+type = "float"
+description = "Temperature above freezing at which the frozen fraction of the top soil layer is zero, T_f1 - T_freeze. Units are K"
+tag = "GradualFrozenInfiltration"
+
+["frozen_infiltration_frozen_offset"]
+value = 3.0
+type = "float"
+description = "Temperature below freezing at which the frozen fraction of the top soil layer is one, T_freeze - T_f2. Units are K"
+tag = "GradualFrozenInfiltration"
+
+["frozen_infiltration_wilting_point_matric_potential"]
+value = -153.0
+type = "float"
+description = "Matric potential at the permanent wilting point (-15 bar), where the conductivity of the frozen fraction is evaluated. Units are m"
+tag = "GradualFrozenInfiltration"
+
 # Big leaf energy parameters
 
 ["ac_canopy"]

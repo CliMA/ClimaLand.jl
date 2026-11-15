@@ -14,6 +14,9 @@ ClimaLand.Soil.TOPMODELRunoff
 ClimaLand.Soil.TOPMODELSubsurfaceRunoff
 ClimaLand.Soil.subsurface_runoff_source
 ClimaLand.Soil.update_infiltration_water_flux!
+ClimaLand.Soil.Runoff.AbstractFrozenInfiltration
+ClimaLand.Soil.Runoff.IceImpedanceInfiltration
+ClimaLand.Soil.Runoff.GradualFrozenInfiltration
 ```
 
 ## Soil BC Types and Methods

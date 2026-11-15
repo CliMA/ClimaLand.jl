@@ -19,7 +19,10 @@ export TOPMODELRunoff,
     AbstractRunoffModel,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
-    update_infiltration_water_flux!
+    update_infiltration_water_flux!,
+    AbstractFrozenInfiltration,
+    IceImpedanceInfiltration,
+    GradualFrozenInfiltration
 
 """
     AbstractRunoffModel
@@ -46,6 +49,109 @@ A helper function which returns the subsurface source of the runoff
 model `runoff`.
 """
 subsurface_runoff_source(runoff::AbstractRunoffModel) = runoff.subsurface_source
+
+"""
+    AbstractFrozenInfiltration
+
+Abstract type for the treatment of frozen soil in the infiltration capacity
+at the soil surface. The concrete types only change the infiltration capacity
+(the surface boundary condition); the conductivity of the soil interior is
+not affected.
+"""
+abstract type AbstractFrozenInfiltration end
+
+"""
+    IceImpedanceInfiltration <: AbstractFrozenInfiltration
+
+The default treatment of frozen soil in the infiltration capacity: the
+saturated conductivity of the top soil layer is reduced by the ice impedance
+factor 10^(-Ω f_i), with f_i the ice fraction of the water in the top layer,
+as in the conductivity of the soil interior.
+"""
+struct IceImpedanceInfiltration <: AbstractFrozenInfiltration end
+
+"""
+    GradualFrozenInfiltration{FT} <: AbstractFrozenInfiltration
+
+A treatment of frozen soil in the infiltration capacity following HTESSEL
+(ECMWF IFS Documentation CY41R2, Part IV, Eqs. 8.70 and 8.88; Balsamo et al.
+2009, doi:10.1175/2008JHM1068.1). A frozen fraction of the top soil layer is
+diagnosed from its temperature,
+
+f_fr(T) = 0.5 [1 - sin(π (T - (T_f1 + T_f2)/2) / (T_f1 - T_f2))]
+
+for T_f2 ≤ T ≤ T_f1, with f_fr = 0 above T_f1 and f_fr = 1 below T_f2, where
+T_f1 = T_freeze + ΔT_thaw and T_f2 = T_freeze - ΔT_frozen. The infiltration
+capacity is the weighted mean of the saturated conductivity and of the
+conductivity at the permanent wilting point (matric potential ψ_pwp) of the
+top layer,
+
+i_c = -K_sat [(1 - f_fr) + f_fr K_r(ψ_pwp)] G(T),
+
+with G the viscosity factor, in place of the ice impedance factor of
+[`IceImpedanceInfiltration`](@ref).
+
+$(DocStringExtensions.FIELDS)
+"""
+struct GradualFrozenInfiltration{FT} <: AbstractFrozenInfiltration
+    "Temperature above freezing at which the frozen fraction is zero, T_f1 - T_freeze (K)"
+    ΔT_thaw::FT
+    "Temperature below freezing at which the frozen fraction is one, T_freeze - T_f2 (K)"
+    ΔT_frozen::FT
+    "Matric potential at the permanent wilting point (m), negative"
+    ψ_pwp::FT
+end
+
+"""
+    GradualFrozenInfiltration(
+        toml_dict::CP.ParamDict;
+        ΔT_thaw = toml_dict["frozen_infiltration_thaw_offset"],
+        ΔT_frozen = toml_dict["frozen_infiltration_frozen_offset"],
+        ψ_pwp = toml_dict["frozen_infiltration_wilting_point_matric_potential"],
+    )
+
+Constructs a `GradualFrozenInfiltration` from the global parameters in
+`toml_dict`; defaults are the HTESSEL values (T_f1 = T_freeze + 1 K,
+T_f2 = T_freeze - 3 K, ψ_pwp = -153 m, i.e. -15 bar).
+"""
+function GradualFrozenInfiltration(
+    toml_dict::CP.ParamDict;
+    ΔT_thaw = toml_dict["frozen_infiltration_thaw_offset"],
+    ΔT_frozen = toml_dict["frozen_infiltration_frozen_offset"],
+    ψ_pwp = toml_dict["frozen_infiltration_wilting_point_matric_potential"],
+)
+    FT = CP.float_type(toml_dict)
+    return GradualFrozenInfiltration{FT}(ΔT_thaw, ΔT_frozen, ψ_pwp)
+end
+
+"""
+    frozen_fraction(T::FT, T_freeze::FT, ΔT_thaw::FT, ΔT_frozen::FT) where {FT}
+
+The HTESSEL frozen fraction of soil water diagnosed from temperature (IFS
+Documentation CY41R2, Part IV, Eq. 8.70): 0 above T_freeze + ΔT_thaw,
+1 below T_freeze - ΔT_frozen, and a sine transition in between.
+"""
+function frozen_fraction(
+    T::FT,
+    T_freeze::FT,
+    ΔT_thaw::FT,
+    ΔT_frozen::FT,
+) where {FT}
+    T_f1 = T_freeze + ΔT_thaw
+    T_f2 = T_freeze - ΔT_frozen
+    x = clamp((T - (T_f1 + T_f2) / 2) / (T_f1 - T_f2), -FT(0.5), FT(0.5))
+    return (1 - sin(FT(π) * x)) / 2
+end
+
+"""
+    frozen_infiltration_model(runoff::AbstractRunoffModel)
+
+Returns the treatment of frozen soil in the infiltration capacity used by
+the runoff model `runoff`; [`IceImpedanceInfiltration`](@ref) unless the
+runoff model carries another one.
+"""
+frozen_infiltration_model(runoff::AbstractRunoffModel) =
+    IceImpedanceInfiltration()
 
 """
     NoRunoff <: AbstractRunoffModel
@@ -135,7 +241,12 @@ function update_infiltration_water_flux!(
     model::AbstractSoilModel,
 )
 
-    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
+    ic = soil_infiltration_capacity(
+        frozen_infiltration_model(runoff),
+        model,
+        Y,
+        p,
+    ) # should be non-allocating
     ϑ_l = Y.soil.ϑ_l
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
@@ -195,19 +306,42 @@ use in global climate models".
 
 $(DocStringExtensions.FIELDS)
 """
-struct TOPMODELRunoff{FT <: AbstractFloat, F <: ClimaCore.Fields.Field} <:
-       AbstractRunoffModel
+struct TOPMODELRunoff{
+    FT <: AbstractFloat,
+    F <: ClimaCore.Fields.Field,
+    FI <: AbstractFrozenInfiltration,
+} <: AbstractRunoffModel
     "A calibrated parameter defining how subsurface runoff decays with depth to water table (1/m ; calibrated)"
     f_over::FT
     "The maximum saturated fraction of a grid cell, computed from the topographic index CDF per grid cell."
     f_max::F
     "The subsurface source term corresponding to this implementation of TOPMODEL."
     subsurface_source::TOPMODELSubsurfaceRunoff{FT}
+    "The treatment of frozen soil in the infiltration capacity"
+    frozen_infiltration::FI
 end
 
-function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT, F}
+TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source) where {FT, F} =
+    TOPMODELRunoff{FT, F, IceImpedanceInfiltration}(
+        f_over,
+        f_max,
+        subsurface_source,
+        IceImpedanceInfiltration(),
+    )
+
+function TOPMODELRunoff{FT}(;
+    f_over::FT,
+    f_max::F,
+    R_sb::FT,
+    frozen_infiltration::FI = IceImpedanceInfiltration(),
+) where {FT, F, FI}
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
+    return TOPMODELRunoff{FT, F, FI}(
+        f_over,
+        f_max,
+        subsurface_source,
+        frozen_infiltration,
+    )
 end
 
 function TOPMODELRunoff(
@@ -215,11 +349,19 @@ function TOPMODELRunoff(
     f_max::F,
     f_over = toml_dict["f_over"],
     R_sb = toml_dict["R_sb"],
-) where {F}
+    frozen_infiltration::FI = IceImpedanceInfiltration(),
+) where {F, FI}
     FT = CP.float_type(toml_dict)
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
+    return TOPMODELRunoff{FT, F, FI}(
+        f_over,
+        f_max,
+        subsurface_source,
+        frozen_infiltration,
+    )
 end
+
+frozen_infiltration_model(runoff::TOPMODELRunoff) = runoff.frozen_infiltration
 
 """
     update_infiltration_water_flux!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
@@ -245,7 +387,12 @@ function update_infiltration_water_flux!(
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     # Surface runoff first
-    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
+    ic = soil_infiltration_capacity(
+        frozen_infiltration_model(runoff),
+        model,
+        Y,
+        p,
+    ) # should be non-allocating
     @. p.soil.is_saturated =
         is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
@@ -376,20 +523,44 @@ function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
 end
 
 """
-    soil_infiltration_capacity(model::RichardsModel, Y, p)
+    soil_infiltration_capacity(model::AbstractSoilModel, Y, p)
+
+Computes the soil infiltration capacity on the surface space, using the
+treatment of frozen soil of the runoff model in the top boundary condition
+of `model` (see [`frozen_infiltration_model`](@ref)).
+"""
+soil_infiltration_capacity(model::AbstractSoilModel, Y, p) =
+    soil_infiltration_capacity(
+        frozen_infiltration_model(model.boundary_conditions.top),
+        model,
+        Y,
+        p,
+    )
+
+frozen_infiltration_model(bc) =
+    hasproperty(bc, :runoff) ? frozen_infiltration_model(bc.runoff) :
+    IceImpedanceInfiltration()
+
+"""
+    soil_infiltration_capacity(::AbstractFrozenInfiltration, model::RichardsModel, Y, p)
 
 Computes the soil infiltration capacity on the surface space
  for Richards model.
 
 Currently approximates i_c = -K_sat at the surface.
 """
-function soil_infiltration_capacity(model::RichardsModel, Y, p)
+function soil_infiltration_capacity(
+    ::AbstractFrozenInfiltration,
+    model::RichardsModel,
+    Y,
+    p,
+)
     @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
 """
-    soil_infiltration_capacity(model::EnergyHydrology, Y, p)
+    soil_infiltration_capacity(::IceImpedanceInfiltration, model::EnergyHydrology, Y, p)
 
 Computes the soil infiltration capacity on the surface space
  for the full soil model.
@@ -398,7 +569,12 @@ Currently approximates i_c = -K_sat*F(θ_i)*G(T) at the surface, where F and G
 are the functions which adjust the conductivity for the presence ice and taking into
 account the temperature dependence of the viscosity of water.
 """
-function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
+function soil_infiltration_capacity(
+    ::IceImpedanceInfiltration,
+    model::EnergyHydrology,
+    Y,
+    p,
+)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
 
     @. p.soil.subsfc_scratch =
@@ -411,6 +587,51 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
+"""
+    soil_infiltration_capacity(fi::GradualFrozenInfiltration, model::EnergyHydrology, Y, p)
+
+Computes the soil infiltration capacity on the surface space for the full
+soil model with the HTESSEL treatment of frozen soil (see
+[`GradualFrozenInfiltration`](@ref)):
+i_c = -K_sat [(1 - f_fr(T)) + f_fr(T) K_r(ψ_pwp)] G(T)
+at the surface, with f_fr the frozen fraction diagnosed from the temperature
+of the top layer, K_r(ψ_pwp) the relative conductivity at the permanent
+wilting point and G the viscosity factor.
+"""
+function soil_infiltration_capacity(
+    fi::GradualFrozenInfiltration,
+    model::EnergyHydrology,
+    Y,
+    p,
+)
+    (; K_sat, hydrology_cm, γ, γT_ref, earth_param_set) = model.parameters
+    (; ΔT_thaw, ΔT_frozen, ψ_pwp) = fi
+    FT = eltype(fi.ψ_pwp)
+    T_freeze = LP.T_freeze(earth_param_set)
+    @. p.soil.subsfc_scratch =
+        -K_sat *
+        gradual_frozen_factor(
+            frozen_fraction(p.soil.T, T_freeze, ΔT_thaw, ΔT_frozen),
+            ClimaLand.Soil.hydraulic_conductivity(
+                hydrology_cm,
+                FT(1),
+                ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_pwp),
+            ),
+        ) *
+        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
+    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+end
+
+"""
+    gradual_frozen_factor(f_fr::FT, K_r_pwp::FT) where {FT}
+
+The factor (1 - f_fr) + f_fr K_r_pwp multiplying the saturated conductivity in
+the infiltration capacity of [`GradualFrozenInfiltration`](@ref), with f_fr
+the frozen fraction and K_r_pwp the relative conductivity at the permanent
+wilting point.
+"""
+gradual_frozen_factor(f_fr::FT, K_r_pwp::FT) where {FT} =
+    (1 - f_fr) + f_fr * K_r_pwp
 
 """
     topmodel_ss_flux(R_sb::FT, f_over::FT, z∇::FT) where {FT}

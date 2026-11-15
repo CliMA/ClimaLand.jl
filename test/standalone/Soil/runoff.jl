@@ -381,3 +381,197 @@ end
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
 end
+
+@testset "Gradual frozen infiltration, pointwise FT = $FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    fi = Runoff.GradualFrozenInfiltration(toml_dict)
+    @test fi isa Runoff.AbstractFrozenInfiltration
+    @test fi.ΔT_thaw == FT(1)
+    @test fi.ΔT_frozen == FT(3)
+    @test fi.ψ_pwp == FT(-153)
+    T0 = FT(273.16)
+    ff(T) = Runoff.frozen_fraction(FT(T), T0, fi.ΔT_thaw, fi.ΔT_frozen)
+    @test ff(T0 + 5) == 0
+    @test ff(T0 + 1) == 0
+    @test ff(T0 - 1) ≈ FT(0.5)
+    # HTESSEL: about 0.15 at 0 °C (IFS CY41R2 Part IV Eq. 8.70)
+    @test ff(T0) ≈ (1 - sin(FT(π) / 4)) / 2
+    @test ff(T0 - 3) == 1
+    @test ff(T0 - 20) == 1
+    Ts = range(T0 - 5, T0 + 3; length = 81)
+    @test issorted(ff.(Ts); rev = true)
+    @test all(0 .<= ff.(Ts) .<= 1)
+    @test eltype(ff.(Ts)) == FT
+    # the factor multiplying K_sat blends 1 and K_r(ψ_pwp)
+    @test Runoff.gradual_frozen_factor(FT(0), FT(1e-6)) == 1
+    @test Runoff.gradual_frozen_factor(FT(1), FT(1e-6)) == FT(1e-6)
+    @test Runoff.gradual_frozen_factor(FT(0.5), FT(0)) == FT(0.5)
+    # Overriding the global parameters
+    fi2 = Runoff.GradualFrozenInfiltration(toml_dict; ΔT_thaw = FT(0.5))
+    @test fi2.ΔT_thaw == FT(0.5)
+    @test fi2.ΔT_frozen == FT(3)
+    # Default option of TOPMODELRunoff is the ice impedance
+    f_max = ClimaCore.Fields.zeros(
+        ClimaLand.Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = 5).space.surface,
+    )
+    r0 = Runoff.TOPMODELRunoff(toml_dict; f_max)
+    @test r0.frozen_infiltration isa Runoff.IceImpedanceInfiltration
+    @test Runoff.frozen_infiltration_model(r0) isa
+          Runoff.IceImpedanceInfiltration
+    r1 = Runoff.TOPMODELRunoff(toml_dict; f_max, frozen_infiltration = fi)
+    @test Runoff.frozen_infiltration_model(r1) === fi
+    r2 = Runoff.TOPMODELRunoff{FT}(;
+        f_over = FT(3.28),
+        f_max,
+        R_sb = FT(1e-4),
+        frozen_infiltration = fi,
+    )
+    @test r2.frozen_infiltration === fi
+    @test Runoff.frozen_infiltration_model(Runoff.SurfaceRunoff()) isa
+          Runoff.IceImpedanceInfiltration
+end
+
+@testset "EnergyHydrology model, TOPMODEL runoff with gradual frozen infiltration FT =$FT" begin
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = FT(6300e3),
+        depth = FT(50.0),
+        nelements = (10, 15),
+        dz_tuple = FT.((5.0, 0.05)),
+    )
+    toml_dict = LP.create_toml_dict(FT)
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        DateTime(2008),
+        DateTime(2009),
+        domain.space.surface,
+        toml_dict,
+        FT;
+        max_wind_speed = 25.0,
+        use_lowres_forcing = true,
+    )
+    forcing = (; atmos, radiation)
+    fi = Runoff.GradualFrozenInfiltration(toml_dict)
+    f_max = ClimaLand.Soil.topmodel_fmax(domain.space.surface, FT)
+    runoff = Runoff.TOPMODELRunoff(toml_dict; f_max, frozen_infiltration = fi)
+    model_default =
+        ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
+    model =
+        ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict; runoff)
+    @test model.boundary_conditions.top.runoff.frozen_infiltration === fi
+
+    T0 = LP.T_freeze(model.parameters.earth_param_set)
+    surface_space = domain.space.surface
+    lat = ClimaCore.Fields.coordinate_field(domain.space.subsurface).lat
+    function init(model)
+        Y, p, t = initialize(model)
+        z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
+        Y.soil.ϑ_l .= FT(0.6) .- FT(0.3 / 50) .* (z .+ FT(50))
+        # Ice everywhere, and temperatures from T0 - 6 K to T0 + 6 K, so
+        # that the default ice impedance is large everywhere while the
+        # frozen fraction spans [0, 1].
+        Y.soil.θ_i .= FT(0.1)
+        T = @. T0 + FT(6) * sind(lat)
+        ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            model.parameters.earth_param_set,
+        )
+        Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            model.parameters.earth_param_set,
+        )
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, FT(0))
+        return Y, p
+    end
+    # Note: models built on the same domain share cache storage, so the
+    # default model is initialized only after the checks on `model`.
+    Y, p = init(model)
+
+    # The 3-argument method uses the option of the runoff model
+    ic = similar(p.soil.R_s)
+    ic .= Runoff.soil_infiltration_capacity(model, Y, p)
+    @test ic == Runoff.soil_infiltration_capacity(fi, model, Y, p)
+    # Ice impedance capacity of the same state
+    ic_default = similar(ic)
+    ic_default .= Runoff.soil_infiltration_capacity(
+        Runoff.IceImpedanceInfiltration(),
+        model,
+        Y,
+        p,
+    )
+    # The infiltration uses the gradual infiltration capacity
+    Runoff.update_infiltration_water_flux!(
+        p,
+        runoff,
+        p.drivers.P_liq,
+        Y,
+        FT(0),
+        model,
+    )
+    # (the surface runoff uses the water table height including ice; p.soil.h∇
+    # holds the liquid-only one after the update)
+    h∇_ice = ClimaCore.zeros(surface_space)
+    (; ν, θ_r) = model.parameters
+    ClimaCore.Operators.column_integral_definite!(
+        h∇_ice,
+        ClimaLand.heaviside.(Y.soil.ϑ_l .+ Y.soil.θ_i .- ν) .*
+        (Y.soil.ϑ_l .+ Y.soil.θ_i .- θ_r) ./ (ν .- θ_r),
+    )
+    infil = similar(ic)
+    infil .= Runoff.topmodel_surface_infiltration.(
+        runoff.f_max,
+        runoff.f_over,
+        model.domain.depth .- h∇_ice,
+        ic,
+        p.drivers.P_liq,
+    )
+    @test Array(parent(p.soil.infiltration)) ≈ Array(parent(infil))
+    # Expected values on the top layer
+    (; K_sat, hydrology_cm, γ, γT_ref) = model.parameters
+    top(x) = ClimaLand.Domains.top_center_to_surface(x)
+    T_sfc = similar(ic)
+    T_sfc .= top(p.soil.T)
+    ff = similar(ic)
+    ff .= Runoff.frozen_fraction.(T_sfc, T0, fi.ΔT_thaw, fi.ΔT_frozen)
+    K_r_pwp = similar(p.soil.T)
+    K_r_pwp .= ClimaLand.Soil.hydraulic_conductivity.(
+        hydrology_cm,
+        FT(1),
+        ClimaLand.Soil.inverse_matric_potential.(hydrology_cm, fi.ψ_pwp),
+    )
+    K_max = similar(p.soil.T)
+    K_max .= .-K_sat .* ClimaLand.Soil.viscosity_factor.(p.soil.T, γ, γT_ref)
+    expected = similar(ic)
+    expected .= top(K_max) .* Runoff.gradual_frozen_factor.(ff, top(K_r_pwp))
+    @test Array(parent(ic)) ≈ Array(parent(expected))
+    # Unfrozen top layer (T ≥ T0 + 1 K): no reduction despite the ice, and
+    # larger than with the ice impedance. Fully frozen (T ≤ T0 - 3 K):
+    # capacity reduced to the conductivity at the wilting point.
+    ff_a = Array(parent(ff))
+    ic_a = Array(parent(ic))
+    icd_a = Array(parent(ic_default))
+    Kmax_a = Array(parent(top(K_max)))
+    Krp_a = Array(parent(top(K_r_pwp)))
+    warm = ff_a .== 0
+    cold = ff_a .== 1
+    @test any(warm) && any(cold) && any(0 .< ff_a .< 1)
+    @test ic_a[warm] ≈ Kmax_a[warm]
+    @test all(ic_a[warm] .< icd_a[warm])
+    @test ic_a[cold] ≈ Kmax_a[cold] .* Krp_a[cold]
+    @test all(0 .<= Krp_a .< FT(1e-3))
+    # The interior conductivity does not depend on the option
+    K_gradual = copy(Array(parent(p.soil.K)))
+    T_gradual = copy(Array(parent(p.soil.T)))
+    Yd, pd = init(model_default)
+    @test Array(parent(pd.soil.K)) == K_gradual
+    @test Array(parent(pd.soil.T)) == T_gradual
+    # The default model keeps the ice impedance
+    @test model_default.boundary_conditions.top.runoff.frozen_infiltration isa
+          Runoff.IceImpedanceInfiltration
+    ic_d = similar(ic)
+    ic_d .= Runoff.soil_infiltration_capacity(model_default, Yd, pd)
+    @test ic_d == ic_default
+end
