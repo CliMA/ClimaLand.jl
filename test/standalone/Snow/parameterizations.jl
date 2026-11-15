@@ -350,6 +350,32 @@ for FT in (Float32, Float64)
                (FT(0.6) + (FT(0.1) * exp(-FT(2) * FT(0.5))))
         )
 
+        # The zenith term applies to direct light only: diffuse light uses the
+        # hemispheric integral of the direct-beam albedo
+        α_diff = FT(0.6) + 2 * FT(0.1) * (1 - 3 * exp(-FT(2))) / 4
+        @test Snow.diffuse_snow_albedo(m) ≈ α_diff
+        dμ = FT(1 / 20000)
+        μ = FT.(0:20000) .* dμ
+        @test Snow.diffuse_snow_albedo(m) ≈
+              sum(@. 2 * μ * (FT(0.6) + FT(0.1) * exp(-2μ))) * dμ rtol = 1e-3
+        @test Snow.diffuse_snow_albedo(
+            Snow.ZenithAngleAlbedoModel(FT(0.6), FT(0.1), FT(0)),
+        ) ≈ FT(0.7)
+        for f_d in FT.([0, 0.4, 1])
+            p_d = (;
+                snow = p.snow,
+                drivers = (; cosθs = FT(0.2), frac_diff = f_d),
+            )
+            update_snow_albedo!(α_snow, m, nothing, p_d, 0.0, param_set)
+            @test all(
+                @. α_snow ≈
+                   min(1 - FT(0.7) * (ρ_snow / FT(1000) - FT(0.2)), 1) * (
+                    (1 - f_d) * (FT(0.6) + FT(0.1) * exp(-FT(2) * FT(0.2))) +
+                    f_d * α_diff
+                )
+            )
+        end
+
         # test physical limits
         x0 = FT.([0, 1])
         β = FT.([0, 1])

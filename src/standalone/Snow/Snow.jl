@@ -121,6 +121,11 @@ are free parameters. The factor out front is a function of
 x = ρ\\_snow/ρ\\_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
 x0 ∈ [0,1] and β ∈ [0,1] are free. Choose β = 0 to remove this dependence on snow density.
 
+The zenith-angle term applies to the direct beam. Diffuse light, a fraction
+`frac_diff` of the shortwave, uses the cosine-weighted hemispheric integral
+of the direct-beam albedo, α\\_0 + 2Δα[1 - (1 + k)exp(-k)]/k², so the albedo
+is f(x)[(1 - frac\\_diff)(α\\_0 + Δα exp(-k cos θs)) + frac\\_diff α\\_diff].
+
 Note: If this choice is used, the field cosθs must appear in the cache
 p.drivers. This is available through the PrescribedRadiativeFluxes object.
 """
