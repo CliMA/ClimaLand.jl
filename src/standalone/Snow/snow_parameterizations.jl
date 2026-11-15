@@ -46,11 +46,42 @@ function update_snow_albedo!(
 )
     FT = eltype(earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    # The zenith-angle term applies to the direct beam only. Diffuse light has
+    # no single zenith angle; its albedo is the cosine-weighted hemispheric
+    # integral of the direct-beam albedo, 2∫₀¹ μ (α_0 + Δα exp(-kμ)) dμ.
+    α_diff = diffuse_snow_albedo(m)
+    frac_diff = diffuse_fraction(p.drivers, FT)
     @. α =
-        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) *
-        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
+        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) * (
+            (1 - frac_diff) *
+            (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT)))) +
+            frac_diff * α_diff
+        )
     @. α = max(min(α, 1), 0)
 end
+
+"""
+    diffuse_snow_albedo(m::ZenithAngleAlbedoModel{FT}) where {FT}
+
+Returns the albedo of fresh snow (before the density factor) for diffuse
+light under the ZenithAngleAlbedoModel: the cosine-weighted hemispheric
+integral of the direct-beam albedo α_0 + Δα exp(-kμ),
+α_0 + 2Δα [1 - (1 + k) exp(-k)] / k², which tends to α_0 + Δα as k → 0.
+"""
+function diffuse_snow_albedo(m::ZenithAngleAlbedoModel{FT}) where {FT}
+    k = m.k
+    return k > sqrt(eps(FT)) ?
+           m.α_0 + 2 * m.Δα * (1 - (1 + k) * exp(-k)) / k^2 : m.α_0 + m.Δα
+end
+
+"""
+    diffuse_fraction(drivers, FT)
+
+Returns the diffuse fraction of shortwave radiation from the drivers cache,
+or zero (all light direct) if the drivers do not carry it.
+"""
+diffuse_fraction(drivers, ::Type{FT}) where {FT} =
+    hasproperty(drivers, :frac_diff) ? drivers.frac_diff : FT(0)
 
 """
     update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}

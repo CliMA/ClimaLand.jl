@@ -2,6 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- `ZenithAngleAlbedoModel` applies the zenith-angle term to direct light only; diffuse light
+  uses the cosine-weighted hemispheric integral of the direct-beam snow albedo.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
