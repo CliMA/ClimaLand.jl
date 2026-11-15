@@ -608,18 +608,33 @@ function soil_infiltration_capacity(
     (; ΔT_thaw, ΔT_frozen, ψ_pwp) = fi
     FT = eltype(fi.ψ_pwp)
     T_freeze = LP.T_freeze(earth_param_set)
-    @. p.soil.subsfc_scratch =
-        -K_sat *
+    # Evaluated on the top layer only, into the top level of the scratch field.
+    # The top-level views of the other fields are put on the same surface space
+    # (scalars pass through).
+    ic = ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+    sfc_space = axes(ic)
+    top(x::ClimaCore.Fields.Field) = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaLand.Domains.top_center_to_surface(x),
+        ),
+        sfc_space,
+    )
+    top(x) = x
+    T_sfc = top(p.soil.T)
+    cm_sfc = top(hydrology_cm)
+    K_sat_sfc = top(K_sat)
+    @. ic =
+        -K_sat_sfc *
         gradual_frozen_factor(
-            frozen_fraction(p.soil.T, T_freeze, ΔT_thaw, ΔT_frozen),
+            frozen_fraction(T_sfc, T_freeze, ΔT_thaw, ΔT_frozen),
             ClimaLand.Soil.hydraulic_conductivity(
-                hydrology_cm,
+                cm_sfc,
                 FT(1),
-                ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_pwp),
+                ClimaLand.Soil.inverse_matric_potential(cm_sfc, ψ_pwp),
             ),
         ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
-    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+        ClimaLand.Soil.viscosity_factor(T_sfc, γ, γT_ref)
+    return ic
 end
 
 """
