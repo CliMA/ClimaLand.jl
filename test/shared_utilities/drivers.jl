@@ -611,11 +611,13 @@ ClimaLand.evaluate!(dest, input::FieldInput, t, args...; kwargs...) =
 
     # values missing at the start date, and one more missing later only
     field = ClimaCore.Fields.coordinate_field(surface_space).lat .+ FT(100)
-    values = parent(field)
-    expected = copy(vec(Array(values)))
-    vec(values)[invalid] .= NaN
+    expected = vec(Array(parent(field)))
     later = first(m for m in 1:n if m ∉ invalid && m ∉ Array(src))
-    vec(values)[later] = NaN
+    with_nan = copy(expected)
+    with_nan[invalid] .= NaN
+    with_nan[later] = NaN
+    # set on the host and copied, so that the test also runs on GPUs
+    copyto!(parent(field), reshape(with_nan, size(parent(field))))
     filled =
         ClimaLand.NaNFilledInput(FieldInput(field), dst, src, active, neighbors)
     dest = ClimaCore.Fields.zeros(surface_space)
