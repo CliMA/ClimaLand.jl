@@ -5,6 +5,7 @@ using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeManager: ITime
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
@@ -569,4 +570,93 @@ end
           (1 * 1 + 1 * 3) / 2
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
+end
+
+# A test input whose values are a given field, NaNs included
+struct FieldInput{F} <: ClimaLand.AbstractTimeVaryingInput
+    field::F
+end
+ClimaLand.evaluate!(dest, input::FieldInput, t, args...; kwargs...) =
+    (dest .= input.field; nothing)
+
+@testset "Missing forcing values filled from the nearest valid nodes" begin
+    FT = Float64
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        apply_mask = false,
+        nelements = (6, 12, 15),
+    )
+    surface_space = domain.space.surface
+    coords = ClimaCore.Fields.coordinate_field(surface_space)
+    lat = vec(Array(parent(coords.lat)))
+    lon = vec(Array(parent(coords.long)))
+    n = length(lat)
+    cosdist(i, j) =
+        cosd(lat[i]) * cosd(lat[j]) * cosd(lon[i] - lon[j]) +
+        sind(lat[i]) * sind(lat[j])
+
+    invalid = [3, 17, 40]
+    valid = trues(n)
+    valid[invalid] .= false
+    dst, src, active, neighbors =
+        ClimaLand.nearest_valid_nodes(surface_space, valid; k = 2)
+    @test Array(dst) == invalid
+    for (i, j) in zip(Array(dst), Array(src))
+        @test j ∉ invalid
+        @test all(cosdist(i, j) >= cosdist(i, m) for m in 1:n if m ∉ invalid)
+    end
+    @test Array(active) == 1:n
+    @test all(Array(neighbors)[i, m] != i for i in 1:n, m in 1:2)
+    @test all(Array(neighbors)[i, m] ∉ invalid for i in 1:n, m in 1:2)
+
+    # values missing at the start date, and one more missing later only
+    field = ClimaCore.Fields.coordinate_field(surface_space).lat .+ FT(100)
+    values = parent(field)
+    expected = copy(vec(Array(values)))
+    vec(values)[invalid] .= NaN
+    later = first(m for m in 1:n if m ∉ invalid && m ∉ Array(src))
+    vec(values)[later] = NaN
+    filled =
+        ClimaLand.NaNFilledInput(FieldInput(field), dst, src, active, neighbors)
+    dest = ClimaCore.Fields.zeros(surface_space)
+    ClimaLand.evaluate!(dest, filled, 0.0)
+    out = vec(Array(parent(dest)))
+    @test out[invalid] == expected[Array(src)]
+    @test out[later] == expected[Array(neighbors)[later, 1]]
+    @test !any(isnan, out)
+end
+
+@testset "Zenith-scaled shortwave keeps the window means" begin
+    FT = Float64
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        apply_mask = false,
+        nelements = (6, 12, 15),
+    )
+    surface_space = domain.space.surface
+    start_date = DateTime(2000, 1, 1)
+    window_mean = TimeVaryingInput((t) -> FT(100))
+    # the sun rises at 6:00 and sets at 18:00 everywhere
+    cos_zenith = (t, start_date) -> -cospi(2 * float(t) / 86400)
+    sw = ClimaLand.ZenithScaledShortwave(
+        window_mean,
+        cos_zenith,
+        start_date,
+        surface_space,
+    )
+    dest = ClimaCore.Fields.zeros(surface_space)
+    for window in 1:2 # 6:00-12:00 and 12:00-18:00
+        samples =
+            [(window * 21600 + (2k + 1) * 21600 ÷ 24) for k in 0:(sw.nsub - 1)]
+        total = zeros(size(parent(dest)))
+        for s in samples
+            ClimaLand.evaluate!(dest, sw, ITime(s; epoch = start_date))
+            @test all(parent(dest) .>= 0)
+            total .+= Array(parent(dest)) ./ sw.nsub
+        end
+        @test all(isapprox.(total, 100; rtol = 1e-12))
+    end
+    # at night (18:00-24:00) the mean of max(cosθ, 0) is zero: the window mean is kept
+    ClimaLand.evaluate!(dest, sw, ITime(3 * 21600 + 3600; epoch = start_date))
+    @test all(parent(dest) .== 100)
 end

@@ -12,6 +12,13 @@ main
   `slit` are in the short diagnostics, and the leaderboard compares the steady-state soil
   carbon with SoilGrids (`soil_carbon_steady_state.png`).
   PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
+- ![][badge-✨feature] Add two options to `prescribed_forcing_crujra`, both off by default.
+  `fill_missing = true` gives the land nodes where CRU-JRA is missing (near coasts, in
+  Antarctica, and a few precipitation and pressure values at some times) the value of the
+  nearest valid node (`NaNFilledInput`, `nearest_valid_nodes`).
+  `zenith_scaled_shortwave = true` spreads each 6-hourly shortwave mean with the cosine of
+  the solar zenith angle, keeping the mean, instead of interpolating it linearly
+  (`ZenithScaledShortwave`).
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

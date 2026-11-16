@@ -2202,6 +2202,180 @@ function empirical_diffuse_fraction(
 end
 
 """
+    NaNFilledInput{T, I, M} <: AbstractTimeVaryingInput
+
+Wraps a `TimeVaryingInput` whose regridded values are NaN at some nodes (gridded data
+that is missing over parts of the domain, or at some times): after evaluating `input`,
+the value at each node of linear index `dst[k]` of the parent array is replaced by the
+value at `src[k]`, its nearest valid node ([`nearest_valid_nodes`](@ref)). Nodes of
+`active` that are still NaN (data missing at later times only) then take the value of
+the first of their nearest valid nodes, the columns of `neighbors`, that is not NaN.
+"""
+struct NaNFilledInput{T, I, M} <: AbstractTimeVaryingInput
+    input::T
+    dst::I
+    src::I
+    active::I
+    neighbors::M
+end
+
+NaNFilledInput(input, dst, src) =
+    NaNFilledInput(input, dst, src, similar(dst, 0), similar(dst, 0, 0))
+
+function evaluate!(dest, filled::NaNFilledInput, t, args...; kwargs...)
+    evaluate!(dest, filled.input, t, args...; kwargs...)
+    values = parent(dest)
+    values[filled.dst] .= values[filled.src]
+    isempty(filled.active) && return nothing
+    on_active = view(values, filled.active)
+    for k in axes(filled.neighbors, 2)
+        any(isnan, on_active) || break
+        neighbor_values = values[view(filled.neighbors, :, k)]
+        @. on_active = ifelse(isnan(on_active), neighbor_values, on_active)
+    end
+    return nothing
+end
+
+"""
+    ZenithScaledShortwave <: AbstractTimeVaryingInput
+
+Instantaneous downwelling shortwave radiation from window means, such as the 6-hourly
+means of CRU-JRA stamped at the start of each window: the mean of the window containing
+`t`, times `max(cosθ(t), 0)` divided by the window mean of `max(cosθ, 0)` (sampled at
+`nsub` points), which keeps the window mean and puts the light when the sun is up. Where
+the sun barely rises in the window (mean `max(cosθ, 0)` below 0.01), the window mean is
+used as it is.
+
+`input` evaluated at a window start gives that window's mean, `cos_zenith(t, start_date)`
+the cosine of the solar zenith angle as a broadcastable expression, and `window` the
+length of the window (s), counted from midnight of the start date.
+"""
+mutable struct ZenithScaledShortwave{T, C, D, F} <: AbstractTimeVaryingInput
+    input::T
+    cos_zenith::C
+    start_date::D
+    window::Int
+    nsub::Int
+    mean_cos::F
+    cached_window::Int
+end
+
+function ZenithScaledShortwave(
+    input,
+    cos_zenith,
+    start_date,
+    surface_space;
+    window = 21600,
+    nsub = 12,
+)
+    return ZenithScaledShortwave(
+        input,
+        cos_zenith,
+        start_date,
+        window,
+        nsub,
+        ClimaCore.Fields.zeros(surface_space),
+        -1,
+    )
+end
+
+function evaluate!(dest, sw::ZenithScaledShortwave, t, args...; kwargs...)
+    seconds = Dates.value(Second(date(t) - sw.start_date))
+    window_index = fld(seconds, sw.window)
+    window_start = window_index * sw.window
+    evaluate!(
+        dest,
+        sw.input,
+        ITime(window_start; epoch = sw.start_date),
+        args...;
+        kwargs...,
+    )
+    if window_index != sw.cached_window
+        sw.mean_cos .= 0
+        for k in 0:(sw.nsub - 1)
+            sample = window_start + (2k + 1) * sw.window ÷ (2 * sw.nsub)
+            cosθ = sw.cos_zenith(
+                ITime(sample; epoch = sw.start_date),
+                sw.start_date,
+            )
+            @. sw.mean_cos += max(cosθ, 0) / sw.nsub
+        end
+        sw.cached_window = window_index
+    end
+    cosθ = sw.cos_zenith(t, sw.start_date)
+    FT = eltype(dest)
+    @. dest =
+        ifelse(sw.mean_cos > FT(0.01), dest * max(cosθ, 0) / sw.mean_cos, dest)
+    return nothing
+end
+
+"""
+    nearest_valid_nodes(surface_space, valid; k = 0)
+
+For the active nodes of `surface_space` (those not masked out) where `valid` (a Boolean
+array with the layout of the parent array of a surface field) is false, the linear
+indices of these nodes and of their nearest active valid node by great-circle distance,
+as device arrays. Masked nodes are never written, so they hold no data.
+
+With `k > 0`, also the linear indices of all active nodes and a matrix whose row `i`
+holds the `k` nearest active valid nodes of the `i`-th one, other than itself, nearest
+first.
+"""
+function nearest_valid_nodes(surface_space, valid; k = 0)
+    coords = ClimaCore.Fields.coordinate_field(surface_space)
+    lat = vec(Array(parent(coords.lat)))
+    lon = vec(Array(parent(coords.long)))
+    valid = vec(Array(valid))
+    mask = ClimaCore.Spaces.get_mask(surface_space)
+    active =
+        mask isa ClimaCore.DataLayouts.NoMask ? trues(length(valid)) :
+        vec(Array(parent(mask.is_active)))
+    xyz(i) =
+        (cosd(lat[i]) * cosd(lon[i]), cosd(lat[i]) * sind(lon[i]), sind(lat[i]))
+    good = findall(active .& valid)
+    good_xyz = [xyz(i) for i in good]
+    dst = findall(active .& .!valid)
+    src = similar(dst)
+    for (n, i) in enumerate(dst)
+        a = xyz(i)
+        best = -2.0
+        for (j, b) in zip(good, good_xyz)
+            d = a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+            if d > best
+                best = d
+                src[n] = j
+            end
+        end
+    end
+    ArrayType = ClimaComms.array_type(ClimaComms.device(surface_space))
+    k == 0 && return ArrayType(dst), ArrayType(src)
+    all_active = findall(active)
+    neighbors = zeros(Int, length(all_active), k)
+    best = fill(-2.0, k)
+    for (n, i) in enumerate(all_active)
+        a = xyz(i)
+        best .= -2.0
+        for (j, b) in zip(good, good_xyz)
+            j == i && continue
+            d = a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+            d > best[k] || continue
+            m = k
+            while m > 1 && d > best[m - 1]
+                best[m] = best[m - 1]
+                neighbors[n, m] = neighbors[n, m - 1]
+                m -= 1
+            end
+            best[m] = d
+            neighbors[n, m] = j
+        end
+    end
+    return ArrayType(dst),
+    ArrayType(src),
+    ArrayType(all_active),
+    ArrayType(neighbors)
+end
+
+"""
     prescribed_forcing_crujra(start_date,
                               stop_date,
                               surface_space,
@@ -2213,10 +2387,25 @@ end
                               time_interpolation_method = LinearInterpolation(),
                               regridder_type = :InterpolationsRegridder,
                               context = nothing,
+                              fill_missing = false,
+                              zenith_scaled_shortwave = false,
                              )
 
 Construct `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` drivers from
 the CRU-JRA reanalysis NetCDF data.
+
+CRU-JRA has data over land only, without Antarctica, and is missing (NaN) elsewhere, so
+land points of the model near coasts, and in Antarctica, sample NaNs. With
+`fill_missing = true`, every input takes at these nodes the value of the nearest node
+where the air temperature is valid at the start date, and where a value is missing at a
+later time only (a few precipitation values are), that of the nearest of 8 valid nodes
+where it is present ([`NaNFilledInput`](@ref)).
+
+The shortwave radiation of CRU-JRA is a 6-hourly mean stamped at the start of its window;
+interpolated linearly in time, it puts about a fifth of the daily light at night and its
+peak hours early. With `zenith_scaled_shortwave = true`, the downwelling shortwave follows
+the cosine of the solar zenith angle within each window instead
+([`ZenithScaledShortwave`](@ref)).
 
 Time handling
 - Defaults to `LinearInterpolation()` in time (no periodic extrapolation).
@@ -2246,6 +2435,8 @@ function prescribed_forcing_crujra(
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
+    fill_missing = false,
+    zenith_scaled_shortwave = false,
 )
 
     crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
@@ -2338,6 +2529,16 @@ function prescribed_forcing_crujra(
     )
     h_atmos = FT(10)
 
+    if fill_missing
+        probe = ClimaCore.Fields.zeros(surface_space)
+        evaluate!(probe, T_atmos, ITime(0; epoch = start_date))
+        dst, src, active, neighbors =
+            nearest_valid_nodes(surface_space, .!isnan.(parent(probe)); k = 8)
+        fill_nan = input -> NaNFilledInput(input, dst, src, active, neighbors)
+        precip, snow_precip, T_atmos, u_atmos, q_atmos, P_atmos =
+            fill_nan.((precip, snow_precip, T_atmos, u_atmos, q_atmos, P_atmos))
+    end
+
     atmos = PrescribedAtmosphere(
         precip,
         snow_precip,
@@ -2400,6 +2601,18 @@ function prescribed_forcing_crujra(
             longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
             insol_params = earth_param_set.insol_params,
         )
+
+    if fill_missing
+        SW_d, LW_d, frac_diff = fill_nan.((SW_d, LW_d, frac_diff))
+    end
+    if zenith_scaled_shortwave
+        SW_d = ZenithScaledShortwave(
+            SW_d,
+            cos_zenith_angle,
+            start_date,
+            surface_space,
+        )
+    end
 
     radiation = PrescribedRadiativeFluxes(
         FT,
