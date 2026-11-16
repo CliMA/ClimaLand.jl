@@ -55,8 +55,11 @@ equilibrium; `APPLY_SOC=0` keeps the SOC.
 | A5 | offline | C4 `accum_1889`, `spun_1889` | `damm_choice.jl … 0 1 1` (the override values) | `state_damm` (SOC 0–1 m 2,156 Pg C) |
 | C5 | 1890–1909 | A5 `state_damm` | override, `SPINUP=pools_soc`, `APPLY_SOC=0` | **`spun_1909`, the 1850 state**; NBP 2.14 Pg C/yr |
 
-`o2_soc_change.jl` computes the SOC drift by layer, band and column between two states,
-and `soc_spinup_figure.jl` compares a state's SOC with SoilGrids.
+`o2_soc_change.jl` computes the SOC drift by layer, band and column between two states.
+`state_to_netcdf.jl` writes a state as the NetCDF file of the ClimaArtifacts initial
+condition (every field of `Y`, read back and checked bit for bit), and
+`soc_spinup_figure.jl` compares the SOC of a state (HDF5 or that NetCDF file) with
+SoilGrids.
 
 ## The state at the end (C5, `spun_1909`)
 

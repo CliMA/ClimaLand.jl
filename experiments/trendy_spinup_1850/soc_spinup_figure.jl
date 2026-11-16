@@ -5,12 +5,14 @@
 # points), with the depth weights of `damm_choice.jl`; land north of 60°S.
 #
 # Usage (CPU job):
-#   julia --project=.buildkite soc_spinup_figure.jl <state.hdf5> <out_dir> [<title note>]
+#   julia --project=.buildkite soc_spinup_figure.jl <state.hdf5 or state.nc> <out_dir> [<title note>]
+# The state is a checkpoint (HDF5) or its NetCDF copy from state_to_netcdf.jl.
 # Writes <out_dir>/soc_spinup_1850_vs_soilgrids.png and .csv (totals by band, Pg C).
 import ClimaComms
 import ClimaCore
 using ClimaLand
 import CairoMakie as CM
+using NCDatasets
 using Printf
 
 const FT = Float64
@@ -40,7 +42,19 @@ column(x, w) = vec(sum(x .* w; dims = 1))   # kg C m⁻²
 sg_field = ClimaCore.Fields.zeros(domain.space.subsurface)
 ClimaLand.Simulations.set_soilco2_SOC_from_soilgrids!(sg_field)
 soilgrids = Array(parent(sg_field))[:, 1, 1, 1, nodes]
-soc = read_dataset(state_path, "Y", "soilco2", "SOC")[:, 1, 1, 1, nodes]
+# lon × lat indices of the nodes (1° grid)
+ulon = sort(unique(round.(lon_all; digits = 4)))
+ulat = sort(unique(round.(lat_all; digits = 4)))
+ilon = [searchsortedfirst(ulon, round(x; digits = 4)) for x in lon]
+ilat = [searchsortedfirst(ulat, round(x; digits = 4)) for x in lat]
+soc = if endswith(state_path, ".nc")
+    NCDataset(state_path) do ds
+        grid = Array(ds["soilco2_SOC"])   # lon × lat × z
+        [grid[ilon[i], ilat[i], l] for l in 1:nz, i in 1:nl]
+    end
+else
+    read_dataset(state_path, "Y", "soilco2", "SOC")[:, 1, 1, 1, nodes]
+end
 ok = [all(isfinite, view(soc, :, i)) && all(isfinite, view(soilgrids, :, i)) for i in 1:nl]
 println("state ", state_path, "\nland nodes north of 60°S ", nl, ", left out (non-finite) ", count(!, ok))
 
@@ -60,11 +74,7 @@ for (name, lo, hi) in BANDS
 end
 write(joinpath(out_dir, "soc_spinup_1850_vs_soilgrids.csv"), join(rows, "\n") * "\n")
 
-# lon × lat maps from the coordinate values (1° grid)
-ulon = sort(unique(round.(lon_all; digits = 4)))
-ulat = sort(unique(round.(lat_all; digits = 4)))
-ilon = [searchsortedfirst(ulon, round(x; digits = 4)) for x in lon]
-ilat = [searchsortedfirst(ulat, round(x; digits = 4)) for x in lat]
+# lon × lat maps
 function to_map(x)
     out = fill(NaN, length(ulon), length(ulat))
     for i in 1:nl
