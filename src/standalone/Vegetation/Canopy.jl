@@ -571,33 +571,34 @@ end
     BeerLambertModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
+        radiation_parameters = (; α_PAR_leaf = toml_dict["constant_a_par_leaf"], α_NIR_leaf = toml_dict["constant_a_nir_leaf"], G_Function = CLMGFunction(toml_dict["constant_chi_l"]), Ω = FT(1)),
         ϵ_canopy::FT = toml_dict["canopy_emissivity"],
         K_lw = toml_dict["canopy_K_lw"]
     ) where {FT <: AbstractFloat}
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
-
-Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
-In particular, this function returns a field for
+In particular, this function uses constant values for
 - clumping index `Ω`
 - leaf angle distribution `G_Function`
-- albedo and transmissitivy in PAR and NIR bands (`α_PAR_leaf`, `τ_PAR_leaf`, `α_NIR_leaf`, `τ_NIR_leaf`)
+- albedo in PAR and NIR bands (`α_PAR_leaf`, `α_NIR_leaf`)
 
-Canopy emissivity and wavelength per PAR photon are currently treated
+Canopy emissivity and wavelength per PAR photon are also treated
 as constants; these can be passed in as Floats by kwarg.
 Otherwise the default values from ClimaParams.jl are used.
 """
 function BeerLambertModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    radiation_parameters = clm_canopy_radiation_parameters(
-        domain.space.surface,
+    radiation_parameters = (;
+        α_PAR_leaf = toml_dict["constant_a_par_leaf"],
+        α_NIR_leaf = toml_dict["constant_a_nir_leaf"],
+        G_Function = CLMGFunction(toml_dict["constant_chi_l"]),
+        Ω = FT(1),
     ),
     ϵ_canopy::FT = toml_dict["canopy_emissivity"],
     K_lw = toml_dict["canopy_K_lw"],
 ) where {FT <: AbstractFloat}
-    # Filter out radiation parameters that are not needed for Beer-Lambert model
+    # Filter out radiation parameters that are not needed for Beer-Lambert model - useful if you use the clm function
     radiation_parameters = NamedTuple{
         filter(
             k -> k in (:α_PAR_leaf, :α_NIR_leaf, :G_Function, :Ω),
@@ -879,7 +880,7 @@ end
         prognostic_land_components = (:canopy,),
         biomass = PrescribedBiomassModel{FT}(domain, LAI, modis_max_lai(domain.space.surface), toml_dict),
         autotrophic_respiration = default_autotrophic_respiration(biomass, toml_dict),
-        radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+        radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
         photosynthesis = PModel{FT}(domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
@@ -928,7 +929,7 @@ function CanopyModel{FT}(
         biomass,
         toml_dict,
     ),
-    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
@@ -1036,7 +1037,7 @@ function CanopyModel{FT}(
         biomass,
         toml_dict,
     ),
-    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    radiative_transfer = BeerLambertModel{FT}(domain, toml_dict),
     photosynthesis = PModel{FT}(domain, toml_dict),
     conductance = PModelConductance{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
