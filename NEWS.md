@@ -2,7 +2,6 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- Change default canopy radiative transfer scheme to Beer-Lambert with constant parameters.
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
