@@ -19,6 +19,7 @@ main
   `zenith_scaled_shortwave = true` spreads each 6-hourly shortwave mean with the cosine of
   the solar zenith angle, keeping the mean, instead of interpolating it linearly
   (`ZenithScaledShortwave`).
+  PR [#1969](https://github.com/CliMA/ClimaLand.jl/pull/1969)
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in
