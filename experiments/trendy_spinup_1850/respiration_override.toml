@@ -1,0 +1,22 @@
+# DAMM parameters for the land-sink study (PLAN decision 7), from damm_choice.jl
+# curve set 0 (ea = NaN, kmo2 = 1.0, doa = 1.0), V_ref ×20.059880239520957, kM ×16.826923076923077; the carbon-pool (Ra) parameters keep their defaults
+
+[O2_michaelis_constant]
+value = 0.00298
+type = "float"
+
+[michaelis_constant]
+value = 0.7
+type = "float"
+
+[oxygen_diffusion_coefficient]
+value = 1.67
+type = "float"
+
+[soilCO2_activation_energy]
+value = 19800.0
+type = "float"
+
+[soilCO2_reference_rate]
+value = 6.7e-7
+type = "float"
