@@ -189,3 +189,43 @@ function CalibrateConfig(;
     )
 
 end
+
+"""
+Calibration target names that are not model diagnostic names, mapped to the
+diagnostic they are compared with. The target keeps its own short name in the
+observation metadata (so two targets can share one diagnostic, e.g. MODIS SWU
+on seasonal snow and on the ice sheets), and the simulated variable is
+relabelled with the target name before it is matched.
+"""
+const CALIBRATION_TARGET_TO_DIAGNOSTIC = Dict(
+    "modis_swu" => "swu",
+    "modis_swu_ice" => "swu",
+    "modis_scf" => "snowc",
+    "sif_gpp" => "gpp",
+    "res_er" => "er",
+    "inv_nee" => "nee",
+)
+
+"""
+Targets compared as monthly means instead of seasonal (DJF/MAM/JJA/SON) means.
+The snow-season albedo error changes sign within MAM (too bright in March, too
+dark in May north of 60N), so a seasonal mean would cancel it.
+"""
+const MONTHLY_CALIBRATION_TARGETS =
+    Set(["modis_swu", "modis_swu_ice", "modis_scf"])
+
+"""
+    diagnostic_name(target_name)
+
+Return the model diagnostic short name compared with the calibration target
+`target_name`.
+"""
+diagnostic_name(target_name) =
+    get(CALIBRATION_TARGET_TO_DIAGNOSTIC, target_name, target_name)
+
+"""
+    is_monthly_target(target_name)
+
+Return `true` if the calibration target is compared as monthly means.
+"""
+is_monthly_target(target_name) = target_name in MONTHLY_CALIBRATION_TARGETS

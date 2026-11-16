@@ -142,6 +142,13 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     first_date = first(var_dates)
     last_date = last(var_dates)
     @info "preprocess_single_obs_var[$short_name] date range" first_date last_date
+    if is_monthly_target(short_name)
+        # Monthly targets (MODIS snow-season albedo and snow cover) are
+        # already monthly means on the first day of the month and carry only
+        # the months that are calibrated; no seasonal windowing or averaging.
+        replace!(var, missing => NaN)
+        return _regrid_mask_trim(var, short_name, nelements)
+    end
     date_min = Dates.DateTime(Dates.year(first_date), 3)
     date_max = Dates.DateTime(Dates.year(last_date), 8)
     # Ensure bounds are within the data range
@@ -163,7 +170,17 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     # expensive operation, so it is good to do as many reductions as we can.
     replace!(var, missing => NaN)
     var = ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
+    return _regrid_mask_trim(var, short_name, nelements)
+end
 
+"""
+    _regrid_mask_trim(var, short_name, nelements)
+
+Resample `var` to the model diagnostic grid, apply the ocean mask, drop the
+repeated longitude and the poles, and set the short name.
+"""
+function _regrid_mask_trim(var, short_name, nelements)
+    lats, lons = get_lat_lon_from_resolution(nelements)
     var = ClimaAnalysis.resampled_as(
         var,
         lon = lons,

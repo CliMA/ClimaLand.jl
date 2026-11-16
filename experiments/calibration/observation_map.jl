@@ -103,9 +103,19 @@ function process_member_data!(
 
     simdir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     vars = map(short_names) do short_name
-        var = get(simdir, short_name)
+        # A target may have its own name (e.g. modis_swu) and be compared
+        # with a model diagnostic of another name (swu)
+        var = get(simdir, diagnostic_name(short_name))
         var = preprocess_sim_var(var)
-        var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
+        # Monthly targets keep the monthly means of the diagnostics
+        is_monthly_target(short_name) || (
+            var = ClimaAnalysis.average_season_across_time(
+                var,
+                ignore_nan = false,
+            )
+        )
+        # Relabel with the target name, which the observation metadata use
+        ClimaAnalysis.set_short_name!(var, short_name)
 
         # To prevent double counting along the longitudes since -180 and 180
         # degrees are the same point

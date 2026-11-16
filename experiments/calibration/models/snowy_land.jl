@@ -113,10 +113,25 @@ function ClimaCalibrate.forward_model(
     # Need to include "lhf", "shf", "lwu", "swu" because plotting the
     # leaderboard requires these diagnostics
     (; short_names) = config
+    # Targets are mapped to the diagnostics they are compared with (e.g.
+    # modis_swu -> swu); swd and snowc are saved to score the snow season
     short_names = unique!(
         [
-            short_names
-            ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
+            diagnostic_name.(short_names)
+            [
+                "lhf",
+                "shf",
+                "lwu",
+                "swu",
+                "swd",
+                "snowc",
+                "gpp",
+                "et",
+                "hr",
+                "ra",
+                "er",
+                "nee",
+            ]
         ],
     )
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(

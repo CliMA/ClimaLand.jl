@@ -143,6 +143,7 @@ _preprocess_sim_var(var, ::Val{:shf}) = var
 _preprocess_sim_var(var, ::Val{:swu}) = var
 # LAI is already dimensionless (m^2 m^-2), matching the MODIS obs; no conversion.
 _preprocess_sim_var(var, ::Val{:lai}) = var
+_preprocess_sim_var(var, ::Val{:snowc}) = var
 # The canopy fractions are written without units, which `ClimaAnalysis.bias`
 # rejects.
 _preprocess_sim_var(var, ::Val{:fc3}) = ClimaAnalysis.set_units(var, "fraction")
@@ -982,6 +983,36 @@ function repeat_over_times(static_var, template_var)
 end
 
 """
+    get_modis_snow_obs_var_dict(short_names; dir = ENV["CLIMALAND_MODIS_SNOW_OBS_DIR"])
+
+Return the MODIS snow-season calibration targets among `short_names`, read
+from `<dir>/<short_name>.nc` (variable `<short_name>`): `modis_swu` and
+`modis_swu_ice` (MCD43C3 v061 blue-sky albedo times the ERA5 forcing's mean
+downward shortwave, W m^-2, compared with `swu`) and `modis_scf` (MODIS snow
+cover, compared with `snowc`). The files are monthly, on the 1 degree
+diagnostic grid, with the same valid cells in every year of a calendar month
+(see `prepare_modis_targets.py` of the recalibration draft).
+"""
+function get_modis_snow_obs_var_dict(
+    short_names;
+    dir = get(ENV, "CLIMALAND_MODIS_SNOW_OBS_DIR", ""),
+)
+    isdir(dir) || error(
+        "Set CLIMALAND_MODIS_SNOW_OBS_DIR to the folder with modis_swu.nc, modis_swu_ice.nc and modis_scf.nc",
+    )
+    obs_var_dict = Dict{String, Any}()
+    for name in ("modis_swu", "modis_swu_ice", "modis_scf")
+        name in short_names || continue
+        var = ClimaAnalysis.OutputVar(joinpath(dir, "$name.nc"), name)
+        var = ClimaAnalysis.replace(var, missing => NaN)
+        var = _preprocess_var(var)
+        ClimaAnalysis.set_short_name!(var, name)
+        obs_var_dict[name] = var
+    end
+    return obs_var_dict
+end
+
+"""
     get_calibration_obs_var_dict(; short_names = nothing)
 
 Return a dictionary mapping short names to `OutputVar` containing preprocessed
@@ -1015,6 +1046,14 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     # Inversion-derived carbon targets (CT2022 NEE + GOSIF GPP + residual ER +
     # Hashimoto Rh), keyed by inv_nee/sif_gpp/res_er/inv_hr.
     merge!(obs_var_dict, get_inversion_obs_var_dict())
+
+    # MODIS snow-season targets (blue-sky albedo as SWU, and snow cover),
+    # prepared offline into one NetCDF file per target. Only loaded when
+    # requested, from the directory in CLIMALAND_MODIS_SNOW_OBS_DIR.
+    if !isnothing(short_names) &&
+       any(n -> n in ("modis_swu", "modis_swu_ice", "modis_scf"), short_names)
+        merge!(obs_var_dict, get_modis_snow_obs_var_dict(short_names))
+    end
 
     # MODIS LAI target for optimal-LAI calibration. Loading the 21 per-year
     # files is comparatively expensive, so only build it when requested.
