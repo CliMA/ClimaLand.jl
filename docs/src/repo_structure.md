@@ -64,6 +64,12 @@ fluxtower site
 - US-MOz_simulation.jl: Contains simulation variables for running Clima Land on the US-MOz
 fluxtower site
 
+`/experiments/integrated/transient_from_1850/` runs the global model with prognostic LAI and
+carbon pools from a spun-up 1850 state through 2023 (the TRENDY scenarios S0, S1 and S2):
+transient_from_1850.jl is the driver, with the CO2 series (co2_series.jl), the
+global carbon budget (carbon_budget.jl) and the reader of the initial state
+(initial_state.jl).
+
 The `experiments` folder also contains a `benchmarks` folder and a `long_runs` folder. These contain experiments that are run as part of CI on the Caltech cluster. `benchmarks` is ran to ensure the model runs in a similar amount of time after changes are made. `long_runs` create
 outputs that can be checked for validity.
 
