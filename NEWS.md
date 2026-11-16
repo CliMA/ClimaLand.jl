@@ -14,6 +14,7 @@ main
   PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
 - ![][badge-✨feature] Add `experiments/integrated/transient_from_1850`, TRENDY-style
   transient runs (S0, S1, S2) of the model with carbon pools from a spun-up 1850 state.
+  PR [#1970](https://github.com/CliMA/ClimaLand.jl/pull/1970)
 - ![][badge-✨feature] Add two options to `prescribed_forcing_crujra`, both off by default.
   `fill_missing = true` gives the land nodes where CRU-JRA is missing (near coasts, in
   Antarctica, and a few precipitation and pressure values at some times) the value of the
