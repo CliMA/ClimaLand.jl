@@ -75,7 +75,6 @@ for FT in (Float32, Float64)
         )
         @test p.soil.NIR_albedo == α_soil_NIR
     end
-
     @testset "Steady state plant hydraulics with prognostic soil, FT = $FT" begin
         domain = ClimaLand.Domains.Column(;
             zlim = (FT(-2), FT(0)),
@@ -138,7 +137,7 @@ for FT in (Float32, Float64)
             ) .*
             Canopy.root_distribution.(z, model.canopy.biomass.rooting_depth),
         )
-        @test p.root_dryness_norm == tmp
+        @test parent(p.root_dryness_norm) ≈ parent(tmp)
         ϑ_wet = copy(Y.soil.ϑ_l)
         T = transpiration(p)
         # Root extraction balances transpiration, so the plant water is constant
@@ -167,7 +166,7 @@ for FT in (Float32, Float64)
         )
         norm = p.scratch1 # A surface scratch field
         root_weight =
-            @. Canopy.root_distribution.(z, model.canopy.biomass.rooting_depth)
+            @. Canopy.root_distribution(z, model.canopy.biomass.rooting_depth)
         ClimaCore.Operators.column_integral_definite!(norm, root_weight)
         tmp = ClimaCore.Fields.zeros(domain.space.surface)
         ClimaCore.Operators.column_integral_definite!(
@@ -185,7 +184,6 @@ for FT in (Float32, Float64)
         dry = Array(parent(z)) .> -0.4
         Y, p = initialize_state(model; ϑ_l = @. ifelse(z > -0.4, θ_low, ϑ_wet))
         root_extraction = Array(parent(p.root_extraction))
-
         @test all(root_extraction[dry] .== 0)
         @test all(root_extraction[.!dry] .> 0)
         @test fa_roots(p) ≈ transpiration(p) rtol = 100 * eps(FT)
@@ -270,7 +268,7 @@ for FT in (Float32, Float64)
                 model_no_stress.canopy.biomass.rooting_depth,
             ),
         )
-        @test p.root_dryness_norm == tmp
+        @test parent(p.root_dryness_norm) ≈ parent(tmp)
 
         @testset "Prognostic plant hydraulics, piecewise moisture stress" begin
             model_ph = SoilCanopyModel{FT}(

@@ -247,7 +247,6 @@ function lsm_aux_types(m::SoilCanopyModel{FT}) where {FT}
     return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
 end
 
-
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
 
@@ -270,6 +269,7 @@ function lsm_aux_domain_names(m::SoilCanopyModel)
     return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
            base
 end
+
 """
     make_update_boundary_fluxes(
         land::SoilCanopyModel{FT, MM, SM, RM},
