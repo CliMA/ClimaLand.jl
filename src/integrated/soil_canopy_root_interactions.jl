@@ -397,17 +397,14 @@ function update_root_dryness_norm!(
 end
 
 """
-     update_root_dryness_norm!(p, hydraulics::PlantHydraulicsModel, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+     update_root_dryness_norm!(p, hydraulics, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
 Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
 is the soil layer specific water stress.
-
-For arbirtary moisture stress + PlantHydraulics, we do not need this function to do anything because ψ is computed using the
-retention curve, and the root extraction is computed using the Darcy flux.
 """
 function update_root_dryness_norm!(
     p,
-    hydraulics::PlantHydraulicsModel,
+    hydraulics,
     sms,
     ground::PrognosticGroundConditions{FT},
     canopy,
