@@ -636,9 +636,10 @@ end
      update_root_dryness_norm!(p, hydraulics::AbstractPlantHydraulicsModel, sms, ground::PrescribedGroundConditions{FT}, canopy) where {FT}
 
 Does nothing in the case of a prescribed ground; in prognostic ground cases, this updates
-p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
-is the soil layer specific water stress. This is computed as part of plant hydraulics
-and not soil moisture stress because it determines root extraction in some cases.
+p.root_dryness_norm with the column integral of the root water weight of each soil layer
+(root distribution times the layer stress factor, or times the soil hydraulic conductivity).
+This is computed as part of plant hydraulics and not soil moisture stress because it
+determines root extraction in some cases.
 """
 function update_root_dryness_norm!(
     p,
