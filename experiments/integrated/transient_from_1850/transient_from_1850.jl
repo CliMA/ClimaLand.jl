@@ -4,8 +4,8 @@
 # A run covers the nominal years START_YEAR to END_YEAR. Nominal year n is forced by the
 # forcing year f(n): the recycled 1901-1920 cycle, f(n) = 1901 + mod(n - 1850, 20), before
 # 1901 or when the scenario recycles the climate, and f(n) = n otherwise. Consecutive
-# nominal years with consecutive forcing years form a segment, run as one LandSimulation
-# from the state at the end of the previous year.
+# nominal years with consecutive forcing years form a segment of at most 20 years, run as
+# one LandSimulation from the state at the end of the previous year.
 #
 # At the end of each year the state is saved to <RUN_DIR>/states/state_<n>.hdf5 and a row
 # of global carbon fluxes and stocks (Pg C, land north of 60°S) is appended to
@@ -93,10 +93,16 @@ forcing_year(n) = (RECYCLE || n < 1901) ? 1901 + mod(n - 1850, 20) : n
 const LAST_FORCING_TIME =
     FORCING == "crujra" ? DateTime(2023, 12, 31, 18) : DateTime(2100)
 
-"""Consecutive nominal years from `n0` to `n1` with consecutive forcing years."""
+# a year runs ~70% slower in a segment whose forcing spans a century of files
+const SEGMENT_YEARS = 20
+
+"""Consecutive nominal years from `n0` to `n1` with consecutive forcing years, at most
+`SEGMENT_YEARS` of them."""
 function segment_end(n0, n1)
     n = n0
-    while n < n1 && forcing_year(n + 1) == forcing_year(n) + 1
+    while n < n1 &&
+          n - n0 + 1 < SEGMENT_YEARS &&
+          forcing_year(n + 1) == forcing_year(n) + 1
         n += 1
     end
     return n
