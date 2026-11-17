@@ -68,8 +68,10 @@ struct SoilCanopyModel{
         # SoilCanopyModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
-        @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
-                (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+        # Without PrognosticSoilOrganicCarbon, the SOC keeps its initial state, also
+        # under a canopy with carbon pools; with it, the SOC needs their litter.
+        @assert !(PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ||
+                (canopy.biomass isa Canopy.PrognosticCarbonModel) "PrognosticSoilOrganicCarbon needs a canopy with carbon pools (PrognosticCarbonModel)"
         @assert Soil.PhaseChange{FT}() in soil.sources
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa PrognosticMet

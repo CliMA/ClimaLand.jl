@@ -30,6 +30,9 @@
 # simulation then starts at `--start` from the state reached at the end of that
 # spin-up (soil water, temperature, snow and carbon pools). The soil organic
 # carbon is NOT spun up here (it starts from the default initial conditions).
+# With `--fixed-soc` it is held at that state instead; with `--toml`, parameter
+# files override the defaults (e.g. the soil respiration rate
+# `soilCO2_reference_rate`).
 #
 # Usage, from the repository root (GPU strongly recommended):
 # ```
@@ -133,6 +136,12 @@ function parse_commandline(args = ARGS)
         "--extra-diagnostics"
         help = "comma-separated extra monthly diagnostics (ClimaLand short names, e.g. tsoil,swc,soc,scms,so2, or `slit`/`sdk`/`sdka` defined in this script)"
         default = ""
+        "--fixed-soc"
+        help = "hold the soil organic carbon at its initial (SoilGrids) state: the microbial respiration is computed from it, the litter does not enter it"
+        action = :store_true
+        "--toml"
+        help = "comma-separated parameter TOML files that override the defaults"
+        default = ""
     end
     return ArgParse.parse_args(args, s)
 end
@@ -232,16 +241,61 @@ function configuration_a_model(
         toml_dict;
         tree_share = ClimaLand.Canopy.clm_tree_share(surface_space),
     )
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    fixed_soc_components =
+        options["fixed-soc"] ?
+        fixed_soc_soil(
+            domain,
+            atmos,
+            radiation,
+            toml_dict,
+            prognostic_land_components,
+        ) : (;)
     return LandModel{FT}(
         (; atmos, radiation),
         LAI,
         toml_dict,
         domain,
         Δt;
-        prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2),
+        prognostic_land_components,
         biomass,
+        fixed_soc_components...,
     ),
     lai_paths
+end
+
+"""
+    fixed_soc_soil(domain, atmos, radiation, toml_dict, prognostic_land_components)
+
+The soil and soil CO2 models of `LandModel` (keyword arguments `soil` and `soilco2`)
+with the microbial respiration as the only source of the soil CO2 model, so that the
+soil organic carbon keeps its initial state while the canopy carbon pools still shed
+litter (`p.soil_litter_input`, which then enters no budget).
+"""
+function fixed_soc_soil(
+    domain,
+    atmos,
+    radiation,
+    toml_dict,
+    prognostic_land_components,
+)
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        domain,
+        (; atmos, radiation),
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+    )
+    soilco2 = ClimaLand.Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        ClimaLand.Soil.Biogeochemistry.SoilDrivers(
+            ClimaLand.PrognosticMet(soil.parameters),
+            atmos,
+        ),
+        toml_dict;
+        sources = (ClimaLand.Soil.Biogeochemistry.MicrobeProduction{FT}(),),
+    )
+    return (; soil, soilco2)
 end
 
 "ClimaLand diagnostics needed by the TRENDY writer, plus a few for checks."
@@ -413,7 +467,10 @@ function main(options)
             mask_threshold = FT(0.99),
             depth = domain_depth,
         )
-        toml_dict = LP.create_toml_dict(FT)
+        toml_dict = LP.create_toml_dict(
+            FT;
+            override_files = filter(!isempty, split(options["toml"], ",")),
+        )
         spinup_months = options["veg-spinup-months"]
         spinup_end = start_date + Month(spinup_months)
         # The drivers cover both the spin-up and the simulation
@@ -460,9 +517,13 @@ function main(options)
             horizontal_pts = trendy_grid(resolution),
         )
         # String, not SubString: `default_diagnostics` requires a Vector{String}
-        extra = String.(
-            filter(!isempty, strip.(split(options["extra-diagnostics"], ","))),
-        )
+        extra =
+            String.(
+                filter(
+                    !isempty,
+                    strip.(split(options["extra-diagnostics"], ",")),
+                ),
+            )
         script_extra = filter(in(("slit", "sdk", "sdka")), extra)
         possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
         unknown = setdiff(extra, vcat(possible, ["slit", "sdk", "sdka"]))

@@ -89,8 +89,10 @@ mutable struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
         if !isnothing(soilco2)
-            @assert (PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ==
-                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "The soil CO2 model must include PrognosticSoilOrganicCarbon if and only if the canopy carries carbon pools (PrognosticCarbonModel)"
+            # Without PrognosticSoilOrganicCarbon, the SOC keeps its initial state, also
+            # under a canopy with carbon pools; with it, the SOC needs their litter.
+            @assert !(PrognosticSoilOrganicCarbon{FT}() in soilco2.sources) ||
+                    (canopy.biomass isa Canopy.PrognosticCarbonModel) "PrognosticSoilOrganicCarbon needs a canopy with carbon pools (PrognosticCarbonModel)"
         end
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
