@@ -20,7 +20,7 @@ for FT in (Float32, Float64)
         LAI = TimeVaryingInput((t) -> FT(1.0))
         Δt = FT(450)
         # Choose a canopy height such that h_atmos > displ
-        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(;
+        biomass = ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(;
             LAI,
             SAI = FT(0),
             RAI = FT(1),
@@ -44,11 +44,17 @@ for FT in (Float32, Float64)
         # components, so we don't need to check them again here.
         # Without canopy carbon pools, SOC is not prognostic
         @test !(
-            ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+            ClimaLand.LitterInputMinusMicrobialDecomposition{FT}() in
             model.soilco2.sources
         )
         Y, p, cds = initialize(model)
         @test !haskey(p, :soil_litter_input)
+        @test !haskey(p, :litter_profile_norm)
+        # The root profile norm is set when the cache is created, on land points
+        is_land = Array(
+            parent(model.soil.domain.space.surface.grid.mask.is_active)[:],
+        )
+        @test all(vec(parent(p.root_profile_norm))[is_land] .> 0)
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
@@ -265,7 +271,7 @@ for FT in (Float32, Float64)
         )
         surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
         lai_model =
-            Canopy.PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict)
+            Canopy.PrescribedAreaIndexModel{FT}(surface_domain, LAI, toml_dict)
         canopy = Canopy.CanopyModel{FT}(
             surface_domain,
             (;
@@ -293,7 +299,7 @@ for FT in (Float32, Float64)
         )
         model =
             SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain; soil, canopy)
-        @test ClimaLand.PrognosticSoilOrganicCarbon{FT}() in
+        @test ClimaLand.LitterInputMinusMicrobialDecomposition{FT}() in
               model.soilco2.sources
         # The litter source is required with the pools
         soilco2_without_litter = Soil.Biogeochemistry.SoilCO2Model{FT}(
@@ -315,6 +321,9 @@ for FT in (Float32, Float64)
         )
 
         Y, p, _ = initialize(model)
+        # The profile norms are set when the cache is created, without set_initial_cache!
+        @test all(0 .< parent(p.root_profile_norm) .< 1)
+        @test all(0 .< parent(p.litter_profile_norm) .< 1)
         Y.soil.ϑ_l .= FT(0.3)
         ρc_s = Soil.volumetric_heat_capacity.(
             FT(0.3),
@@ -431,7 +440,7 @@ end
     )
     forcing = (; atmos, radiation)
     LAI = TimeVaryingInput((t) -> FT(2))
-    biomass = Canopy.PrescribedBiomassModel{FT}(;
+    biomass = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI = FT(0.5),
         RAI = FT(1),

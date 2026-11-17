@@ -67,7 +67,7 @@ hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict; ν)
 rooting_depth = FT(1)
 SAI = FT(0)
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,

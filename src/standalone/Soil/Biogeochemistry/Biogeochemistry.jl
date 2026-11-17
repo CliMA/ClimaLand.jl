@@ -495,7 +495,7 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
 
 A method which extends the ClimaLand source! function for the
 case of microbe production of CO2 in soil and consumption of O2.
-This source leaves SOC unchanged; `PrognosticSoilOrganicCarbon` adds its tendency
+This source leaves SOC unchanged; `LitterInputMinusMicrobialDecomposition` adds its tendency
 when the canopy carries carbon pools.
 
 Physics:

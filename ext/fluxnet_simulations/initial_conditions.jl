@@ -188,7 +188,8 @@ Sets Y.canopy.energy.T to the air temperature at the observation date closest to
 date of the model; sets the potential in the stem and leaf to -0.1 and -0.2 MPa, respectively,
 and the computes the resulting water content Y.canopy.hydraulics.ϑ_l using the retention curve
 of the plant. If the biomass model carries prognostic state (the optimal-LAI model), that is
-set from its climatology.
+set from its climatology; carbon pools start empty, with their mean annual temperature at
+the air temperature.
 """
 function set_fluxnet_ic!(
     Y,
@@ -198,15 +199,15 @@ function set_fluxnet_ic!(
     model::ClimaLand.Canopy.CanopyModel{FT};
     val = -9999,
 ) where {FT}
+    idx = findfirst(columns[:] .== "TA_F")
+    T_air_0 = get_data_at_start_date(
+        data[:, idx],
+        Δ_date;
+        preprocess_func = x -> x + 273.15,
+        val,
+        varname = "TA_F",
+    )
     if model.energy isa Canopy.BigLeafEnergyModel
-        idx = findfirst(columns[:] .== "TA_F")
-        T_air_0 = get_data_at_start_date(
-            data[:, idx],
-            Δ_date;
-            preprocess_func = x -> x + 273.15,
-            val,
-            varname = "TA_F",
-        )
         Y.canopy.energy.T .= T_air_0
     end
     if model.hydraulics isa Canopy.PlantHydraulicsModel
@@ -227,12 +228,17 @@ function set_fluxnet_ic!(
     end
 
 
+    # There is no cache here, so the air temperature of the carbon pools is passed
+    biomass_kwargs =
+        model.biomass isa Canopy.PrognosticCarbonModel ?
+        (; T_annual = T_air_0) : (;)
     ClimaLand.Simulations.set_canopy_component_initial_conditions!(
         Y,
         nothing,
         model.biomass,
         model;
         state_path = nothing,
+        biomass_kwargs...,
     )
     if model.photosynthesis isa Canopy.PModel
         idx = findfirst(columns[:] .== "VPD_F")

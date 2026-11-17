@@ -160,8 +160,16 @@ for float_type in (Float32, Float64)
     # Soil microbes model
     co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
     drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-    soilco2 =
-        Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
+    # The litter of the canopy carbon pools makes SOC prognostic
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+        land_domain,
+        drivers,
+        toml_dict;
+        sources = (
+            Soil.Biogeochemistry.MicrobeProduction{FT}(),
+            ClimaLand.LitterInputMinusMicrobialDecomposition{FT}(),
+        ),
+    )
 
     # Canopy model
     # Set up radiative transfer
@@ -204,12 +212,19 @@ for float_type in (Float32, Float64)
         retention_model,
     )
     height = h_canopy
-    biomass = Canopy.PrescribedBiomassModel{FT}(;
+    lai_model = Canopy.PrescribedAreaIndexModel{FT}(;
         LAI,
         SAI,
         RAI,
         rooting_depth,
         height,
+    )
+    # Carbon pools around the prescribed LAI, for the carbon budget; they do not feed back on
+    # the water and energy budgets
+    biomass = Canopy.PrognosticCarbonModel{FT}(
+        lai_model,
+        toml_dict;
+        tree_share = FT(1),
     )
 
     # Set up energy model
@@ -217,7 +232,8 @@ for float_type in (Float32, Float64)
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    # Construct the canopy model using defaults for autotrophic respiration and SIF models
+    # Construct the canopy model using defaults for autotrophic respiration (from the pools)
+    # and SIF models
     canopy = Canopy.CanopyModel{FT}(
         canopy_domain,
         canopy_forcing,
@@ -250,6 +266,11 @@ for float_type in (Float32, Float64)
         land,
     )
     set_ic!(Y, p, t0, land)
+    # Nonzero carbon stocks (kg C m^-2), so that the pools shed litter to the soil
+    Y.canopy.biomass.C_sugar .= FT(0.05)
+    Y.canopy.biomass.C_leaf .= FT(0.2)
+    Y.canopy.biomass.C_stem .= FT(5)
+    Y.canopy.biomass.C_root .= FT(0.5)
     set_initial_cache!(p, Y, t0)
 
 
@@ -496,5 +517,109 @@ for float_type in (Float32, Float64)
 
         axislegend(position = :lb)
         CairoMakie.save(joinpath(savedir, "energy_conservation.png"), fig)
+
+        ## Carbon balance ##
+        # Stocks in kg C m^-2: the vegetation pools, and the column integrals of SOC and of
+        # soil CO2 (kg C per m^3 of soil, gas and dissolved).
+        M_C = canopy.biomass.parameters.M_C
+        surface_value(x) = parent(x)[1]
+        # Per unit ground area; `sum` over this column carries a horizontal measure
+        ∫dz = ClimaCore.Fields.zeros(surface_space)
+        function column_integral(field)
+            ClimaCore.Operators.column_integral_definite!(∫dz, field)
+            return surface_value(∫dz)
+        end
+        pools = (:C_sugar, :C_leaf, :C_stem, :C_root)
+        veg_carbon = [
+            sum(
+                pool ->
+                    surface_value(getproperty(Y_k.canopy.biomass, pool)),
+                pools,
+            ) for Y_k in sol.u
+        ]
+        soc = [column_integral(Y_k.soilco2.SOC) for Y_k in sol.u]
+        soil_co2 = [column_integral(Y_k.soilco2.CO2) for Y_k in sol.u]
+        land_carbon = veg_carbon .+ soc .+ soil_co2
+
+        # Fluxes in kg C m^-2 s^-1 of each step, from the aux state saved after it
+        function carbon_fluxes(aux)
+            carbon = aux.canopy.biomass.carbon
+            return (;
+                GPP = M_C *
+                      surface_value(Canopy.get_GPP(aux, canopy.photosynthesis)),
+                Ra = surface_value(carbon.Ra),
+                litter = surface_value(carbon.L_leaf) +
+                         surface_value(carbon.L_stem) +
+                         surface_value(carbon.L_root),
+                soil_litter = column_integral(aux.soil_litter_input),
+                Sm = column_integral(aux.soilco2.Sm),
+                F_top = surface_value(aux.soilco2.top_bc),
+                F_bot = surface_value(aux.soilco2.bottom_bc),
+            )
+        end
+
+        # Each budget: its stock, net flux into it and gross flux through it
+        function carbon_budgets(f)
+            return (
+                (
+                    "Vegetation",
+                    veg_carbon,
+                    f.GPP - f.Ra - f.litter,
+                    f.GPP + f.Ra + f.litter,
+                ),
+                (
+                    "Soil organic carbon",
+                    soc,
+                    f.soil_litter - f.Sm,
+                    f.soil_litter + f.Sm,
+                ),
+                (
+                    "Soil CO2",
+                    soil_co2,
+                    f.Sm - f.F_top + f.F_bot,
+                    f.Sm + abs(f.F_top) + abs(f.F_bot),
+                ),
+                (
+                    "Land",
+                    land_carbon,
+                    f.GPP - f.Ra - f.F_top + f.F_bot,
+                    f.GPP + f.Ra + abs(f.F_top) + abs(f.F_bot),
+                ),
+            )
+        end
+
+        # Error in the change of each stock, relative to the carbon that went through it
+        function carbon_errors(fluxes)
+            budgets = carbon_budgets.(fluxes)
+            return map(1:4) do i
+                name, stock = budgets[1][i][1], budgets[1][i][2]
+                net = [b[i][3] for b in budgets]
+                gross = [b[i][4] for b in budgets]
+                change = stock[2:end] .- stock[1]
+                error =
+                    abs.(change .- cumsum(net) .* dt) ./ (cumsum(gross) .* dt)
+                (name, error)
+            end
+        end
+
+        fluxes = [carbon_fluxes(sv.saveval[k]) for k in 2:length(sol.t)]
+        carbon_error = carbon_errors(fluxes)
+
+        fig = Figure(size = (1500, 400))
+        ax = Axis(
+            fig[1, 1],
+            xlabel = "Days",
+            ylabel = "Error relative to cumulative gross flux",
+            yscale = log10,
+        )
+        for (name, error) in carbon_error
+            lines!(ax, daily, eps(FT) .+ error, label = name)
+        end
+        axislegend(position = :lb)
+        CairoMakie.save(joinpath(savedir, "carbon_conservation.png"), fig)
+        for (name, error) in carbon_error
+            @info "Carbon balance: $name" maximum(error)
+            @assert maximum(error) < 1e-6 "Carbon is not conserved: $name"
+        end
     end
 end

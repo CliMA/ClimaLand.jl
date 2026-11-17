@@ -361,7 +361,7 @@ function PlantHydraulicsModel{FT}(
 end
 
 """
-    PrescribedBiomassModel{FT}(
+    PrescribedAreaIndexModel{FT}(
         domain,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
@@ -371,7 +371,7 @@ end
         height =  clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
-Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
+Creates a PrescribedAreaIndexModel on the provided domain, using parameters from `toml_dict`.
 
 The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
@@ -380,7 +380,7 @@ The following default parameters are used:
 - RAI = 1 (m2/m2) - root area index
 - height = 1m
 """
-function PrescribedBiomassModel{FT}(
+function PrescribedAreaIndexModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
@@ -390,7 +390,7 @@ function PrescribedBiomassModel{FT}(
     height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
-    return PrescribedBiomassModel{
+    return PrescribedAreaIndexModel{
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
@@ -403,7 +403,7 @@ function PrescribedBiomassModel{FT}(
 end
 
 """
-    PrescribedBiomassModel{FT}(
+    PrescribedAreaIndexModel{FT}(
         domain,
         LAI::AbstractTimeVaryingInput,
         maxLAI,
@@ -415,7 +415,7 @@ end
         height = clm_canopy_height(domain.space.surface)
     ) where {FT <: AbstractFloat}
 
-Creates a PrescribedBiomassModel with time-constant stem and root area indices
+Creates a PrescribedAreaIndexModel with time-constant stem and root area indices
 proportional to the per-pixel maximum LAI, with the area index per unit of maximum
 LAI weighted between trees and grasses by the tree share, as for the `AreaIndexFromMaxLAI`
 of `ZhouOptimalLAIModel` (`area_index_from_max_lai`): SAI = (tree_share * SAI_coeff_tree
@@ -424,7 +424,7 @@ ClimaCore Field (e.g. from `ClimaLand.Canopy.modis_max_lai(domain.space.surface)
 and `tree_share` defaults to the tree share of the natural vegetation of the CLM
 surface data (`clm_tree_share`).
 """
-function PrescribedBiomassModel{FT}(
+function PrescribedAreaIndexModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     maxLAI,
@@ -444,7 +444,7 @@ function PrescribedBiomassModel{FT}(
     height = clm_canopy_height(domain.space.surface),
 ) where {FT <: AbstractFloat}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
-    return PrescribedBiomassModel{
+    return PrescribedAreaIndexModel{
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
@@ -877,7 +877,7 @@ end
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
         prognostic_land_components = (:canopy,),
-        biomass = PrescribedBiomassModel{FT}(domain, LAI, modis_max_lai(domain.space.surface), toml_dict),
+        biomass = PrescribedAreaIndexModel{FT}(domain, LAI, modis_max_lai(domain.space.surface), toml_dict),
         autotrophic_respiration = default_autotrophic_respiration(biomass, toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
         photosynthesis = PModel{FT}(domain, toml_dict),
@@ -918,7 +918,7 @@ function CanopyModel{FT}(
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:canopy,),
-    biomass = PrescribedBiomassModel{FT}(
+    biomass = PrescribedAreaIndexModel{FT}(
         domain,
         LAI,
         modis_max_lai(domain.space.surface),

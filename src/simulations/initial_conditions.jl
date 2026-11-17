@@ -677,18 +677,20 @@ end
         p,
         component::ClimaLand.Canopy.PrognosticCarbonModel,
         canopy;
+        T_annual = p.drivers.T,
         kwargs...,
     )
 
-Sets the initial state of the LAI model wrapped by `component`, to which the keyword
+Sets the initial state of the LAI model wrapped by `component`, to which the other keyword
 arguments are passed, then that of the carbon pools, which start empty, with their mean
-annual temperature `T_annual` at the air temperature.
+annual temperature `T_annual`, the air temperature by default.
 """
 function set_canopy_component_initial_conditions!(
     Y,
     p,
     component::ClimaLand.Canopy.PrognosticCarbonModel,
     canopy;
+    T_annual = p.drivers.T,
     kwargs...,
 )
     set_canopy_component_initial_conditions!(
@@ -701,7 +703,7 @@ function set_canopy_component_initial_conditions!(
     for pool in (:C_sugar, :C_leaf, :C_stem, :C_root)
         getproperty(Y.canopy.biomass, pool) .= 0
     end
-    Y.canopy.biomass.T_annual .= p.drivers.T
+    Y.canopy.biomass.T_annual .= T_annual
     return nothing
 end
 

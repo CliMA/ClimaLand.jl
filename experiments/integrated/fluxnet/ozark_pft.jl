@@ -206,7 +206,7 @@ maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 height = h_canopy
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)

@@ -231,9 +231,10 @@ function PrescribedAreaIndices(LAI::AbstractTimeVaryingInput, SAI, RAI)
 end
 
 """
-    struct PrescribedBiomassModel{FT, PSAI <: PrescribedAreaIndices, RDTH <: Union{FT, ClimaCore.Fields.Field}} <: AbstractBiomassModel{FT}
+    struct PrescribedAreaIndexModel{FT, PSAI <: PrescribedAreaIndices, RDTH <: Union{FT, ClimaCore.Fields.Field}} <: AbstractBiomassModel{FT}
 
-A prescribed biomass model where LAI, SAI, RAI, rooting depth, and height are prescribed.
+A biomass model that prescribes the area indices (LAI, SAI, RAI), the rooting depth and the
+canopy height. Its former name, `PrescribedBiomassModel`, is a deprecated alias.
 
 In  global run with patches
 of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
@@ -241,7 +242,7 @@ emission, zero transpiration and sensible heat flux from the canopy), by setting
 - LAI = SAI = RAI = 0.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedBiomassModel{
+struct PrescribedAreaIndexModel{
     FT,
     PSAI <: PrescribedAreaIndices,
     RDTH <: Union{FT, ClimaCore.Fields.Field},
@@ -253,7 +254,7 @@ struct PrescribedBiomassModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
-    function PrescribedBiomassModel{FT, PSAI, RDTH, HTH}(
+    function PrescribedAreaIndexModel{FT, PSAI, RDTH, HTH}(
         plant_area_index,
         rooting_depth,
         height,
@@ -263,13 +264,13 @@ struct PrescribedBiomassModel{
 end
 
 """
-    PrescribedBiomassModel{FT}(;LAI::AbstractTimeVaryingInput,
+    PrescribedAreaIndexModel{FT}(;LAI::AbstractTimeVaryingInput,
                                 SAI::FT,
                                 RAI::FT,
                                 rooting_depth,
                                 height) where {FT}
 
-An outer constructor to help set up the PrescribedBiomassModel from 
+An outer constructor to help set up the PrescribedAreaIndexModel from 
 LAI, SAI, and RAI directly, instead of requiring the user to make the
 area index object first; rooting_depth and height are also required.
 
@@ -277,7 +278,7 @@ Height can be either:
 - A scalar FT value (uniform height across domain)
 - A ClimaCore.Fields.Field (spatially-varying height)
 """
-function PrescribedBiomassModel{FT}(;
+function PrescribedAreaIndexModel{FT}(;
     LAI::AbstractTimeVaryingInput,
     SAI,
     RAI,
@@ -286,13 +287,15 @@ function PrescribedBiomassModel{FT}(;
 ) where {FT}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     args = (plant_area_index, rooting_depth, height)
-    PrescribedBiomassModel{FT, typeof.(args)...}(args...)
+    PrescribedAreaIndexModel{FT, typeof.(args)...}(args...)
 end
 
-ClimaLand.auxiliary_vars(model::PrescribedBiomassModel) = (:area_index,)
-ClimaLand.auxiliary_types(model::PrescribedBiomassModel{FT}) where {FT} =
+Base.@deprecate_binding PrescribedBiomassModel PrescribedAreaIndexModel false
+
+ClimaLand.auxiliary_vars(model::PrescribedAreaIndexModel) = (:area_index,)
+ClimaLand.auxiliary_types(model::PrescribedAreaIndexModel{FT}) where {FT} =
     (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},)
-ClimaLand.auxiliary_domain_names(::PrescribedBiomassModel) = (:surface,)
+ClimaLand.auxiliary_domain_names(::PrescribedAreaIndexModel) = (:surface,)
 
 function clip(x::FT, threshold::FT) where {FT}
     x > threshold ? x : FT(0)
@@ -304,7 +307,8 @@ end
 The prescribed LAI `TimeVaryingInput` of a biomass model, including one wrapped by
 `PrognosticCarbonModel`.
 """
-prescribed_lai_input(model::PrescribedBiomassModel) = model.plant_area_index.LAI
+prescribed_lai_input(model::PrescribedAreaIndexModel) =
+    model.plant_area_index.LAI
 prescribed_lai_input(model::AbstractBiomassModel) = error(
     "$(nameof(typeof(model))) has no prescribed LAI: build the canopy without passing an `LAI`",
 )
@@ -314,7 +318,7 @@ prescribed_lai_input(model::AbstractBiomassModel) = error(
         p,
         Y,
         t,
-        component::PrescribedBiomassModel{FT},
+        component::PrescribedAreaIndexModel{FT},
         canopy,
     ) where {FT}
 
@@ -332,7 +336,7 @@ function update_plant_area_indices!(
     p,
     Y,
     t,
-    component::PrescribedBiomassModel{FT},
+    component::PrescribedAreaIndexModel{FT},
     canopy,
 ) where {FT}
     (; LAI, SAI, RAI) = component.plant_area_index
@@ -444,7 +448,7 @@ An implementation of the optimal LAI model from Zhou et al. (2025) as a biomass 
 This model computes LAI dynamically based on optimality principles, balancing energy and
 water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored into
 `p.canopy.biomass.area_index.leaf` for the rest of the canopy, consistent with
-`PrescribedBiomassModel`.
+`PrescribedAreaIndexModel`.
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
@@ -785,7 +789,7 @@ function update_plant_area_indices!(
     update_composition!(p, Y, component.tree_share, component, canopy)
     set_max_leaf_area_index!(p, Y, component, canopy)
     set_leaf_area_index!(p, Y, component)
-    # Apply clipping to LAI (same as PrescribedBiomassModel)
+    # Apply clipping to LAI (same as PrescribedAreaIndexModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     tree = leaf_cost_tree_share(component.tree_share, p)
@@ -1365,7 +1369,7 @@ climates, `τ_stem0`, lengthened in cold climates by the factor `s`
 ([`tau_stem_scale`](@ref)) of the mean annual temperature carried as a time-integrated
 variable (`T_annual`).
 
-The pools wrap an LAI model, `lai_model` (`PrescribedBiomassModel` or
+The pools wrap an LAI model, `lai_model` (`PrescribedAreaIndexModel` or
 `ZhouOptimalLAIModel`), which still sets the area indices: GPP and LAI are the same
 as without the pools. The canopy respiration comes from the pools, so this model
 requires [`PoolBasedAutotrophicRespirationModel`](@ref).

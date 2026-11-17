@@ -337,7 +337,7 @@ With a prescribed tree share, `ftr` is the tree share of the C3/C4 competition, 
 
 ## Implementation Notes
 
-- The model is a biomass model, `ZhouOptimalLAIModel <: AbstractBiomassModel`: the leaf area index of the canopy is in `p.canopy.biomass.area_index.leaf`, as for `PrescribedBiomassModel`, and the biomass is updated first in `update_aux`, before radiative transfer and photosynthesis read the area indices and the C3 fraction.
+- The model is a biomass model, `ZhouOptimalLAIModel <: AbstractBiomassModel`: the leaf area index of the canopy is in `p.canopy.biomass.area_index.leaf`, as for `PrescribedAreaIndexModel`, and the biomass is updated first in `update_aux`, before radiative transfer and photosynthesis read the area indices and the C3 fraction.
 - It requires the P-model of photosynthesis, `PModel`, whose parameters and constants it uses for the potential GPP: a change of the photosynthesis parameters, such as $\beta$ or $c^*$, also changes LAI and the C3/C4 balance.
 - The equations are in `src/standalone/Vegetation/optimal_lai.jl`, and the model, its cache and its tendencies in `src/standalone/Vegetation/biomass.jl`.
 - Units: 1 mm of precipitation is 1 kg m⁻², or 55.5 mol H₂O m⁻²; 400 ppm of CO₂ at 101325 Pa is 40.5 Pa; the P-model gives the light use efficiency in kg C per mol photons, which the molar mass of carbon, 0.0120107 kg mol⁻¹, converts to mol CO₂ per mol photons.

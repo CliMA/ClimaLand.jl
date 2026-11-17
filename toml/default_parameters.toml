@@ -120,7 +120,7 @@ tag = "PrescribedAreaIndices"
 value = 1.0
 type = "float"
 description = "The constant canopy height (m)"
-tag = "PrescribedBiomassModel"
+tag = "PrescribedAreaIndexModel"
 
 # Optimal LAI Model (Zhou et al. 2025)
 

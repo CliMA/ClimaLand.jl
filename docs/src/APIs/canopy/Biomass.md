@@ -6,8 +6,8 @@ CurrentModule = ClimaLand.Canopy
 ## Parameterizations
 
 ```@docs
-ClimaLand.Canopy.PrescribedBiomassModel
-ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+ClimaLand.Canopy.PrescribedAreaIndexModel
+ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
@@ -16,7 +16,7 @@ ClimaLand.Canopy.PrescribedBiomassModel{FT}(
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"]
 ) where {FT <: AbstractFloat}
-ClimaLand.Canopy.PrescribedBiomassModel{FT}(; LAI, SAI::FT, RAI::FT, rooting_depth, height::FT) where {FT}
+ClimaLand.Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI::FT, RAI::FT, rooting_depth, height::FT) where {FT}
 ClimaLand.Canopy.PrescribedAreaIndices
 ClimaLand.Canopy.PrescribedAreaIndices(
     LAI::AbstractTimeVaryingInput,

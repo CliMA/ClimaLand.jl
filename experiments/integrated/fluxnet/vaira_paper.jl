@@ -186,7 +186,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 
 height = h_canopy
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Set up the energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)

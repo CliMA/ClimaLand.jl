@@ -65,7 +65,7 @@ SAI = RAI = FT(0)
 rooting_depth = FT(1)
 height = FT(1)
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,

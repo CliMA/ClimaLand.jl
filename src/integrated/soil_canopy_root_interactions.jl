@@ -267,20 +267,33 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     model,
     canopy,
 )
-    θ_l = p.soil.θ_l
-    (; θ_high, θ_low, c) = model
-    z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
-    # normalized distribution for root density
-    root_norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
-    # for soilcanopy and land models.
-    root_dist =
-        @. lazy(Canopy.root_distribution(z, canopy.biomass.rooting_depth))
-    # compute the root zone-averaged βm
-    ClimaCore.Operators.column_integral_definite!(root_norm, root_dist)
     # root dryness norm was precomputed in the Canopy update_hydraulics! call
     # It is equal to ∫ β(z) p(z) dz. Therefore, the below is the average β.
-    @. p.canopy.soil_moisture_stress.βm = p.root_dryness_norm / root_norm
+    @. p.canopy.soil_moisture_stress.βm =
+        p.root_dryness_norm / p.root_profile_norm
+    return nothing
+end
 
+"""
+    set_time_invariant_lsm_aux!(lsm_aux, land::Union{SoilCanopyModel, LandModel})
+
+Sets the column integrals of the root distribution, `root_profile_norm`, and, for a canopy
+with carbon pools, of the litter distribution, `litter_profile_norm`, which normalize these
+profiles. They depend only on the soil layers and on constant depths.
+"""
+function ClimaLand.set_time_invariant_lsm_aux!(
+    lsm_aux,
+    land::Union{SoilCanopyModel, LandModel},
+)
+    z = land.soil.domain.fields.z
+    (; rooting_depth) = land.canopy.biomass
+    root_profile = @. lazy(Canopy.root_distribution(z, rooting_depth))
+    ClimaCore.Operators.column_integral_definite!(
+        lsm_aux.root_profile_norm,
+        root_profile,
+    )
+    set_litter_profile_norm!(lsm_aux, land, land.canopy.biomass)
+    return nothing
 end
 
 """

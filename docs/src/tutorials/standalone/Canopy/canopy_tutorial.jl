@@ -171,7 +171,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 rooting_depth = FT(1)
 height = FT(18)
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height);
+    Canopy.PrescribedAreaIndexModel{FT}(; LAI, SAI, RAI, rooting_depth, height);
 
 # Construct the conductance model.
 conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict; g1 = FT(141));
