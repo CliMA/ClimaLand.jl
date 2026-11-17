@@ -645,6 +645,7 @@ function Base.show(io::IO, ::MIME"text/plain", ps::EnergyHydrologyParameters)
         )
         println(io, "  hydrology closure: ", _kind_str(ps.hydrology_cm))
         println(io, "  albedo: ", nameof(typeof(ps.albedo)))
+        println(io, "  litter: ", nameof(typeof(ps.litter)))
         println(io, "  earth_param_set: ", sprint(show, ps.earth_param_set))
     end
 end

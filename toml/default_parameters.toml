@@ -1046,6 +1046,25 @@ type = "float"
 description = "Temperature exponent for the free-air gas diffusivity correction D0 ∝ (T/T_ref)^exp (dimensionless), Ryan et al. (2018)"
 tag = "SoilCO2Parameters"
 
+# Soil litter
+["litter_thermal_conductivity"]
+value = 0.1
+type = "float"
+description = "Thermal conductivity of dry litter (W/m/K); Napoly et al. (2017, Eq. A13, after De Vries 1963), DOI: 10.5194/gmd-10-1621-2017."
+tag = "SoilLitter"
+
+["litter_thickness_tree"]
+value = 0.03
+type = "float"
+description = "Thickness of the litter layer under trees (m); default of Napoly et al. (2017) for forests, within the 1-10 cm measured (their Table 3), DOI: 10.5194/gmd-10-1621-2017."
+tag = "SoilLitter"
+
+["litter_thickness_grass"]
+value = 0.01
+type = "float"
+description = "Thickness of the litter layer under grasses (m); with litter_thermal_conductivity, its thermal resistance (0.1 m2 K/W) equals the skin conductivity of low vegetation in HTESSEL, 10 W/m2/K (IFS Cy48r1 documentation, Part IV, Table 8.2)."
+tag = "SoilLitter"
+
 # Soil Parameters
 ["maximum_dry_soil_layer_depth"]
 value = 0.00296

@@ -9,7 +9,8 @@ resistance
     r = Δz_top / κ_top  (m² K / W),
 
 where Δz_top is the distance between the surface and the center of the top
-layer and κ_top is the thermal conductivity of the top layer. The skin
+layer and κ_top is the thermal conductivity of the top layer, plus the resistance
+of a litter layer on the surface, if any (`skin_conduction_resistance`). The skin
 temperature T_sfc satisfies the surface energy balance
 
     f(T_sfc) = SW_n + LW_n(T_sfc) + L(T_sfc) + H(T_sfc) - (T_top - T_sfc)/r = 0,
@@ -618,7 +619,7 @@ function update_soil_surface_temperature!(
     z_sfc = ClimaLand.surface_elevation(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
-    r = @. lazy(Δz_top / κ_top)
+    r = skin_conduction_resistance(model.parameters.litter, Δz_top, κ_top)
     β_ice = @. lazy(frozen_soil_vapor_weight(θ_i_sfc, ν_sfc))
     frozen = @. lazy(frozen_soil_surface(θ_i_sfc, T_top, Tf_depressed_sfc))
     return_extra_fluxes = Val(ClimaLand.return_momentum_fluxes(atmos))

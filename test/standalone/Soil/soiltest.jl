@@ -216,6 +216,7 @@ for FT in (Float32, Float64)
             typeof(albedo),
             typeof(hydrology_cm),
             typeof(earth_param_set),
+            Soil.NoLitter,
         }(
             FT(0), # κ_dry
             FT(0), #κ_sat_frozen
@@ -242,6 +243,7 @@ for FT in (Float32, Float64)
             FT(1), # evap_p,
             FT(1), #evap_α
             earth_param_set,
+            Soil.NoLitter(),
         )
         soil_water_on = Soil.EnergyHydrology{FT}(;
             parameters = hyd_on_en_off,
@@ -415,6 +417,7 @@ for FT in (Float32, Float64)
             typeof(albedo),
             typeof(hydrology_cm),
             typeof(earth_param_set),
+            Soil.NoLitter,
         }(
             FT(0), # κ_dry
             FT(0), #κ_sat_frozen
@@ -441,6 +444,7 @@ for FT in (Float32, Float64)
             FT(1), # evap_p,
             FT(1), #evap_α
             earth_param_set,
+            Soil.NoLitter(),
         )
 
         soil_both_off = Soil.EnergyHydrology{FT}(;

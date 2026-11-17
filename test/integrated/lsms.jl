@@ -20,6 +20,8 @@ import ClimaLand:
     land_components,
     get_model_callbacks
 using ClimaLand
+import ClimaCore
+import ClimaLand.Parameters as LP
 
 
 @testset "LSM prognostic tests" begin
@@ -161,5 +163,40 @@ end
         @test all(parent(p.m1.b) .== FT(10))
         @test all(parent(p.m2.d) .== FT(10))
         @test all(parent(p.m2.e) .== FT(10))
+    end
+end
+
+@testset "Litter under vegetation" begin
+    for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
+        domain = ClimaLand.Domains.Plane(;
+            xlim = FT.((0, 3)),
+            ylim = FT.((0, 1)),
+            nelements = (3, 1),
+            periodic = (true, true),
+        )
+        surface_space = domain.space.surface
+        x = ClimaCore.Fields.coordinate_field(surface_space).x
+        # bare (x < 1), grassland (1 < x < 2) and forest (x > 2) points
+        max_lai = @. ifelse(x < 1, FT(0), FT(4))
+        tree_share = @. ifelse(x < 2, FT(0), FT(1))
+        litter = ClimaLand.vegetation_litter(
+            surface_space,
+            toml_dict;
+            tree_share,
+            max_lai,
+        )
+        @test litter isa ClimaLand.Soil.SoilLitter{FT}
+        @test litter.κ == toml_dict["litter_thermal_conductivity"]
+        expected = @. ifelse(
+            x < 1,
+            FT(0),
+            ifelse(
+                x < 2,
+                toml_dict["litter_thickness_grass"],
+                toml_dict["litter_thickness_tree"],
+            ),
+        )
+        @test parent(litter.thickness) == parent(expected)
     end
 end

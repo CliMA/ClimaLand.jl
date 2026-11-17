@@ -104,6 +104,10 @@ end
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
+            litter = vegetation_litter(
+                Domains.obtain_surface_domain(domain).space.surface,
+                toml_dict,
+            ),
         ),
         biomass = nothing,
         canopy = Canopy.CanopyModel{FT}(
@@ -155,6 +159,10 @@ function SoilCanopyModel{FT}(
         toml_dict;
         prognostic_land_components = (:canopy, :soil, :soilco2),
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        litter = vegetation_litter(
+            Domains.obtain_surface_domain(domain).space.surface,
+            toml_dict,
+        ),
     ),
     biomass = nothing,
     canopy = Canopy.CanopyModel{FT}(
