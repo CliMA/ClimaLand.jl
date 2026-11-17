@@ -496,10 +496,7 @@ function lsm_aux_vars(m::LandModel)
         :lake_fraction,
     )
     base =
-        add_root_dryness_norm(
-            m.canopy.soil_moisture_stress,
-            m.canopy.hydraulics,
-        ) ? (base..., :root_dryness_norm) : base
+        has_root_dryness_norm(m.canopy) ? (base..., :root_dryness_norm) : base
     return has_soil_litter_input(m.canopy.biomass) ?
            (base..., :soil_litter_input) : base
 end
@@ -534,11 +531,7 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         FT,
         FT,
     )
-    base =
-        add_root_dryness_norm(
-            m.canopy.soil_moisture_stress,
-            m.canopy.hydraulics,
-        ) ? (base..., FT) : base
+    base = has_root_dryness_norm(m.canopy) ? (base..., FT) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
 end
 
@@ -572,11 +565,7 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
         :surface,
     )
-    base =
-        add_root_dryness_norm(
-            m.canopy.soil_moisture_stress,
-            m.canopy.hydraulics,
-        ) ? (base..., :surface) : base
+    base = has_root_dryness_norm(m.canopy) ? (base..., :surface) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
            base
 end
