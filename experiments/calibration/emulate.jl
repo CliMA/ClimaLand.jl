@@ -24,7 +24,7 @@
 # Set CALIBRATION_CONFIG and CALIBRATION_OUTPUT_DIR to match what was used in
 # the calibration run, then:
 #
-#   julia --project=.buildkite experiments/calibration/emulate.jl
+#   julia --project=.buildkite/calibration experiments/calibration/emulate.jl
 #
 # Environment variables
 # ----------------------
@@ -125,4 +125,4 @@ emulator_file = joinpath(ces_output_dir, "emulators.jld2")
 
 JLD2.jldsave(emulator_file; emulator, prior, y_obs, obs_noise_cov, n_iterations)
 @info "Emulator saved → $emulator_file"
-@info "Next step: julia --project=.buildkite experiments/calibration/sample.jl"
+@info "Next step: julia --project=.buildkite/calibration experiments/calibration/sample.jl"

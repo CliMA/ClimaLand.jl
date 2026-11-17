@@ -229,9 +229,9 @@ module load climacommon
 # Run your command
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+julia --project=.buildkite/calibration -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+julia --project=.buildkite/calibration experiments/calibration/run_calibration.jl
 ```
 
 and below is a example job .sh script (for Slurm, e.g., central or clima):
@@ -252,8 +252,8 @@ export CLIMACOMMS_CONTEXT="SINGLETON"
 
 # Build and run the Julia code
 module load climacommon
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+julia --project=.buildkite/calibration -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+julia --project=.buildkite/calibration experiments/calibration/run_calibration.jl
 ```
 
 where `run_calibration.jl` is a script that sets up the calibration and calls
@@ -270,9 +270,9 @@ respectively. An example bash script would look like this:
 
 module load climacommon
 
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/generate_observations.jl
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+julia --project=.buildkite/calibration -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+julia --project=.buildkite/calibration experiments/calibration/generate_observations.jl
+julia --project=.buildkite/calibration experiments/calibration/run_calibration.jl
 ```
 
 You can check the status of your job with `qstat -u username` of PBS or `squeue
@@ -357,7 +357,7 @@ Observations are generated with `generate_observations.jl`. To generate
 observations, you can run
 
 ```julia
-julia --project=.buildkite experiments/calibration/generate_observations.jl`
+julia --project=.buildkite/calibration experiments/calibration/generate_observations.jl`
 ```
 
 !!! note "When do I need to generate observations?"

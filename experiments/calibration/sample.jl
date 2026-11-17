@@ -14,7 +14,7 @@
 #
 # Usage (from the ClimaLand.jl root)
 # -----------------------------------
-#   julia --project=.buildkite experiments/calibration/sample.jl
+#   julia --project=.buildkite/calibration experiments/calibration/sample.jl
 #
 # Environment variables
 # ----------------------

@@ -7,7 +7,7 @@
 # sample.jl.
 #
 # Usage (from the ClimaLand.jl root):
-#   julia --project=.buildkite experiments/calibration/test/test_ces_pipeline.jl
+#   julia --project=.buildkite/calibration experiments/calibration/test/test_ces_pipeline.jl
 
 using Test
 using LinearAlgebra

@@ -14,10 +14,10 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
-      - julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-      - julia --project=.buildkite -e 'using Pkg; Pkg.precompile()'
-      - julia --project=.buildkite -e 'using CUDA; CUDA.precompile_runtime()'
-      - julia --project=.buildkite -e 'using Pkg; Pkg.status()'
+      - julia --project=.buildkite/calibration -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+      - julia --project=.buildkite/calibration -e 'using Pkg; Pkg.precompile()'
+      - julia --project=.buildkite/calibration -e 'using CUDA; CUDA.precompile_runtime()'
+      - julia --project=.buildkite/calibration -e 'using Pkg; Pkg.status()'
 
     agents:
       slurm_gpus: 1
@@ -30,7 +30,7 @@ steps:
 
   - label: "Generate observations"
     command:
-      - julia --color=yes --project=.buildkite/ experiments/calibration/generate_observations.jl
+      - julia --color=yes --project=.buildkite/calibration experiments/calibration/generate_observations.jl
     env:
       # Generating observations doesn't require a CUDA, but these environment
       # variables may be loaded in the slurm script
@@ -41,7 +41,7 @@ steps:
 
   - label: "Calibration"
     command:
-      - julia --color=yes --project=.buildkite/ experiments/calibration/run_calibration.jl
+      - julia --color=yes --project=.buildkite/calibration experiments/calibration/run_calibration.jl
     agents:
       slurm_time: 2:00:00
       slurm_gpus: 1
@@ -54,4 +54,4 @@ steps:
 
   - label: "Test calibration results"
     command:
-      - julia --color=yes --project=.buildkite/ experiments/calibration/test/test_calibration.jl
+      - julia --color=yes --project=.buildkite/calibration experiments/calibration/test/test_calibration.jl
