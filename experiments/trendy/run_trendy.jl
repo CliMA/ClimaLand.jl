@@ -157,12 +157,21 @@ end
     modis_lai_v061_paths(dir, start_date, stop_date)
 
 Yearly MODIS LAI files covering `start_date` to `stop_date`, chosen as in
-`ClimaLand.Artifacts.modis_lai_multiyear_paths`.
+`ClimaLand.Artifacts.modis_lai_multiyear_paths`. The file of the year after the
+last simulated month (needed only to interpolate within that month) is left out
+when it does not exist, e.g. 2026 for a run to 2026-01-01; the LAI of that last
+month is then held at its last value (`LinearInterpolation(Flat())` in
+`configuration_a_model`).
 """
 function modis_lai_v061_paths(dir, start_date, stop_date)
     year0 = Dates.year(start_date)
     yearf = Dates.year(stop_date) + (Dates.month(stop_date) == 12 ? 1 : 0)
-    paths = [joinpath(dir, "Yuan_et_al_$(y)_0.25x0.25.nc") for y in year0:yearf]
+    last_simulated_year = Dates.year(stop_date - Dates.Millisecond(1))
+    lai_file(y) = joinpath(dir, "Yuan_et_al_$(y)_0.25x0.25.nc")
+    while yearf > last_simulated_year && !isfile(lai_file(yearf))
+        yearf -= 1
+    end
+    paths = [lai_file(y) for y in year0:yearf]
     for path in paths
         isfile(path) || error("MODIS LAI file $path does not exist")
     end
@@ -208,6 +217,9 @@ function configuration_a_model(
         start_date,
         stop_date;
         modis_lai_ncdata_path = lai_paths,
+        time_interpolation_method = ClimaLand.TimeVaryingInputs.LinearInterpolation(
+            ClimaLand.TimeVaryingInputs.Flat(),
+        ),
     )
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     biomass = ClimaLand.Canopy.PrognosticCarbonModel{FT}(

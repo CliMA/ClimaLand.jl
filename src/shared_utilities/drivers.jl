@@ -2691,7 +2691,7 @@ function TimeVaryingInputs.evaluate!(
     TimeVaryingInputs.evaluate!(
         dest,
         input.input,
-        interval_start,
+        nearest_date_in_data(input.input, interval_start, input.period),
         args...;
         kwargs...,
     )
@@ -2829,7 +2829,7 @@ function update_interval!(
     TimeVaryingInputs.evaluate!(
         input.interval_mean,
         input.input,
-        interval_start,
+        nearest_date_in_data(input.input, interval_start, input.period),
         args...;
         kwargs...,
     )
@@ -2995,7 +2995,7 @@ function TimeVaryingInputs.evaluate!(
         TimeVaryingInputs.evaluate!(
             scratch,
             input.input,
-            interval_start,
+            nearest_date_in_data(input.input, interval_start, period),
             args...;
             kwargs...,
         )
@@ -3085,6 +3085,22 @@ in_data_range(input, date) =
 in_data_range(input::CycledYearsInput, date) =
     in_data_range(input.input, cycled_date(date, input.years))
 
+"""
+    nearest_date_in_data(input, date, period; maxsteps = 4)
+
+`date` if `input` has data at it, else the nearest of `date ± k period`
+(k = 1, …, `maxsteps`, earlier first) that it has; `date` itself when none is
+found, so that evaluating `input` there raises the usual out-of-range error.
+"""
+function nearest_date_in_data(input, date, period; maxsteps = 4)
+    in_data_range(input, date) && return date
+    for k in 1:maxsteps
+        in_data_range(input, date - k * period) && return date - k * period
+        in_data_range(input, date + k * period) && return date + k * period
+    end
+    return date
+end
+
 function update_samples!(
     input::HoldWindowStateInput,
     interval_start,
@@ -3093,10 +3109,10 @@ function update_samples!(
 )
     (; period, samples) = input
     dates = interval_start .+ period .* (-1, 0, 1, 2)
-    # Outside the data, fall back on the nearest sample of the interval
-    fallback = (dates[2], dates[2], dates[3], dates[3])
     for i in 1:4
-        date = in_data_range(input.input, dates[i]) ? dates[i] : fallback[i]
+        # Outside the data (first and last intervals, and the driver update at the
+        # stop date of a run that ends with the data), use the nearest sample in it
+        date = nearest_date_in_data(input.input, dates[i], period)
         TimeVaryingInputs.evaluate!(
             samples[i],
             input.input,
