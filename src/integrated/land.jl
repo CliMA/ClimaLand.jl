@@ -476,7 +476,6 @@ function lsm_aux_vars(m::LandModel)
         :snow_T_bot,
         :root_extraction,
         :root_energy_extraction,
-        :root_dryness_norm,
         :LW_u,
         :SW_u,
         :scratch1,
@@ -496,6 +495,8 @@ function lsm_aux_vars(m::LandModel)
         :bare_soil_fraction,
         :lake_fraction,
     )
+    base =
+        has_root_dryness_norm(m.canopy) ? (base..., :root_dryness_norm) : base
     return has_soil_litter_input(m.canopy.biomass) ?
            (base..., :soil_litter_input) : base
 end
@@ -526,11 +527,11 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         FT,
         FT,
         FT,
-        FT,
         NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
         FT,
         FT,
     )
+    base = has_root_dryness_norm(m.canopy) ? (base..., FT) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
 end
 
@@ -555,7 +556,6 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
         :surface,
         :surface,
-        :surface,
         :subsurface,
         :surface,
         :surface,
@@ -565,6 +565,7 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
         :surface,
     )
+    base = has_root_dryness_norm(m.canopy) ? (base..., :surface) : base
     return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
            base
 end

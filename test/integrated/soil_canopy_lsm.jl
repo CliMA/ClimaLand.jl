@@ -52,6 +52,8 @@ for FT in (Float32, Float64)
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
+        # Check that dryness norm was not added to cache
+        @test haskey(p, :root_dryness_norm) == false
         # initialize cache, then check that albedos are set to the correct values
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
@@ -124,6 +126,18 @@ for FT in (Float32, Float64)
         @test model.canopy.hydraulics isa Canopy.SteadyStateModel
         (; θ_high, θ_low, c, ψ_wilt) = model.canopy.soil_moisture_stress
         Y, p = initialize_state(model)
+        tmp = p.scratch1
+        ClimaCore.Operators.column_integral_definite!(
+            tmp,
+            Canopy.compute_piecewise_moisture_stress.(
+                θ_high,
+                θ_low,
+                c,
+                p.soil.θ_l,
+            ) .*
+            Canopy.root_distribution.(z, model.canopy.biomass.rooting_depth),
+        )
+        @test parent(p.root_dryness_norm) ≈ parent(tmp)
         ϑ_wet = copy(Y.soil.ϑ_l)
         T = transpiration(p)
         # Root extraction balances transpiration, so the plant water is constant
@@ -238,6 +252,7 @@ for FT in (Float32, Float64)
             model_no_stress;
             ϑ_l = @. ifelse(z > -0.4, θ_r, ϑ_wet)
         );
+        @test haskey(p, :root_dryness_norm)
         root_extraction = Array(parent(p.root_extraction))
         @test all(root_extraction[dry] .== 0)
         @test all(root_extraction[.!dry] .> 0)
@@ -245,6 +260,64 @@ for FT in (Float32, Float64)
         ψ_leaf = only(Array(parent(p.canopy.hydraulics.ψ)))
         @test isfinite(ψ_leaf)
         @test ψ_leaf <= maximum(Array(parent(p.soil.ψ)))
+        tmp = p.scratch1
+        ClimaCore.Operators.column_integral_definite!(
+            tmp,
+            p.soil.K .* Canopy.root_distribution.(
+                z,
+                model_no_stress.canopy.biomass.rooting_depth,
+            ),
+        )
+        @test parent(p.root_dryness_norm) ≈ parent(tmp)
+
+        @testset "Prognostic plant hydraulics, piecewise moisture stress" begin
+            model_ph = SoilCanopyModel{FT}(
+                forcing,
+                LAI,
+                toml_dict,
+                domain;
+                soil = model.soil,
+                canopy = Canopy.CanopyModel{FT}(
+                    ClimaLand.Domains.obtain_surface_domain(domain),
+                    (;
+                        atmos = forcing.atmos,
+                        radiation = forcing.radiation,
+                        ground = ClimaLand.PrognosticGroundConditions{FT}(),
+                    ),
+                    LAI,
+                    toml_dict;
+                    prognostic_land_components = (:canopy, :soil, :soilco2),
+                    soil_moisture_stress = model.canopy.soil_moisture_stress,
+                ),
+            )
+            @test model_ph.canopy.hydraulics isa Canopy.PlantHydraulicsModel
+            # Dry upper layers, so that βm lies strictly between 0 and 1
+            Y, p = initialize_state(
+                model_ph;
+                ϑ_l = @. ifelse(z > -0.4, θ_low, ϑ_wet)
+            )
+            @test haskey(p, :root_dryness_norm)
+            root_weight = @. Canopy.root_distribution(
+                z,
+                model_ph.canopy.biomass.rooting_depth,
+            )
+            ∫βp = ClimaCore.Fields.zeros(domain.space.surface)
+            ∫p = ClimaCore.Fields.zeros(domain.space.surface)
+            ClimaCore.Operators.column_integral_definite!(
+                ∫βp,
+                root_weight .* Canopy.compute_piecewise_moisture_stress.(
+                    θ_high,
+                    θ_low,
+                    c,
+                    p.soil.θ_l,
+                ),
+            )
+            ClimaCore.Operators.column_integral_definite!(∫p, root_weight)
+            βm = only(Array(parent(p.canopy.soil_moisture_stress.βm)))
+            @test 0 < βm < 1
+            @test βm ≈ only(Array(parent(∫βp))) / only(Array(parent(∫p))) rtol =
+                100 * eps(FT)
+        end
     end
     @testset "Soil carbon coupled to canopy carbon pools, FT = $FT" begin
         domain = ClimaLand.Domains.Column(;

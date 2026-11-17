@@ -533,14 +533,21 @@ end
    update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
 
 Updates the water potential `p.canopy.hydraulics.ψ` in place using the retention
-curve. Other subtypes of `AbstractPlantHydraulicsModel` may update different cache
-variables.
+curve, and, in an integrated model with a prognostic soil and the piecewise moisture
+stress model, `p.root_dryness_norm`, which the moisture stress update reads. Other
+subtypes of `AbstractPlantHydraulicsModel` may update different cache variables.
 """
 function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
     (; retention_model, S_s, ν) = hydraulics.parameters
-
+    update_root_dryness_norm!(
+        p,
+        hydraulics,
+        canopy.soil_moisture_stress,
+        canopy.boundary_conditions.ground,
+        canopy,
+    )
     @. ψ = water_retention_curve(
         retention_model,
         effective_saturation(ν, ϑ_l),
@@ -564,9 +571,17 @@ Updates the water potential `p.canopy.hydraulics.ψ` in place for the SteadyStat
 This in turn depends on the configuration for the soil model (prescribed or prognostic).
 
 We do not compute ψ from the canopy water content because in the steady state model we do not require
-the plant retention curve.
+the plant retention curve. With a prognostic soil, this first updates `p.root_dryness_norm`, which the
+leaf water potential, root extraction, and piecewise moisture stress updates read.
 """
 function update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+    update_root_dryness_norm!(
+        p,
+        hydraulics,
+        canopy.soil_moisture_stress,
+        canopy.boundary_conditions.ground,
+        canopy,
+    )
     update_steady_state_leaf_water_potential!(
         p,
         hydraulics,
@@ -615,4 +630,23 @@ function update_steady_state_leaf_water_potential!(
             eps(FT),
         ),
     )
+end
+
+"""
+     update_root_dryness_norm!(p, hydraulics::AbstractPlantHydraulicsModel, sms, ground::PrescribedGroundConditions{FT}, canopy) where {FT}
+
+Does nothing in the case of a prescribed ground; in prognostic ground cases, this updates
+p.root_dryness_norm with the column integral of the root water weight of each soil layer
+(root distribution times the layer stress factor, or times the soil hydraulic conductivity).
+This is computed as part of plant hydraulics and not soil moisture stress because it
+determines root extraction in some cases.
+"""
+function update_root_dryness_norm!(
+    p,
+    hydraulics::AbstractPlantHydraulicsModel,
+    sms,
+    ground::PrescribedGroundConditions{FT},
+    canopy,
+) where {FT}
+    nothing
 end

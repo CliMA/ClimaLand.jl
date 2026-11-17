@@ -18,6 +18,10 @@ main
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
 - ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- ![][badge-🐛bugfix] With `PlantHydraulicsModel`, `PiecewiseMoistureStressModel`, and a
+  prognostic soil, the root zone moisture stress factor `βm` was zero since v1.15.0, which
+  shut down photosynthesis; it is again the root-weighted mean of the layer stress factors.
+  PR [#1952](https://github.com/CliMA/ClimaLand.jl/pull/1952)
 
 v1.15.0
 ----
