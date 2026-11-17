@@ -533,8 +533,9 @@ end
    update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
 
 Updates the water potential `p.canopy.hydraulics.ψ` in place using the retention
-curve. Other subtypes of `AbstractPlantHydraulicsModel` may update different cache
-variables.
+curve, and, in an integrated model with a prognostic soil and the piecewise moisture
+stress model, `p.root_dryness_norm`, which the moisture stress update reads. Other
+subtypes of `AbstractPlantHydraulicsModel` may update different cache variables.
 """
 function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
@@ -570,7 +571,8 @@ Updates the water potential `p.canopy.hydraulics.ψ` in place for the SteadyStat
 This in turn depends on the configuration for the soil model (prescribed or prognostic).
 
 We do not compute ψ from the canopy water content because in the steady state model we do not require
-the plant retention curve.
+the plant retention curve. With a prognostic soil, this first updates `p.root_dryness_norm`, which the
+leaf water potential, root extraction, and piecewise moisture stress updates read.
 """
 function update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
     update_root_dryness_norm!(

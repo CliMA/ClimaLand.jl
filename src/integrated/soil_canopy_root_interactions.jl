@@ -324,7 +324,7 @@ end
      update_root_dryness_norm!(p, hydraulics::Union{SteadyStateModel, PlantHydraulicsModel}, sms::Canopy.PiecewiseMoistureStressModel, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
 Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
-is the soil layer specific water stress. This is used to compute 
+is the soil layer specific water stress. This is used to compute
 - root extraction, soil moisture stress, and the steady state
 water potential of the leaf (Steady state hydraulics)
 - soil moisture stress (Plant Hydraulics)
@@ -348,7 +348,7 @@ function update_root_dryness_norm!(
 end
 
 """
-     update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel},, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+     update_steady_state_leaf_water_potential!(p, hydraulics::SteadyStateModel, sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel}, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
 Updates the leaf water potential with the estimated steady state value in the case of a prognostic ground condition for
 arbitrary soil moisture stress parameterizations. Here we weight the potential by the hydraulic conductivity in each layer
@@ -371,14 +371,13 @@ function update_steady_state_leaf_water_potential!(
 end
 
 """
-     update_root_dryness_norm!(p, hydraulics::SteadyStateModel, sms:::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel}, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
+     update_root_dryness_norm!(p, hydraulics::SteadyStateModel, sms::Union{Canopy.TuzetMoistureStressModel, Canopy.NoMoistureStressModel}, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
-Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
-is the soil layer specific water stress. This is used to compute
+Updates p.root_dryness_norm with ∫p(z) K(z) dz, where p(z) is the root distribution and K(z)
+is the soil hydraulic conductivity. These moisture stress models do not depend on the soil
+moisture of each layer, so the conductivity weights the layers instead. This is used to compute
 - root extraction
 - steady state water potential of the leaf
-
-The β factor is compute with Tuzet or set equal to 1.
 """
 function update_root_dryness_norm!(
     p,
@@ -399,8 +398,9 @@ end
 """
      update_root_dryness_norm!(p, hydraulics, sms, ground::PrognosticGroundConditions{FT}, canopy) where {FT}
 
-Updates p.root_dryness_norm with ∫p(z) β(z) dz, where p(z) is the root distribution and β(z)
-is the soil layer specific water stress.
+Does nothing: with a PlantHydraulicsModel and a moisture stress model other than the piecewise
+model, ψ comes from the plant retention curve and root extraction from the Darcy flux, so
+`p.root_dryness_norm` is not needed.
 """
 function update_root_dryness_norm!(
     p,
