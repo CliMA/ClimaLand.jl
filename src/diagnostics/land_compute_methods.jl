@@ -682,6 +682,7 @@ end #
     SoilCanopyModel,
     LandModel,
 } p.soilco2.Sm
+@diagnostic_compute "soil_litter_input" LandModel p.soil_litter_input
 @diagnostic_compute "soilo2_diffusivity" Union{
     SoilCO2Model,
     SoilCanopyModel,

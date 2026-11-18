@@ -491,6 +491,16 @@ function add_diagnostics!(
     append!(diagnostics, ["cveg"])
     return nothing
 end
+# The litter reaches the soil through `p.soil_litter_input`, a variable of the
+# integrated model that a standalone canopy does not have
+function add_diagnostics!(
+    diagnostics,
+    model::LandModel,
+    subcomponent::PrognosticCarbonModel,
+)
+    append!(diagnostics, ["slit"])
+    return nothing
+end
 
 ## Possible diagnostics for standalone models
 """
@@ -668,6 +678,8 @@ function get_possible_diagnostics(model::LandModel)
         model,
         model.canopy.boundary_conditions.radiation,
     )
+    # Add conditional diagnostics based on biomass model type
+    add_diagnostics!(component_diagnostics, model, model.canopy.biomass)
 
     additional_diagnostics = [
         "swa",
