@@ -6,7 +6,6 @@
 # `bash experiments/calibration/run_calibration.sh` in the root directory.
 
 using Dates
-using Distributed
 import Random
 import ClimaCalibrate
 import ClimaAnalysis
@@ -88,27 +87,21 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
     minibatch_size = CALIBRATE_CONFIG.minibatch_size
-    obs_series = EKP.ObservationSeries(
-        Dict(
-            "observations" => observation_vector,
-            "names" => [
-                string(Dates.year(start_date)) for
-                (start_date, stop_date) in sample_date_ranges
-            ],
-            "minibatcher" => ClimaCalibrate.minibatcher_over_samples(
-                length(observation_vector),
-                minibatch_size,
-            ),
-        ),
+    obs_series = ClimaCalibrate.observation_series_from_samples(
+        observation_vector,
+        minibatch_size,
+        [
+            string(Dates.year(start_date)) for
+            (start_date, stop_date) in sample_date_ranges
+        ],
     )
 
     (; rng_seed) = CALIBRATE_CONFIG
     rng = Random.MersenneTwister(rng_seed)
 
-    # Note: You should check that the ensemble size is the same as the number of
-    # tasks in the batch script
+    # The ensemble size is set by the EKP method
     # For example, if you are calibrating 3 parameters and are using
-    # EKP.TransformUnscented, then the number of tasks should be 7, since
+    # EKP.TransformUnscented, then the ensemble size is 7, since
     # 3 * 2 + 1 = 7
     ekp = EKP.EnsembleKalmanProcess(
         obs_series,
@@ -118,20 +111,24 @@ if abspath(PROGRAM_FILE) == @__FILE__
         scheduler = EKP.DataMisfitController(terminate_at = 100),
     )
 
-    curr_backend = ClimaCalibrate.get_backend()
+    curr_backend = ClimaCalibrate.backend_type()
     N_ens = EKP.get_N_ens(ekp)
 
     model_interface = LandModelInterface(CALIBRATE_CONFIG)
 
-    # Run test calibration (only support the WorkerBackend and clusters with
-    # Slurm)
+    # Environment variables to set for each job or worker
+    env_vars =
+        ["CLIMACOMMS_CONTEXT" => "SINGLETON", "CLIMACOMMS_DEVICE" => "CUDA"]
+
+    # Run test calibration (only supports the WorkerBackend)
     if TEST_CALIBRATION
         # This backend is used for testing. Since it is not easy to specify only
-        # one worker with ClimaGPUBackend, we use addprocs and the WorkerBackend
-        # instead.
-        @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
-        addprocs(ClimaCalibrate.SlurmManager())
-        @everywhere include($model_interface_filepath)
+        # one worker with ClimaGPUBackend, we use a single local worker and the
+        # WorkerBackend instead. With a single worker, the members run one after
+        # another on the GPU of the current allocation without submitting any
+        # jobs.
+        wait(ClimaCalibrate.add_workers(1; cluster = :local, env = env_vars))
+        ClimaCalibrate.@worker_setup include($model_interface_filepath)
         (; n_iterations, output_dir) = CALIBRATE_CONFIG
         eki = ClimaCalibrate.calibrate(
             ClimaCalibrate.WorkerBackend(),
@@ -155,9 +152,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     ]
     # Modules to load with `module load`
     modules = [_loaded_climacommon()]
-    # Environment variables to set for each job
-    env_vars =
-        ["CLIMACOMMS_CONTEXT" => "SINGLETON", "CLIMACOMMS_DEVICE" => "CUDA"]
 
     # Determine which backend to submit job scripts to
     if curr_backend == ClimaCalibrate.DerechoBackend
@@ -180,6 +174,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         mkpath(dirname(worker_log_path))
         # 720 minutes is 12 hours
         walltime = 720
+        # Not waited on, so members start running as workers join
         ClimaCalibrate.add_workers(
             N_ens;
             device = :gpu,
@@ -212,7 +207,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         backend =
             ClimaCalibrate.ClimaGPUBackend(; directives, modules, env_vars)
     else
-        error("Unsupported backend: $(ClimaCalibrate.get_backend())")
+        error("Unsupported backend: $curr_backend")
     end
 
     (; n_iterations, output_dir) = CALIBRATE_CONFIG

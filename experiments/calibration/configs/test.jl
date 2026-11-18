@@ -6,7 +6,8 @@
 
 """Noise scalars for the covariance matrix of each observed variable.
 
-These multiply the identity in `ScalarCovariance`, so they are variances.
+The covariance matrix is diagonal, with entries
+`NOISE_SCALARS[short_name] / max(cosd(lat), 0.1)` at latitude `lat`.
 Units are the square of the observational dataset units:
 - `lwu`: (W m^-2)^2 (ERA5)
 """
