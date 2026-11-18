@@ -645,6 +645,7 @@ of `EnergyHydrology`.
 ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :total_water,
     :total_energy,
+    :subsurface_scratch,
     :K,
     :ψ,
     :θ_l,
@@ -675,6 +676,7 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     boundary_var_types(
@@ -692,6 +694,7 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
 ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
     :surface,
     :surface,
+    :subsurface,
     :subsurface,
     :subsurface,
     :subsurface,
@@ -1199,10 +1202,17 @@ function ClimaLand.total_liq_water_vol_per_area!(
     earth_param_set = model.parameters.earth_param_set
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+    @. p.soil.subsurface_scratch = Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq
     ClimaCore.Operators.column_integral_definite!(
         surface_field,
-        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # allocates
+        p.soil.subsurface_scratch, # allocates
     )
+    # let _ρ_liq = _ρ_liq, _ρ_ice = _ρ_ice
+    #     ClimaCore.DataLayouts.foreach_column(surface_field, Y.soil.ϑ_l, Y.soil.θ_i) do surface_col, ϑ_l_col, θ_i_col
+    #         integrand = ϑ_l_col .+ θ_i_col .* _ρ_ice ./ _ρ_liq
+    #         ClimaCore.Operators.column_integral_definite!(surface_col, integrand)
+    #     end
+    # end
     return nothing
 end
 
