@@ -23,6 +23,9 @@
 #   and precipitation as interval means, harmonic interpolation of the states)
 #   and 1-hour driver updates in both the reader and the simulation.
 # - CO2: the annual global means of the protocol (`prescribed_co2_annual`).
+# - With `--forcing era5`, the climate is the hourly 1-degree ERA5 forcing of the
+#   ClimaLand long runs (`prescribed_forcing_era5`, wind capped at 25 m/s) instead
+#   of CRU-JRA, for comparisons of the two forcings; the rest is unchanged.
 #
 # Spin-up: the vegetation carbon pools are set to their equilibrium under the
 # mean drivers of the first `--veg-spinup-months` months (default 12) in a
@@ -123,6 +126,10 @@ function parse_commandline(args = ARGS)
         help = "time step in seconds"
         arg_type = Float64
         default = 900.0
+        "--forcing"
+        help = "climate forcing: `crujra` (CRU-JRA v4.10, the TRENDY protocol) or `era5` (hourly 1-degree ERA5)"
+        default = "crujra"
+        range_tester = in(("crujra", "era5"))
         "--updateat-hours"
         help = "driver update interval in hours (the reader and the simulation use the same)"
         arg_type = Int
@@ -190,7 +197,7 @@ end
 """
     configuration_a_model(domain, start_date, stop_date, Δt, toml_dict, options)
 
-`LandModel` of configuration A: CRU-JRA v4.10, TRENDY CO2, prescribed MODIS LAI
+`LandModel` of configuration A: CRU-JRA v4.10 (ERA5 with `--forcing era5`), TRENDY CO2, prescribed MODIS LAI
 v6.1 with prognostic carbon pools.
 """
 function configuration_a_model(
@@ -204,18 +211,30 @@ function configuration_a_model(
     surface_space = domain.space.surface
     context = ClimaComms.context(surface_space)
     c_co2 = ClimaLand.prescribed_co2_annual(options["co2-file"], start_date)
-    atmos, radiation = ClimaLand.prescribed_forcing_crujra(
-        start_date,
-        stop_date,
-        surface_space,
-        toml_dict,
-        FT;
-        c_co2,
-        version = "4.10",
-        crujra_path = options["crujra-path"],
-        updateat = Dates.Hour(options["updateat-hours"]),
-        context,
-    )
+    atmos, radiation =
+        options["forcing"] == "era5" ?
+        ClimaLand.prescribed_forcing_era5(
+            start_date,
+            stop_date,
+            surface_space,
+            toml_dict,
+            FT;
+            c_co2,
+            max_wind_speed = FT(25),
+            context,
+        ) :
+        ClimaLand.prescribed_forcing_crujra(
+            start_date,
+            stop_date,
+            surface_space,
+            toml_dict,
+            FT;
+            c_co2,
+            version = "4.10",
+            crujra_path = options["crujra-path"],
+            updateat = Dates.Hour(options["updateat-hours"]),
+            context,
+        )
     lai_paths = modis_lai_v061_paths(
         modis_lai_v061_dir(options["lai-path"]),
         start_date,
@@ -482,7 +501,7 @@ function main(options)
             toml_dict,
             options,
         )
-        @info "TRENDY run" model_name simulation_name start_date stop_date resolution spinup_months updateat options["crujra-path"] options["co2-file"] lai_paths
+        @info "TRENDY run" model_name simulation_name start_date stop_date resolution spinup_months updateat options["forcing"] options["crujra-path"] options["co2-file"] lai_paths
         state = nothing
         if spinup_months > 0
             spinup = LandSimulation(
