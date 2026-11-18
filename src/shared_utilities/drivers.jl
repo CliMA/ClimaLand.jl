@@ -1806,6 +1806,290 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
 end
 
 """
+    HoldWindowMeanInput(input, hold_window; shift = Second(0), data_step = Hour(1))
+
+The mean of the time-varying `input` over the hold window that contains `t`.
+Hold windows are `[start_date + k hold_window, start_date + (k + 1) hold_window)`,
+with `start_date` the one of `input`. `input` is evaluated at the centres of the
+`hold_window / data_step` equal parts of the window (one part if the window is
+shorter than `data_step`), each moved by `shift`, and the values are averaged.
+The mean is computed once per window and reused for later times in the same window,
+so the drivers can be updated more often than the window without rereading the data.
+
+For data that are means over the `data_step` before their time stamps, such as
+ERA5's hourly mean rates, `shift = data_step / 2` puts every evaluation on a
+stamp, so the result is the exact mean over the window.
+"""
+struct HoldWindowMeanInput{I <: AbstractTimeVaryingInput, F} <:
+       AbstractTimeVaryingInput
+    input::I
+    "Length of the hold window (ms)"
+    window::Int
+    "Times after the start of the window at which `input` is evaluated (ms)"
+    offsets::Vector{Int}
+    scratch::F
+    "Mean over the last window computed"
+    cache::F
+    "Index of the last window computed"
+    cached_window::Base.RefValue{Int}
+end
+
+function HoldWindowMeanInput(
+    input::AbstractTimeVaryingInput,
+    hold_window::Dates.Period;
+    shift::Dates.Period = Second(0),
+    data_step::Dates.Period = Hour(1),
+)
+    window = Dates.value(Millisecond(hold_window))
+    n = max(1, round(Int, window / Dates.value(Millisecond(data_step))))
+    offsets = [
+        round(Int, (k - 0.5) * window / n) + Dates.value(Millisecond(shift)) for k in 1:n
+    ]
+    space = input.data_handler.target_space
+    return HoldWindowMeanInput(
+        input,
+        window,
+        offsets,
+        ClimaCore.Fields.zeros(space),
+        ClimaCore.Fields.zeros(space),
+        Ref(typemin(Int)),
+    )
+end
+
+driver_datetime(t::ITime, start_date) =
+    isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+driver_datetime(t::Number, start_date) =
+    start_date + Millisecond(round(Int, 1_000 * t))
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::HoldWindowMeanInput,
+    t,
+    args...;
+    kwargs...,
+)
+    (; window, offsets, scratch, cache, cached_window) = input
+    start_date = input.input.data_handler.start_date
+    k = fld(Dates.value(driver_datetime(t, start_date) - start_date), window)
+    if k != cached_window[]
+        window_start = start_date + Millisecond(k * window)
+        for (i, offset) in enumerate(offsets)
+            target = i == 1 ? cache : scratch
+            TimeVaryingInputs.evaluate!(
+                target,
+                input.input,
+                window_start + Millisecond(offset),
+                args...;
+                kwargs...,
+            )
+            i > 1 && (cache .+= scratch)
+        end
+        cache ./= length(offsets)
+        cached_window[] = k
+    end
+    dest .= cache
+    return nothing
+end
+
+"""
+    CosZenithShortwaveInput(hourly_mean, Δt; latitude, longitude, insol_params)
+
+Shortwave that follows the sun within each hour: the hourly mean of
+`hourly_mean` (a [`HoldWindowMeanInput`](@ref) with a one-hour window) times the
+cosine of the zenith angle at the middle of the model step `[t, t + Δt)`, divided by
+its mean over the steps of that hour, as in CLM's data atmosphere. Each hour keeps its
+energy. In an hour whose mean cosine is below `1e-3` (sunrise and sunset),
+the hourly mean is held.
+"""
+struct CosZenithShortwaveInput{I <: HoldWindowMeanInput, F, LA, LO, P} <:
+       AbstractTimeVaryingInput
+    hourly_mean::I
+    "Model time step (ms)"
+    Δt::Int
+    "Mean cosine of the zenith angle over the steps of the cached hour"
+    mean_cosθ::F
+    cached_hour::Base.RefValue{Int}
+    latitude::LA
+    longitude::LO
+    insol_params::P
+end
+
+function CosZenithShortwaveInput(
+    hourly_mean::HoldWindowMeanInput,
+    Δt::Dates.Period;
+    latitude,
+    longitude,
+    insol_params,
+)
+    return CosZenithShortwaveInput(
+        hourly_mean,
+        Dates.value(Millisecond(Δt)),
+        similar(hourly_mean.cache),
+        Ref(typemin(Int)),
+        latitude,
+        longitude,
+        insol_params,
+    )
+end
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::CosZenithShortwaveInput,
+    t,
+    args...;
+    kwargs...,
+)
+    (; hourly_mean, Δt, mean_cosθ, cached_hour) = input
+    (; latitude, longitude, insol_params) = input
+    start_date = hourly_mean.input.data_handler.start_date
+    step_middle = driver_datetime(t, start_date) + Millisecond(Δt ÷ 2)
+    TimeVaryingInputs.evaluate!(
+        dest,
+        hourly_mean,
+        Dates.value(step_middle - start_date) / 1000,
+        args...;
+        kwargs...,
+    )
+    k = fld(Dates.value(step_middle - start_date), hourly_mean.window)
+    if k != cached_hour[]
+        hour_start = start_date + Millisecond(k * hourly_mean.window)
+        n = max(1, hourly_mean.window ÷ Δt)
+        offsets = Tuple(
+            Millisecond(round(Int, (i - 0.5) * hourly_mean.window / n)) for
+            i in 1:n
+        )
+        @. mean_cosθ = _mean_cos_zenith(
+            hour_start,
+            (offsets,),
+            latitude,
+            longitude,
+            insol_params,
+        )
+        cached_hour[] = k
+    end
+    FT = eltype(dest)
+    @. dest = ifelse(
+        mean_cosθ > FT(1e-3),
+        dest * FT(
+            Insolation.insolation(
+                step_middle,
+                latitude,
+                longitude,
+                insol_params,
+            ).μ,
+        ) / mean_cosθ,
+        dest,
+    )
+    return nothing
+end
+
+function _mean_cos_zenith(hour_start, offsets, lat, lon, insol_params)
+    sum_μ = zero(lat)
+    for offset in offsets
+        sum_μ +=
+            Insolation.insolation(hour_start + offset, lat, lon, insol_params).μ
+    end
+    return sum_μ / length(offsets)
+end
+
+"""
+    HoldWindowDiffuseFraction(diffuse, total)
+
+The diffuse fraction of the shortwave over a hold window: the window mean of the
+diffuse shortwave divided by the window mean of the total, both
+[`HoldWindowMeanInput`](@ref)s.
+"""
+struct HoldWindowDiffuseFraction{
+    D <: HoldWindowMeanInput,
+    T <: HoldWindowMeanInput,
+    F,
+} <: AbstractTimeVaryingInput
+    diffuse::D
+    total::T
+    scratch::F
+end
+
+HoldWindowDiffuseFraction(diffuse, total) = HoldWindowDiffuseFraction(
+    diffuse,
+    total,
+    ClimaCore.Fields.zeros(axes(total.scratch)),
+)
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::HoldWindowDiffuseFraction,
+    t,
+    args...;
+    kwargs...,
+)
+    TimeVaryingInputs.evaluate!(dest, input.diffuse, t, args...; kwargs...)
+    TimeVaryingInputs.evaluate!(
+        input.scratch,
+        input.total,
+        t,
+        args...;
+        kwargs...,
+    )
+    FT = eltype(dest)
+    @. dest = min(dest / (input.scratch + eps(FT)), FT(1))
+    return nothing
+end
+
+"""
+    hold_window_cos_zenith_angle(
+        t,
+        start_date;
+        latitude,
+        longitude,
+        insol_params,
+        hold_window,
+        n_samples = 12,
+    )
+
+The cosine of the zenith angle over the hold window `[t, t + hold_window)`,
+weighted by itself (that is, by the clear-sky insolation): the mean of cos²θ over
+the mean of cos θ, from `n_samples` equally spaced times. It is zero when the sun
+stays below the horizon over the whole window.
+"""
+function hold_window_cos_zenith_angle(
+    t,
+    start_date;
+    latitude,
+    longitude,
+    insol_params,
+    hold_window,
+    n_samples = 12,
+)
+    window = Dates.value(Millisecond(hold_window))
+    offsets = ntuple(
+        k -> Millisecond(round(Int, (k - 0.5) * window / n_samples)),
+        n_samples,
+    )
+    window_start = driver_datetime(t, start_date)
+    return @. lazy(
+        _weighted_cos_zenith(
+            window_start,
+            (offsets,),
+            latitude,
+            longitude,
+            insol_params,
+        ),
+    )
+end
+
+function _weighted_cos_zenith(window_start, offsets, lat, lon, insol_params)
+    sum_μ = zero(lat)
+    sum_μ² = zero(lat)
+    for offset in offsets
+        μ =
+            Insolation.insolation(window_start + offset, lat, lon, insol_params).μ
+        sum_μ += μ
+        sum_μ² += μ * μ
+    end
+    return sum_μ > 0 ? sum_μ² / sum_μ : zero(lat)
+end
+
+"""
     prescribed_forcing_era5(start_date,
                             stop_date,
                             surface_space,
@@ -1818,6 +2102,8 @@ end
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                             regridder_type = :InterpolationsRegridder,
+                            hold_window = nothing,
+                            coszen_Δt = nothing,
                             context = nothing,
                             )
 
@@ -1871,6 +2157,25 @@ and linear spatial interpolation for high resolution forcing.
     2 m but the wind over 10 m, which weakens the diagnosed stability and
     instability. The hourly-mean components also give a scalar wind speed
     somewhat below the mean of the instantaneous speed.
+
+!!! note "Hold window"
+    The drivers are updated every `updateat` (3 hours by default in
+    `LandSimulation`) and held in between. By default (`hold_window = nothing`)
+    each driver is the linear interpolant of the hourly data at the update time.
+    With `hold_window` set to the same period as `updateat`, each driver is
+    instead its mean over the window it is held for (see
+    [`HoldWindowMeanInput`](@ref)): the mean of ERA5's hourly mean rates
+    (precipitation, snowfall, shortwave and longwave), which ERA5 stamps at the
+    end of the hour they average; the mean of temperature, humidity, pressure
+    and wind; the diffuse fraction of the window's shortwave; and the cosine of
+    the zenith angle weighted by insolation over the window
+    ([`hold_window_cos_zenith_angle`](@ref)).
+
+    With `coszen_Δt` set to the model time step as well, the shortwave follows
+    the sun within each hour ([`CosZenithShortwaveInput`](@ref)) and the cosine
+    of the zenith angle is the one at the middle of each step. This needs the
+    drivers to be updated every step (`updateat = Δt` in `LandSimulation`);
+    the other drivers are read once per hold window.
 """
 function prescribed_forcing_era5(
     start_date,
@@ -1885,8 +2190,13 @@ function prescribed_forcing_era5(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    hold_window = nothing,
+    coszen_Δt = nothing,
     context = nothing,
 )
+    isnothing(coszen_Δt) ||
+        !isnothing(hold_window) ||
+        error("`coszen_Δt` requires `hold_window`")
     # Determine the ERA5 dataset and interpolation method based on the simulation years and resolution
     if use_lowres_forcing
         era5_ncdata_path =
@@ -1988,6 +2298,18 @@ function prescribed_forcing_era5(
     )
     h_atmos = FT(10)
 
+    if !isnothing(hold_window)
+        state_mean = input -> HoldWindowMeanInput(input, hold_window)
+        rate_mean =
+            input -> HoldWindowMeanInput(input, hold_window; shift = Minute(30))
+        precip = rate_mean(precip)
+        snow_precip = rate_mean(snow_precip)
+        T_atmos = state_mean(T_atmos)
+        u_atmos = state_mean(u_atmos)
+        q_atmos = state_mean(q_atmos)
+        P_atmos = state_mean(P_atmos)
+    end
+
     atmos = PrescribedAtmosphere(
         precip,
         snow_precip,
@@ -2053,6 +2375,56 @@ function prescribed_forcing_era5(
             longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
             insol_params = earth_param_set.insol_params,
         )
+
+    if !isnothing(hold_window)
+        rate_mean =
+            input -> HoldWindowMeanInput(input, hold_window; shift = Minute(30))
+        diffuse_SW = TimeVaryingInput(
+            [era5_ncdata_path, era5_ncdata_path],
+            ["msdwswrf", "msdrswrf"],
+            surface_space;
+            start_date,
+            regridder_type,
+            regridder_kwargs = (; interpolation_method),
+            method = time_interpolation_method,
+            compose_function = (total, direct) ->
+                max.(total .- direct, Float32(0)),
+        )
+        SW_raw = SW_d
+        SW_d = rate_mean(SW_raw)
+        frac_diff = HoldWindowDiffuseFraction(rate_mean(diffuse_SW), SW_d)
+        LW_d = rate_mean(LW_d)
+    end
+    if !isnothing(coszen_Δt)
+        coords = ClimaCore.Fields.coordinate_field(surface_space)
+        SW_d = CosZenithShortwaveInput(
+            HoldWindowMeanInput(SW_raw, Hour(1); shift = Minute(30)),
+            coszen_Δt;
+            latitude = coords.lat,
+            longitude = coords.long,
+            insol_params = earth_param_set.insol_params,
+        )
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
+                Dates.value(
+                    driver_datetime(t, s) + Millisecond(coszen_Δt) ÷ 2 - s,
+                ) / 1000,
+                s;
+                latitude = coords.lat,
+                longitude = coords.long,
+                insol_params = earth_param_set.insol_params,
+            )
+    elseif !isnothing(hold_window)
+        cos_zenith_angle =
+            (t, s) -> hold_window_cos_zenith_angle(
+                t,
+                s;
+                latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+                longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+                insol_params = earth_param_set.insol_params,
+                hold_window,
+            )
+    end
 
     radiation = PrescribedRadiativeFluxes(
         FT,

@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] `prescribed_forcing_era5` takes `hold_window` and `coszen_Δt`. With
+  `hold_window` equal to the driver update interval, each ERA5 driver is its mean over the
+  window it is held for, so the light is no longer about 2 hours late; with `coszen_Δt` set
+  to the time step as well, the shortwave follows the sun within each hour, as in CLM's data
+  atmosphere. The default (`hold_window = nothing`) is unchanged.
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
   add the `slit` diagnostic. PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
