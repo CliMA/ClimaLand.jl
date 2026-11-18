@@ -61,7 +61,7 @@ The `calibrate` function is at the heart of performing a calibration with
 import ClimaCalibrate
 
 ClimaCalibrate.calibrate(
-    ClimaCalibrate.WorkerBackend,
+    ClimaCalibrate.WorkerBackend(),
     utki,
     model_interface,
     n_iterations,
@@ -190,16 +190,16 @@ the parameters value inside `parameters.toml`, and model outputs inside
 `global_diagnostics`.
 
 Two additional functions need to be defined in order to run
-`ClimaCalibrate.calibrate`.
-`ClimaCalibrate.forward_model(interface, iteration, member)` and
-`ClimaCalibrate.observation_map(iteration)`. The
+`ClimaCalibrate.calibrate`. `ClimaCalibrate.forward_model(interface, iteration,
+member)` and `ClimaCalibrate.observation_map(interface, iteration)`. The
 `ClimaCalibrate.forward_model(interface, iteration, member)` needs to generate
 your model output for a specific iteration and member. The
-`ClimaCalibrate.observation_map(interface, iteration)` needs to return your loss,
-a vector of the same format as `observations` but created with your model output
-(for example, monthly average of latent heat flux), for all members. To make
-this easier, it can be useful to implement a `process_member_data(root_path)`
-function that generates one member output from your model output path.
+`ClimaCalibrate.observation_map(interface, iteration)` needs to return your
+loss, a vector of the same format as `observations` but created with your model
+output (for example, monthly average of latent heat flux), for all members. To
+make this easier, it can be useful to implement a
+`process_member_data(root_path)` function that generates one member output from
+your model output path.
 
 Once you have defined `ClimaCalibrate.forward_model`,
 `ClimaCalibrate.observation_map`, `output_dir`, `noise`, `observations`,
@@ -208,80 +208,34 @@ Once you have defined `ClimaCalibrate.forward_model`,
 
 ## Job script
 
-A calibration job will likely take hours to complete, so you will probably have
-to submit a job with a job scheduler. When working with the
-`ClimaCalibrate.WorkerBackend`, an example job .pbs script (for PBS, e.g.,
-Derecho):
+A calibration job will likely take hours to complete. You do not need to submit
+it to a job scheduler yourself: `run_calibration.jl` submits the forward models
+to the job scheduler, so you can start it from the login node in a persistent
+session such as `tmux`:
 
 ```bash
-#!/bin/bash
-#PBS -N derecho_calibration
-#PBS -o output.txt
-#PBS -e error.txt
-#PBS -l walltime=10:00:00
-#PBS -l select=1:ncpus=64:ngpus=4
-
-## Account number for CliMA
-#PBS -A UCIT0011
-#PBS -q main
-
 module load climacommon
-# Run your command
-export CLIMACOMMS_DEVICE="CUDA"
-export CLIMACOMMS_CONTEXT="SINGLETON"
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+bash experiments/calibration/run_calibration.sh [OUTPUT_DIR]
 ```
 
-and below is a example job .sh script (for Slurm, e.g., central or clima):
+`run_calibration.sh` generates the observations and runs `run_calibration.jl`, a
+script that sets up the calibration and calls `ClimaCalibrate.calibrate`. On
+Derecho, it uses the `ClimaCalibrate.WorkerBackend` with persistent workers; on
+central, clima, and GCP, it submits one Slurm job per ensemble member for each
+iteration. A few hours later, you would get a calibrated parameter set. See
+`experiments/calibration/README.md` for more information.
 
-```bash
-#!/bin/bash
-#SBATCH --job-name=slurm_calibration
-#SBATCH --output=output.txt
-#SBATCH --error=error.txt
-#SBATCH --time=12:00:00
-#SBATCH --ntasks=5
-#SBATCH --cpus-per-task=4
-#SBATCH --gpus-per-task=1
+When `TEST_CALIBRATION` is set, the ensemble members run one after another on
+the GPU of the current allocation, so run the script from a job with one GPU
+instead.
 
-# Set environment variables for CliMA
-export CLIMACOMMS_DEVICE="CUDA"
-export CLIMACOMMS_CONTEXT="SINGLETON"
-
-# Build and run the Julia code
-module load climacommon
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
-```
-
-where `run_calibration.jl` is a script that sets up the calibration and calls
-`ClimaCalibrate.calibrate`. You would start the job with a command such as `qsub
-name_of_job_script` for PBS or `sbatch name_of_job_script` for Slurm, and a few
-hours later, you would get a calibrated parameter set.
-
-When using the `ClimaCalibrate.DerechoBackend` or `ClimaCalibrate.GCPBackend`,
-these backends will automatically submit the appropriate script to PBS or Slurm
-respectively. An example bash script would look like this:
-
-```
-#!/bin/bash
-
-module load climacommon
-
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/generate_observations.jl
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
-```
-
-You can check the status of your job with `qstat -u username` of PBS or `squeue
+You can check the status of your jobs with `qstat -u username` on PBS or `squeue
 -u username` on Slurm.
 
 Note that with the default EKP configuration, UTKI, the number of ensemble is
 set by the number of parameters, as explained in the documentation above. The
-number of workers (if you use the worker backend) is automatically set to that
-number, so that all members are run in parallel for each iteration.
+number of workers is automatically set to that number, so that all members are
+run in parallel for each iteration.
 
 ## Configure your land calibration
 
@@ -377,8 +331,12 @@ over a particular year or over multiple years for example.
     and September to November (SON). The convention for time is use the first
     time of the time reduction.
 
-To change the covariance matrix, you need to go to `generate_observations.jl`
-and modify the covariance matrix that is passed in. See
+By default, the covariance matrix of each variable is diagonal, with the entries
+`NOISE_SCALARS[short_name] / max(cosd(lat), 0.1)`, where `NOISE_SCALARS` is set
+in the configuration file and `lat` is the latitude of the entry. It is built
+with `ClimaCalibrate.ObservationRecipe.DiagonalCovariance`. To change the
+covariance matrix, you need to go to `generate_observations.jl` and modify the
+covariance matrix that is passed in. See
 [ClimaCalibrate.jl documentation](https://clima.github.io/ClimaCalibrate.jl/stable/api/#Observation-Recipe-Interface)
 for a list of different covariance matrices that can be used.
 

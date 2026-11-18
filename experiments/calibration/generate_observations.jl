@@ -77,11 +77,16 @@ function make_observation_vector(
     end
 
     # Build per-variable covariance estimators
-    covar_estimators = map(short_names) do name
-        ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
-            scalar = noise_scalars[name],
-            use_latitude_weights = true,
+    latitude_weighting =
+        ClimaCalibrate.ObservationRecipe.LatitudeWeightDiagonal(;
             min_cosd_lat = 0.1,
+        )
+    covar_estimators = map(short_names) do name
+        scalar_diagonal = ClimaCalibrate.ObservationRecipe.ScalarDiagonal(
+            noise_scalars[name],
+        )
+        ClimaCalibrate.ObservationRecipe.DiagonalCovariance(
+            scalar_diagonal .* latitude_weighting,
         )
     end
 

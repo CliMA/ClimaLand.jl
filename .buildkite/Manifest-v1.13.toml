@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "ca64be73dbb53f0543bef7acf911bdb9f1635a5a"
+project_hash = "214b42acfa1d8b902fa79cc87396ecb4b2e9bed1"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -577,11 +577,11 @@ weakdeps = ["GeoMakie", "Makie"]
     ClimaAnalysisMakieExt = "Makie"
 
 [[deps.ClimaCalibrate]]
-deps = ["ArnoldiMethod", "Dates", "Distributed", "EnsembleKalmanProcesses", "JLD2", "LinearAlgebra", "LinearMaps", "Logging", "OrderedCollections", "Reexport", "Statistics", "TOML", "YAML"]
-git-tree-sha1 = "27ced647f790d43ace5e0c7df20efad5ffb05f77"
+deps = ["ArnoldiMethod", "Distributed", "EnsembleKalmanProcesses", "JLD2", "LinearAlgebra", "LinearMaps", "Logging", "OrderedCollections", "Reexport", "Statistics", "TOML"]
+git-tree-sha1 = "9ef8c86cc870d0efac56af93002716ea89de8a43"
 registries = "General"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
-version = "0.4.0"
+version = "0.7.0"
 weakdeps = ["ClimaAnalysis", "Makie", "NaNStatistics"]
 
     [deps.ClimaCalibrate.extensions]
@@ -3806,13 +3806,6 @@ version = "0.5.7"
     Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
     PtrArrays = "43287f4e-b6f4-7ad1-bb20-aadabca52c3d"
 
-[[deps.StringEncodings]]
-deps = ["Libiconv_jll"]
-git-tree-sha1 = "b765e46ba27ecf6b44faf70df40c57aa3a547dcb"
-registries = "General"
-uuid = "69024149-9ee7-55f6-a4c4-859efe599b68"
-version = "0.3.7"
-
 [[deps.StringManipulation]]
 deps = ["PrecompileTools", "StyledStrings"]
 git-tree-sha1 = "9e3a02d73a8f0a9be04e677dbef758aab40f8bea"
@@ -4273,13 +4266,6 @@ git-tree-sha1 = "a63799ff68005991f9d9491b6e95bd3478d783cb"
 registries = "General"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
 version = "1.6.0+0"
-
-[[deps.YAML]]
-deps = ["Base64", "Dates", "Printf", "StringEncodings"]
-git-tree-sha1 = "9c685a6e94e255019e2bf9486318147cd42fe34a"
-registries = "General"
-uuid = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
-version = "0.4.17"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
