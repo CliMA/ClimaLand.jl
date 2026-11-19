@@ -80,3 +80,10 @@ capped by its saturated rate and by O2, removes it. Column drift is below 10 g C
 on 85% of the land (97% north of 50°N, 74% in the tropics). In transient runs, the S0
 control removes the constant part. The vertical profile is shallower than SoilGrids'
 (about 1,600 Pg C in the top 10 cm against about 500).
+
+## Transient runs from this state
+
+`land_sink_gcb2026.png` shows the land sink of the TRENDY-style runs started from this
+state: S2 minus the smooth drift of S0 on CRU-JRA, and dashed, the same on ERA5 from 1979,
+against the Global Carbon Budget 2026 residual sink and its DGVMs. CliMA/ClimaLand.jl#1970
+describes the runs.
