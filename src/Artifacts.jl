@@ -38,6 +38,20 @@ function rosetta_spunup_ic_path(; context = nothing)
     return joinpath(dir, "rosetta_spunup_ic.nc")
 end
 
+"""
+     deep_water_table_spunup_ic_path(; context = nothing)
+
+Returns the path to spun-up land initial conditions for a deeper water table,
+with the variables and grid of `rosetta_spunup_ic_path`. They come from
+40 years with TOPMODEL `f_over` = 0.7 after the 100-year spin-up of
+`rosetta_spunup_ic`, so they belong with `f_over` = 0.7; see the
+`deep_water_table_spunup_ic` README in ClimaArtifacts.
+"""
+function deep_water_table_spunup_ic_path(; context = nothing)
+    dir = @clima_artifact("deep_water_table_spunup_ic", context)
+    return joinpath(dir, "deep_water_table_spunup_ic.nc")
+end
+
 
 """
      saturated_land_ic_path(; context = nothing)

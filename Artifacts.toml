@@ -12,6 +12,13 @@ git-tree-sha1 = "2ac7808da475dda482d5631003b2e0684a4ec15e"
     sha256 = "ff385da929f7b99b56a0a271b7ad40c7a5253e7bda935033b19eeb8672ef619f"
     url = "https://caltech.box.com/shared/static/k2tic8adbjvyvk5moeac86j4ihnor8qe.gz"
 
+[deep_water_table_spunup_ic]
+git-tree-sha1 = "70b8b748ca99a39cf6a7cad15dd08ade992fdb57"
+
+    [[deep_water_table_spunup_ic.download]]
+    sha256 = "f9783b253a241b91094a7e17f8ef7a294afeee153119d76f3739712567e97e3a"
+    url = "https://caltech.box.com/shared/static/wem0i8j2negvppc9fftvoimo0hzs6fc4.gz"
+
 [soil_params_rosetta]
 git-tree-sha1 = "11ff294c5e3047cc42e35fd181842c74f8a47db9"
 

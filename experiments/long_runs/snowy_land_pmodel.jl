@@ -150,11 +150,18 @@ spin_up_months = PROGNOSTIC_LAI ? 24 : 12
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 
+# TOPMODEL f_over = 0.7 (3.28 by default), to go with the deep_water_table_spunup_ic state
+deep_water_table_params_path =
+    joinpath(@__DIR__, "deep_water_table_parameters.toml")
 if UNCALIBRATED
     override_params_path = "toml/uncalibrated_parameters.toml"
-    toml_dict = LP.create_toml_dict(FT, override_files = [override_params_path])
+    toml_dict = LP.create_toml_dict(
+        FT,
+        override_files = [override_params_path, deep_water_table_params_path],
+    )
 else
-    toml_dict = LP.create_toml_dict(FT)
+    toml_dict =
+        LP.create_toml_dict(FT, override_files = [deep_water_table_params_path])
 end
 
 model = setup_model(
@@ -173,8 +180,19 @@ diagnostics = ClimaLand.default_diagnostics(
     outdir;
     conservation_period = Day(10),
 )
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+    ClimaLand.Artifacts.deep_water_table_spunup_ic_path(; context),
+    model,
+)
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model;
+    outdir,
+    diagnostics,
+    set_ic!,
+)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
