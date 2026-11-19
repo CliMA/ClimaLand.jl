@@ -2,6 +2,14 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Slow DAMM decomposition with depth, as in Koven et al. (2013):
+  the microbial source is multiplied by `exp(-depth / z_τ)`, with
+  `soilCO2_decomposition_efolding_depth` z_τ = 0.5 m, and `soilCO2_reference_rate` rises
+  from 6.7e-7 to 1.273e-6 kg C m⁻³ s⁻¹ so that global heterotrophic respiration at
+  SoilGrids SOC stays about the same. Respiration moves from the wet, aseasonal subsoil to
+  the topsoil. `Simulations.spin_up_carbon_pools!` takes `soil_carbon = true` to also set
+  the soil organic carbon to its equilibrium with the litter of the pools, which the long
+  run with prognostic LAI does in its second year.
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
   add the `slit` diagnostic. PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
