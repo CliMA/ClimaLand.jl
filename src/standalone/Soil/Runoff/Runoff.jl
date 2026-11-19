@@ -485,4 +485,17 @@ function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
     )
 end
 
+"""
+    get_water_table_depth(runoff_model, Y, p, depth)
+
+A helper function which returns the depth below the surface of the water table
+based on the type of runoff model being used. For `TOPMODELRunoff`, this is the
+depth of the soil column `depth` minus the saturated height of liquid water
+`p.soil.h∇`, which is the depth of the column when no layer is saturated, and
+zero when supersaturated layers make `p.soil.h∇` exceed `depth`.
+"""
+get_water_table_depth(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
+get_water_table_depth(runoff_model::TOPMODELRunoff, Y, p, depth) =
+    @. lazy(max(depth - p.soil.h∇, 0))
+
 end

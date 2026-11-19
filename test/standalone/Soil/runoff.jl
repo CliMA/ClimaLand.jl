@@ -85,6 +85,12 @@ end
     @test Runoff.get_surface_runoff(bc.top.runoff, Y, p) isa Nothing
     @test Runoff.get_soil_fsat(bc.top.runoff, Y, p, model.domain.depth) isa
           Nothing
+    @test Runoff.get_water_table_depth(
+        bc.top.runoff,
+        Y,
+        p,
+        model.domain.depth,
+    ) isa Nothing
 
 end
 
@@ -210,6 +216,8 @@ end
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. runoff_model.f_max *
              exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+    tmp .= Runoff.get_water_table_depth(runoff_model, Y, p, model.domain.depth)
+    @test tmp == @. max(model.domain.depth - p.soil.h∇, 0)
 
 end
 
@@ -303,6 +311,8 @@ end
     tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. runoff_model.f_max *
              exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+    tmp .= Runoff.get_water_table_depth(runoff_model, Y, p, model.domain.depth)
+    @test tmp == @. max(model.domain.depth - p.soil.h∇, 0)
 end
 
 @testset "Richards model, Site level runoff FT =$FT" begin

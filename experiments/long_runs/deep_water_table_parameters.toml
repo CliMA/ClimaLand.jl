@@ -1,0 +1,5 @@
+# Deeper water table, with the initial conditions of `deep_water_table_spunup_ic`
+["f_over"]
+value = 0.7
+type = "float"
+description = "Units are 1/m"
