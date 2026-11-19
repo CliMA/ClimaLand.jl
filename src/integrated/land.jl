@@ -1088,7 +1088,7 @@ function make_compute_imp_tendency(land::LandModel)
     update_imp_c! = make_update_implicit_cache(land)
 
     function imp_tendency!(dY, Y, p, t)
-        update_imp_c!(p, Y, t)
+        # update_imp_c!(p, Y, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
