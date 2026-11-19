@@ -122,11 +122,13 @@ const SOIL_CARBON_MAX = 100.0
     SoilCarbonSums(Y)
 
 The sums of the soil carbon spin-up over the soil layers of `Y`: the litter input, and a
-tuple of the microbial respiration at each SOC value of `SOIL_CARBON_GRID`.
+tuple of the microbial respiration at each SOC value of `SOIL_CARBON_GRID`; and a scratch
+field for the O₂ availability.
 """
 struct SoilCarbonSums{F, R}
     litter::F
     respiration::R
+    o2_availability::F
 end
 
 function SoilCarbonSums(Y)
@@ -134,6 +136,7 @@ function SoilCarbonSums(Y)
     return SoilCarbonSums(
         ClimaCore.Fields.zeros(space),
         ntuple(_ -> ClimaCore.Fields.zeros(space), length(SOIL_CARBON_GRID)),
+        ClimaCore.Fields.zeros(space),
     )
 end
 
@@ -153,19 +156,18 @@ function add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p, t)
     θ_l = BGC.soil_moisture(met, p, Y, t, z)
     θ_i = BGC.soil_ice(met, p, Y, t, z)
     P_sfc = p.drivers.P
-    O2_avail = @. lazy(
-        BGC.o2_availability(
-            BGC.o2_fraction_from_concentration(
-                max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2,
-                T_soil,
-                P_sfc,
-                params,
-            ),
-            BGC.volumetric_air_content(θ_l + θ_i, met.ν),
-            params.D_oa,
+    O2_avail = sums.o2_availability
+    @. O2_avail = BGC.o2_availability(
+        BGC.o2_fraction_from_concentration(
+            max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2,
+            T_soil,
+            P_sfc,
+            params,
         ),
+        BGC.volumetric_air_content(θ_l + θ_i, met.ν),
+        params.D_oa,
     )
-    FT = eltype(params)
+    FT = eltype(Y.soilco2.SOC)
     for (respiration, c) in zip(sums.respiration, SOIL_CARBON_GRID)
         @. respiration +=
             BGC.microbe_source(T_soil, θ_l, FT(c), O2_avail, params) *
