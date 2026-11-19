@@ -951,9 +951,15 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_reference_rate"]
-value = 6.7e-7
+value = 1.273e-6
 type = "float"
-description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹), at the surface (see soilCO2_decomposition_efolding_depth). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+tag = "SoilCO2Parameters"
+
+["soilCO2_decomposition_efolding_depth"]
+value = 0.5
+type = "float"
+description = "E-folding depth of the DAMM decomposition rate (m): the microbial source is multiplied by exp(-depth / z_τ), for the unresolved controls that slow decomposition at depth. Koven et al. (2013), Biogeosciences 10, 7109, Eq. 7, base value."
 tag = "SoilCO2Parameters"
 
 ["soilCO2_reference_temperature"]
