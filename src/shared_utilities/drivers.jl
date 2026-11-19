@@ -1806,6 +1806,123 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
 end
 
 """
+    WindowSampleInput(input, window, at)
+
+The time-varying `input` read once per window, at the same time in every window:
+for `t` in `[start_date + k window, start_date + (k + 1) window)`, the value of
+`input` at `start_date + k window + at`, with `start_date` the one of `input`.
+"""
+struct WindowSampleInput{I <: AbstractTimeVaryingInput} <:
+       AbstractTimeVaryingInput
+    input::I
+    "Window length (ms)"
+    window::Int
+    "Time after the start of the window at which `input` is read (ms)"
+    at::Int
+end
+
+WindowSampleInput(input, window::Dates.Period, at::Dates.Period) =
+    WindowSampleInput(
+        input,
+        Dates.value(Millisecond(window)),
+        Dates.value(Millisecond(at)),
+    )
+
+"""
+    driver_datetime(t, start_date)
+
+The date of the simulation time `t`, an `ITime` or a number of seconds since
+`start_date`.
+"""
+driver_datetime(t::ITime, start_date) =
+    isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+driver_datetime(t::Number, start_date) =
+    start_date + Millisecond(round(Int, 1_000 * t))
+
+function TimeVaryingInputs.evaluate!(
+    dest,
+    input::WindowSampleInput,
+    t,
+    args...;
+    kwargs...,
+)
+    start_date = input.input.data_handler.start_date
+    elapsed = Dates.value(driver_datetime(t, start_date) - start_date)
+    window_start = fld(elapsed, input.window) * input.window
+    TimeVaryingInputs.evaluate!(
+        dest,
+        input.input,
+        start_date + Millisecond(window_start + input.at),
+        args...;
+        kwargs...,
+    )
+    return nothing
+end
+
+"""
+    window_cos_zenith_angle(
+        t,
+        start_date;
+        latitude,
+        longitude,
+        insol_params,
+        window,
+        n_samples = 12,
+    )
+
+The cosine of the zenith angle over the window
+`[start_date + k window, start_date + (k + 1) window)` that contains `t`,
+weighted by itself (that is, by the clear-sky insolation): the mean of cos²θ over
+the mean of cos θ, from `n_samples` equally spaced times. It is zero when the sun
+stays below the horizon over the whole window.
+"""
+function window_cos_zenith_angle(
+    t,
+    start_date;
+    latitude,
+    longitude,
+    insol_params,
+    window,
+    n_samples = 12,
+)
+    window_ms = Dates.value(Millisecond(window))
+    offsets = ntuple(
+        k -> Millisecond(round(Int, (k - 0.5) * window_ms / n_samples)),
+        n_samples,
+    )
+    elapsed = Dates.value(driver_datetime(t, start_date) - start_date)
+    window_start = start_date + Millisecond(fld(elapsed, window_ms) * window_ms)
+    return @. lazy(
+        _weighted_cos_zenith(
+            window_start,
+            (offsets,),
+            latitude,
+            longitude,
+            insol_params,
+        ),
+    )
+end
+
+"""
+    _weighted_cos_zenith(window_start, offsets, lat, lon, insol_params)
+
+The mean of cos²θ over the mean of cos θ, from the cosines of the zenith angle at
+`window_start + offset` for each of `offsets`; zero when the sun is below the
+horizon at all of them.
+"""
+function _weighted_cos_zenith(window_start, offsets, lat, lon, insol_params)
+    sum_μ = zero(lat)
+    sum_μ² = zero(lat)
+    for offset in offsets
+        μ =
+            Insolation.insolation(window_start + offset, lat, lon, insol_params).μ
+        sum_μ += μ
+        sum_μ² += μ * μ
+    end
+    return sum_μ > 0 ? sum_μ² / sum_μ : zero(lat)
+end
+
+"""
     prescribed_forcing_era5(start_date,
                             stop_date,
                             surface_space,
@@ -1818,6 +1935,7 @@ end
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                             regridder_type = :InterpolationsRegridder,
+                            driver_window = nothing,
                             context = nothing,
                             )
 
@@ -1871,6 +1989,27 @@ and linear spatial interpolation for high resolution forcing.
     2 m but the wind over 10 m, which weakens the diagnosed stability and
     instability. The hourly-mean components also give a scalar wind speed
     somewhat below the mean of the instantaneous speed.
+
+!!! note "Driver timing"
+    The drivers are updated every `updateat` (3 hours by default in
+    `LandSimulation`) and held in between. By default each driver is its value
+    at the update time. ERA5 stamps its hourly mean rates (precipitation,
+    snowfall, shortwave and longwave) at the end of the hour they average, so
+    the rates held over a window are those of the hour before it, about 2 hours
+    behind the middle of the window (1.5 hours for temperature, humidity,
+    pressure and wind).
+
+    With `driver_window` set to the update interval, each driver is read at the
+    middle of the window it is held for ([`WindowSampleInput`](@ref)): each rate
+    is the hourly mean centred on the middle (one record per update, as by
+    default, when the window is an odd number of hours; otherwise the two hourly
+    means around the middle, interpolated), each state is interpolated at the
+    middle (two records), and the cosine of the zenith angle is weighted by
+    insolation over the window ([`window_cos_zenith_angle`](@ref)). The windows
+    start at `start_date`, so `driver_window` must equal the update interval for
+    each held value to cover its own window. As by default, a rate held over the
+    window is that of one hour, so the precipitation over a window is not the
+    ERA5 total over it. The default (`driver_window = nothing`) is unchanged.
 """
 function prescribed_forcing_era5(
     start_date,
@@ -1885,6 +2024,7 @@ function prescribed_forcing_era5(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    driver_window = nothing,
     context = nothing,
 )
     # Determine the ERA5 dataset and interpolation method based on the simulation years and resolution
@@ -1988,6 +2128,25 @@ function prescribed_forcing_era5(
     )
     h_atmos = FT(10)
 
+    if !isnothing(driver_window)
+        half_window = Millisecond(Dates.value(Millisecond(driver_window)) ÷ 2)
+        at_middle =
+            input -> WindowSampleInput(input, driver_window, half_window)
+        # Rates are means over the hour before their stamp
+        at_middle_rate =
+            input -> WindowSampleInput(
+                input,
+                driver_window,
+                half_window + Millisecond(Minute(30)),
+            )
+        precip = at_middle_rate(precip)
+        snow_precip = at_middle_rate(snow_precip)
+        T_atmos = at_middle(T_atmos)
+        u_atmos = at_middle(u_atmos)
+        q_atmos = at_middle(q_atmos)
+        P_atmos = at_middle(P_atmos)
+    end
+
     atmos = PrescribedAtmosphere(
         precip,
         snow_precip,
@@ -2053,6 +2212,20 @@ function prescribed_forcing_era5(
             longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
             insol_params = earth_param_set.insol_params,
         )
+    if !isnothing(driver_window)
+        SW_d = at_middle_rate(SW_d)
+        LW_d = at_middle_rate(LW_d)
+        frac_diff = at_middle_rate(frac_diff)
+        cos_zenith_angle =
+            (t, s) -> window_cos_zenith_angle(
+                t,
+                s;
+                latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+                longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+                insol_params = earth_param_set.insol_params,
+                window = driver_window,
+            )
+    end
 
     radiation = PrescribedRadiativeFluxes(
         FT,

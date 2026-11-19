@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] `prescribed_forcing_era5` takes `driver_window`. Set to the driver update
+  interval, it reads each ERA5 driver at the middle of the window it is held for, so the light is
+  no longer about 2 hours late. Rates are read from one hourly record per update, as by default;
+  states (temperature, humidity, pressure, wind) are interpolated between two. The default
+  (`driver_window = nothing`) is unchanged.
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
   add the `slit` diagnostic. PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
