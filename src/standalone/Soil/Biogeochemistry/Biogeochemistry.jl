@@ -65,8 +65,10 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     "Diffusivity of soil C substrate in liquid (unitless)"
     D_liq::FT
     # DAMM — centered Arrhenius: Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T - 1/T_ref_sx))
-    "Maximum respiration rate at T_ref_sx (kg C m-3 s-1)"
+    "Maximum respiration rate at T_ref_sx (kg C m-3 s-1), at the surface"
     V_ref_sx::FT
+    "E-folding depth of the respiration rate (m)"
+    z_τ_sx::FT
     "Reference temperature for the centered Arrhenius form (K)"
     T_ref_sx::FT
     "Activation energy (J mol-1)"
@@ -119,6 +121,7 @@ function SoilCO2ModelParameters(
     name_map = (;
         :soil_C_substrate_diffusivity => :D_liq,
         :soilCO2_reference_rate => :V_ref_sx,
+        :soilCO2_decomposition_efolding_depth => :z_τ_sx,
         :soilCO2_reference_temperature => :T_ref_sx,
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
@@ -744,6 +747,8 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
             ),
             params,
         ) # in case Csom < 0 due to numerical issues
+        z_sfc = model.domain.fields.z_sfc
+        @. p.soilco2.Sm *= decomposition_depth_factor(z_sfc - z, params)
     end
     return update_aux!
 end
