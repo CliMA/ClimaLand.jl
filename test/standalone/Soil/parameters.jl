@@ -61,6 +61,11 @@ const FT = Float64;
 
     hcm = vg_params.hydrology_cm
     @test eltype(hcm) == ClimaLand.Soil.vanGenuchten{FT}
+
+    # Points outside the TOPMODEL data's own land mask must not get f_max = 0
+    f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT)
+    @test axes(f_max) == surface_space
+    @test all(x -> 0 < x <= 1, Array(parent(f_max)))
 end
 
 # this tests if the upstream ClimaArtifacts generation for the low res (1 deg x 1 deg)

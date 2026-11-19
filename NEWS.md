@@ -5,6 +5,26 @@ main
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
   add the `slit` diagnostic. PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
+- ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
+  runoff (output by default with TOPMODEL), and a water table leaderboard against
+  Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] TOPMODEL: points outside the TOPMODEL data's own land mask,
+  or where the data give `fmax = 0`, get 0.39, the mean `fmax` of the data, instead
+  of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
+  rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🔥behavioralΔ] `solve!` rethrows the error of a crashed simulation after
+  logging it and closing the output writers, instead of returning normally. Scripts
+  and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
+  crashed ensemble member as failed.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] `find_restart` needs ClimaUtilities 0.1.34, which sorts the
+  restart files by the creation time of their full paths
+  ([ClimaUtilities#262](https://github.com/CliMA/ClimaUtilities.jl/pull/262)). With
+  older versions, called from another directory, it returned the last file by name
+  (`day730` over `day3652`).
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 - Run CI on Julia 1.13 instead of 1.12.
   PR [#1955](https://github.com/CliMA/ClimaLand.jl/pull/1955) PR [#1962](https://github.com/CliMA/ClimaLand.jl/pull/1962)
 - ![][badge-✨feature] Add `PrognosticCarbonModel`, which carries live vegetation carbon in

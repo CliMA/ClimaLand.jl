@@ -308,3 +308,10 @@ git-tree-sha1 = "b1a485375efc776e0f9a3cd2f9f414ea286a1776"
     [[xusaatchi_woody_carbon.download]]
     sha256 = "1bf1d1d71328f9f8caab997453ce32802520bc6d360d46c5c0c2306364f15a2b"
     url = "https://caltech.box.com/shared/static/wlst659b9v907i8vws15h4jzqhzei2z3.gz"
+
+[fan2017_water_table_depth_1degree]
+git-tree-sha1 = "0a6b385351cb17bb5971050e6f3c82f1be97d07d"
+
+    [[fan2017_water_table_depth_1degree.download]]
+    sha256 = "6960e984d4e19494905b1b737996b015d43936ac3f935dd8bbc64774f663bba8"
+    url = "https://caltech.box.com/shared/static/k92qews2s9nvp5p6vvd643o345mryib4.gz"

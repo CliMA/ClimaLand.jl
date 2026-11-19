@@ -329,6 +329,18 @@ function xusaatchi_woody_carbon_path(; context = nothing)
     return joinpath(dir, "xusaatchi_woody_carbon_1deg.nc")
 end
 
+"""
+    fan2017_water_table_depth_path(; context = nothing)
+
+Return the path to the water table depth of Fan et al. (2017) on a 1° grid: in each
+cell, the mean of the annual-mean depth at 30 arc-seconds capped at 15 m, in m,
+positive below the surface, NaN without land data.
+"""
+function fan2017_water_table_depth_path(; context = nothing)
+    dir = @clima_artifact("fan2017_water_table_depth_1degree", context)
+    return joinpath(dir, "fan2017_wtd_1deg.nc")
+end
+
 
 """
     clm_data__folder_path(; context, lowres = false)
