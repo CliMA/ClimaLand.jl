@@ -10,6 +10,7 @@ main
   the topsoil. `Simulations.spin_up_carbon_pools!` takes `soil_carbon = true` to also set
   the soil organic carbon to its equilibrium with the litter of the pools, which the long
   run with prognostic LAI does in its second year.
+  PR [#1975](https://github.com/CliMA/ClimaLand.jl/pull/1975)
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
   add the `slit` diagnostic. PR [#1968](https://github.com/CliMA/ClimaLand.jl/pull/1968)
