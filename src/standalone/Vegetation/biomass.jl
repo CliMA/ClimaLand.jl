@@ -1610,6 +1610,11 @@ Updates the area indices with the LAI model; the pools do not change them.
 update_plant_area_indices!(p, Y, t, component::PrognosticCarbonModel, canopy) =
     update_plant_area_indices!(p, Y, t, component.lai_model, canopy)
 
+Base.@deprecate(
+    update_biomass!(p, Y, t, component, canopy),
+    update_plant_area_indices!(p, Y, t, component, canopy),
+)
+
 """
     update_carbon_pools!(p, Y, biomass, canopy)
 
