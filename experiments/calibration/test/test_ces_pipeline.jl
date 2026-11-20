@@ -63,7 +63,6 @@ mkpath(output_dir)
 N_ens = 10
 N_iterations = 8
 
-# Build EKP directly (V6O6K's initialize only accepts an existing EKP)
 rng_ekp = Random.MersenneTwister(42)
 initial_ensemble = EKP.construct_initial_ensemble(rng_ekp, prior, N_ens)
 ekp = EKP.EnsembleKalmanProcess(
@@ -74,13 +73,11 @@ ekp = EKP.EnsembleKalmanProcess(
     rng = rng_ekp,
 )
 
-# Save the initial EKP to iteration 0 so load_latest_ekp can find it
-# (load_latest_ekp searches from iter 0 upward)
-mkpath(ClimaCalibrate.path_to_iteration(output_dir, 0))
-ClimaCalibrate.save_eki_and_parameters(ekp, output_dir, 0, prior)
+# Saves the initial EKP to iteration 1
+ekp = ClimaCalibrate.initialize(ekp, prior, output_dir)
 
 @testset "Calibration (synthetic EKI)" begin
-    for i in 0:(N_iterations - 1)
+    for i in 1:N_iterations
         params_i = EKP.get_ϕ_final(prior, ekp)
         G_ens = hcat([toy_G(params_i[1, j]) for j in 1:N_ens]...)
         # update_ensemble! saves iteration i+1/eki_file.jld2

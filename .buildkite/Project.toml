@@ -49,7 +49,7 @@ ClimaLand = {path = ".."}
 [compat]
 CalibrateEmulateSample = "1.1.1"
 ClimaAnalysis = "0.5.25"
-ClimaCalibrate = "0.4"
+ClimaCalibrate = "0.7"
 ClimaDiagnostics = "0.4"
 ClimaTimeSteppers = ">= 0.8.11"
 EnsembleKalmanProcesses = "2.5.0, 2.6.0, 2.7.0"
