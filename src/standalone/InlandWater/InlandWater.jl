@@ -464,20 +464,18 @@ function ClimaLand.make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         # Precipitation enthalpy: rain arrives as liquid water at air temperature
         earth_param_set = model.parameters.earth_param_set
-        _ρ_l = LP.ρ_cloud_liq(earth_param_set)
-        _cp_l = LP.cp_l(earth_param_set)
-        _cp_i = LP.cp_i(earth_param_set)
-        _T_ref = LP.T_0(earth_param_set)
-        _LH_f0 = LP.LH_f0(earth_param_set)
+        atmos = model.boundary_conditions.atmos
+        e_flux_falling_snow =
+            ClimaLand.energy_flux_falling_snow(atmos, p, earth_param_set)
+        e_flux_falling_rain =
+            ClimaLand.energy_flux_falling_rain(atmos, p, earth_param_set)
 
         @. dY.lake.U = -(
             p.lake.R_n +
             p.lake.turbulent_fluxes.lhf +
             p.lake.turbulent_fluxes.shf +
-            p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
-            p.drivers.P_snow *
-            _ρ_l *
-            (_cp_i * (p.drivers.T - _T_ref) - _LH_f0) +
+            e_flux_falling_snow +
+            e_flux_falling_rain +
             p.lake.runoff_energy_flux - p.lake.sediment_heat_flux
         )
     end

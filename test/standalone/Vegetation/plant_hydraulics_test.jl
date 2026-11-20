@@ -302,7 +302,7 @@ for FT in (Float32, Float64)
             hydraulics = SteadyStateModel{FT}(),
         )
         @test canopy.hydraulics isa Canopy.SteadyStateModel
-        Y, p, cds = initialize(canopy);
+        Y, p, cds = initialize(canopy)
         Y.canopy.hydraulics.ϑ_l .= 0
         t0 = ITime(0, Second(1), start_date)
         evaluate!(p.drivers.T, atmos.T, t0)

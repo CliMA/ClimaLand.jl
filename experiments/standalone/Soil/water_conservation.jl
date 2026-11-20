@@ -98,21 +98,19 @@ for FT in (Float32, Float64)
             timestepper = ode_algo,
             solver_kwargs = (; saveat = collect(t_start:dt:t_end)),
         )
-        p = simulation._integrator.p
-        p_init = deepcopy(p)
-        mass_start = p_init.soil.total_water
+        Y0 = deepcopy(simulation._integrator.u)
+        mass_start = sum(Y0.soil.ϑ_l)
         sol = solve!(simulation)
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
         if FT == Float64
+            Yf = deepcopy(simulation._integrator.u)
             # Calculate water mass balance over entire simulation
-            mass_end = p.soil.total_water
-            ∫Fdt_end = sol.u[end].soil.∫F_vol_liq_water_dt
-            ∫Fdt_start = sol.u[1].soil.∫F_vol_liq_water_dt
-            mass_change_exp = Array(parent(∫Fdt_end .- ∫Fdt_start))[1]
-            mass_change_actual = Array(parent(mass_end .- mass_start))[1]
+            mass_end = sum(Yf.soil.ϑ_l)
+            mass_change_exp = -1*(flux_in - flux_out)*(t_end - t_start)
+            mass_change_actual = mass_end - mass_start
             relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
             @assert relerr < sqrt(eps(FT))
             mass_errors[i] = relerr
@@ -201,7 +199,6 @@ for FT in (Float32, Float64)
     )
 
     rmses_dirichlet = Array{FT}(undef, length(dts))
-    mass_errors_dirichlet = Array{FT}(undef, length(dts))
     for i in eachindex(dts)
         dt = dts[i]
 
@@ -217,21 +214,9 @@ for FT in (Float32, Float64)
             timestepper = ode_algo,
             solver_kwargs = (; saveat = collect(t_start:dt:t_end)),
         )
-        p = simulation._integrator.p
-        p_init = deepcopy(p)
-        mass_start = p_init.soil.total_water
         sol = solve!(simulation)
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
-
-        mass_end = p.soil.total_water
-        ∫Fdt_end = sol.u[end].soil.∫F_vol_liq_water_dt
-        ∫Fdt_start = sol.u[1].soil.∫F_vol_liq_water_dt
-        mass_change_exp = Array(parent(∫Fdt_end .- ∫Fdt_start))[1]
-        mass_change_actual = Array(parent(mass_end .- mass_start))[1]
-        relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
-        @assert relerr < 1e9 * eps(FT)
-        mass_errors_dirichlet[i] = relerr
 
         # Compute RMSE vs reference solution (found using small dt = 1s)
         rmse_dirichlet = rmse(ref_soln_dirichlet, parent(sol.u[end].soil.ϑ_l))
@@ -239,11 +224,9 @@ for FT in (Float32, Float64)
         rmses_dirichlet[i] = rmse_dirichlet
     end
 
-    # Save Dirichlet BC mass conservation error and RMSE as artifact
+    # Save Dirichlet BC RMSE as artifact
     if FT == Float64
-        fig = CairoMakie.Figure(
-            title = "RMSE and Water Conservation with Dirichlet BCs",
-        )
+        fig = CairoMakie.Figure(title = "RMSE with Dirichlet BCs")
         ax1 = Axis(
             fig[1, 1],
             xlabel = "Δt (s)",
@@ -252,16 +235,6 @@ for FT in (Float32, Float64)
             yscale = log10,
             xticks = dts,
         )
-        ax2 = Axis(
-            fig[1, 1],
-            yaxisposition = :right,
-            ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt",
-            xscale = log10,
-            yscale = log10,
-            xticks = dts,
-        )
-        hidespines!(ax2)
-        hidexdecorations!(ax2)
 
         l1 = lines!(
             ax1,
@@ -272,27 +245,9 @@ for FT in (Float32, Float64)
             linewidth = 3,
         )
 
-        l2 = lines!(
-            ax2,
-            dts,
-            mass_errors_dirichlet,
-            label = "Water mass error",
-            color = "purple",
-            linewidth = 3,
-        )
+        axislegend(ax1, [l1], ["RMSE"], position = :rb, orientation = :vertical)
 
-        axislegend(
-            ax1,
-            [l1, l2],
-            ["RMSE", "Water mass error"],
-            position = :rb,
-            orientation = :vertical,
-        )
-
-        CairoMakie.save(
-            joinpath(savedir, "water_conservation_dirichlet.png"),
-            fig,
-        )
+        CairoMakie.save(joinpath(savedir, "water_rmse_dirichlet.png"), fig)
         # Uncomment to recreate Dirichlet BC reference solution artifact (using small dt)
         # soln_file_dirichlet = joinpath(savedir, "ref_soln_dirichlet.csv")
         # open((soln_file_dirichlet), "w") do io

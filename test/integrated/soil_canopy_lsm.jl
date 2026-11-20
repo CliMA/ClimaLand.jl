@@ -251,7 +251,7 @@ for FT in (Float32, Float64)
         Y, p = initialize_state(
             model_no_stress;
             ϑ_l = @. ifelse(z > -0.4, θ_r, ϑ_wet)
-        );
+        )
         @test haskey(p, :root_dryness_norm)
         root_extraction = Array(parent(p.root_extraction))
         @test all(root_extraction[dry] .== 0)
