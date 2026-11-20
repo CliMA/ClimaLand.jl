@@ -299,6 +299,18 @@ end
             ClimaLand.Canopy.clip(FT(LAI * sin(200 * 2π / 365)), FT(0.05)),
         )
 
+        @test_deprecated Canopy.update_biomass!(
+            p,
+            nothing,
+            t0,
+            biomass,
+            fake_canopy,
+        )
+        @test all(
+            Array(parent(p.canopy.biomass.area_index.leaf)) .==
+            FT(LAI * sin(t0 * 2π / 365)),
+        )
+
         # Stems below the plant area threshold are cleared without leaves
         for (leaf, stem, expected_stem) in (
             (FT(0), FT(0.03), FT(0)),

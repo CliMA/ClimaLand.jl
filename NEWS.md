@@ -20,8 +20,11 @@ main
   prognostic LAI carries the pools, and its vegetation leaderboard compares `cveg` with the
   live woody carbon of Xu et al. (2021).
   PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
-- ![][badge-💥breaking] `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`.
-  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846)
+- `Canopy.update_biomass!` is renamed `Canopy.update_plant_area_indices!`. The old name is
+  deprecated and forwards to the new one. Methods added to `update_biomass!` for custom
+  biomass models are no longer called by the canopy's `update_aux!`; define them on
+  `update_plant_area_indices!` instead.
+  PR [#1846](https://github.com/CliMA/ClimaLand.jl/pull/1846) PR [#1978](https://github.com/CliMA/ClimaLand.jl/pull/1978)
 - ![][badge-🐛bugfix] With `PlantHydraulicsModel`, `PiecewiseMoistureStressModel`, and a
   prognostic soil, the root zone moisture stress factor `βm` was zero since v1.15.0, which
   shut down photosynthesis; it is again the root-weighted mean of the layer stress factors.
