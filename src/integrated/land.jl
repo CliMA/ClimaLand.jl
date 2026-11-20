@@ -998,9 +998,15 @@ function make_exp_tendency(land::LandModel)
             # Is there a better place to get dt?
             @. lai_tendency =
                 (p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
-            dz = land.canopy.biomass.height
+            effective_height = Canopy.hydraulic_height(
+                p,
+                Y,
+                land.canopy.hydraulics,
+                land.canopy,
+            )
             lai_contribution = p.scratch3
-            @. lai_contribution = lai_tendency * Y.canopy.hydraulics.ϑ_l * dz
+            @. lai_contribution =
+                lai_tendency * Y.canopy.hydraulics.ϑ_l * effective_height
             @. dY.∫F_vol_liq_water_dt = -(
                 p.drivers.P_snow +
                 p.drivers.P_liq +
@@ -1101,6 +1107,7 @@ function make_compute_imp_tendency(land::LandModel)
                 p,
             )
             lai_contribution = p.scratch3
+            # This assumes that d(SAI)/dt = 0
             @. lai_contribution =
                 p.lai_tendency * land.canopy.energy.parameters.ac_canopy * Tc
             @. dY.∫F_vol_e_dt += lai_contribution
