@@ -2,6 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+v1.16.0
+----
 - Add conservation tracking for the full land model (energy and water)
 - ![][badge-🔥behavioralΔ] Raise the DAMM `soilCO2_reference_rate` and `michaelis_constant`
   so soil carbon reaches a steady state (heterotrophic respiration roughly doubles), and
