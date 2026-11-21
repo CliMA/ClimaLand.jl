@@ -1,0 +1,1116 @@
+[light_speed]
+type = "float"
+description = "Speed of light in vacuum ($c$) (m s⁻¹)."
+used_in = ["Land", "getindex"]
+value = 299792458
+
+[thermal_conductivity_of_liquid_water]
+type = "float"
+description = "Thermal conductivity of liquid water at 10°C (W m⁻¹ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 0.57
+
+[temperature_surface_reference]
+type = "float"
+description = "Surface temperature in a reference temperature profile (K)."
+used_in = ["Thermodynamics"]
+value = 288
+
+[pmodel_Hd_Jmax]
+type = "float"
+description = "Effective energy of deactivation for Jmax (J mol^-1)."
+used_in = ["getindex"]
+value = 200000
+tag = "PModelConstants"
+
+[coefficient_b_h_businger]
+type = "float"
+description = "Coefficient $b_h$ for the Businger heat universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+used_in = ["SurfaceFluxes"]
+value = 9.0
+
+[relative_contribution_factor]
+type = "float"
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless). Held fixed (not calibrated)."
+used_in = ["getindex"]
+value = 0.3
+tag = "AutotrophicRespirationParameters"
+
+["pmodel_ΔHko"]
+type = "float"
+description = "Relative diffusivity of CO2 in the stomatal pores, equal to 1.6."
+used_in = ["getindex"]
+value = 36380
+tag = "PModelConstants"
+
+[temperature_saturation_adjustment_init_min]
+type = "float"
+description = "Minimum temperature for saturation adjustment initialization (K)."
+used_in = ["Thermodynamics"]
+value = 150
+
+[coefficient_b_h_gryanik]
+type = "float"
+description = "Coefficient $b_h$ for the Gryanik heat universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+used_in = ["SurfaceFluxes"]
+value = 0.4
+
+[total_solar_irradiance]
+type = "float"
+description = "Total solar irradiance (TSI) at the mean orbital distance (W m⁻²)."
+used_in = ["Insolation"]
+value = 1362
+
+[pmodel_vpd_ratio]
+type = "float"
+description = "Minimum value for the ratio of sqrt(vpd) and the pmdodel xi"
+used_in = ["getindex"]
+value = 0.05
+tag = "PModelParameters"
+
+[ice_impedance_omega]
+type = "float"
+description = "Impedance parameter $\\Omega$ used to adjust soil hydraulic conductivity for ice presence (unitless). Source: Lundin (1990), DOI: 10.1016/0022-1694(90)90264-X."
+used_in = ["getindex"]
+value = 7.0
+
+[kelvin_25C]
+type = "float"
+description = "Reference temperature equal to 25°C (K)."
+used_in = ["getindex"]
+value = 298.15
+
+[avogadro_constant]
+type = "float"
+description = "Avogadro's constant ($N_A$) (mol⁻¹)."
+used_in = ["Land", "getindex"]
+value = 6.02214076e23
+
+[thermal_conductivity_of_quartz]
+type = "float"
+description = "Thermal conductivity of quartz (W m⁻¹ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 8.0
+
+[moisture_stress_c]
+type = "float"
+description = "unitless. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.759
+tag = "SoilMoistureStress"
+
+[pmodel_aS_Jmax]
+type = "float"
+description = "Intercept term for dS in Jmax deactivation factor (J K^-1 mol^-1)."
+used_in = ["getindex"]
+value = 659.7
+tag = "PModelConstants"
+
+[pmodel_oi]
+type = "float"
+description = "Intercellular O2 mixing ratio (unitless)."
+used_in = ["getindex"]
+value = 0.2095
+tag = "PModelConstants"
+
+[relative_diffusivity_of_water_vapor]
+type = "float"
+description = "Relative diffusivity of water vapor compared to heat (unitless)."
+used_in = ["getindex"]
+value = 1.6
+
+[particle_density_minerals]
+type = "float"
+description = "Particle density of soil minerals (kg m⁻³). Source: Hillel (1982)."
+used_in = ["Land"]
+value = 2650.0
+
+["pmodel_ϕa2_c4"]
+type = "float"
+description = "Second order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+used_in = ["getindex"]
+value = -5.8e-5
+tag = "PModelParameters"
+
+[gravitational_acceleration]
+type = "float"
+description = "Gravitational acceleration on the planet (m s⁻²)."
+used_in = ["Thermodynamics", "Land"]
+value = 9.81
+
+[particle_density_quartz]
+type = "float"
+description = "Particle density of quartz (kg m⁻³). Source: Hillel (1982); De Vries (1966)."
+used_in = ["Land"]
+value = 2660.0
+
+[canopy_z_0min]
+type = "float"
+description = "Minimum roughness. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.0257
+tag = "MoninObukhovCanopyFluxes"
+
+[O2_henry_Tcoeff]
+type = "float"
+description = "Temperature coefficient for O₂ Henry's law (K)"
+used_in = ["Land"]
+value = 1500.0
+tag = "SoilCO2Parameters"
+
+["pmodel_β_c4"]
+type = "float"
+description = "Unit cost ratio of Vcmax to transpiration for C4 plants, of GPP and of the potential GPP of the optimal-LAI model: the default P-model value, as in pyrealm (146/9)."
+used_in = ["getindex"]
+value = 16.222
+tag = "PModelParameters"
+
+[thermal_conductivity_of_organic_matter]
+type = "float"
+description = "Thermal conductivity of organic matter (W m⁻¹ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 0.25
+
+[coefficient_b_m_businger]
+type = "float"
+description = "Coefficient $b_m$ for the Businger momentum universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+used_in = ["SurfaceFluxes"]
+value = 15.0
+
+[gas_diffusivity_temperature_exponent]
+type = "float"
+description = "Temperature exponent for the free-air gas diffusivity correction D0 ∝ (T/T_ref)^exp (dimensionless), Ryan et al. (2018)"
+used_in = ["Land"]
+value = 1.75
+tag = "SoilCO2Parameters"
+
+[pmodel_aS_Vcmax]
+type = "float"
+description = "Intercept term for dS in Vcmax deactivation factor (J K^-1 mol^-1)."
+used_in = ["getindex"]
+value = 668.39
+tag = "PModelConstants"
+
+[von_karman_constant]
+type = "float"
+description = "The von Kármán constant ($\\kappa$) describing the logarithmic velocity profile near a boundary (unitless)."
+used_in = ["SurfaceFluxes"]
+value = 0.4
+
+[michaelis_constant]
+type = "float"
+description = "Michaelis constant for substrate (kg C m⁻³)"
+used_in = ["Land"]
+value = 0.7
+tag = "SoilCO2Parameters"
+
+[gustiness_coeff]
+type = "float"
+description = "Coefficient multiplying Deardorff convective velocity scale in gustiness parameterization (unitless)."
+used_in = ["SurfaceFluxes"]
+value = 1.25
+
+[R_sb]
+type = "float"
+description = "Units are m/s"
+used_in = ["getindex"]
+value = 1.484e-7
+tag = "TOPMODELRunoff"
+
+[temperature_reference_soil_hydraulic_conductivity]
+type = "float"
+description = "The reference temperature for adjusting soil hydraulic conductivity (K)."
+used_in = ["Land"]
+value = 288
+
+[pmodel_bS_Jmax]
+type = "float"
+description = "Slope term for dS in Jmax deactivation factor (J K^-2 mol^-1)."
+used_in = ["getindex"]
+value = 0.75
+tag = "PModelConstants"
+
+[isobaric_specific_heat_dry_air]
+type = "float"
+description = "Isobaric specific heat of dry air (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 1004.5
+
+["pmodel_ΔHkc"]
+type = "float"
+description = "Energy of activation for Ko (J mol^-1)."
+used_in = ["getindex"]
+value = 79430
+tag = "PModelConstants"
+
+[mean_sea_level_pressure]
+type = "float"
+description = "Mean sea level pressure ($p_{MSL}$) (Pa)."
+used_in = ["Thermodynamics", "Land"]
+value = 101325
+
+[live_stem_wood_coeff]
+type = "float"
+description = "Live stem wood coefficient (kg C m⁻³)."
+used_in = ["getindex"]
+value = 0.01
+
+[CO2_diffusion_coefficient]
+type = "float"
+description = "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
+used_in = ["getindex"]
+value = 1.39e-5
+tag = "SoilCO2Parameters"
+
+[CO2_henry_k298]
+type = "float"
+description = "Henry's law constant for CO₂ at 298K (mol/(m³·Pa))"
+used_in = ["Land"]
+value = 0.00034
+tag = "SoilCO2Parameters"
+
+["pmodel_β_c3"]
+type = "float"
+description = "Unit cost ratio of Vcmax to transpiration for C3 plants, of GPP and of the potential GPP of the optimal-LAI model: the default P-model value, as in pyrealm (Stocker et al., 2020)."
+used_in = ["getindex"]
+value = 146.0
+tag = "PModelParameters"
+
+["pmodel_Γstar25"]
+type = "float"
+description = "Photorespiratory compensation point at 25°C (Pa)."
+used_in = ["getindex"]
+value = 4.332
+tag = "PModelConstants"
+
+[pmodel_Ha_Vcmax]
+type = "float"
+description = "Effective energy of activation for Vcmax (J mol^-1)."
+used_in = ["getindex"]
+value = 71513
+tag = "PModelConstants"
+
+[maximum_dry_soil_layer_depth]
+type = "float"
+description = "Maximum depth of the dry soil layer that can develop under evaporation (m); Shokri and Or (2011), DOI: 10.1029/2010WR010284. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.00296
+tag = "EnergyHydrologyParameters"
+
+[density_ice_water]
+type = "float"
+description = "Density of water ice (kg m⁻³)."
+used_in = ["Land"]
+value = 916.7
+
+[kappa_p2]
+type = "float"
+description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+used_in = ["getindex"]
+value = 7.85
+tag = "SIFParameters"
+
+[orbit_obliquity_at_epoch]
+type = "float"
+description = "Mean obliquity of the ecliptic at J2000 epoch (radians). Corresponds to 23.43927944° = 84381.406\", the IAU 2006 value. Source: Capitaine et al. (2003), DOI: 10.1051/0004-6361:20020420."
+used_in = ["Insolation"]
+value = 0.4090926006
+
+[isobaric_specific_heat_ice]
+type = "float"
+description = "Isobaric specific heat of ice (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics", "Land"]
+value = 2070.0
+
+[SAI_coeff_tree]
+type = "float"
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with SAI_coeff_grass by the tree share. With the CLM tree share and the MODIS maximum LAI, the land mean of the SAI equals that of SAI_coeff = 0.158 calibrated against ERA5 surface fluxes and GOSIF GPP, with grasses (no wood) at 0.05."
+used_in = ["getindex"]
+value = 0.26
+tag = "PrescribedAreaIndices"
+
+[pmodel_cstar]
+type = "float"
+description = "4 * dA/dJmax, assumed to be a constant marginal cost, of GPP and of the potential GPP of the optimal-LAI model: the default P-model value, as in pyrealm (Wang et al., 2017; Stocker et al., 2020)."
+used_in = ["getindex"]
+value = 0.41
+tag = "PModelParameters"
+
+[temperature_saturation_adjustment_min]
+type = "float"
+description = "Minimum temperature difference for unsaturated case in saturation adjustment (K)."
+used_in = ["Thermodynamics"]
+value = 1
+
+[temperature_min_reference]
+type = "float"
+description = "Minimum temperature in a reference temperature profile (K)."
+used_in = ["Thermodynamics"]
+value = 215
+
+[soilCO2_reference_temperature]
+type = "float"
+description = "Reference temperature for the centered Arrhenius form of the DAMM model (K)"
+used_in = ["Land"]
+value = 288.15
+tag = "SoilCO2Parameters"
+
+["pmodel_ϕa0_c3"]
+type = "float"
+description = "Constant term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.352/8."
+used_in = ["getindex"]
+value = 0.044
+tag = "PModelParameters"
+
+[RAI_coeff_grass]
+type = "float"
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with RAI_coeff_tree by the tree share."
+used_in = ["getindex"]
+value = 0.34
+tag = "PrescribedAreaIndices"
+
+[oxygen_diffusion_coefficient]
+type = "float"
+description = "Diffusion coefficient of oxygen in air, dimensionless"
+used_in = ["Land"]
+value = 1.67
+tag = "SoilCO2Parameters"
+
+[specific_humidity_minimum]
+type = "float"
+description = "Minimum specific humidity threshold (kg kg⁻¹). Used as a lower bound when comparing or regularizing humidity values."
+used_in = ["Thermodynamics"]
+value = 1.0e-10
+
+[specific_leaf_density]
+type = "float"
+description = "Specific leaf density (kg C m⁻² leaf)."
+used_in = ["getindex"]
+value = 0.05
+
+[pmodel_aRd]
+type = "float"
+description = "First order coefficient for temp-dependent Rd (K^-1)."
+used_in = ["getindex"]
+value = 0.1012
+tag = "PModelConstants"
+
+[canopy_subcanopy_min_reference_height]
+type = "float"
+description = "Minimum height above the ground surface (soil or snow) at which the turbulent fluxes of the ground below a canopy are evaluated (m). The reference height is the apparent sink height of the canopy, displacement height plus momentum roughness length, floored at this value; the floor binds for canopies shorter than about 4.2 m. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 2.86
+tag = "MoninObukhovCanopyFluxes"
+
+[O2_michaelis_constant]
+type = "float"
+description = "Michaelis constant for O₂ (m³ m⁻³)"
+used_in = ["Land"]
+value = 0.00298
+tag = "SoilCO2Parameters"
+
+[entropy_reference_temperature]
+type = "float"
+description = "Reference temperature for entropy calculations (K)."
+used_in = ["Thermodynamics"]
+value = 298.15
+
+[thermal_conductivity_of_soil_minerals]
+type = "float"
+description = "Thermal conductivity of soil minerals, excluding quartz (W m⁻¹ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 2.5
+
+[longitude_perihelion_at_epoch]
+type = "float"
+description = "Longitude of perihelion of the Sun's apparent orbit at J2000 epoch, measured eastward from the vernal equinox (radians). Corresponds to 282.93768193°, i.e. the JPL (Standish) 1800-2050 Earth-Moon barycenter longitude of perihelion 102.93768193° plus 180°."
+used_in = ["Insolation"]
+value = 4.93819412764
+
+[temperature_saturation_adjustment_max]
+type = "float"
+description = "Maximum temperature for saturation adjustment (K)."
+used_in = ["Thermodynamics"]
+value = 1000
+
+["pmodel_ϕ0_c4"]
+type = "float"
+description = "Constant intrinsic quantum yield. Skillman (2008)."
+used_in = ["getindex"]
+value = 0.057
+tag = "PModelParameters"
+
+[autotrophic_respiration_Q10]
+type = "float"
+description = "Q10 temperature sensitivity of maintenance respiration (unitless): multiplies Rpm by Q10^((T_air - T_ref)/10). Fixed at 1.0 (not calibrated), keeping the maintenance baseline seasonally flat."
+used_in = ["getindex"]
+value = 1.0
+tag = "AutotrophicRespirationParameters"
+
+[stem_NIR_reflectance]
+type = "float"
+description = "NIR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
+used_in = ["getindex"]
+value = 0.78
+tag = "AbstractRadiationModel"
+
+[soil_momentum_roughness_length]
+type = "float"
+description = "Momentum roughness length for soil (m). Source: CLM5 Technical Note (2020)."
+used_in = ["getindex"]
+value = 0.01
+
+[latent_heat_sublimation_at_reference]
+type = "float"
+description = "Latent heat of sublimation at the reference temperature (J kg⁻¹)."
+used_in = ["Thermodynamics", "Land"]
+value = 2834400
+
+[kappa_p1]
+type = "float"
+description = "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+used_in = ["getindex"]
+value = 0.045
+tag = "SIFParameters"
+
+[temperature_triple_point]
+type = "float"
+description = "Triple point temperature of water (K)."
+used_in = ["Thermodynamics"]
+value = 273.16
+
+[soil_scalar_roughness_length]
+type = "float"
+description = "Scalar roughness length for soil (m); CLM5 Technical Note (2020). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.00302
+tag = "EnergyHydrologyParameters"
+
+[pmodel_Kc25]
+type = "float"
+description = "Michaelis-Menten parameter for oxygenation at 25°C (Pa)."
+used_in = ["getindex"]
+value = 39.97
+tag = "PModelConstants"
+
+[isobaric_specific_heat_liquid]
+type = "float"
+description = "Isobaric specific heat of liquid water (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics", "Land"]
+value = 4181
+
+[evaporation_exponent]
+type = "float"
+description = "Exponent of dry soil layer factor in evaporation; for use with ROSETTA parameters, this needs to be 2.0 for stability at a timestep of 900s"
+used_in = ["getindex"]
+value = 2.0
+tag = "EnergyHydrologyParameters"
+
+[O2_henry_k298]
+type = "float"
+description = "Henry's law constant for O₂ at 298K (mol/(m³·Pa))"
+used_in = ["Land"]
+value = 1.3e-5
+tag = "SoilCO2Parameters"
+
+[wilting_potential]
+type = "float"
+description = "Wilting potential in m. Below this, transpiration turns off."
+used_in = ["getindex"]
+value = -153
+tag = "SoilMoistureStress"
+
+[temperature_water_freeze]
+type = "float"
+description = "Freezing temperature of water (K)."
+used_in = ["Thermodynamics", "Land"]
+value = 273.15
+
+[wavelength_per_PAR_photon]
+type = "float"
+description = "Typical wavelength of a photon in the Photosynthetically Active Radiation (PAR) band (m)."
+used_in = ["getindex"]
+value = 5.0e-7
+
+[pmodel_bS_Vcmax]
+type = "float"
+description = "Slope term for dS in Vcmax deactivation factor (J K^-2 mol^-1)."
+used_in = ["getindex"]
+value = 1.07
+tag = "PModelConstants"
+
+[pmodel_Hd_Vcmax]
+type = "float"
+description = "Effective energy of deactivation for Vcmax (J mol^-1)."
+used_in = ["getindex"]
+value = 200000
+tag = "PModelConstants"
+
+[vol_heat_capacity_organic_matter]
+type = "float"
+description = "Volumetric heat capacity of organic matter (J m⁻³ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 2.51e6
+
+[SAI_coeff_grass]
+type = "float"
+description = "The stem area index (SAI; m2/m2) per unit of the per-pixel maximum LAI of grasses; weighted with SAI_coeff_tree by the tree share."
+used_in = ["getindex"]
+value = 0.05
+tag = "PrescribedAreaIndices"
+
+[prandtl_number_0_gryanik]
+type = "float"
+description = "The turbulent Prandtl number in neutral conditions ($Pr_0$) for the Gryanik universal functions (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+used_in = ["SurfaceFluxes"]
+value = 0.98
+
+[absent_canopy_relaxation_time]
+type = "float"
+description = "Relaxation time of the temperature of an absent canopy [s]"
+used_in = ["getindex"]
+value = 3600
+tag = "BigLeafEnergyModel"
+
+[soilCO2_activation_energy]
+type = "float"
+description = "Activation energy for DAMM model (J mol⁻¹)"
+used_in = ["Land"]
+value = 19800.0
+tag = "SoilCO2Parameters"
+
+[stem_PAR_reflectance]
+type = "float"
+description = "PAR reflectance of stems (unitless); twice the woody-plant value of Dorman and Sellers (1989) and Sellers et al. (1996). Calibrated against ERA5 surface fluxes and GOSIF GPP, with the PAR and NIR stem reflectances scaled by one common factor."
+used_in = ["getindex"]
+value = 0.32
+tag = "AbstractRadiationModel"
+
+["pmodel_ϕa2_c3"]
+type = "float"
+description = "Second order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by -0.00034/8."
+used_in = ["getindex"]
+value = -4.25e-5
+tag = "PModelParameters"
+
+[stem_leaf_nitrogen_ratio]
+type = "float"
+description = "Ratio of stem nitrogen to top leaf nitrogen (unitless)."
+used_in = ["getindex"]
+value = 0.1
+
+[gas_constant_vapor]
+type = "float"
+description = "Gas constant for water vapor (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 461.5
+
+[emissivity_bare_soil]
+type = "float"
+description = "Emissivity of bare soil (unitless). Source: CLM5 Technical Note (2020)."
+used_in = ["getindex"]
+value = 0.96
+
+[day]
+type = "float"
+description = "Length of a day (s)."
+used_in = ["Insolation"]
+value = 86400
+
+[kersten_number_alpha]
+type = "float"
+description = "Empirical constant $\\alpha$ used in computing the Kersten number (unitless). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 0.24
+
+[canopy_subcanopy_wind_extinction_coefficient]
+type = "float"
+description = "Extinction coefficient of the wind speed across a plant canopy per unit plant area index (LAI + SAI), unitless: the wind driving the ground below the canopy is the neutral log-profile wind at max(z_ref, height) times exp(-coefficient * PAI). Inoue (1963); Cionco (1965); Brutsaert (1982); Shuttleworth and Wallace (1985); Choudhury and Monteith (1988). Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.0556
+tag = "MoninObukhovCanopyFluxes"
+
+["pmodel_ϕa0_c4"]
+type = "float"
+description = "Constant term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+used_in = ["getindex"]
+value = -0.008
+tag = "PModelParameters"
+
+[stefan_boltzmann_constant]
+type = "float"
+description = "Stefan-Boltzmann constant ($\\sigma$) (W m⁻² K⁻⁴)."
+used_in = ["Land"]
+value = 5.67e-8
+
+[molar_mass_oxygen]
+type = "float"
+description = "Molar mass of oxygen (kg/mol)"
+used_in = ["Land"]
+value = 0.032
+tag = "SoilCO2Parameters"
+
+[pow_icenuc]
+type = "float"
+description = "Exponent in the ice nucleation parameterization (unitless)."
+used_in = ["Thermodynamics"]
+value = 1
+
+[entropy_water_vapor]
+type = "float"
+description = "Specific entropy of water vapor at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 10513.6
+
+[kn_p2]
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+used_in = ["getindex"]
+value = 0.5944
+tag = "SIFParameters"
+
+[leaf_Cd]
+type = "float"
+description = "Leaf boundary layer conductance per unit plant area index and per unit friction velocity (unitless); the conductance between the plant surfaces and the canopy air is Cd * u_star * PAI (m/s), in series with the aerodynamic conductance from the canopy air to the atmosphere. The laminar leaf boundary layer conductance C_v (u_star / d_leaf)^(1/2), with C_v = 0.01 m s^(-1/2) and leaf dimension d_leaf = 0.04 m at u_star = 0.5 m/s, gives 0.07; Choudhury and Monteith 1988; Jones 2014, Ch. 3. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 1.17
+tag = "MoninObukhovCanopyFluxes"
+
+[default_momentum_roughness_length]
+type = "float"
+description = "Default momentum roughness length (m)."
+used_in = ["SurfaceFluxes"]
+value = 0.0002
+
+[f_over]
+type = "float"
+description = "Units are 1/m"
+used_in = ["getindex"]
+value = 3.28
+tag = "TOPMODELRunoff"
+
+[planck_constant]
+type = "float"
+description = "Planck's constant ($h$) (J s)."
+used_in = ["Land", "getindex"]
+value = 6.626e-34
+
+[soilCO2_reference_rate]
+type = "float"
+description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+used_in = ["Land"]
+value = 6.7e-7
+tag = "SoilCO2Parameters"
+
+[stem_NIR_transmittance]
+type = "float"
+description = "NIR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+used_in = ["getindex"]
+value = 0.001
+tag = "AbstractRadiationModel"
+
+[canopy_d_coeff]
+type = "float"
+description = "Ratio of the canopy displacement height to the canopy height (unitless). Brutsaert 1982, p. 116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343"
+used_in = ["getindex"]
+value = 0.67
+tag = "MoninObukhovCanopyFluxes"
+
+[canopy_z_0m_coeff]
+type = "float"
+description = "Ratio of the canopy momentum roughness length z_0m to the canopy height (unitless); z_0m = coeff * height + canopy_z_0min. Lower than the Brutsaert (1982) value of 0.123 for dense canopies; the leaf boundary layer conductance (leaf_Cd) acts in series with the aerodynamic conductance. Cowan 1968; Brutsaert 1982, pp. 113-116; Campbell and Norman 1998, p. 71. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 3.26e-6
+tag = "MoninObukhovCanopyFluxes"
+
+[temperature_homogenous_nucleation]
+type = "float"
+description = "Temperature for homogeneous ice nucleation (K)."
+used_in = ["Thermodynamics"]
+value = 233
+
+[default_scalar_roughness_length]
+type = "float"
+description = "Default scalar roughness length (m)."
+used_in = ["SurfaceFluxes"]
+value = 2.0e-5
+
+[potential_temperature_reference_pressure]
+type = "float"
+description = "Reference pressure for potential temperature calculations ($p_0$) (Pa)."
+used_in = ["Thermodynamics"]
+value = 100000.0
+
+[CO2_henry_Tcoeff]
+type = "float"
+description = "Temperature coefficient for CO₂ Henry's law (K)"
+used_in = ["Land"]
+value = 2400.0
+tag = "SoilCO2Parameters"
+
+[henry_reference_temperature]
+type = "float"
+description = "Reference temperature for Henry's law constants (K), Sander (2015)"
+used_in = ["Land"]
+value = 298.15
+tag = "SoilCO2Parameters"
+
+[pressure_triple_point]
+type = "float"
+description = "Triple point pressure of water (Pa)."
+used_in = ["Thermodynamics"]
+value = 611.657
+
+[soil_C_substrate_diffusivity]
+type = "float"
+description = "Diffusivity of soil C substrate in liquid (unitless)"
+used_in = ["Land"]
+value = 3.17
+tag = "SoilCO2Parameters"
+
+[temperature_factor_soil_hydraulic_conductivity]
+type = "float"
+description = "An empirical parameter for adjusting soil hydraulic conductivity based on temperature (K⁻¹)."
+used_in = ["Land"]
+value = 0.0264
+
+[vol_heat_capacity_minerals]
+type = "float"
+description = "Volumetric heat capacity of soil minerals excluding quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 2.01e6
+
+[anomalistic_year_length]
+type = "float"
+description = "Length of an anomalistic year (s). Derived as 365.2596 * `day`, from the JPL (Standish) 1800-2050 Earth-Moon barycenter rates: 360 / (35999.37244981 - 0.32327364) °/century."
+used_in = ["Insolation"]
+value = 3.15584335e7
+
+["pmodel_ϕ0_c3"]
+type = "float"
+description = "Constant intrinsic quantum yield. Skillman (2008)."
+used_in = ["getindex"]
+value = 0.052
+tag = "PModelParameters"
+
+[coefficient_b_m_gryanik]
+type = "float"
+description = "Coefficient $b_m$ for the Gryanik momentum universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+used_in = ["SurfaceFluxes"]
+value = 0.3
+
+[density_liquid_water]
+type = "float"
+description = "Density of liquid water (kg m⁻³)."
+used_in = ["Land", "getindex"]
+value = 1000
+
+[canopy_emissivity]
+type = "float"
+description = "Emissivity of the canopy (unitless)."
+used_in = ["getindex"]
+value = 0.98
+tag = "AbstractRadiationModel"
+
+[diffusivity_of_water_vapor]
+type = "float"
+description = "Diffusivity of water vapor in air (m² s⁻¹)."
+used_in = ["Land"]
+value = 2.26e-5
+
+["pmodel_ϕa1_c3"]
+type = "float"
+description = "First order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.022/8."
+used_in = ["getindex"]
+value = 0.00275
+tag = "PModelParameters"
+
+[kersten_number_beta]
+type = "float"
+description = "Empirical constant $\\beta$ used in computing the Kersten number (unitless). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 18.3
+
+[latent_heat_vaporization_at_reference]
+type = "float"
+description = "Latent heat of vaporization at the reference temperature (J kg⁻¹)."
+used_in = ["Thermodynamics", "Land"]
+value = 2500800
+
+[pmodel_gamma_ratio]
+type = "float"
+description = "Maximum value for the ratio of Gamma star over the partial pressure of CO2 in the atmosphere"
+used_in = ["getindex"]
+value = 0.99
+tag = "PModelParameters"
+
+[epoch_time]
+type = "datetime"
+description = "J2000 epoch (Jan 1, 2000 11:58:55.816 UTC) as a DateTime."
+used_in = ["Insolation"]
+value = 2000-01-01T11:58:55.816Z
+
+[thermodynamics_temperature_reference]
+type = "float"
+description = "Reference temperature for thermodynamics (K)."
+used_in = ["Thermodynamics", "Land"]
+value = 273.16
+
+[ac_canopy]
+type = "float"
+description = "Specific heat per emitting area [J/m^2/K]"
+used_in = ["getindex"]
+value = 2500.0
+tag = "BigLeafEnergyModel"
+
+["pmodel_ΔHΓstar"]
+type = "float"
+description = "Effective energy of activation for Γstar (J mol^-1)."
+used_in = ["getindex"]
+value = 37830
+tag = "PModelConstants"
+
+[kf]
+type = "float"
+description = "The rate coefficient for florescence, unitless"
+used_in = ["getindex"]
+value = 0.05
+tag = "SIFParameters"
+
+[pmodel_Ko25]
+type = "float"
+description = "Reference temperature equal to 25˚C (K)."
+used_in = ["getindex"]
+value = 27480
+tag = "PModelConstants"
+
+[universal_gas_constant]
+type = "float"
+description = "Universal gas constant ($R$) (J mol⁻¹ K⁻¹)."
+used_in = ["Land", "getindex"]
+value = 8.3144598
+
+[autotrophic_respiration_T_ref]
+type = "float"
+description = "Reference temperature for the Q10 maintenance-respiration factor (K)."
+used_in = ["getindex"]
+value = 298.15
+tag = "AutotrophicRespirationParameters"
+
+[soluble_soil_carbon_fraction]
+type = "float"
+description = "Fraction of soil carbon that is considered soluble, dimensionless"
+used_in = ["Land"]
+value = 0.024
+tag = "SoilCO2Parameters"
+
+[entropy_dry_air]
+type = "float"
+description = "Specific entropy of dry air at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 6864.8
+
+[coefficient_a_h_gryanik]
+type = "float"
+description = "Coefficient $a_h$ for the Gryanik heat universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+used_in = ["SurfaceFluxes"]
+value = 5.0
+
+[mean_anomaly_at_epoch]
+type = "float"
+description = "Mean anomaly at J2000 epoch (radians). Corresponds to 357.52688973°, from the JPL (Standish) 1800-2050 Earth-Moon barycenter elements as mean longitude minus longitude of perihelion, 100.46457166° - 102.93768193°."
+used_in = ["Insolation"]
+value = 6.2400213902
+
+[thermal_conductivity_of_water_ice]
+type = "float"
+description = "Thermal conductivity of water ice at its freezing temperature (W m⁻¹ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 2.21
+
+[O2_volume_fraction]
+type = "float"
+description = "Volumetric fraction of O₂ in atmospheric air (dimensionless)"
+used_in = ["Land"]
+value = 0.2095
+tag = "SoilCO2Parameters"
+
+[stem_PAR_transmittance]
+type = "float"
+description = "PAR transmittance of stems (unitless); woody-plant value. Dorman and Sellers (1989); Sellers et al. (1996)"
+used_in = ["getindex"]
+value = 0.001
+tag = "AbstractRadiationModel"
+
+[RAI_coeff_tree]
+type = "float"
+description = "The root area index (RAI; m2/m2) per unit of the per-pixel maximum LAI of trees; weighted with RAI_coeff_grass by the tree share. With the CLM tree share and the MODIS maximum LAI, the land mean of the RAI equals that of RAI_coeff = 0.22 calibrated against ERA5 surface fluxes and GOSIF GPP, with grasses at 3 times the value of trees (the CLM2 root-to-shoot ratios)."
+used_in = ["getindex"]
+value = 0.11
+tag = "PrescribedAreaIndices"
+
+[vol_heat_capacity_quartz]
+type = "float"
+description = "Volumetric heat capacity of quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005), DOI: 10.1139/s05-007."
+used_in = ["Land"]
+value = 2.01e6
+
+[min_kd]
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+used_in = ["getindex"]
+value = 0.087
+tag = "SIFParameters"
+
+[molar_mass_carbon]
+type = "float"
+description = "Molar mass of carbon (kg/mol)"
+used_in = ["Land"]
+value = 0.012
+tag = "SoilCO2Parameters"
+
+[O2_diffusion_coefficient_air]
+type = "float"
+description = "Diffusion coefficient for O₂ in air at standard temperature and pressure (m² s⁻¹)"
+used_in = ["getindex"]
+value = 1.67e-5
+tag = "SoilCO2Parameters"
+
+[coefficient_a_m_gryanik]
+type = "float"
+description = "Coefficient $a_m$ for the Gryanik momentum universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+used_in = ["SurfaceFluxes"]
+value = 5.0
+
+[canopy_K_lw]
+type = "float"
+description = "The long wave extinction coeff. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.999
+tag = "AbstractRadiationModel"
+
+[isobaric_specific_heat_vapor]
+type = "float"
+description = "Isobaric specific heat of water vapor (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 1859
+
+[evaporation_scalar]
+type = "float"
+description = "Scalar multiplying soil critical moisture for evaporation"
+used_in = ["getindex"]
+value = 1.0
+tag = "EnergyHydrologyParameters"
+
+[pmodel_fC3]
+type = "float"
+description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
+used_in = ["getindex"]
+value = 0.015
+tag = "PModelConstants"
+
+[thermal_conductivity_of_air]
+type = "float"
+description = "Thermal conductivity of air (J m⁻¹ s⁻¹ K⁻¹)."
+used_in = ["Land"]
+value = 0.024
+
+[pmodel_Ha_Jmax]
+type = "float"
+description = "Effective energy of activation for Jmax (J mol^-1)."
+used_in = ["getindex"]
+value = 49884
+tag = "PModelConstants"
+
+[molar_mass_water]
+type = "float"
+description = "Molar mass of water (kg mol⁻¹)."
+used_in = ["Land"]
+value = 0.01801528
+
+[gustiness_zi]
+type = "float"
+description = "Thickness of boundary layer assumed in the gustiness parameterization based on the Deardorff convective velocity scale (m)."
+used_in = ["SurfaceFluxes"]
+value = 1000.0
+
+[autotrophic_respiration_Rd_ref]
+type = "float"
+description = "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) for the LAI-independent root and stem maintenance respiration."
+used_in = ["getindex"]
+value = 7.83e-7
+tag = "AutotrophicRespirationParameters"
+
+["pmodel_α"]
+type = "float"
+description = "1/T, where T (days) is the timescale of Vcmax, Jmax acclimation (Mengoli 2022); here T ≈ 88 days. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.0113
+tag = "PModelParameters"
+
+["pmodel_ϕa1_c4"]
+type = "float"
+description = "First order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+used_in = ["getindex"]
+value = 0.00375
+tag = "PModelParameters"
+
+[particle_density_organic_matter]
+type = "float"
+description = "Particle density of organic matter (kg m⁻³). Source: Hillel (1982)."
+used_in = ["Land"]
+value = 1300.0
+
+[gas_constant_dry_air]
+type = "float"
+description = "Gas constant for dry air (J kg⁻¹ K⁻¹)."
+used_in = ["Thermodynamics"]
+value = 287.0
+
+[kp]
+type = "float"
+description = "Rate coefficient for photochemical quenching"
+used_in = ["getindex"]
+value = 4.0
+tag = "SIFParameters"
+
+[kd_p2]
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+used_in = ["getindex"]
+value = 0.0773
+tag = "SIFParameters"
+
+[pmodel_bRd]
+type = "float"
+description = "Second order coefficient for temp-dependent Rd (K^-2)."
+used_in = ["getindex"]
+value = -0.0005
+tag = "PModelConstants"
+
+[kd_p1]
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+used_in = ["getindex"]
+value = 0.03
+tag = "SIFParameters"
+
+[orbit_eccentricity_at_epoch]
+type = "float"
+description = "Orbital eccentricity at J2000 epoch (unitless). JPL (Standish) 1800-2050 Earth-Moon barycenter value."
+used_in = ["Insolation"]
+value = 0.01671123
+
+[canopy_z_0b_coeff]
+type = "float"
+description = "Ratio of the canopy scalar (heat and vapor) roughness length z_0b to the canopy height (unitless); z_0b = coeff * height + canopy_z_0min. The excess resistance to scalar transfer that a scalar roughness length below z_0m would represent (kB^-1, Brutsaert 1982, Ch. 5) is carried instead by the leaf boundary layer conductance leaf_Cd * u_star * PAI between the plant surfaces and the canopy air, in series with the aerodynamic conductance from the canopy air to the atmosphere. Calibrated against ERA5 surface fluxes and GOSIF GPP."
+used_in = ["getindex"]
+value = 0.00157
+tag = "MoninObukhovCanopyFluxes"
+
+[kn_p1]
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+used_in = ["getindex"]
+value = 6.2473
+tag = "SIFParameters"
