@@ -319,13 +319,12 @@ end
 
 Advances the land simulation `landsim` forward from the initial to final time,
 updating `landsim` in place.
+
+If the simulation throws, the output writers are closed and the error is rethrown.
 """
 function solve!(landsim::LandSimulation)
     try
         ClimaTimeSteppers.solve!(landsim._integrator)
-    catch ret_code
-        @error "ClimaLand simulation crashed. Stacktrace for failed simulation" exception =
-            (ret_code, catch_backtrace())
     finally
         close_output_writers(landsim.diagnostics)
         close_all_ncfiles()
