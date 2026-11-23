@@ -73,7 +73,7 @@ domain =
 toml_dict = LP.create_toml_dict(FT)
 
 start_date = DateTime("2000-01-01")
-stop_date = DateTime("2040-01-01")
+stop_date = DateTime("2050-01-01")
 
 model = setup_model(FT, Δt, domain, toml_dict);
 diagnostics = ClimaLand.default_diagnostics(
