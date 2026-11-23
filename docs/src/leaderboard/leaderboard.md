@@ -169,3 +169,39 @@ is built from the `era5_to_clima_names` keyword argument
 sides. A row with no gridded observations, like the transpiration fraction,
 shows the simulation alone next to the published global constraint given in its
 `reference` field.
+
+## Water table leaderboard
+
+`water_table.jl` compares the depth to the water table of TOPMODEL runoff, the
+diagnostic `wtd`, with the estimate of Fan et al. (2017), "Hydrologic regulation
+of plant rooting depth", PNAS 114 (40), 10572-10577. The observations are that
+estimate aggregated to the simulation grid: in each cell, the mean of the depth
+at 30 arc-seconds capped at the depth of the simulated soil column. The simulated
+water table cannot be deeper than the column, so that mean is what the grid-mean
+water table of TOPMODEL stands for. Its columns are
+
+- `SIM`, the simulated depth averaged over time,
+- `ANN`, its bias against the estimate,
+- `LAT`, zonal means of both,
+- `DIST`, the land area in bins of depth.
+
+The observations come from the `fan2017_water_table_depth_1degree` artifact,
+whose file holds `wtd_mean_capped(lon, lat, cap)` in m on a 1° grid, the mean
+capped at 1, 2, ..., 100 m, and the uncapped mean `wtd_mean(lon, lat)`; see
+[ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/fan2017_water_table_depth)
+for how it is made. The leaderboard runs when the simulation outputs `wtd`, which
+it does by default with TOPMODEL runoff.
+
+`wtd` counts liquid water only, like the subsurface runoff of TOPMODEL: a layer
+saturated with ice, or with ice and liquid water, does not count as saturated.
+Over permafrost, `wtd` is thus close to the depth of the column. Fan et al. (2017)
+represent frost by a faster decrease of porosity and permeability with depth
+where the frost table is shallow (their SI Appendix), which slows drainage. The
+two water tables are not directly comparable over frozen ground.
+
+The leaderboard is a diagnostic, not a calibration target. ClimaLand has no
+lateral groundwater flow and the same soil depth everywhere, while Fan et al.
+(2017) is itself the output of a model with lateral groundwater flow. Tuning
+parameters such as those of subsurface runoff to match it would compensate for
+the missing processes. A large bias in the water table next to good latent heat
+flux and runoff points to such compensating errors.

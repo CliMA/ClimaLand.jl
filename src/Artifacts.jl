@@ -38,6 +38,20 @@ function rosetta_spunup_ic_path(; context = nothing)
     return joinpath(dir, "rosetta_spunup_ic.nc")
 end
 
+"""
+     deep_water_table_spunup_ic_path(; context = nothing)
+
+Returns the path to spun-up land initial conditions for a deeper water table,
+with the variables and grid of `rosetta_spunup_ic_path`. They come from
+40 years with TOPMODEL `f_over` = 0.7 after the 100-year spin-up of
+`rosetta_spunup_ic`, so they belong with `f_over` = 0.7; see the
+`deep_water_table_spunup_ic` README in ClimaArtifacts.
+"""
+function deep_water_table_spunup_ic_path(; context = nothing)
+    dir = @clima_artifact("deep_water_table_spunup_ic", context)
+    return joinpath(dir, "deep_water_table_spunup_ic.nc")
+end
+
 
 """
      saturated_land_ic_path(; context = nothing)
@@ -327,6 +341,19 @@ below ground, of Xu et al. (2021), in kg C m^-2 on a 1° grid, NaN over ocean.
 function xusaatchi_woody_carbon_path(; context = nothing)
     dir = @clima_artifact("xusaatchi_woody_carbon", context)
     return joinpath(dir, "xusaatchi_woody_carbon_1deg.nc")
+end
+
+"""
+    fan2017_water_table_depth_path(; context = nothing)
+
+Return the path to the water table depth of Fan et al. (2017) on a 1° grid: in each
+cell, the mean of the annual-mean depth at 30 arc-seconds, `wtd_mean(lon, lat)`, and
+of that depth capped at 1, 2, ..., 100 m, `wtd_mean_capped(lon, lat, cap)`, in m,
+positive below the surface, NaN without land data.
+"""
+function fan2017_water_table_depth_path(; context = nothing)
+    dir = @clima_artifact("fan2017_water_table_depth_1degree", context)
+    return joinpath(dir, "fan2017_wtd_1deg.nc")
 end
 
 

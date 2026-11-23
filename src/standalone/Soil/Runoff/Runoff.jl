@@ -229,7 +229,15 @@ parameterization:
 p.soil.R_s
 p.soil.R_ss
 p.soil.h∇
+p.soil.∫is_saturated_dz
 p.soil.infiltration
+
+`p.soil.h∇` is the total thickness of the saturated layers, at most the depth
+of the soil column; layers saturated with ice count for the surface runoff, but
+not for the subsurface runoff, which drains liquid water. `p.soil.is_saturated`
+weights the saturated layers by their saturation, so that the subsurface runoff
+drains supersaturated layers faster, and `p.soil.∫is_saturated_dz` is its
+column integral, which normalizes that sink.
 """
 function update_infiltration_water_flux!(
     p,
@@ -246,9 +254,8 @@ function update_infiltration_water_flux!(
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     # Surface runoff first
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
-    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r)
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
     @. p.soil.infiltration = topmodel_surface_infiltration(
         runoff.f_max,
         runoff.f_over,
@@ -257,10 +264,11 @@ function update_infiltration_water_flux!(
         input,
     )
     @. p.soil.R_s = abs(input - p.soil.infiltration)
-    # eek! now do it again but use only liquid water for subsurface runoff
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
-    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
+    # Subsurface runoff: liquid water only
+    @. p.soil.is_saturated = is_saturated(ϑ_l - θ_r, ν - θ_r)
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
+    @. p.soil.is_saturated *= (ϑ_l - θ_r) / (ν - θ_r)
+    column_integral_definite!(p.soil.∫is_saturated_dz, p.soil.is_saturated)
     @. p.soil.R_ss = topmodel_ss_flux(
         runoff.subsurface_source.R_sb,
         runoff.f_over,
@@ -278,16 +286,33 @@ function update_subsurface_energy_runoff!(
             p.soil.T,
             model.parameters.earth_param_set,
         )
-    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actual just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
-    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
+    # Mean volumetric energy of the drained liquid water, times R_ss
+    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch)
+    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.∫is_saturated_dz, eps(FT))
 end
 update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
 
-runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :subsfc_scratch)
-runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :surface, :subsurface)
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT)
+runoff_vars(::TOPMODELRunoff) = (
+    :infiltration,
+    :is_saturated,
+    :R_s,
+    :R_ss,
+    :R_ess,
+    :h∇,
+    :∫is_saturated_dz,
+    :subsfc_scratch,
+)
+runoff_var_domain_names(::TOPMODELRunoff) = (
+    :surface,
+    :subsurface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :subsurface,
+)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -312,11 +337,11 @@ model_agnostic_volumetric_ice_content(Y, FT) =
 Adjusts dY.soil.ϑ_l in place to account for the loss of
 water due to subsurface runoff.
 
-The sink term is given by - R_ss/h∇ H(twc - ν),
-where H is the Heaviside function, h∇ is the water table
-thickness (defined to be where twc>ν), where twc is the total water content,
- and R_ss is the runoff as a
-flux(m/s).
+The sink term is given by - R_ss w / ∫w dz, where
+w = H(ϑ_l - ν) (ϑ_l - θ_r)/(ν - θ_r) is `p.soil.is_saturated`, H is the
+Heaviside function, and R_ss is the runoff as a flux (m/s). The sink is zero
+outside the saturated layers, larger in supersaturated layers, and integrates
+to R_ss over the column.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -325,9 +350,9 @@ function ClimaLand.source!(
     p::NamedTuple,
     model::RichardsModel{FT},
 ) where {FT}
-    h∇ = p.soil.h∇
+    ∫w = p.soil.∫is_saturated_dz
     ϵ = eps(FT)
-    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(∫w, ϵ)) * p.soil.is_saturated
 end
 
 """
@@ -349,10 +374,10 @@ function ClimaLand.source!(
     p::NamedTuple,
     model::EnergyHydrology{FT},
 ) where {FT}
-    h∇ = p.soil.h∇
+    ∫w = p.soil.∫is_saturated_dz
     ϵ = eps(FT)
-    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers    
+    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(∫w, ϵ)) * p.soil.is_saturated
+    @. dY.soil.ρe_int -= (p.soil.R_ess / max(∫w, ϵ)) * p.soil.is_saturated
 end
 
 """
@@ -416,8 +441,8 @@ A pointwise function which returns the subsurface runoff flux,
 given the depth to the water table z∇>0,
 and the TOPMODEL parameters R_sb and f_over.
 
-A negative z∇, which supersaturated layers can give, is treated as a water
-table at the surface, so the flux never exceeds R_sb.
+A negative z∇ is treated as a water table at the surface, so the flux never
+exceeds R_sb.
 
 see: Niu et al. (2005),
 "A simple TOPMODEL-based runoff parameterization (SIMTOP) for
@@ -481,5 +506,19 @@ function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
         exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
     )
 end
+
+"""
+    get_water_table_depth(runoff_model, Y, p, depth)
+
+A helper function which returns the depth below the surface of the water table
+based on the type of runoff model being used. For `TOPMODELRunoff`, this is the
+depth of the soil column `depth` minus `p.soil.h∇`, the total thickness of the
+layers saturated with liquid water: the depth of the column when no layer is
+saturated, and zero when all are.
+"""
+get_water_table_depth(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
+# max guards against round-off in the column integral
+get_water_table_depth(runoff_model::TOPMODELRunoff, Y, p, depth) =
+    @. lazy(max(depth - p.soil.h∇, 0))
 
 end

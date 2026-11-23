@@ -2,6 +2,38 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
+  runoff (output by default with TOPMODEL), and a water table leaderboard against
+  Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`,
+  capped at the depth of the simulated soil column.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] TOPMODEL: points outside the TOPMODEL data's own land mask,
+  or where the data give `fmax = 0`, get 0.39, the mean `fmax` of the data, instead
+  of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
+  rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🔥behavioralΔ] TOPMODEL: the water table height `h∇` is the total
+  thickness of the saturated layers, at most the depth of the soil column. It used
+  to weight each saturated layer by its saturation, so supersaturated layers raised
+  the water table, and with it the subsurface runoff and the saturated fraction.
+  The subsurface runoff still drains supersaturated layers faster, with that weight
+  now normalized by its own column integral, the new cache variable
+  `∫is_saturated_dz`.
+  PR [#1976](https://github.com/CliMA/ClimaLand.jl/pull/1976)
+- ![][badge-🔥behavioralΔ] `solve!` rethrows the error of a crashed simulation after
+  logging it and closing the output writers, instead of returning normally. Scripts
+  and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
+  crashed ensemble member as failed.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🐛bugfix] `find_restart` could return an older checkpoint than the newest
+  one, e.g. `day730.0.hdf5` instead of `day3652.0.hdf5`, when Julia ran from another
+  directory than the output. ClimaUtilities looked up the creation time of each file
+  by its name alone, found no such file in the current directory, and fell back to
+  sorting by name. ClimaUtilities 0.1.34
+  ([ClimaUtilities#262](https://github.com/CliMA/ClimaUtilities.jl/pull/262)) uses
+  the full paths, and ClimaLand now requires it.
+  PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+
 v1.16.0
 ----
 - Add conservation tracking for the full land model (energy and water)
