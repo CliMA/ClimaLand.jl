@@ -247,12 +247,12 @@ function update_infiltration_water_flux!(
     # Surface runoff first
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
     @. p.soil.is_saturated =
-        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
-    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
+        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r)
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
     @. p.soil.infiltration = topmodel_surface_infiltration(
         runoff.f_max,
         runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
+        model.domain.fields.depth - p.soil.h∇, # water table depth including ice
         ic,
         input,
     )
@@ -368,9 +368,17 @@ see: Niu et al. (2005),
 use in global climate models", Equations (8) and (11).
 """
 function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
-    f_sat = min(f_max * exp(-f_over / 2 * z∇), 1)
+    f_sat = exp(-f_over / 2 * z∇)
     return (1 - f_sat) * max(f_ic, precip)
 end
+# To prevent columns from oversaturating, let f_max = 1 when z∇ = 0
+# To drain water from saturated layers more efficiently, increase R_sb or decrease f_over
+# Input = (1-fsat)*max(K, Precip)
+# loss = ET and subsurface runoff
+# SS  = R_sb exp(-f_over z∇)
+# (1-fsat)*min(K, P) = ET + R_sb exp(-f_over z∇)
+# So: (1-  exp(-f_over / 2 * z∇)) = ET/P + (R_sb/P) exp(-f_over z∇)
+# Can solve for where z∇ is
 
 """
     soil_infiltration_capacity(model::RichardsModel, Y, p)
@@ -477,7 +485,6 @@ A helper function which returns the surface saturated fraction
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
     @. lazy(
-        runoff_model.f_max *
         exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
     )
 end

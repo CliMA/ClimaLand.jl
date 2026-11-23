@@ -277,7 +277,7 @@ function EnergyHydrology{FT}(
         domain.space.subsurface,
         FT,
     ),
-    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ toml_dict["soil_storativity"],
     z_0m = toml_dict["soil_momentum_roughness_length"],
     z_0b = toml_dict["soil_scalar_roughness_length"],
     emissivity = toml_dict["emissivity_bare_soil"],

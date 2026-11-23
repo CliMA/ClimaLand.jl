@@ -1,3 +1,13 @@
+[ice_impedance_omega]
+value = 4.0
+type = "float"
+description = "Impedance parameter $\\Omega$ used to adjust soil hydraulic conductivity for ice presence (unitless). Source: Lundin (1990), DOI: 10.1016/0022-1694(90)90264-X."
+
+[soil_storativity]
+value = 1e-4
+type = "float"
+description = ""
+
 # Moisture stress models
 [moisture_stress_c]
 value = 0.759
