@@ -317,8 +317,8 @@ git-tree-sha1 = "b1a485375efc776e0f9a3cd2f9f414ea286a1776"
     url = "https://caltech.box.com/shared/static/wlst659b9v907i8vws15h4jzqhzei2z3.gz"
 
 [fan2017_water_table_depth_1degree]
-git-tree-sha1 = "0a6b385351cb17bb5971050e6f3c82f1be97d07d"
+git-tree-sha1 = "ce255529d9fc4a3ec50d810c8c43351c4792e2c4"
 
     [[fan2017_water_table_depth_1degree.download]]
-    sha256 = "6960e984d4e19494905b1b737996b015d43936ac3f935dd8bbc64774f663bba8"
+    sha256 = "688121cb0db64e25afb1d3baa40215c46fc0d4122340fd5a8f334ea5276bde72"
     url = "https://caltech.box.com/shared/static/k92qews2s9nvp5p6vvd643o345mryib4.gz"

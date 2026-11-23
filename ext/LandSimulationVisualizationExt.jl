@@ -112,6 +112,7 @@ function LandSimVis.make_leaderboard_plots(
     compute_water_table_leaderboard(
         leaderboard_base_path,
         diagnostics_folder_path;
+        soil_depth = domain.fields.depth,
         spin_up_months,
     )
 end

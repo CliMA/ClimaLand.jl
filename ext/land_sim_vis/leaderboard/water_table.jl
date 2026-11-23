@@ -9,6 +9,7 @@ const _WATER_TABLE_BINS = [(0, 1), (1, 2), (2, 3), (3, 5), (5, 10), (10, Inf)]
     compute_water_table_leaderboard(
         leaderboard_base_path,
         diagnostics_folder_path;
+        soil_depth,
         spin_up_months = 12,
         obs_path = ClimaLand.Artifacts.fan2017_water_table_depth_path(),
     )
@@ -16,8 +17,9 @@ const _WATER_TABLE_BINS = [(0, 1), (1, 2), (2, 3), (3, 5), (5, 10), (10, Inf)]
 Plot the simulated water table depth (`wtd`) against the estimate of Fan et al.
 (2017), "Hydrologic regulation of plant rooting depth", PNAS 114 (40),
 10572-10577, aggregated to the simulation grid: in each cell, the mean of the
-depth at 30 arc-seconds capped at 15 m, the depth of the soil column. That mean is
-what the grid-mean water table of TOPMODEL stands for.
+depth at 30 arc-seconds capped at `soil_depth` (m), the depth of the simulated
+soil column. The simulated water table cannot be deeper than the column, so that
+mean is what the grid-mean water table of TOPMODEL stands for.
 
 Columns are
 
@@ -26,13 +28,16 @@ Columns are
 - `LAT`, zonal means of both,
 - `DIST`, the land area by depth.
 
-`obs_path` is a NetCDF file holding `wtd_mean15(lon, lat)` in m, by default the
-1-degree aggregate of the estimate in the `fan2017_water_table_depth_1degree`
-artifact. The leaderboard is skipped when the simulation has no `wtd`.
+`obs_path` is a NetCDF file holding `wtd_mean_capped(lon, lat, cap)` in m, by
+default the 1-degree aggregate of the estimate in the
+`fan2017_water_table_depth_1degree` artifact, whose caps are 1, 2, ..., 100 m.
+The leaderboard is skipped when the simulation has no `wtd`, or when
+`soil_depth` is not one of the caps.
 """
 function compute_water_table_leaderboard(
     leaderboard_base_path,
     diagnostics_folder_path;
+    soil_depth,
     spin_up_months = 12,
     obs_path = ClimaLand.Artifacts.fan2017_water_table_depth_path(),
 )
@@ -44,7 +49,14 @@ function compute_water_table_leaderboard(
     sim_series = _load_partition_sim_var(sim_dir, "wtd", spin_up_months)
     year_range = _year_range(sim_series)
     sim = ClimaAnalysis.average_time(sim_series)
-    obs = ClimaAnalysis.OutputVar(obs_path, "wtd_mean15")
+    obs_capped = ClimaAnalysis.OutputVar(obs_path, "wtd_mean_capped")
+    caps = obs_capped.dims["cap"]
+    cap = caps[argmin(abs.(caps .- soil_depth))]
+    if !isapprox(cap, soil_depth; atol = 1e-3)
+        @warn "Skipping the water table leaderboard: the observations are capped at $(first(caps)), ..., $(last(caps)) m, not at the soil depth, $soil_depth m"
+        return nothing
+    end
+    obs = ClimaAnalysis.slice(obs_capped; cap)
     obs.attributes["short_name"] = "wtd"
     obs.attributes["long_name"] = "Water table depth (Fan et al. 2017)"
     obs = ClimaAnalysis.resampled_as(obs, sim; nan_threshold = 0.5)
@@ -79,7 +91,10 @@ function compute_water_table_leaderboard(
         layout,
         sim;
         more_kwargs = Dict(
-            :plot => Dict(:levels => collect(0:1:15), :extendhigh => :auto),
+            :plot => Dict(
+                :levels => _water_table_levels(soil_depth),
+                :extendhigh => :auto,
+            ),
             :axis =>
                 Dict(:title => "Water table depth (m), mean over $year_range"),
         ),
@@ -180,3 +195,15 @@ end
 
 _water_table_bin_labels() =
     [hi == Inf ? "> $(lo)" : "$(lo)–$(hi)" for (lo, hi) in _WATER_TABLE_BINS]
+
+"""
+    _water_table_levels(soil_depth)
+
+Return the contour levels of the map of the water table depth, from 0 to
+`soil_depth` with a round step, in at most 15 steps.
+"""
+function _water_table_levels(soil_depth)
+    steps = (1, 2, 5, 10, 20, 50)
+    step = steps[something(findfirst(s -> soil_depth / s <= 15, steps), 6)]
+    return collect(0:step:soil_depth)
+end

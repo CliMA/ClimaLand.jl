@@ -176,8 +176,9 @@ shows the simulation alone next to the published global constraint given in its
 diagnostic `wtd`, with the estimate of Fan et al. (2017), "Hydrologic regulation
 of plant rooting depth", PNAS 114 (40), 10572-10577. The observations are that
 estimate aggregated to the simulation grid: in each cell, the mean of the depth
-at 30 arc-seconds capped at 15 m, the depth of the soil column, which is what the
-grid-mean water table of TOPMODEL stands for. Its columns are
+at 30 arc-seconds capped at the depth of the simulated soil column. The simulated
+water table cannot be deeper than the column, so that mean is what the grid-mean
+water table of TOPMODEL stands for. Its columns are
 
 - `SIM`, the simulated depth averaged over time,
 - `ANN`, its bias against the estimate,
@@ -185,7 +186,8 @@ grid-mean water table of TOPMODEL stands for. Its columns are
 - `DIST`, the land area in bins of depth.
 
 The observations come from the `fan2017_water_table_depth_1degree` artifact,
-whose file holds `wtd_mean15(lon, lat)` in m on a 1° grid; see
+whose file holds `wtd_mean_capped(lon, lat, cap)` in m on a 1° grid, the mean
+capped at 1, 2, ..., 100 m, and the uncapped mean `wtd_mean(lon, lat)`; see
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/fan2017_water_table_depth)
 for how it is made. The leaderboard runs when the simulation outputs `wtd`, which
 it does by default with TOPMODEL runoff.

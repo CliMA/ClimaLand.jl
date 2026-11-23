@@ -347,7 +347,8 @@ end
     fan2017_water_table_depth_path(; context = nothing)
 
 Return the path to the water table depth of Fan et al. (2017) on a 1° grid: in each
-cell, the mean of the annual-mean depth at 30 arc-seconds capped at 15 m, in m,
+cell, the mean of the annual-mean depth at 30 arc-seconds, `wtd_mean(lon, lat)`, and
+of that depth capped at 1, 2, ..., 100 m, `wtd_mean_capped(lon, lat, cap)`, in m,
 positive below the surface, NaN without land data.
 """
 function fan2017_water_table_depth_path(; context = nothing)

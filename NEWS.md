@@ -4,7 +4,8 @@ main
 ----
 - ![][badge-✨feature] Diagnostic `wtd`, the depth to the water table of TOPMODEL
   runoff (output by default with TOPMODEL), and a water table leaderboard against
-  Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`.
+  Fan et al. (2017), from the new artifact `fan2017_water_table_depth_1degree`,
+  capped at the depth of the simulated soil column.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 - ![][badge-🐛bugfix] TOPMODEL: points outside the TOPMODEL data's own land mask,
   or where the data give `fmax = 0`, get 0.39, the mean `fmax` of the data, instead
