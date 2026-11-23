@@ -339,6 +339,39 @@ end
              exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
     tmp .= Runoff.get_water_table_depth(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. max(model.domain.depth - p.soil.h∇, 0)
+
+    # Ice counts for the surface runoff, not for the subsurface runoff
+    ν = model.parameters.ν
+    θ_r = model.parameters.θ_r
+    Y.soil.ϑ_l .= ifelse.(z .< -25, FT(0.8) .* ν, FT(0.5) .* ν)
+    Y.soil.θ_i .= ifelse.(z .< -25, FT(0.4) .* ν, FT(0))
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        model.parameters.ρc_ds,
+        model.parameters.earth_param_set,
+    )
+    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        FT(270),
+        model.parameters.earth_param_set,
+    )
+    set_initial_cache!(p, Y, FT(0))
+    @test all(parent(p.soil.h∇) .== 0)
+    ClimaCore.Operators.column_integral_definite!(
+        scratch,
+        Runoff.is_saturated.(Y.soil.ϑ_l .+ Y.soil.θ_i .- θ_r, ν .- θ_r),
+    )
+    @test all(FT(20) .< parent(scratch) .< FT(30))
+    ic = Runoff.soil_infiltration_capacity(model, Y, p)
+    @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
+        runoff_model.f_max,
+        runoff_model.f_over,
+        model.domain.depth - scratch,
+        ic,
+        p.drivers.P_liq,
+    )
 end
 
 @testset "Richards model, Site level runoff FT =$FT" begin
