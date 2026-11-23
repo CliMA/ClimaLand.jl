@@ -61,7 +61,7 @@ function decomposition_depth_factor(
     depth::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    return exp(-max(depth, FT(0)) / params.z_τ_sx)
+    return exp(-depth / params.z_τ_sx)
 end
 
 

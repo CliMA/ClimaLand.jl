@@ -120,18 +120,21 @@ respires, on average over the year, the litter it receives:
 where the overline is the mean over a year. In `LandModel`,
 `Simulations.spin_up_carbon_pools!` with `soil_carbon = true` (see
 [Prognostic carbon](../../vegetation/canopy_structure/prognostic_carbon.md)) solves this
-equation in each layer. Every fourth step of its spin-up period, it adds up the litter
-input and the respiration that the layer's temperature, moisture and O₂ would give at each
-of 49 candidate values of $Y_{C_{som}}$, log-spaced from $10^{-3}$ to $10^{3}$ kg C m⁻³.
-At the end, it sets $Y_{C_{som}}$ to the value at which the summed respiration equals the
+equation in each layer. Every hour of its spin-up period, it adds up the litter input and
+the respiration that the layer's temperature, moisture and O₂ would give at each of 41
+candidate values of $Y_{C_{som}}$, log-spaced from $10^{-3}$ to 100 kg C m⁻³: since the
+respiration is nonlinear in $Y_{C_{som}}$ (through $MM_{sx}$), its mean depends on how
+temperature and moisture vary over the year, not only on their means. At the end, it
+sets $Y_{C_{som}}$ to the value at which the summed respiration equals the
 summed litter, interpolating linearly in $\log Y_{C_{som}}$ between candidates.
 $Y_{C_{som}}$ does not feed back on the vegetation or the soil physics, so one year of
 spin-up is enough, apart from the soil O₂, which adjusts afterwards.
 
 As $MM_{sx}$ saturates, the respiration of a layer cannot exceed $V_{\max} \cdot MM_{O_2}
 \cdot f_z$, however much carbon it holds. A layer whose litter exceeds its respiration at
-100 kg C m⁻³, typically in cold or dry topsoil, has no equilibrium below that value: it
-keeps its carbon, which then keeps accumulating. A layer without litter gets no carbon.
+the largest candidate, 100 kg C m⁻³, typically in cold or dry topsoil, has no equilibrium
+below that value: it keeps its carbon, which then keeps accumulating. A layer without
+litter gets no carbon.
 
 ## Microbial Respiration: DAMM Model
 
@@ -236,7 +239,7 @@ with depth below the surface:
 
 ```math
 \begin{equation}
-f_z = \exp\!\left(-\frac{\max(z_{sfc} - z,\ 0)}{z_\tau}\right)
+f_z = \exp\!\left(-\frac{z_{sfc} - z}{z_\tau}\right)
 \end{equation}
 ```
 

@@ -184,18 +184,21 @@ simulation =
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 # The pools do not feed back on GPP, so their equilibrium under the mean drivers of a
 # year is analytic (`Canopy.equilibrium_carbon_pools`) and two simulated years replace
-# decades of wood growth. The pools are set to it under the first year, then under the
-# second, which follows the transient of the initial state; the leaderboards leave out
-# both years. The second year also sets the soil carbon to its equilibrium with the
-# litter of the pools, which slow deep decomposition would take centuries to reach
+# decades of wood growth. The pools are set to it at the end of the first year, then of
+# the second, which follows the transient of the initial state; the leaderboards leave
+# out both years. Only the second year, whose litter comes from spun-up pools, also sets
+# the soil carbon to its equilibrium, which slow deep decomposition would take centuries
+# to reach
 if PROGNOSTIC_LAI
-    for spinup_years in 1:2
-        ClimaLand.Simulations.spin_up_carbon_pools!(
-            simulation,
-            start_date + Year(spinup_years);
-            soil_carbon = spinup_years == 2,
-        )
-    end
+    ClimaLand.Simulations.spin_up_carbon_pools!(
+        simulation,
+        start_date + Year(1),
+    )
+    ClimaLand.Simulations.spin_up_carbon_pools!(
+        simulation,
+        start_date + Year(2);
+        soil_carbon = true,
+    )
 end
 ClimaLand.Simulations.solve!(simulation)
 CONSERVATION ? LandSimVis.check_conservation(simulation; savedir = root_path) :

@@ -59,13 +59,7 @@ using Dates
     # The sums of one sample give back the litter at the equilibrium they set
     soilco2 = model.soilco2
     sums = ClimaLand.Simulations.SoilCarbonSums(Y)
-    ClimaLand.Simulations.add_soil_carbon_sums!(
-        sums,
-        soilco2,
-        Y,
-        p,
-        simulation._integrator.t,
-    )
+    ClimaLand.Simulations.add_soil_carbon_sums!(sums, soilco2, Y, p)
     @test sums.litter == p.soil_litter_input
     SOC = copy(Y.soilco2.SOC)
     SOC .= -1 # layers without an equilibrium keep it
@@ -77,13 +71,7 @@ using Dates
     @test all(isfinite, parent(SOC))
     params = soilco2.parameters
     (; z, z_sfc) = soilco2.domain.fields
-    θ_l = BGC.soil_moisture(
-        soilco2.drivers.met,
-        p,
-        Y,
-        simulation._integrator.t,
-        z,
-    )
+    θ_l = p.soil.θ_l
     # Broadcasts skip the ocean columns of the masked domain, which stay 0 here
     space = axes(SOC)
     misfit = ClimaCore.Fields.zeros(space)

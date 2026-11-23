@@ -15,10 +15,11 @@ main
   the microbial source is multiplied by `exp(-depth / z_τ)`, with
   `soilCO2_decomposition_efolding_depth` z_τ = 0.5 m, and `soilCO2_reference_rate` rises
   from 6.7e-7 to 1.273e-6 kg C m⁻³ s⁻¹ so that global heterotrophic respiration at
-  SoilGrids SOC stays about the same. Respiration moves from the wet, aseasonal subsoil to
-  the topsoil. `Simulations.spin_up_carbon_pools!` takes `soil_carbon = true` to also set
-  the soil organic carbon to its equilibrium with the litter of the pools, which the long
-  run with prognostic LAI does in its second year.
+  SoilGrids SOC stays about the same. A larger share of it then comes from the topsoil,
+  where temperature and moisture vary with the seasons, rather than from deeper soil,
+  where they vary little. `Simulations.spin_up_carbon_pools!` takes `soil_carbon = true`
+  to also set the soil organic carbon to its equilibrium with the litter of the pools,
+  which the long run with prognostic LAI does in its second year.
   PR [#1975](https://github.com/CliMA/ClimaLand.jl/pull/1975)
 
 v1.16.0

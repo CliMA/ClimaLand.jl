@@ -17,15 +17,16 @@ following year leaves a state without transients. The steps of the spin-up are p
 the simulation and its diagnostics; a restart does not repeat it.
 
 With `soil_carbon = true`, the soil organic carbon (SOC) of a `LandModel`, fed by the
-litter of the pools, is also set to its equilibrium. Every fourth step, each soil layer
-sums its litter input and, for each candidate SOC value of `SOIL_CARBON_GRID`, the
-microbial respiration that its temperature, moisture and O₂ would give at that SOC. At
-the end, each layer's SOC is set to the value at which its mean respiration equals its
-mean litter input (`soil_carbon_equilibrium!`). SOC does not feed back on the vegetation
-or the soil physics, so one period is enough. The exceptions are the soil O₂ and the
-litter of the pools set at the end, which adjust afterwards. Over centuries, the
-respiration of deep layers, slowed by `decomposition_depth_factor`, would bring them to
-the same state.
+litter of the pools, is also set to its equilibrium. Every hour, or every step if the
+step is longer, each soil layer sums its litter input and, for each candidate SOC value
+of `SOIL_CARBON_GRID`, the microbial respiration that its temperature, moisture and O₂
+would give at that SOC; hourly samples resolve the diurnal cycle at a fraction of the
+cost of sampling every step. At the end, each layer's SOC is set to the value at which
+its mean respiration equals its mean litter input (`soil_carbon_equilibrium!`), where
+the layer has one. SOC does not feed back on the vegetation or the soil physics, so one
+period is enough. The exceptions are the soil O₂ and the litter of the pools set at the
+end, which adjust afterwards. Over centuries, the respiration of deep layers, slowed by
+`decomposition_depth_factor`, would bring them to the same state.
 """
 function spin_up_carbon_pools!(
     landsim::LandSimulation,
@@ -53,6 +54,7 @@ function spin_up_carbon_pools!(
         tree_share = ClimaCore.Fields.zeros(surface_space),
     )
     soil_sums = soil_carbon ? SoilCarbonSums(Y) : nothing
+    steps_per_hour = max(1, round(Int, 3600 / float(integrator.dt)))
     parameters = biomass.parameters
     (; Q10, T_ref) = parameters
     nsteps = 0
@@ -70,8 +72,8 @@ function spin_up_carbon_pools!(
         @. sums.tree_share += tree_share
         nsteps += 1
         soil_carbon &&
-            nsteps % 4 == 0 &&
-            add_soil_carbon_sums!(soil_sums, model.soilco2, Y, p, integrator.t)
+            nsteps % steps_per_hour == 0 &&
+            add_soil_carbon_sums!(soil_sums, model.soilco2, Y, p)
     end
 
     FT = eltype(parameters)
@@ -106,17 +108,11 @@ finite_or_zero(x) = ifelse(isfinite(x), x, zero(x))
 """
     SOIL_CARBON_GRID
 
-The candidate SOC values (kg C m⁻³) of the soil carbon spin-up, log-spaced.
+The candidate SOC values (kg C m⁻³) of the soil carbon spin-up, log-spaced. The last one
+is the largest SOC the spin-up sets: a layer whose equilibrium would exceed it keeps its
+SOC.
 """
-const SOIL_CARBON_GRID = exp10.(range(-3, 3; length = 49))
-
-"""
-    SOIL_CARBON_MAX
-
-The largest SOC (kg C m⁻³) the soil carbon spin-up sets; a layer whose equilibrium
-would exceed it keeps its SOC.
-"""
-const SOIL_CARBON_MAX = 100.0
+const SOIL_CARBON_GRID = exp10.(range(-3, 2; length = 41))
 
 """
     SoilCarbonSums(Y)
@@ -141,20 +137,21 @@ function SoilCarbonSums(Y)
 end
 
 """
-    add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p, t)
+    add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p)
 
 Adds the litter input of `p` and, for each SOC value of `SOIL_CARBON_GRID`, the
 microbial respiration of `soilco2` at that SOC under the soil temperature, moisture and
-O₂ of `Y` and `p`, as in its `update_aux!`.
+O₂ of `Y` and `p`, as in its `update_aux!`. The soil is the prognostic soil of a
+`LandModel`.
 """
-function add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p, t)
+function add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p)
     BGC = ClimaLand.Soil.Biogeochemistry
     params = soilco2.parameters
     met = soilco2.drivers.met
     (; z, z_sfc) = soilco2.domain.fields
     T_soil = p.soilco2.T
-    θ_l = BGC.soil_moisture(met, p, Y, t, z)
-    θ_i = BGC.soil_ice(met, p, Y, t, z)
+    θ_l = p.soil.θ_l
+    θ_i = Y.soil.θ_i
     P_sfc = p.drivers.P
     O2_avail = sums.o2_availability
     @. O2_avail = BGC.o2_availability(
@@ -178,21 +175,20 @@ function add_soil_carbon_sums!(sums::SoilCarbonSums, soilco2, Y, p, t)
 end
 
 """
-    soil_carbon_equilibrium!(SOC, litter, respiration; grid = SOIL_CARBON_GRID, soc_max = SOIL_CARBON_MAX)
+    soil_carbon_equilibrium!(SOC, litter, respiration; grid = SOIL_CARBON_GRID)
 
-Sets `SOC` in each layer to the value at which the respiration equals the litter input,
-from their sums over the same samples: `respiration[k]` sums the respiration at
-SOC `grid[k]`. The respiration is interpolated linearly between the candidates in log
-SOC, and taken linear in SOC below the first one. Layers without litter get no SOC.
-Layers whose litter exceeds the respiration at `soc_max`, or at the last candidate,
-keep their SOC.
+Overwrites `SOC` in each layer with its equilibrium, the value at which the respiration
+equals the litter input, from their sums over the same samples: `respiration[k]` sums
+the respiration at SOC `grid[k]`. The respiration is interpolated linearly between the
+candidates in log SOC, and taken linear in SOC below the first one. Layers without
+litter get no SOC. Layers whose litter exceeds the respiration at the last candidate
+have no equilibrium on the grid and keep the `SOC` passed in.
 """
 function soil_carbon_equilibrium!(
     SOC,
     litter,
     respiration;
     grid = SOIL_CARBON_GRID,
-    soc_max = SOIL_CARBON_MAX,
 )
     FT = eltype(SOC)
     soc = similar(SOC)
@@ -209,10 +205,6 @@ function soil_carbon_equilibrium!(
         )
     end
     RK = respiration[end]
-    @. SOC = ifelse(
-        litter > 0,
-        ifelse((litter < RK) & (soc <= FT(soc_max)), soc, SOC),
-        FT(0),
-    )
+    @. SOC = ifelse(litter > 0, ifelse(litter < RK, soc, SOC), FT(0))
     return nothing
 end
