@@ -12,7 +12,7 @@ The biogeochemistry model carries three prognostic fields that evolve in space (
 
 The model captures the fundamental processes of aerobic decomposition: microbes consume soluble carbon and oxygen to produce carbon dioxide. CO₂ and O₂ diffuse through the soil pore space, with diffusion rates controlled by soil structure (porosity, tortuosity), moisture, temperature, and pressure.
 
-$Y_{C_{som}}$ is initialized from the SoilGrids organic carbon density product and is treated as a stationary spatial parameter: we assume that the input of organic matter (e.g., from litter and root turnover) is equal to the rate of decomposition, so the actual $Y_{C_{som}}$ is constant in time. The model thus captures geographic heterogeneity of carbon stocks but does not integrate carbon depletion on simulation timescales — a deliberate simplification appropriate for the multi-decade runs targeted by ClimaLand. When the canopy carries prognostic carbon pools, the litter they shed enters the soil and $Y_{C_{som}}$ evolves (see Soil Organic Carbon below).
+$Y_{C_{som}}$ is initialized from the SoilGrids organic carbon density product and is treated as a stationary spatial parameter: we assume that the input of organic matter (e.g., from litter and root turnover) is equal to the rate of decomposition, so the actual $Y_{C_{som}}$ is constant in time. The model thus captures geographic heterogeneity of carbon stocks but does not integrate carbon depletion on simulation timescales — a deliberate simplification appropriate for the multi-decade runs targeted by ClimaLand. When the canopy carries prognostic carbon pools, the litter they shed enters the soil and $Y_{C_{som}}$ evolves, and a spin-up can set it to its equilibrium with that litter (see Soil Organic Carbon below).
 
 ## Governing Equations
 
@@ -104,13 +104,42 @@ distributed over depth (see
 the microbes respire, $S_m$, is the CO₂ source above, so soil carbon and CO₂ together
 conserve carbon.
 
+#### Equilibrium spin-up
+
+The SoilGrids carbon is not in balance with the litter of the model's pools, and
+$Y_{C_{som}}$ would take centuries to adjust to it, more at depth where $S_m$ is slow (see
+Depth Limit below). Nothing moves carbon between soil layers, so in equilibrium each layer
+respires, on average over the year, the litter it receives:
+
+```math
+\begin{equation}
+\overline{S_m\left(Y_{C_{som}}\right)} = \overline{S_{litter}}
+\end{equation}
+```
+
+where the overline is the mean over a year. In `LandModel`,
+`Simulations.spin_up_carbon_pools!` with `soil_carbon = true` (see
+[Prognostic carbon](../../vegetation/canopy_structure/prognostic_carbon.md)) solves this
+equation in each layer. Every fourth step of its spin-up period, it adds up the litter
+input and the respiration that the layer's temperature, moisture and O₂ would give at each
+of 49 candidate values of $Y_{C_{som}}$, log-spaced from $10^{-3}$ to $10^{3}$ kg C m⁻³.
+At the end, it sets $Y_{C_{som}}$ to the value at which the summed respiration equals the
+summed litter, interpolating linearly in $\log Y_{C_{som}}$ between candidates.
+$Y_{C_{som}}$ does not feed back on the vegetation or the soil physics, so one year of
+spin-up is enough, apart from the soil O₂, which adjusts afterwards.
+
+As $MM_{sx}$ saturates, the respiration of a layer cannot exceed $V_{\max} \cdot MM_{O_2}
+\cdot f_z$, however much carbon it holds. A layer whose litter exceeds its respiration at
+100 kg C m⁻³, typically in cold or dry topsoil, has no equilibrium below that value: it
+keeps its carbon, which then keeps accumulating. A layer without litter gets no carbon.
+
 ## Microbial Respiration: DAMM Model
 
 The microbial source term $S_m$ is computed using the Dual Arrhenius and Michaelis-Menten (DAMM) kinetics model [Davidson2012](@citet):
 
 ```math
 \begin{equation}
-S_m = V_{\max} \cdot MM_{sx} \cdot MM_{O_2}
+S_m = V_{\max} \cdot MM_{sx} \cdot MM_{O_2} \cdot f_z
 \end{equation}
 ```
 
@@ -118,7 +147,8 @@ where:
 
 - the maximum potential rate of respiration (temperature-dependent), $V_{\max}$ (kg C m⁻³ s⁻¹);
 - the substrate availability factor, $MM_{sx}$ (dimensionless, 0–1);
-- the oxygen limitation factor, $MM_{O_2}$ (dimensionless, 0–1).
+- the oxygen limitation factor, $MM_{O_2}$ (dimensionless, 0–1);
+- the depth factor, $f_z$ (dimensionless, 0–1).
 
 ### Maximum Respiration Rate
 
@@ -196,6 +226,29 @@ MM_{O_2} = \frac{O_{2,{\rm avail}}}{kM_{O_2} + O_{2,{\rm avail}}}
 ```
 
 where $kM_{O_2}$ is the dimensionless O₂ Michaelis constant.
+
+### Depth Limit
+
+Decomposition slows with depth for reasons the model does not resolve, such as fewer
+microbes, mineral protection of the organic matter and less priming by fresh carbon.
+Following [Koven2013](@citet) (their Eq. 7), the microbial source decreases exponentially
+with depth below the surface:
+
+```math
+\begin{equation}
+f_z = \exp\!\left(-\frac{\max(z_{sfc} - z,\ 0)}{z_\tau}\right)
+\end{equation}
+```
+
+where:
+
+- the depth of the layer center below the surface, $z_{sfc} - z$ (m);
+- the e-folding depth, $z_\tau$ (m), 0.5 m by default (`soilCO2_decomposition_efolding_depth`), the base value of [Koven2013](@citet).
+
+The reference rate $V_{{\rm ref},sx}$ is thus the rate at the surface. Deep carbon turns
+over slowly, consistent with its radiocarbon age [Koven2013](@cite), and most of the
+respiration comes from the topsoil, where temperature and moisture vary with the seasons.
+A large $z_\tau$ removes the depth limit.
 
 ## Air–Water Partitioning of Dissolved Gases
 
@@ -374,7 +427,7 @@ At the bottom boundary, a zero-flux condition is applied: $F_{O_2,{\rm bottom}} 
 | Total CO₂ | $Y_{CO_2}$ | kg C m⁻³ soil | Gas plus dissolved, $\theta_{\rm eff} c_g$ |
 | Air-phase CO₂ | $c_g$ | kg C m⁻³ air | Diagnosed as $Y_{CO_2}/\theta_{\rm eff}$ |
 | O₂ volumetric fraction | $O_{2,f}$ | dimensionless | O₂ fraction in soil air |
-| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids and assumed to be in steady state unless the canopy models carbon pools |
+| Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids and assumed to be in steady state unless the canopy models carbon pools, whose spin-up can set it to equilibrium |
 | Microbial respiration | $S_m$ | kg C m⁻³ s⁻¹ | CO₂ production rate |
 
 ### Drivers
@@ -392,7 +445,8 @@ At the bottom boundary, a zero-flux condition is applied: $F_{O_2,{\rm bottom}} 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | Soil porosity | $\nu$ | m³ m⁻³ | 0.3–0.6 | Total pore space |
-| Reference respiration rate | $V_{{\rm ref},sx}$ | kg C m⁻³ s⁻¹ | $\sim 2 \times 10^{-7}$ | DAMM, at $T_{{\rm ref},sx}$ |
+| Reference respiration rate | $V_{{\rm ref},sx}$ | kg C m⁻³ s⁻¹ | $1.3 \times 10^{-6}$ | DAMM, at $T_{{\rm ref},sx}$ and the surface |
+| Decomposition e-folding depth | $z_\tau$ | m | 0.5 | Depth limit, Koven et al. (2013) |
 | DAMM reference temperature | $T_{{\rm ref},sx}$ | K | 288.15 | Centered Arrhenius reference |
 | Activation energy | $E_{a,sx}$ | J mol⁻¹ | $\sim 4 \times 10^{4}$ | Temperature sensitivity |
 | Substrate Michaelis constant | $kM_{sx}$ | kg C m⁻³ | 0.01–0.5 | Half-saturation for substrate |
