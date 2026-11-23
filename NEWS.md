@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
+  of only logging them.
+
 v1.16.0
 ----
 - Add conservation tracking for the full land model (energy and water)

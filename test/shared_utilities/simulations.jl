@@ -151,5 +151,5 @@ end
         diagnostics = nothing,
         user_callbacks = (crash_cb,),
     )
-    @test_logs (:error, r"crashed") match_mode = :any solve!(simulation)
+    @test_throws "Simulated crash" solve!(simulation)
 end
