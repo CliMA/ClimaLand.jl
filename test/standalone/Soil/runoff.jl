@@ -115,6 +115,7 @@ end
         :R_ss,
         :R_ess,
         :h∇,
+        :∫is_saturated_dz,
         :subsfc_scratch,
     )
     @test Runoff.runoff_var_domain_names(runoff_model) == (
@@ -124,10 +125,11 @@ end
         :surface,
         :surface,
         :surface,
+        :surface,
         :subsurface,
     )
     @test Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT, FT)
+          (FT, FT, FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
@@ -175,6 +177,7 @@ end
     @test :R_ss ∈ propertynames(p.soil)
     @test :R_ess ∈ propertynames(p.soil)
     @test :h∇ ∈ propertynames(p.soil)
+    @test :∫is_saturated_dz ∈ propertynames(p.soil)
     @test :infiltration ∈ propertynames(p.soil)
     @test :is_saturated ∈ propertynames(p.soil)
     @test :subsfc_scratch ∈ propertynames(p.soil)
@@ -185,14 +188,16 @@ end
     evaluate!(p.drivers.P_liq, atmos.liquid_precip, FT(0))
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
+    saturated = ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν)
     scratch = ClimaCore.zeros(surface_space)
+    ClimaCore.Operators.column_integral_definite!(scratch, saturated)
+    @test scratch == p.soil.h∇
     ClimaCore.Operators.column_integral_definite!(
         scratch,
-        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν) .*
-        (Y.soil.ϑ_l .- model.parameters.θ_r) ./
+        saturated .* (Y.soil.ϑ_l .- model.parameters.θ_r) ./
         (model.parameters.ν .- model.parameters.θ_r),
     )
-    @test scratch == p.soil.h∇
+    @test scratch == p.soil.∫is_saturated_dz
     @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
         runoff_model.subsurface_source.R_sb,
         runoff_model.f_over,
@@ -219,6 +224,23 @@ end
     tmp .= Runoff.get_water_table_depth(runoff_model, Y, p, model.domain.depth)
     @test tmp == @. max(model.domain.depth - p.soil.h∇, 0)
 
+    # Supersaturated deep layers do not raise the water table, and the sink,
+    # larger where they are more supersaturated, still drains R_ss
+    Y.soil.ϑ_l .= ifelse.(z .< -1, FT(0.5) .+ FT(0.01) .* (-1 .- z), FT(0.4))
+    set_initial_cache!(p, Y, FT(0))
+    ClimaCore.Operators.column_integral_definite!(
+        scratch,
+        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν),
+    )
+    @test p.soil.h∇ == scratch
+    tmp .= Runoff.get_water_table_depth(runoff_model, Y, p, model.domain.depth)
+    @test tmp == @. model.domain.depth - p.soil.h∇
+    @test all(FT(0) .< parent(tmp) .< FT(1))
+    dY = similar(Y)
+    dY .= 0
+    ClimaLand.source!(dY, runoff_model.subsurface_source, Y, p, model)
+    ClimaCore.Operators.column_integral_definite!(scratch, dY.soil.ϑ_l)
+    @test parent(scratch) ≈ -parent(p.soil.R_ss) rtol = sqrt(eps(FT))
 end
 
 @testset "EnergyHydrology model, TOPMODEL runoff FT =$FT" begin
@@ -245,6 +267,7 @@ end
     @test :R_ss ∈ propertynames(p.soil)
     @test :R_ess ∈ propertynames(p.soil)
     @test :h∇ ∈ propertynames(p.soil)
+    @test :∫is_saturated_dz ∈ propertynames(p.soil)
     @test :infiltration ∈ propertynames(p.soil)
     @test :is_saturated ∈ propertynames(p.soil)
     @test :subsfc_scratch ∈ propertynames(p.soil)
@@ -271,13 +294,15 @@ end
     surface_space = domain.space.surface
     scratch = ClimaCore.zeros(surface_space)
     runoff_model = model.boundary_conditions.top.runoff
+    saturated = ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν)
+    ClimaCore.Operators.column_integral_definite!(scratch, saturated)
+    @test scratch == p.soil.h∇
     ClimaCore.Operators.column_integral_definite!(
         scratch,
-        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν) .*
-        (Y.soil.ϑ_l .- model.parameters.θ_r) ./
+        saturated .* (Y.soil.ϑ_l .- model.parameters.θ_r) ./
         (model.parameters.ν .- model.parameters.θ_r),
     )
-    @test scratch == p.soil.h∇
+    @test scratch == p.soil.∫is_saturated_dz
     @test p.soil.R_ss == Runoff.topmodel_ss_flux.(
         runoff_model.subsurface_source.R_sb,
         runoff_model.f_over,
@@ -303,7 +328,8 @@ end
             model.parameters.earth_param_set,
         ),
     )
-    @test p.soil.R_ess == scratch2 .* (p.soil.R_ss ./ max.(p.soil.h∇, eps(FT)))
+    @test p.soil.R_ess ==
+          scratch2 .* (p.soil.R_ss ./ max.(p.soil.∫is_saturated_dz, eps(FT)))
     @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
     @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s

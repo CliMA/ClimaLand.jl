@@ -11,6 +11,14 @@ main
   of 0. With `fmax = 0` a saturated column has no saturation-excess runoff, and where
   rain minus evapotranspiration exceeds `R_sb` it fills until the model crashes.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
+- ![][badge-🔥behavioralΔ] TOPMODEL: the water table height `h∇` is the total
+  thickness of the saturated layers, at most the depth of the soil column. It used
+  to weight each saturated layer by its saturation, so supersaturated layers raised
+  the water table, and with it the subsurface runoff and the saturated fraction.
+  The subsurface runoff still drains supersaturated layers faster, with that weight
+  now normalized by its own column integral, the new cache variable
+  `∫is_saturated_dz`.
+  PR [#1976](https://github.com/CliMA/ClimaLand.jl/pull/1976)
 - ![][badge-🔥behavioralΔ] `solve!` rethrows the error of a crashed simulation after
   logging it and closing the output writers, instead of returning normally. Scripts
   and long runs now fail when the simulation crashes, and ClimaCalibrate counts a

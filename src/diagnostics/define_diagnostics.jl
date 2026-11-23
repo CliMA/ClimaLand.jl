@@ -1125,7 +1125,7 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Water Table Depth",
         standard_name = "water_table_depth",
         units = "m",
-        comments = "Depth below the surface of the water table of TOPMODEL runoff: the depth of the soil column minus the saturated height of liquid water, which is the depth of the column when no layer is saturated.",
+        comments = "Depth below the surface of the water table of TOPMODEL runoff: the depth of the soil column minus the total thickness of the layers saturated with liquid water, which is the depth of the column when no layer is saturated.",
         compute! = (out, Y, p, t) ->
             compute_water_table_depth!(out, Y, p, t, land_model),
     )
