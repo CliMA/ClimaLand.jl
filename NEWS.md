@@ -24,11 +24,13 @@ main
   and long runs now fail when the simulation crashes, and ClimaCalibrate counts a
   crashed ensemble member as failed.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
-- ![][badge-🐛bugfix] `find_restart` needs ClimaUtilities 0.1.34, which sorts the
-  restart files by the creation time of their full paths
-  ([ClimaUtilities#262](https://github.com/CliMA/ClimaUtilities.jl/pull/262)). With
-  older versions, called from another directory, it returned the last file by name
-  (`day730` over `day3652`).
+- ![][badge-🐛bugfix] `find_restart` could return an older checkpoint than the newest
+  one, e.g. `day730.0.hdf5` instead of `day3652.0.hdf5`, when Julia ran from another
+  directory than the output. ClimaUtilities looked up the creation time of each file
+  by its name alone, found no such file in the current directory, and fell back to
+  sorting by name. ClimaUtilities 0.1.34
+  ([ClimaUtilities#262](https://github.com/CliMA/ClimaUtilities.jl/pull/262)) uses
+  the full paths, and ClimaLand now requires it.
   PR [#1961](https://github.com/CliMA/ClimaLand.jl/pull/1961)
 
 v1.16.0

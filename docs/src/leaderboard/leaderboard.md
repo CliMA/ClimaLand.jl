@@ -188,5 +188,18 @@ The observations come from the `fan2017_water_table_depth_1degree` artifact,
 whose file holds `wtd_mean15(lon, lat)` in m on a 1° grid; see
 [ClimaArtifacts](https://github.com/CliMA/ClimaArtifacts/tree/main/fan2017_water_table_depth)
 for how it is made. The leaderboard runs when the simulation outputs `wtd`, which
-it does by default with TOPMODEL runoff. Frozen ground holds little liquid water,
-so over permafrost `wtd` is close to the depth of the column.
+it does by default with TOPMODEL runoff.
+
+`wtd` counts liquid water only, like the subsurface runoff of TOPMODEL: a layer
+saturated with ice, or with ice and liquid water, does not count as saturated.
+Over permafrost, `wtd` is thus close to the depth of the column. Fan et al. (2017)
+represent frost by a faster decrease of porosity and permeability with depth
+where the frost table is shallow (their SI Appendix), which slows drainage. The
+two water tables are not directly comparable over frozen ground.
+
+The leaderboard is a diagnostic, not a calibration target. ClimaLand has no
+lateral groundwater flow and the same soil depth everywhere, while Fan et al.
+(2017) is itself the output of a model with lateral groundwater flow. Tuning
+parameters such as those of subsurface runoff to match it would compensate for
+the missing processes. A large bias in the water table next to good latent heat
+flux and runoff points to such compensating errors.

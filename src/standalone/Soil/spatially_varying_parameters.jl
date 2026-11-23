@@ -450,8 +450,7 @@ to the simulation grid.
 The TOPMODEL data have their own land mask, which differs from the model's at
 coasts. Points outside it, and points where the data give `fmax = 0`, get 0.39,
 the mean `fmax` of the data. With `fmax = 0` a saturated column has no
-saturation-excess runoff and keeps taking rain, so where rain minus
-evapotranspiration exceeds `R_sb` it fills without bound.
+saturation-excess runoff.
 
 The keyword arguments `regridder_type`, `extrapolation_bc`, and
 `interpolation_method`
