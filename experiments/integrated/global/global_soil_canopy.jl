@@ -97,17 +97,6 @@ canopy = Canopy.CanopyModel{FT}(
 # Combine the soil and canopy models into a single prognostic land model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
-ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
-stepper = CTS.ARS343()
-ode_algo = CTS.IMEXAlgorithm(
-    stepper,
-    CTS.NewtonsMethod(
-        max_iters = 1,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
-    ),
-)
-
 # ClimaDiagnostics
 nc_writer =
     ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir; start_date)
@@ -126,7 +115,6 @@ simulation = LandSimulation(
     land;
     outdir,
     diagnostics = diags,
-    timestepper = ode_algo,
     user_callbacks = (),
 )
 ClimaLand.Simulations.solve!(simulation)
