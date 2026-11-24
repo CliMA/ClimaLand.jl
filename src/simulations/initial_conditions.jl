@@ -98,13 +98,29 @@ end
 """
     set_soilco2_initial_conditions!(Y, p, land)
 
-Initialize soil CO2 state to be consistent with atmospheric CO2 and soil state.
-CO2 is stored as carbon mass per soil volume (kg C m⁻³ soil).
+Initialize the soil CO2 and O2 storage with [`set_soil_gas_initial_conditions!`](@ref),
+and the soil organic carbon from SoilGrids.
 
-This assumes that the soil moisture state (`Y.soil.ϑ_l` and `Y.soil.θ_i`)
-has already been set.
+This assumes that the soil state (`Y.soil`) and the surface pressure and CO2
+(`p.drivers.P`, `p.drivers.c_co2`) have already been set.
 """
 function set_soilco2_initial_conditions!(Y, p, land)
+    set_soil_gas_initial_conditions!(Y, p, land)
+    set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+    return nothing
+end
+
+"""
+    set_soil_gas_initial_conditions!(Y, p, land)
+
+Initialize the soil CO2 and O2 storage (kg C and kg O₂ per m³ of soil) so that the
+soil air holds the atmospheric CO2 mole fraction and an O2 fraction decaying from
+0.21 at the surface, whatever the soil water and ice content.
+
+This assumes that the soil state (`Y.soil`) and the surface pressure and CO2
+(`p.drivers.P`, `p.drivers.c_co2`) have already been set.
+"""
+function set_soil_gas_initial_conditions!(Y, p, land)
     FT = eltype(Y.soilco2.CO2)
     soil = land.soil
     soilco2 = land.soilco2
@@ -166,8 +182,6 @@ function set_soilco2_initial_conditions!(Y, p, land)
     @. Y.soilco2.O2 =
         θ_eff_o2 * FT(0.21) * p.drivers.P * params.M_O2 / (R * T_soil) *
         exp(k_o2 * z)
-
-    set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
     return nothing
 end
 
@@ -1208,19 +1222,6 @@ function make_set_initial_state_from_era5land(
         subsurface_space = domain.space.subsurface
         FT = eltype(Y.soil.ϑ_l)
 
-        # Set initial conditions that aren't read in from file.
-        # Y.soilco2.CO2 stores total CO₂ as carbon mass per soil volume
-        # (kg C m⁻³ soil) = θ_eff · c_g; the value below is a representative
-        # atmospheric-equilibrium initial guess (~412 ppm at 1 atm, 283 K,
-        # θ_eff ≈ 0.3) and is rapidly replaced by the diffusive boundary
-        # condition on the first time step.
-        if !isnothing(land.soilco2)
-            # Bulk densities: storage = θ_eff · gas-phase concentration, with
-            # θ_eff = θ_a + β·θ_l (air-filled pores + dissolved in pore water).
-            Y.soilco2.CO2 .= FT(6e-5)   # kg C m⁻³ soil (≈ θ_eff · c_atm · P·M_C/(R·T))
-            Y.soilco2.O2 .= FT(0.08)    # kg O₂ m⁻³ soil (≈ θ_eff · 0.21 · P·M_O2/(R·T))
-            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
-        end
         if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
             Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
         else
@@ -1275,6 +1276,9 @@ function make_set_initial_state_from_era5land(
             extrapolation_bc = extrapolation_bc,
             interpolation_method = interpolation_method,
         )
+        if !isnothing(land.soilco2)
+            set_soilco2_initial_conditions!(Y, p, land)
+        end
     end
     return set_ic!
 end
@@ -1453,7 +1457,7 @@ Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from parameter values and the
 atmospheric temperature.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
+It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
 been updated already.
 """
 function make_set_initial_state_from_atmos_and_parameters(
@@ -1484,17 +1488,9 @@ function make_set_initial_state_from_atmos_and_parameters(
             earth_param_set,
         )
 
-        # SoilCO2 IC (requires soil state). Y.soilco2.CO2 and Y.soilco2.O2 store
-        # total mass per unit bulk soil volume (kg C m⁻³ soil and kg O₂ m⁻³ soil),
-        # i.e. storage = θ_eff · gas-phase concentration, with θ_eff = θ_a + β·θ_l
-        # accounting for the air-filled pore space plus gas dissolved in pore water.
-        # The values below are representative atmospheric-equilibrium initial guesses
-        # (θ_eff ≈ 0.3 at standard T, P) and are rapidly replaced by the diffusive
-        # boundary condition on the first time step.
+        # SoilCO2 IC (requires soil state)
         if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(6e-5)   # ≈ θ_eff · c_atm · P·M_C/(R·T)
-            Y.soilco2.O2 .= FT(0.08)    # ≈ θ_eff · 0.21 · P·M_O2/(R·T)
-            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+            set_soilco2_initial_conditions!(Y, p, land)
         end
 
         Y.snow.S .= FT(0)
@@ -1546,6 +1542,9 @@ end
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from parameter values and the
 atmospheric temperature.
+
+It is assumed that in CoupledAtmosphere simulations that `p.drivers` has
+been updated already.
 """
 function make_set_initial_state_from_atmos_and_parameters(
     land::SoilCanopyModel{FT},
@@ -1575,12 +1574,10 @@ function make_set_initial_state_from_atmos_and_parameters(
             earth_param_set,
         )
 
+        # SoilCO2 IC (requires soil state)
         if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(6e-5)   # ≈ θ_eff · c_atm · P·M_C/(R·T)
-            Y.soilco2.O2 .= FT(0.08)    # ≈ θ_eff · 0.21 · P·M_O2/(R·T)
-            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+            set_soilco2_initial_conditions!(Y, p, land)
         end
-
 
         # Canopy component IC
         if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
