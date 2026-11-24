@@ -5,6 +5,7 @@ export volumetric_air_content,
     microbe_source,
     o2_concentration,
     o2_fraction_from_concentration,
+    o2_release_rate,
     o2_availability,
     henry_constant,
     beta_gas,
@@ -117,6 +118,37 @@ function o2_fraction_from_concentration(
     # O2 volumetric fraction (dimensionless)
     O2_f = ρ_O2_air * R * T_soil / (P_sfc * M_O2)
     return O2_f
+end
+
+"""
+    o2_release_rate(
+        Y_O2::FT,
+        θ_eff_o2::FT,
+        T_air::FT,
+        P_sfc::FT,
+        params::SoilCO2ModelParameters{FT},
+    ) where {FT}
+
+Rate (kg O₂ m⁻³ s⁻¹) at which O₂ leaves the soil to the atmosphere when water or
+ice fills the pores: the O₂ storage `Y_O2` in excess of `θ_eff_o2` times the O₂
+concentration in the air above the soil, released over one hour.
+
+The soil has no O₂ source, so its air holds no more O₂ than the atmosphere
+unless its pores shrink. The O₂ storage of a layer stays put when its pores
+fill, so the excess is the O₂ that the displaced air and the freezing water
+push out. The release is explicit in time, so it removes no more than the
+excess for time steps up to one hour.
+"""
+function o2_release_rate(
+    Y_O2::FT,
+    θ_eff_o2::FT,
+    T_air::FT,
+    P_sfc::FT,
+    params::SoilCO2ModelParameters{FT},
+) where {FT}
+    c_atm = o2_concentration(params.O2_f_atm, T_air, P_sfc, params)
+    τ_release = FT(3600)
+    return max(Y_O2 - θ_eff_o2 * c_atm, FT(0)) / τ_release
 end
 
 

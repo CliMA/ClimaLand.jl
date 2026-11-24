@@ -51,6 +51,7 @@ Oxygen transport and consumption in soil is described by:
 \frac{\partial Y_{\theta_{O_2}}}{\partial t}
 = \nabla \cdot \left[D_{O_2}\, \nabla c_{g, O_2}\right]
 - \frac{M_{O_2}}{M_C}\, S_m
+- R_{O_2}
 \end{equation}
 ```
 
@@ -63,6 +64,16 @@ where:
 - the molar mass of carbon, $M_C$ (0.012 kg mol⁻¹).
 
 The second term represents O₂ consumption by microbial respiration. The stoichiometry follows C + O₂ → CO₂: each 12 g of carbon respired consumes 32 g of O₂. The conversion factor $M_{O_2}/ M_C)$ translates the carbon mass source $S_m$ (kg C m⁻³ s⁻¹ soil) into an oxygen source.
+
+The third term releases O₂ that the soil air cannot hold. The soil has no O₂ source, so its air holds no more O₂ than the atmosphere unless its pores shrink. When water or ice fills them, the O₂ storage of the layer stays put while $\theta_{\rm eff,O_2}$ shrinks, so the gas-phase concentration rises above the atmospheric one; physically, the displaced air and the O₂ that freezing water rejects leave the soil. The excess is released over one hour:
+
+```math
+\begin{equation}
+R_{O_2} = \frac{\max\left(Y_{\theta_{O_2}} - \theta_{\rm eff,O_2}\, c_{O_2,{\rm atm}},\ 0\right)}{\tau}, \qquad \tau = 1\ {\rm h}
+\end{equation}
+```
+
+where the atmospheric O₂ concentration, $c_{O_2,{\rm atm}}$ (kg O₂ m⁻³ air), is computed from the air temperature and surface pressure, as in the top boundary condition. The released O₂ goes to the atmosphere: its column integral is kept as a surface flux (`o2_release_flux`, kg O₂ m⁻² s⁻¹), so that O₂ mass is conserved. The release is explicit in time, so it removes no more than the excess for time steps up to $\tau$.
 
 ### Soil Organic Carbon
 
