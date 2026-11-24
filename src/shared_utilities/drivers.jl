@@ -1811,6 +1811,7 @@ end
 The time-varying `input` read once per window, at the same time in every window:
 for `t` in `[start_date + k window, start_date + (k + 1) window)`, the value of
 `input` at `start_date + k window + at`, with `start_date` the one of `input`.
+`input` is a `TimeVaryingInput` read from data, which is evaluated at dates.
 """
 struct WindowSampleInput{I <: AbstractTimeVaryingInput} <:
        AbstractTimeVaryingInput
@@ -1858,6 +1859,8 @@ function TimeVaryingInputs.evaluate!(
     )
     return nothing
 end
+
+Base.close(input::WindowSampleInput) = Base.close(input.input)
 
 """
     window_cos_zenith_angle(

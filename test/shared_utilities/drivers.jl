@@ -631,23 +631,28 @@ end
         # Insolation-weighted cos zenith from 12 samples over the window
         insol_params = LP.LandParameters(toml_dict).insol_params
         coords = ClimaCore.Fields.coordinate_field(surface_space)
+        # cos zenith functions return lazy broadcasts: materialize them in place,
+        # as the driver update does
+        μ = ClimaCore.Fields.zeros(surface_space)
         sum_μ = ClimaCore.Fields.zeros(surface_space)
         sum_μ² = ClimaCore.Fields.zeros(surface_space)
         for k in 1:12
-            μ =
+            μ .= FT.(
                 ClimaLand.default_cos_zenith_angle(
                     t0 + (k - 0.5) * 900,
                     start_date;
                     latitude = coords.lat,
                     longitude = coords.long,
                     insol_params,
-                ) .|> FT
+                ),
+            )
             sum_μ .+= μ
             sum_μ² .+= μ .^ 2
         end
         expected_μ = @. ifelse(sum_μ > 0, sum_μ² / sum_μ, FT(0))
+        cosθs = ClimaCore.Fields.zeros(surface_space)
         for t in (t0, t0 + 3600)
-            cosθs = FT.(centred.radiation.cosθs(t, start_date))
+            cosθs .= FT.(centred.radiation.cosθs(t, start_date))
             @test land(cosθs) ≈ land(expected_μ) atol = 1e-5
         end
     end
