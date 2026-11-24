@@ -267,7 +267,7 @@ function EnergyHydrology{FT}(
     ),
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
         toml_dict,
-        f_max = topmodel_fmax(domain.space.surface, FT),
+        f_max = ones(domain.space.surface),
     ),
     retention_parameters = rosetta_soil_vangenuchten_parameters(
         domain.space.subsurface,

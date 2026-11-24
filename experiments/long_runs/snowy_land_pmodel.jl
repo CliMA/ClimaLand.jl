@@ -67,7 +67,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
+root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)_ratio1_rsb4x_omega"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -141,10 +141,10 @@ end
 # correct forcing each year, and leave out the first year (two with prognostic LAI). Note that since the Northern hemisphere's winter season is defined as
 # DJF, we simulate from and until the beginning of March so that a full season is
 # included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
+start_date = LONGER_RUN ? DateTime("2000-01-01") : DateTime("2008-01-01")
 stop_date =
-    LONGER_RUN ? DateTime("2019-03-01") :
-    PROGNOSTIC_LAI ? DateTime("2011-03-01") : DateTime("2010-03-01")
+    LONGER_RUN ? DateTime("2019-01-01") :
+    PROGNOSTIC_LAI ? DateTime("2011-01-01") : DateTime("2013-01-01")
 spin_up_months = PROGNOSTIC_LAI ? 24 : 12
 Δt = 900.0
 domain =
@@ -173,8 +173,12 @@ diagnostics = ClimaLand.default_diagnostics(
     outdir;
     conservation_period = Day(10),
 )
+ic_path = "../ClimaArtifacts/tmp_spinup/tmp_spinup/tmp_spunup_ic.nc"
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(ic_path,
+        model,
+    )
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; set_ic!, outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"

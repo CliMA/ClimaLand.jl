@@ -932,7 +932,7 @@ function compute_saturated_height!(
     end
 
     out .=
-        Runoff.get_saturated_height(soil.boundary_conditions.top.runoff, Y, p)
+        Runoff.get_saturated_height(soil.boundary_conditions.top.runoff, soil, Y, p)
     return out
 end
 

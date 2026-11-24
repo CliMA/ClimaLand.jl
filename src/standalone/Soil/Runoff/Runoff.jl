@@ -199,26 +199,29 @@ struct TOPMODELRunoff{FT <: AbstractFloat, F <: ClimaCore.Fields.Field} <:
        AbstractRunoffModel
     "A calibrated parameter defining how subsurface runoff decays with depth to water table (1/m ; calibrated)"
     f_over::FT
+    "A calibrated parameter defining how saturated fraction at the surface decays with depth to water table (1/m ; calibrated)"
+    f_over_s::FT
     "The maximum saturated fraction of a grid cell, computed from the topographic index CDF per grid cell."
     f_max::F
     "The subsurface source term corresponding to this implementation of TOPMODEL."
     subsurface_source::TOPMODELSubsurfaceRunoff{FT}
 end
 
-function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT, F}
+function TOPMODELRunoff{FT}(; f_over::FT, f_over_s::FT, f_max::F, R_sb::FT) where {FT, F}
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
+    return TOPMODELRunoff{FT, F}(f_over, f_over_s, f_max, subsurface_source)
 end
 
 function TOPMODELRunoff(
     toml_dict::CP.ParamDict;
     f_max::F,
     f_over = toml_dict["f_over"],
+    f_over_s = toml_dict["f_over_s"],
     R_sb = toml_dict["R_sb"],
 ) where {F}
     FT = CP.float_type(toml_dict)
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
+    return TOPMODELRunoff{FT, F}(f_over, f_over_s, f_max, subsurface_source)
 end
 
 """
@@ -356,7 +359,7 @@ function ClimaLand.source!(
 end
 
 """
-    topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
+    topmodel_surface_infiltration(f_max, f_over_s, z∇, f_ic, precip)
 
 A pointwise function which returns the infiltration into the soil,
 given the precipitation flux (m/s),
@@ -367,8 +370,8 @@ see: Niu et al. (2005),
 "A simple TOPMODEL-based runoff parameterization (SIMTOP) for
 use in global climate models", Equations (8) and (11).
 """
-function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
-    f_sat = exp(-f_over / 2 * z∇)
+function topmodel_surface_infiltration(f_max, f_over_s, z∇, f_ic, precip)
+    f_sat = f_max*exp(-f_over_s * z∇)
     return (1 - f_sat) * max(f_ic, precip)
 end
 # To prevent columns from oversaturating, let f_max = 1 when z∇ = 0
@@ -467,13 +470,17 @@ get_subsurface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_ss
 
 
 """
-    get_saturated_height(runoff_model, Y, p)
+    get_saturated_height(runoff_model, soil, Y, p)
 
 A helper function which returns the integrated height of 
 saturated soil based on the type of runoff model being used.
 """
-get_saturated_height(runoff_model::AbstractRunoffModel, Y, p) = nothing
-get_saturated_height(runoff_model::TOPMODELRunoff, Y, p) = p.soil.h∇
+get_saturated_height(runoff_model::AbstractRunoffModel, soil, Y, p) = nothing
+function get_saturated_height(runoff_model::TOPMODELRunoff, soil, Y, p)
+        @. p.soil.is_saturated = is_saturated(p.soil.θ_l + Y.soil.θ_i - soil.parameters.θ_r, soil.parameters.ν - soil.parameters.θ_r)
+        column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
+    return p.soil.h∇
+end
 
 
 """
@@ -485,7 +492,7 @@ A helper function which returns the surface saturated fraction
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
     @. lazy(
-        exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
+        runoff_model.f_max * exp(-runoff_model.f_over_s * (depth - p.soil.h∇)),
     )
 end
 

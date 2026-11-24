@@ -53,7 +53,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -67,10 +66,10 @@ function setup_model(
     return land
 end
 
-start_date = DateTime("2008-03-01")
-stop_date = DateTime("2010-03-01")
+start_date = DateTime("2008-01-01")
+stop_date = DateTime("2012-01-01")
 Δt = 900.0
-longlat = FT.((-77.0, 0.1))
+longlat = FT.((120.0, 68.0))
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
@@ -78,6 +77,20 @@ domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple);
 toml_dict = LP.create_toml_dict(FT)
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
+@show model.soil.parameters.ν
+ output_vars = [
+        "shf",
+        "lhf",
+        "si", "tsoil", "swc", "swe", "snowc", "snowtsfc", "snowtb","infil", "sath", "infc","sfsat",
+        "swu",
+        "snd",
+        "lwu",
+        "sr",
+        "ssr",
+        "precip",
+        "lai",
+        "et",
+    ]
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;
@@ -88,21 +101,14 @@ diagnostics = ClimaLand.default_diagnostics(
     ),
     reduction_period = :monthly,
     reduction_type = :average,
-    output_vars = [
-        "shf",
-        "lhf",
-        "trans",
-        "swu",
-        "lwu",
-        "sr",
-        "ssr",
-        "precip",
-        "et",
-        "lai",
-    ],
+    output_vars
 );
+ic_path = "../ClimaArtifacts/tmp_spinup/tmp_spinup/tmp_spunup_ic.nc"
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(ic_path,
+        model,
+    )
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics);
+    LandSimulation(start_date, stop_date, Δt, model; set_ic!, outdir, diagnostics);
 
 @info "Run: Global Soil-Canopy-Snow-SoilCO2 Model"
 @info "Resolution: $(domain.nelements)"
@@ -115,7 +121,7 @@ ClimaLand.Simulations.solve!(simulation);
 LandSimVis.make_timeseries(
     simulation;
     savedir = root_path,
-    short_names = ["lai"],
+    short_names = output_vars,
 )
 LandSimVis.make_leaderboard_plots(
     model,
