@@ -34,6 +34,8 @@ ClimaLand.default_cos_zenith_angle
 ClimaLand.energy_flux_falling_rain
 ClimaLand.energy_flux_falling_snow
 ClimaLand.prescribed_forcing_era5
+ClimaLand.WindowSampleInput
+ClimaLand.window_cos_zenith_angle
 ClimaLand.prescribed_forcing_crujra
 ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5
