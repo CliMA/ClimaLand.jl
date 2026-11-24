@@ -359,6 +359,48 @@ for FT in (Float32, Float64)
         )
     end
 
+    @testset "Soil carbon equilibrium of the spin-up, FT = $FT" begin
+        # Saturating respiration a * c / (K + c) per layer, with a known root
+        domain =
+            ClimaLand.Domains.Column(; zlim = (FT(-1), FT(0)), nelements = 5)
+        space = domain.space.subsurface
+        grid = ClimaLand.Simulations.SOIL_CARBON_GRID
+        a, K = FT(2e-9), FT(30)
+        respiration = map(
+            c -> ClimaCore.Fields.zeros(space) .+ a * FT(c) / (K + FT(c)),
+            grid,
+        )
+        z = ClimaCore.Fields.coordinate_field(space).z
+        litter = @. FT(0.2) * a * (-z) # from 0.02 a to 0.18 a
+        SOC = ClimaCore.Fields.zeros(space) .+ FT(7)
+        ClimaLand.Simulations.soil_carbon_equilibrium!(SOC, litter, respiration)
+        root = @. K * litter / (a - litter)
+        # log-linear interpolation between candidates 1.33 apart: within 2%
+        @test all(abs.(parent(SOC) ./ parent(root) .- 1) .< FT(0.02))
+
+        # Below the first candidate the respiration is linear in SOC
+        R1 = respiration[1]
+        tiny = @. FT(1e-5) * R1
+        ClimaLand.Simulations.soil_carbon_equilibrium!(SOC, tiny, respiration)
+        @test all(parent(SOC) .≈ FT(1e-5) * FT(grid[1]))
+
+        # No litter: no SOC; litter above the saturated respiration: the SOC is kept
+        SOC .= FT(7)
+        ClimaLand.Simulations.soil_carbon_equilibrium!(
+            SOC,
+            ClimaCore.Fields.zeros(space),
+            respiration,
+        )
+        @test all(iszero, parent(SOC))
+        SOC .= FT(7)
+        ClimaLand.Simulations.soil_carbon_equilibrium!(
+            SOC,
+            ClimaCore.Fields.zeros(space) .+ 2a,
+            respiration,
+        )
+        @test all(parent(SOC) .== FT(7))
+    end
+
     @testset "Component compatibility, FT = $FT" begin
         # Only a ZhouOptimalLAIModel has a tree share of its own
         @test_throws ErrorException Canopy.PrognosticCarbonModel{FT}(

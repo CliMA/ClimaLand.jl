@@ -165,7 +165,9 @@ tree share), then sets the leaf, wood and fine-root pools to their equilibrium u
 and ``T_{annual}`` to the mean air temperature, which is also the ``T_{annual}`` of the
 equilibrium. The sugar pool, which follows the fluxes of the last days, keeps its state
 and settles over weeks after such a jump, so a second spin-up over the following year
-leaves a state without transients.
+leaves a state without transients. In a `LandModel`, `soil_carbon = true` also sets the
+soil organic carbon to its equilibrium with the litter (see
+[Soil Biogeochemistry](../../soil/biogeochemistry/DAMM_model.md)).
 
 ## Usage
 

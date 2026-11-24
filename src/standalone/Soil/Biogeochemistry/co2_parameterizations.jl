@@ -3,6 +3,7 @@ export volumetric_air_content,
     co2_diffusivity,
     o2_diffusivity,
     microbe_source,
+    decomposition_depth_factor,
     o2_concentration,
     o2_fraction_from_concentration,
     o2_release_rate,
@@ -47,6 +48,21 @@ function microbe_source(
     MM_o2 = O2_avail / (kM_o2 + O2_avail) # Oxygen limitation factor, 0-1
     R_sm = Vmax * MM_sx * MM_o2 # Respiration, kg C m⁻³ s⁻¹
     return R_sm
+end
+
+"""
+    decomposition_depth_factor(depth::FT, params::SoilCO2ModelParameters{FT}) where {FT}
+
+The factor `exp(-depth / z_τ_sx)` on the microbial source at `depth` (m) below the surface
+(Koven et al., 2013, Eq. 7). It stands for the controls that slow decomposition at depth
+and that the model does not resolve, such as fewer microbes, mineral protection and less
+priming. Deep soil carbon then turns over slowly, as its radiocarbon age requires.
+"""
+function decomposition_depth_factor(
+    depth::FT,
+    params::SoilCO2ModelParameters{FT},
+) where {FT}
+    return exp(-depth / params.z_τ_sx)
 end
 
 
