@@ -2,6 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] The soil O₂ initial condition used the effective porosity of CO₂,
+  which dissolves about 30 times more in water than O₂. In layers full of water or ice, the
+  soil O₂ volumetric fraction `so2` started far above the atmospheric 0.21 (about 3 at 2 m
+  in the long run) and stayed there, since gas barely diffuses through full pores.
+  PR [#1984](https://github.com/CliMA/ClimaLand.jl/pull/1984)
 - ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
   of only logging them.
 

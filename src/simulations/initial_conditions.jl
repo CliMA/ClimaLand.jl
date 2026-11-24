@@ -134,25 +134,37 @@ function set_soilco2_initial_conditions!(Y, p, land)
     R = ClimaLand.Parameters.gas_constant(params.earth_param_set)
     M_C = params.M_C
 
-    K_H = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
+    # Each gas dissolves in the pore water by its own Henry's law factor β, so CO2
+    # and O2 have different effective porosities θ_a + β θ_l
+    K_H_co2 = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
         params.K_H_co2_298,
         params.dln_K_H_co2_dT,
         T_soil,
         params.T_ref_henry,
     )
-    β = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H, R, T_soil)
-    θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β)
+    β_co2 = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H_co2, R, T_soil)
+    θ_eff_co2 =
+        @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β_co2)
     @. Y.soilco2.CO2 =
-        θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
+        θ_eff_co2 * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
     # Exponential O2 profile: 0.21 at z=0, 0.15 at z=-1 m (k = ln(0.21/0.15)).
     # Soil O2 decreases with depth as roots and microbes consume it; the exact
     # profile depends on porosity, biological activity, and water content, but a
     # decaying profile is a more realistic starting point than uniform atmospheric
     # 0.21.
+    K_H_o2 = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
+        params.K_H_o2_298,
+        params.dln_K_H_o2_dT,
+        T_soil,
+        params.T_ref_henry,
+    )
+    β_o2 = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H_o2, R, T_soil)
+    θ_eff_o2 =
+        @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β_o2)
     z = soil.domain.fields.z
     k_o2 = FT(log(0.21 / 0.15))
     @. Y.soilco2.O2 =
-        θ_eff * FT(0.21) * p.drivers.P * params.M_O2 / (R * T_soil) *
+        θ_eff_o2 * FT(0.21) * p.drivers.P * params.M_O2 / (R * T_soil) *
         exp(k_o2 * z)
 
     set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
