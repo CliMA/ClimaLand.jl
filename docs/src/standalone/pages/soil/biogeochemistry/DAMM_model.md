@@ -291,6 +291,19 @@ where:
 
 By contrast, the dissolved storage in $\theta_{\rm eff}$ uses only $\theta_l$ — gases dissolve in liquid water, not in ice.
 
+The air-filled porosity at $-100$ cm H₂O used in the diffusivity is the air content left when the matric potential is $\psi = -1$ m, taken from the soil water retention curve:
+
+```math
+\begin{equation}
+\theta_{a100} = (\nu - \theta_r) \left[1 - S(\psi = -1\ {\rm m})\right]
+\end{equation}
+```
+
+where:
+
+- the residual volumetric water content, $\theta_r$ (m³ m⁻³);
+- the effective saturation given by the retention curve (van Genuchten or Brooks and Corey) at matric potential $\psi$, $S(\psi)$ (dimensionless).
+
 ## O₂ Concentration Conversions
 
 ### From Volumetric Fraction to Mass Concentration

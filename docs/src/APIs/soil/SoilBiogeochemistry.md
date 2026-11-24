@@ -36,6 +36,7 @@ ClimaLand.Soil.Biogeochemistry.PrescribedMet
 
 ```@docs
 ClimaLand.Soil.Biogeochemistry.volumetric_air_content
+ClimaLand.Soil.Biogeochemistry.air_filled_porosity_100cm
 ClimaLand.Soil.Biogeochemistry.co2_diffusivity
 ClimaLand.Soil.Biogeochemistry.o2_diffusivity
 ClimaLand.Soil.Biogeochemistry.microbe_source

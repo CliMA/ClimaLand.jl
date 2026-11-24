@@ -173,13 +173,23 @@ for FT in (Float32, Float64)
         met_box = ClimaLand.PrognosticMet(soil_ps_box)
         @test met_box.ν == soil_ps_box.ν
         @test met_col.ν == soil_ps_col.ν
-        @test met_box.θ_a100 == @. Soil.inverse_matric_potential(
+        # θ_a100 is the air content left when the matric potential is -1 m
+        S_100_col = Soil.effective_saturation(
+            soil_ps_col.ν,
+            soil_ps_col.ν - met_col.θ_a100,
+            soil_ps_col.θ_r,
+        )
+        @test Soil.matric_potential(soil_ps_col.hydrology_cm, S_100_col) ≈
+              FT(-1)
+        ψ_100_box = @. Soil.matric_potential(
             soil_ps_box.hydrology_cm,
-            -FT(1),
-        ) * (soil_ps_box.ν - soil_ps_box.θ_r) + soil_ps_box.θ_r
-        @test met_col.θ_a100 ==
-              Soil.inverse_matric_potential(soil_ps_col.hydrology_cm, -FT(1)) *
-              (soil_ps_col.ν - soil_ps_col.θ_r) + soil_ps_col.θ_r
+            Soil.effective_saturation(
+                soil_ps_box.ν,
+                soil_ps_box.ν - met_box.θ_a100,
+                soil_ps_box.θ_r,
+            ),
+        )
+        @test all(parent(ψ_100_box) .≈ FT(-1))
         @test met_box.b ==
               @. Soil.approximate_ψ_S_slope(soil_ps_box.hydrology_cm)
         @test met_col.b == Soil.approximate_ψ_S_slope(soil_ps_col.hydrology_cm)

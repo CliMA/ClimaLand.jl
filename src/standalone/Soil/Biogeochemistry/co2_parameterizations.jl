@@ -1,4 +1,5 @@
 export volumetric_air_content,
+    air_filled_porosity_100cm,
     co2_diffusivity,
     o2_diffusivity,
     microbe_source,
@@ -230,6 +231,33 @@ function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
 end
 
 """
+    air_filled_porosity_100cm(
+        hydrology_cm::ClimaLand.Soil.AbstractSoilHydrologyClosure{FT},
+        ν::FT,
+        θ_r::FT,
+    ) where {FT}
+
+Computes the volumetric air content of the soil at a matric potential of
+-100 cm H₂O (ψ = -1 m, about -10 kPa), `θ_a100`, the reference air content of
+the soil gas diffusivity (see [`co2_diffusivity`](@ref)). It is the porosity
+`ν` minus the water content at ψ = -1 m given by the retention curve
+`hydrology_cm` and the residual water content `θ_r`:
+
+    θ_a100 = (ν - θ_r) * (1 - S(ψ = -1 m)),
+
+where `S` is the effective saturation.
+"""
+function air_filled_porosity_100cm(
+    hydrology_cm::ClimaLand.Soil.AbstractSoilHydrologyClosure{FT},
+    ν::FT,
+    θ_r::FT,
+) where {FT}
+    S_100 = ClimaLand.Soil.inverse_matric_potential(hydrology_cm, -FT(1))
+    # Brooks and Corey soils with |ψb| > 1 m are still saturated at ψ = -1 m
+    return max((1 - S_100) * (ν - θ_r), eps(FT))
+end
+
+"""
     gas_diffusivity_in_soil(T_soil::FT,
                               θ_w::FT,
                               P_sfc::FT,
@@ -287,8 +315,8 @@ First, D0 is computed using the temperature within the soil (`T_soil` in K) and
 pressure at the surface of the soil (`P_sfc` in Pa), using reference
 values of `T_ref` and `P_ref` (273 K and 101325 Pa). Here, `θ_a` is the
 volumetric air content and `θ_a100` is the volumetric air content
-at a soil water potential of
-100cm, and b is the pore size distribution of the soil.
+at a soil water potential of -100 cm H₂O (see
+[`air_filled_porosity_100cm`](@ref)), and b is the pore size distribution of the soil.
 
 This parameterization is from Ryan et al., GMD 11, 1909-1928, 2018,
 https://doi.org/10.5194/gmd-11-1909-2018.

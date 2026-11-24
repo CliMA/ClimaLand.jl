@@ -114,7 +114,7 @@ struct PrognosticMet{FT, F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
        Soil.Biogeochemistry.AbstractSoilDriver
     "Soil porosity (m³ m⁻³)"
     ν::F
-    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
+    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 kPa)"
     θ_a100::F
     "Absolute value of the slope of the line relating log(ψ) versus log(S) (unitless)"
     b::F
@@ -126,12 +126,11 @@ struct PrognosticMet{FT, F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
         hcm = soil_params.hydrology_cm
         F = typeof(ν)
         if F <: AbstractFloat
-            θ_a100 =
-                Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
+            θ_a100 = Soil.Biogeochemistry.air_filled_porosity_100cm(hcm, ν, θ_r)
             b = Soil.approximate_ψ_S_slope(hcm)
         else
             θ_a100 =
-                @. Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
+                @. Soil.Biogeochemistry.air_filled_porosity_100cm(hcm, ν, θ_r)
             b = @. Soil.approximate_ψ_S_slope(hcm)
         end
         return new{FT, F}(ν, θ_a100, b)
