@@ -9,6 +9,12 @@ main
   ERA5-Land, atmosphere-and-parameters and FLUXNET initial conditions, which set uniform
   soil CO₂ and O₂, now also start from the soil state like the one read from file.
   PR [#1984](https://github.com/CliMA/ClimaLand.jl/pull/1984)
+- ![][badge-🐛bugfix] O₂ squeezed out when water or ice fills soil pores now leaves the
+  soil. It used to stay in the layer, where the soil O₂ fraction `so2` could rise many times
+  above the atmospheric 0.21. O₂ above the atmospheric concentration is now released within
+  about an hour, and its column total is kept as a flux to the atmosphere
+  (`o2_release_flux`), so O₂ mass is conserved.
+  PR [#1985](https://github.com/CliMA/ClimaLand.jl/pull/1985)
 - ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
   of only logging them.
 

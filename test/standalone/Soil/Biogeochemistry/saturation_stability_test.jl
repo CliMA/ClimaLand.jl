@@ -260,4 +260,60 @@ end
     end
 end
 
+@testset "O2 squeezed out of filled pores goes to the atmosphere" begin
+    toml_dict = LP.create_toml_dict(FT)
+    parameters = SoilCO2ModelParameters(toml_dict)
+    zmin = FT(-1)
+    domain = Column(; zlim = (zmin, FT(0)), nelements = 10)
+    T_air = FT(280)
+    P_sfc = FT(101325)
+    atmos = ClimaLand.PrescribedAtmosphere(
+        TimeVaryingInput((t) -> 0.0),
+        TimeVaryingInput((t) -> 0.0),
+        TimeVaryingInput((t) -> T_air),
+        TimeVaryingInput((t) -> 2.0),
+        TimeVaryingInput((t) -> 0.01),
+        TimeVaryingInput((t) -> P_sfc),
+        Dates.now(),
+        FT(2),
+        toml_dict;
+        c_co2 = TimeVaryingInput((t) -> 0.0004),
+    )
+    ν = FT(0.5)
+    hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = FT(0.1), n = FT(2))
+    # Pores full of water
+    met = PrescribedMet{FT}(
+        (z, t) -> eltype(z)(288),
+        (z, t) -> eltype(z)(0.5),
+        ν,
+        FT(0.05),
+        hcm,
+    )
+    model = SoilCO2Model{FT}(domain, SoilDrivers(met, atmos), toml_dict)
+    Y, p, coords = initialize(model)
+    dY = similar(Y)
+    t = Float64(0)
+    Y.soilco2.CO2 .= FT(0.001)
+    Y.soilco2.SOC .= FT(0) # no respiration, so the release is the only O2 sink
+    Y.soilco2.O2 .= FT(0)
+    set_initial_cache! = make_set_initial_cache(model)
+    set_initial_cache!(p, Y, t)
+    # Ten times the O2 that pores full of water hold at the atmospheric concentration
+    c_atm = o2_concentration(parameters.O2_f_atm, T_air, P_sfc, parameters)
+    Y_O2_atm = Array(parent(p.soilco2.θ_eff_o2)) .* c_atm
+    parent(Y.soilco2.O2) .= 10 .* reshape(Y_O2_atm, size(parent(Y.soilco2.O2)))
+    make_exp_tendency(model)(dY, Y, p, t)
+
+    release = 9 .* Y_O2_atm ./ 3600
+    @test Array(parent(p.soilco2.o2_release))[:] ≈ release
+    @test Array(parent(dY.soilco2.O2))[:] ≈ -release
+    # The released O2 is the flux to the atmosphere: uniform here, times the depth
+    @test only(Array(parent(p.soilco2.o2_release_flux))) ≈ release[1] * (-zmin)
+
+    # No release at or below the atmospheric concentration
+    parent(Y.soilco2.O2) .= reshape(Y_O2_atm, size(parent(Y.soilco2.O2)))
+    make_exp_tendency(model)(dY, Y, p, t)
+    @test all(Array(parent(p.soilco2.o2_release)) .== 0)
+end
+
 println("All saturation stability tests passed!")
