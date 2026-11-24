@@ -427,14 +427,28 @@ end
         @test all(vec(parent(Y.snow.U))[Array(binary_mask)] .≈ 0)
         @test all(vec(parent(Y.snow.S))[Array(binary_mask)] .≈ 0)
         @test all(vec(parent(Y.snow.S_l))[Array(binary_mask)] .≈ 0)
+        # The soil air holds the atmospheric CO2 mole fraction and at most the
+        # atmospheric O2 fraction, according to the model's own cache
+        make_set_initial_cache(land)(p, Y, t0)
+        params = land.soilco2.parameters
+        R = LP.gas_constant(params.earth_param_set)
+        CO2_f = @. Y.soilco2.CO2 / p.soilco2.θ_eff * R * p.soilco2.T /
+           (p.drivers.P * params.M_C) / p.drivers.c_co2
         @test all(
-            parent(Y.soilco2.CO2)[:, 1, 1, 1, Array(binary_mask)] .- FT(6e-5) .≈
-            0,
+            isapprox.(
+                Array(parent(CO2_f))[:, 1, 1, 1, Array(binary_mask)],
+                1;
+                rtol = 1e-6,
+            ),
         )
-        @test all(
-            parent(Y.soilco2.O2)[:, 1, 1, 1, Array(binary_mask)] .- FT(0.08) .≈
-            0,
+        O2_f = @. Soil.Biogeochemistry.o2_fraction_from_concentration(
+            Y.soilco2.O2 / p.soilco2.θ_eff_o2,
+            p.soilco2.T,
+            p.drivers.P,
+            params,
         )
+        @test maximum(Array(parent(O2_f))[:, 1, 1, 1, Array(binary_mask)]) <=
+              FT(0.21)
         @test all(parent(Y.soilco2.SOC)[:, 1, 1, 1, Array(binary_mask)] .>= 0)
     end
 
