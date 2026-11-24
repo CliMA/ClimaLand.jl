@@ -116,9 +116,15 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(model)
         z = coords.subsurface.z
         (; ν, θ_r, ρc_ds, earth_param_set) = model.soil.parameters
-        # Saturated below 0.5 m, half full above, so dissolved storage matters
-        @. Y.soil.ϑ_l = ifelse(z < FT(-0.5), ν, θ_r + (ν - θ_r) / 2)
-        Y.soil.θ_i .= FT(0)
+        # Pores full of ice above 0.2 m, half full of water down to 0.5 m, and full
+        # of water below, so dissolved storage matters
+        frozen = @. z > FT(-0.2)
+        @. Y.soil.ϑ_l = ifelse(
+            frozen,
+            θ_r + FT(0.02),
+            ifelse(z < FT(-0.5), ν, θ_r + (ν - θ_r) / 2),
+        )
+        @. Y.soil.θ_i = ifelse(frozen, ν - Y.soil.ϑ_l, FT(0))
         ρc_s = @. Soil.volumetric_heat_capacity(
             Y.soil.ϑ_l,
             Y.soil.θ_i,
@@ -128,7 +134,7 @@ for FT in (Float32, Float64)
         @. Y.soil.ρe_int = Soil.volumetric_internal_energy(
             Y.soil.θ_i,
             ρc_s,
-            FT(288),
+            ifelse(frozen, FT(268), FT(288)),
             earth_param_set,
         )
         Y.soilco2 .= FT(0)
@@ -147,13 +153,19 @@ for FT in (Float32, Float64)
             params,
         )
         O2_f_expected = @. FT(0.21) * exp(log(FT(0.21 / 0.15)) * z)
-        @test all(isapprox.(parent(O2_f), parent(O2_f_expected); rtol = 1e-3))
+        @test all(
+            isapprox.(
+                Array(parent(O2_f)),
+                Array(parent(O2_f_expected));
+                rtol = 1e-3,
+            ),
+        )
         # and the atmospheric CO2 mole fraction
         R = LP.gas_constant(earth_param_set)
         CO2_f = @. Y.soilco2.CO2 / p.soilco2.θ_eff * R * p.soilco2.T /
            (p.drivers.P * params.M_C)
         c_co2 = Array(parent(p.drivers.c_co2))[1]
-        @test all(isapprox.(parent(CO2_f), c_co2; rtol = 1e-3))
+        @test all(x -> isapprox(x, c_co2; rtol = 1e-3), Array(parent(CO2_f)))
     end
     @testset "PrognosticMet, FT = $FT" begin
         toml_dict = LP.create_toml_dict(FT)
