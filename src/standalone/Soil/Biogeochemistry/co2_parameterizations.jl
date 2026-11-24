@@ -135,8 +135,8 @@ concentration in the air above the soil, released over one hour.
 The soil has no O₂ source, so its air holds no more O₂ than the atmosphere
 unless its pores shrink. The O₂ storage of a layer stays put when its pores
 fill, so the excess is the O₂ that the displaced air and the freezing water
-push out. The release is explicit in time, so it is stable for time steps
-shorter than two hours.
+push out. The release is explicit in time, so it removes no more than the
+excess for time steps up to one hour.
 """
 function o2_release_rate(
     Y_O2::FT,

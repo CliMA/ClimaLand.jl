@@ -300,18 +300,17 @@ end
     set_initial_cache!(p, Y, t)
     # Ten times the O2 that pores full of water hold at the atmospheric concentration
     c_atm = o2_concentration(parameters.O2_f_atm, T_air, P_sfc, parameters)
-    Y_O2_atm = Array(parent(p.soilco2.θ_eff_o2)) .* c_atm
-    parent(Y.soilco2.O2) .= 10 .* reshape(Y_O2_atm, size(parent(Y.soilco2.O2)))
+    @. Y.soilco2.O2 = 10 * p.soilco2.θ_eff_o2 * c_atm
     make_exp_tendency(model)(dY, Y, p, t)
 
-    release = 9 .* Y_O2_atm ./ 3600
+    release = 9 .* Array(parent(p.soilco2.θ_eff_o2))[:] .* c_atm ./ 3600
     @test Array(parent(p.soilco2.o2_release))[:] ≈ release
     @test Array(parent(dY.soilco2.O2))[:] ≈ -release
     # The released O2 is the flux to the atmosphere: uniform here, times the depth
     @test only(Array(parent(p.soilco2.o2_release_flux))) ≈ release[1] * (-zmin)
 
-    # No release at or below the atmospheric concentration
-    parent(Y.soilco2.O2) .= reshape(Y_O2_atm, size(parent(Y.soilco2.O2)))
+    # No release at the atmospheric concentration
+    @. Y.soilco2.O2 = p.soilco2.θ_eff_o2 * c_atm
     make_exp_tendency(model)(dY, Y, p, t)
     @test all(Array(parent(p.soilco2.o2_release)) .== 0)
 end

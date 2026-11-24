@@ -73,7 +73,7 @@ R_{O_2} = \frac{\max\left(Y_{\theta_{O_2}} - \theta_{\rm eff,O_2}\, c_{O_2,{\rm 
 \end{equation}
 ```
 
-where the atmospheric O₂ concentration, $c_{O_2,{\rm atm}}$ (kg O₂ m⁻³ air), is computed from the air temperature and surface pressure, as in the top boundary condition. The released O₂ goes to the atmosphere: its column integral is kept as a surface flux (`o2_release_flux`, kg O₂ m⁻² s⁻¹), so that O₂ mass is conserved. The release is explicit in time, and stable for time steps shorter than $2\tau$.
+where the atmospheric O₂ concentration, $c_{O_2,{\rm atm}}$ (kg O₂ m⁻³ air), is computed from the air temperature and surface pressure, as in the top boundary condition. The released O₂ goes to the atmosphere: its column integral is kept as a surface flux (`o2_release_flux`, kg O₂ m⁻² s⁻¹), so that O₂ mass is conserved. The release is explicit in time, so it removes no more than the excess for time steps up to $\tau$.
 
 ### Soil Organic Carbon
 
