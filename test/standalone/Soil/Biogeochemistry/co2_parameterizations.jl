@@ -30,6 +30,18 @@ for FT in (Float32, Float64)
         @test θ_a == ν - θ_w
         @test typeof(θ_a) == FT
 
+        # Test air_filled_porosity_100cm: the water left in the pores sits at ψ = -1 m
+        θ_r = FT(0.078)
+        hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = FT(3.6), n = FT(1.56))
+        θ_a100_loam = air_filled_porosity_100cm(hcm, ν, θ_r)
+        @test typeof(θ_a100_loam) == FT
+        @test FT(0) < θ_a100_loam < ν - θ_r
+        S_100 = ClimaLand.Soil.effective_saturation(ν, ν - θ_a100_loam, θ_r)
+        @test ClimaLand.Soil.matric_potential(hcm, S_100) ≈ FT(-1)
+        # A soil still saturated at ψ = -1 m keeps a tiny positive air content
+        hcm_bc = ClimaLand.Soil.BrooksCorey{FT}(; c = FT(0.2), ψb = FT(-2))
+        @test air_filled_porosity_100cm(hcm_bc, ν, θ_r) == eps(FT)
+
         # Test co2_diffusivity
         θ_a100 = FT(0.3)
         b = FT(0.45)

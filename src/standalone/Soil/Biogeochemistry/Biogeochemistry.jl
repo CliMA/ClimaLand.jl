@@ -599,7 +599,7 @@ struct PrescribedMet{
     volumetric_liquid_fraction::F2
     "Soil porosity (m³ m⁻³)"
     ν::F
-    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
+    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 kPa)"
     θ_a100::F
     "Absolute value of the slope of the line relating log(ψ) versus log(S) (unitless)"
     b::F
@@ -613,13 +613,10 @@ function PrescribedMet{FT}(
     hcm::CF,
 ) where {FT <: AbstractFloat, F, CF}
     if F <: AbstractFloat
-        θ_a100 =
-            ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) +
-            θ_r
+        θ_a100 = air_filled_porosity_100cm(hcm, ν, θ_r)
         b = ClimaLand.Soil.approximate_ψ_S_slope(hcm)
     else
-        θ_a100 = @. ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) *
-           (ν - θ_r) + θ_r
+        θ_a100 = @. air_filled_porosity_100cm(hcm, ν, θ_r)
         b = @. ClimaLand.Soil.approximate_ψ_S_slope(hcm)
     end
 

@@ -4,6 +4,12 @@ main
 ----
 - ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
   of only logging them.
+- ![][badge-🐛bugfix] The reference air content `θ_a100` of the soil CO₂ and O₂ diffusivities
+  was the water content at a matric potential of -100 cm H₂O instead of the air-filled
+  porosity there (`ν` minus that water content). It is now computed by
+  `Soil.Biogeochemistry.air_filled_porosity_100cm`. The diffusivities change most in coarse
+  soils, where they exceeded the free-air value, and in clays.
+  PR [#1983](https://github.com/CliMA/ClimaLand.jl/pull/1983)
 
 v1.16.0
 ----
