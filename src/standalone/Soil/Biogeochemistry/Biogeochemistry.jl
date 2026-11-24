@@ -236,6 +236,8 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :T,
     :θ_eff,        # Effective porosity for CO2 (air + dissolved in water)
     :θ_eff_o2,     # Effective porosity for O2 (air + dissolved in water)
+    :o2_release,   # O2 leaving filling pores (kg O2 m⁻³ s⁻¹)
+    :o2_release_flux, # Its column integral, a flux to the atmosphere (kg O2 m⁻² s⁻¹)
     # CO2 boundary vars (top_bc, bottom_bc, top_bc_wvec, bottom_bc_wvec)
     ClimaLand.boundary_vars(
         model.boundary_conditions.top.co2,
@@ -267,6 +269,8 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,  # θ_eff
     FT,  # θ_eff_o2
+    FT,  # o2_release
+    FT,  # o2_release_flux
     # CO2 boundary var types
     ClimaLand.boundary_var_types(
         model,
@@ -299,6 +303,8 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
     :subsurface,  # θ_eff
     :subsurface,  # θ_eff_o2
+    :subsurface,  # o2_release
+    :surface,     # o2_release_flux
     # CO2 boundary var domain names
     ClimaLand.boundary_var_domain_names(
         model.boundary_conditions.top.co2,
@@ -368,6 +374,7 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model{FT}) where {FT}
         for src in model.sources
             source!(dY, src, Y, p, model.parameters) # explicit sources
         end
+        @. dY.soilco2.O2 -= p.soilco2.o2_release
     end
     return compute_exp_tendency!
 end
@@ -726,6 +733,18 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
                 R,
                 T_soil,
             ),
+        )
+        # O2 squeezed out of filling pores goes to the atmosphere
+        @. p.soilco2.o2_release = o2_release_rate(
+            Y.soilco2.O2,
+            p.soilco2.θ_eff_o2,
+            p.drivers.T,
+            P_sfc,
+            params,
+        )
+        ClimaCore.Operators.column_integral_definite!(
+            p.soilco2.o2_release_flux,
+            p.soilco2.o2_release,
         )
         (; D_oa) = params
         @. p.soilco2.Sm = microbe_source(

@@ -2,6 +2,19 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] The soil O₂ initial condition used the effective porosity of CO₂,
+  which dissolves about 30 times more in water than O₂. In layers full of water or ice, the
+  soil O₂ volumetric fraction `so2` started far above the atmospheric 0.21 (about 3 at 2 m
+  in the long run) and stayed there, since gas barely diffuses through full pores. The
+  ERA5-Land, atmosphere-and-parameters and FLUXNET initial conditions, which set uniform
+  soil CO₂ and O₂, now also start from the soil state like the one read from file.
+  PR [#1984](https://github.com/CliMA/ClimaLand.jl/pull/1984)
+- ![][badge-🐛bugfix] O₂ squeezed out when water or ice fills soil pores now leaves the
+  soil. It used to stay in the layer, where the soil O₂ fraction `so2` could rise many times
+  above the atmospheric 0.21. O₂ above the atmospheric concentration is now released within
+  about an hour, and its column total is kept as a flux to the atmosphere
+  (`o2_release_flux`), so O₂ mass is conserved.
+  PR [#1985](https://github.com/CliMA/ClimaLand.jl/pull/1985)
 - ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
   of only logging them.
 - ![][badge-🐛bugfix] The reference air content `θ_a100` of the soil CO₂ and O₂ diffusivities

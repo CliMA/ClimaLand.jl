@@ -126,6 +126,16 @@ for FT in (Float32, Float64)
         @test model.canopy.hydraulics isa Canopy.SteadyStateModel
         (; θ_high, θ_low, c, ψ_wilt) = model.canopy.soil_moisture_stress
         Y, p = initialize_state(model)
+        # The soil air starts with no more O2 than the atmosphere. The soilco2
+        # cache is updated before the soil's here, so update it again first
+        ClimaLand.make_update_aux(model.soilco2)(p, Y, t0)
+        O2_f = @. Soil.Biogeochemistry.o2_fraction_from_concentration(
+            Y.soilco2.O2 / p.soilco2.θ_eff_o2,
+            p.soilco2.T,
+            p.drivers.P,
+            model.soilco2.parameters,
+        )
+        @test maximum(Array(parent(O2_f))) <= FT(0.21)
         tmp = p.scratch1
         ClimaCore.Operators.column_integral_definite!(
             tmp,

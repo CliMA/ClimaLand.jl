@@ -19,9 +19,38 @@ function FluxnetSimulations.make_set_fluxnet_initial_conditions(
     hour_offset_from_UTC,
     model,
 )
-    set_ic!(Y, p, t, model) =
+    function set_ic!(Y, p, t, model)
         set_fluxnet_ic!(Y, site_ID, start_date, hour_offset_from_UTC, model)
+        set_soil_gas_ic!(Y, p, t, model)
+    end
     return set_ic!
+end
+
+"""
+    set_soil_gas_ic!(Y, p, t, model)
+
+Sets the soil CO2 and O2 storage consistent with the soil state already in `Y`,
+for models with both a soil and a soil CO2 model; does nothing otherwise.
+"""
+set_soil_gas_ic!(Y, p, t, model) = nothing
+function set_soil_gas_ic!(
+    Y,
+    p,
+    t,
+    model::Union{
+        ClimaLand.LandModel,
+        ClimaLand.SoilCanopyModel,
+        ClimaLand.LandSoilBiogeochemistry,
+    },
+)
+    isnothing(model.soilco2) && return nothing
+    atmos = ClimaLand.get_drivers(model)[1]
+    if atmos isa ClimaLand.PrescribedAtmosphere
+        evaluate!(p.drivers.P, atmos.P, t)
+        evaluate!(p.drivers.c_co2, atmos.c_co2, t)
+    end
+    ClimaLand.Simulations.set_soil_gas_initial_conditions!(Y, p, model)
+    return nothing
 end
 
 
@@ -314,8 +343,8 @@ accounts for both the air-filled pore space and the gas dissolved in pore water)
 - SOC: soil organic carbon concentration (kg C/m³)
 
 The CO2/O2 values are representative atmospheric-equilibrium initial guesses
-(assuming θ_eff ≈ 0.3 at standard T, P); the near-surface values are rapidly
-replaced by the diffusive boundary condition.
+(assuming θ_eff ≈ 0.3 at standard T, P). In models with a soil model,
+`set_soil_gas_ic!` replaces them with values consistent with the soil state.
 """
 function set_fluxnet_ic!(
     Y,

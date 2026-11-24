@@ -74,6 +74,18 @@ for FT in (Float32, Float64)
         @test O2_f_reconstructed ≈ O2_f
         @test typeof(O2_f_reconstructed) == FT
 
+        # Test o2_release_rate: nothing up to the atmospheric O2 concentration,
+        # then the excess over one hour
+        θ_eff_o2 = FT(0.05)
+        Y_O2_atm =
+            θ_eff_o2 *
+            o2_concentration(parameters.O2_f_atm, T_soil, P_sfc, parameters)
+        rate(Y_O2) = o2_release_rate(Y_O2, θ_eff_o2, T_soil, P_sfc, parameters)
+        @test rate(Y_O2_atm / 2) == FT(0)
+        @test rate(Y_O2_atm) == FT(0)
+        @test rate(3 * Y_O2_atm) ≈ 2 * Y_O2_atm / 3600
+        @test typeof(rate(3 * Y_O2_atm)) == FT
+
         # Test O2 availability (dimensionless, accounts for tortuosity)
         (; D_oa) = parameters
         O2_avail = o2_availability(O2_f, θ_a, D_oa)

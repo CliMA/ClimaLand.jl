@@ -44,6 +44,7 @@ ClimaLand.Soil.Biogeochemistry.decomposition_depth_factor
 ClimaLand.Soil.Biogeochemistry.o2_availability
 ClimaLand.Soil.Biogeochemistry.o2_concentration
 ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration
+ClimaLand.Soil.Biogeochemistry.o2_release_rate
 ClimaLand.Soil.Biogeochemistry.henry_constant
 ClimaLand.Soil.Biogeochemistry.beta_gas
 ClimaLand.Soil.Biogeochemistry.effective_porosity

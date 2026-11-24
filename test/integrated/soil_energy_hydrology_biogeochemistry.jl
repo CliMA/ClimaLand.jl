@@ -103,6 +103,70 @@ for FT in (Float32, Float64)
             z,
         )
     end
+    @testset "Soil CO2 and O2 initial conditions, FT = $FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Column(;
+            zlim = (FT(-1), FT(0)),
+            nelements = 10,
+            longlat = FT.((-118.0, 45.0)),
+        )
+        (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
+        model =
+            LandSoilBiogeochemistry{FT}((; atmos, radiation), toml_dict, domain)
+        Y, p, coords = initialize(model)
+        z = coords.subsurface.z
+        (; ν, θ_r, ρc_ds, earth_param_set) = model.soil.parameters
+        # Pores full of ice above 0.2 m, half full of water down to 0.5 m, and full
+        # of water below, so dissolved storage matters
+        frozen = @. z > FT(-0.2)
+        @. Y.soil.ϑ_l = ifelse(
+            frozen,
+            θ_r + FT(0.02),
+            ifelse(z < FT(-0.5), ν, θ_r + (ν - θ_r) / 2),
+        )
+        @. Y.soil.θ_i = ifelse(frozen, ν - Y.soil.ϑ_l, FT(0))
+        ρc_s = @. Soil.volumetric_heat_capacity(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+        @. Y.soil.ρe_int = Soil.volumetric_internal_energy(
+            Y.soil.θ_i,
+            ρc_s,
+            ifelse(frozen, FT(268), FT(288)),
+            earth_param_set,
+        )
+        Y.soilco2 .= FT(0)
+        t0 = FT(0)
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, t0)
+        ClimaLand.Simulations.set_soilco2_initial_conditions!(Y, p, model)
+        set_initial_cache!(p, Y, t0)
+
+        # The soil air holds the prescribed O2 profile, whatever the water content
+        params = model.soilco2.parameters
+        O2_f = @. o2_fraction_from_concentration(
+            Y.soilco2.O2 / p.soilco2.θ_eff_o2,
+            p.soilco2.T,
+            p.drivers.P,
+            params,
+        )
+        O2_f_expected = @. FT(0.21) * exp(log(FT(0.21 / 0.15)) * z)
+        @test all(
+            isapprox.(
+                Array(parent(O2_f)),
+                Array(parent(O2_f_expected));
+                rtol = 1e-3,
+            ),
+        )
+        # and the atmospheric CO2 mole fraction
+        R = LP.gas_constant(earth_param_set)
+        CO2_f = @. Y.soilco2.CO2 / p.soilco2.θ_eff * R * p.soilco2.T /
+           (p.drivers.P * params.M_C)
+        c_co2 = Array(parent(p.drivers.c_co2))[1]
+        @test all(x -> isapprox(x, c_co2; rtol = 1e-3), Array(parent(CO2_f)))
+    end
     @testset "PrognosticMet, FT = $FT" begin
         toml_dict = LP.create_toml_dict(FT)
         zmax = FT(0)
