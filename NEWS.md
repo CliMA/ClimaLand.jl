@@ -4,6 +4,11 @@ main
 ----
 - ![][badge-🐛bugfix] `Simulations.solve!` rethrows errors from a crashed simulation instead
   of only logging them.
+- ![][badge-✨feature] `prescribed_forcing_era5` takes `driver_window`. Set to the driver update
+  interval, it reads each ERA5 driver at the middle of the window it is held for, so the light is
+  no longer about 2 hours late. Rates are read from one hourly record per update, as by default;
+  states (temperature, humidity, pressure, wind) are interpolated between two. The default
+  (`driver_window = nothing`) is unchanged.
 
 v1.16.0
 ----

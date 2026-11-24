@@ -5,6 +5,7 @@ using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeManager: ITime
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
@@ -569,4 +570,91 @@ end
           (1 * 1 + 1 * 3) / 2
     s0 = (; T = FT(7), q = FT(0), u = FT(0), g_h = FT(0))
     @test ClimaLand.screen_level_mean(Val(:T), (FT(1), s0), (FT(1), s0)) == 7
+end
+
+@testset "ERA5 forcing read at the middle of the driver window, FT = $FT" begin
+    start_date = DateTime(2008, 7, 1)
+    stop_date = DateTime(2008, 7, 3)
+    domain = ClimaLand.Domains.global_domain(FT; nelements = (10, 5))
+    surface_space = domain.space.surface
+    toml_dict = LP.create_toml_dict(FT)
+    # Fields are only defined over land on the masked domain
+    is_land = Array(parent(ClimaLand.Domains.landsea_mask(domain))) .> 0.5
+    land(field) = Array(parent(field))[is_land]
+    plain = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+    )
+    centred = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        driver_window = Hour(3),
+    )
+    @test centred.radiation.SW_d isa ClimaLand.WindowSampleInput
+    @test !(plain.radiation.SW_d isa ClimaLand.WindowSampleInput)
+
+    value = ClimaCore.Fields.zeros(surface_space)
+    expected = ClimaCore.Fields.zeros(surface_space)
+    # ERA5 stamps hourly mean rates at the end of the hour they average: the
+    # hour centred on the middle of [t0, t0 + 3 h) is stamped t0 + 2 h
+    for t0 in (0.0, 6 * 3600.0, 15 * 3600.0)
+        for (drivers, name, at) in (
+            (:radiation, :SW_d, 2 * 3600),
+            (:radiation, :LW_d, 2 * 3600),
+            (:radiation, :frac_diff, 2 * 3600),
+            (:atmos, :liquid_precip, 2 * 3600),
+            (:atmos, :snow_precip, 2 * 3600),
+            (:atmos, :T, 1.5 * 3600),
+            (:atmos, :q, 1.5 * 3600),
+            (:atmos, :P, 1.5 * 3600),
+            (:atmos, :u, 1.5 * 3600),
+        )
+            plain_input = getproperty(getproperty(plain, drivers), name)
+            centred_input = getproperty(getproperty(centred, drivers), name)
+            evaluate!(expected, plain_input, t0 + at)
+            # At the start of the window, as ITime, and later in the window
+            for t in
+                (t0, ITime(Int(t0), Second(1), start_date), t0 + 2 * 3600 + 900)
+                evaluate!(value, centred_input, t)
+                @test land(value) ≈ land(expected)
+            end
+        end
+
+        # Insolation-weighted cos zenith from 12 samples over the window
+        insol_params = LP.LandParameters(toml_dict).insol_params
+        coords = ClimaCore.Fields.coordinate_field(surface_space)
+        # Fields on the land-masked space are written in place, as the driver
+        # update does: out-of-place broadcasts can leave masked-in cells undefined
+        μ = ClimaCore.Fields.zeros(surface_space)
+        sum_μ = ClimaCore.Fields.zeros(surface_space)
+        sum_μ² = ClimaCore.Fields.zeros(surface_space)
+        for k in 1:12
+            μ .= FT.(
+                ClimaLand.default_cos_zenith_angle(
+                    t0 + (k - 0.5) * 900,
+                    start_date;
+                    latitude = coords.lat,
+                    longitude = coords.long,
+                    insol_params,
+                ),
+            )
+            sum_μ .+= μ
+            sum_μ² .+= μ .^ 2
+        end
+        expected_μ = ClimaCore.Fields.zeros(surface_space)
+        @. expected_μ = ifelse(sum_μ > 0, sum_μ² / sum_μ, FT(0))
+        cosθs = ClimaCore.Fields.zeros(surface_space)
+        for t in (t0, t0 + 3600)
+            cosθs .= FT.(centred.radiation.cosθs(t, start_date))
+            @test land(cosθs) ≈ land(expected_μ) atol = 1e-5
+        end
+    end
 end
