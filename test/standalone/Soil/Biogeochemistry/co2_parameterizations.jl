@@ -95,6 +95,12 @@ for FT in (Float32, Float64)
         @test typeof(ms) == FT
         @test ms >= FT(0)  # Respiration should be non-negative
 
+        # The depth factor is 1 at the surface, 1/e at the e-folding depth
+        (; z_τ_sx) = parameters
+        @test decomposition_depth_factor(FT(0), parameters) == 1
+        @test decomposition_depth_factor(z_τ_sx, parameters) ≈ exp(FT(-1))
+        @test typeof(decomposition_depth_factor(FT(1), parameters)) == FT
+
         # Test henry_constant: at the reference temperature, returns K_H_ref
         T_ref_henry = parameters.T_ref_henry
         K_H_co2_ref = henry_constant(

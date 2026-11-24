@@ -40,6 +40,7 @@ ClimaLand.Soil.Biogeochemistry.air_filled_porosity_100cm
 ClimaLand.Soil.Biogeochemistry.co2_diffusivity
 ClimaLand.Soil.Biogeochemistry.o2_diffusivity
 ClimaLand.Soil.Biogeochemistry.microbe_source
+ClimaLand.Soil.Biogeochemistry.decomposition_depth_factor
 ClimaLand.Soil.Biogeochemistry.o2_availability
 ClimaLand.Soil.Biogeochemistry.o2_concentration
 ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration
