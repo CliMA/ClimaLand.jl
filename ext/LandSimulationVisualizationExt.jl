@@ -527,7 +527,7 @@ function LandSimVis.make_timeseries(
 end
 
 function LandSimVis.make_timeseries(
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point, ClimaLand.Domains.HybridBox},
     diagnostics,
     start_date;
     layer = nothing,

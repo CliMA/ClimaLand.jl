@@ -442,7 +442,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
 )
-    append!(diagnostics, ["sr"])
+    append!(diagnostics, ["sr", "infc"])
     return nothing
 end
 function add_diagnostics!(
@@ -450,7 +450,15 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
 )
-    append!(diagnostics, ["sr", "ssr"])
+    append!(diagnostics, ["sr", "ssr", "satex", "infex", "sfsat", "infc", "wsfc"])
+    return nothing
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.RegressionRunoff,
+)
+    append!(diagnostics, ["sr", "ssr", "satex", "infex", "sfsat", "infc", "wsfc"])
     return nothing
 end
 function add_diagnostics!(
@@ -595,7 +603,7 @@ function get_possible_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
-    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb", "snowm"]
 end
 function get_possible_diagnostics(model::BucketModel)
     return [

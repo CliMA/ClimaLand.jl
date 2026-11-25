@@ -42,6 +42,11 @@ using Dates
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
+function ClimaLand.Soil.compute_liquid_influx(p, model, components::Tuple) # Temporary fix 
+    return ClimaLand.Soil.compute_liquid_influx(p, model, Val(components))
+end
+
+
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -67,7 +72,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
+root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)-topmodel_20082010"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
