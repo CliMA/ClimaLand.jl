@@ -56,9 +56,17 @@ tutorials_jl = flatten_to_array_of_strings(get_second(tutorials))
 println("Building literate tutorials...")
 tutorials_dir = joinpath(@__DIR__, "src", "tutorials")
 tutorials_jl = map(x -> joinpath(tutorials_dir, x), tutorials_jl)
-# run serially after the parallel pass since they are too memory heavy
-memory_heavy_tutorials = ["snowy_land.jl", "bucket.jl"]
+# run serially after the parallel pass since it is too memory heavy
+memory_heavy_tutorials = ["snowy_land.jl"]
 is_heavy(t) = basename(t) in memory_heavy_tutorials
+# start the slowest tutorials first, so that none of them starts near the end
+slow_tutorials = [
+    "bucket.jl",
+    "obs_site_level_calibration.jl",
+    "perfect_model_site_level_ces.jl",
+    "perfect_model_site_level_calibration.jl",
+]
+sort!(tutorials_jl; by = t -> basename(t) ∉ slow_tutorials)
 pmap(t -> generate_tutorial(tutorials_dir, t), filter(!is_heavy, tutorials_jl))
 # release worker memory before running remaining tutorials serially
 nworkers() > 1 && rmprocs(workers())

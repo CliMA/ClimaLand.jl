@@ -209,9 +209,10 @@ steps:
         command: "julia -O0 --color=yes --project=test test/runtests.jl"
         agents:
           slurm_ntasks: 1
+          slurm_cpus_per_task: 4
           slurm_gpus: 1
-          slurm_mem: 32G
-          slurm_time: 02:30:00
+          slurm_mem: 64G
+          slurm_time: 01:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 

@@ -16,6 +16,8 @@ using ClimaLand.Soil.Runoff:
 import ClimaLand.Parameters as LP
 import ClimaCore
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaComms
+ClimaComms.@import_required_backends
 
 # The text/plain forms are short summaries (at most 6 lines today); the bound
 # leaves headroom but catches an accidental dump of a full field or array.

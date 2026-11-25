@@ -1,6 +1,5 @@
-using SafeTestsets
-
-import ClimaComms
+using ClimaLand
+using ParallelTestRunner
 
 # The environment variable `CLIMALAND_TEST_GROUP` determines what set of tests
 # to run. The available options are "all", "core", and "simulations".
@@ -9,224 +8,129 @@ TEST_GROUP in ("all", "core", "simulations") || error(
     "CLIMALAND_TEST_GROUP must be \"core\" or \"simulations\", got \"$TEST_GROUP\"",
 )
 
-if TEST_GROUP in ("all", "core")
+# Simplify adding tests to the test suite; paths are absolute because workers
+# start in the caller's working directory
+macro include(files...)
+    return Expr(:quote, :(foreach(include, $(joinpath.(@__DIR__, files)))))
+end
+
+#! format: off
+core_tests = Dict(
     # Performance and code quality tests
 
-    @safetestset "Aqua tests" begin
-        include("aqua.jl")
-    end
+    "Aqua tests" => @include("aqua.jl"),
 
     # Shared ClimaLand utilities tests
-    @safetestset "Richards model implicit timestepping tests" begin
-        include("shared_utilities/implicit_timestepping/richards_model.jl")
-    end
-    @safetestset "Full soil model implicit timestepping tests" begin
-        include(
-            "shared_utilities/implicit_timestepping/energy_hydrology_model.jl",
-        )
-    end
-    @safetestset "Domains module tests" begin
-        include("shared_utilities/domains.jl")
-    end
-    @safetestset "General utilities tests" begin
-        include("shared_utilities/utilities.jl")
-    end
-    @safetestset "Show methods tests" begin
-        include("shared_utilities/show_methods.jl")
-    end
-    @safetestset "Land simulation interface tests" begin
-        include("shared_utilities/simulations.jl")
-    end
-    @safetestset "Variable types tests" begin
-        include("shared_utilities/variable_types.jl")
-    end
-    @safetestset "Time integrated variables tests" begin
-        include("shared_utilities/time_integrated_variables.jl")
-    end
+    "Richards model implicit timestepping tests" => @include("shared_utilities/implicit_timestepping/richards_model.jl"),
+    "Full soil model implicit timestepping tests" => @include("shared_utilities/implicit_timestepping/energy_hydrology_model.jl"),
+    "Domains module tests" => @include("shared_utilities/domains.jl"),
+    "General utilities tests" => @include("shared_utilities/utilities.jl"),
+    "Show methods tests" => @include("shared_utilities/show_methods.jl"),
+    "Land simulation interface tests" => @include("shared_utilities/simulations.jl"),
+    "Variable types tests" => @include("shared_utilities/variable_types.jl"),
+    "Time integrated variables tests" => @include("shared_utilities/time_integrated_variables.jl"),
 
-    @safetestset "Driver tests" begin
-        include("shared_utilities/drivers.jl")
-        include("shared_utilities/coupled_fluxes.jl")
-    end
-    @safetestset "Stability cap tests" begin
-        include("shared_utilities/stability_cap.jl")
-    end
+    "Driver tests" => @include("shared_utilities/drivers.jl", "shared_utilities/coupled_fluxes.jl"),
+    "Stability cap tests" => @include("shared_utilities/stability_cap.jl"),
 
     # Standalone Bucket model tests
-    @safetestset "Bucket albedo types tests" begin
-        include("standalone/Bucket/albedo_types.jl")
-    end
+    "Bucket albedo types tests" => @include("standalone/Bucket/albedo_types.jl"),
 
-    @safetestset "Bucket snow tests" begin
-        include("standalone/Bucket/snow_bucket_tests.jl")
-    end
-    @safetestset "Bucket soil tests" begin
-        include("standalone/Bucket/soil_bucket_tests.jl")
-    end
-    @safetestset "Bucket restart tests" begin
-        include("standalone/Bucket/restart.jl")
-    end
+    "Bucket snow tests" => @include("standalone/Bucket/snow_bucket_tests.jl"),
+    "Bucket soil tests" => @include("standalone/Bucket/soil_bucket_tests.jl"),
+    "Bucket restart tests" => @include("standalone/Bucket/restart.jl"),
 
-    @safetestset "Inland water" begin
-        include("standalone/InlandWater/unit_tests.jl")
-    end
+    "Inland water" => @include("standalone/InlandWater/unit_tests.jl"),
 
     # Standalone Snow model tests
-    @safetestset "Snow parameterization tests" begin
-        include("standalone/Snow/parameterizations.jl")
-        include("standalone/Snow/snow.jl")
-    end
-    @safetestset "Neural Snow model tools tests" begin
-        include("standalone/Snow/tool_tests.jl")
-    end
+    "Snow parameterization tests" => @include("standalone/Snow/parameterizations.jl", "standalone/Snow/snow.jl"),
+    "Neural Snow model tools tests" => @include("standalone/Snow/tool_tests.jl"),
 
-    @safetestset "Snow integrated water and energy content" begin
-        include("standalone/Snow/conservation.jl")
-    end
+    "Snow integrated water and energy content" => @include("standalone/Snow/conservation.jl"),
 
-    @safetestset "Snow parameter constructors" begin
-        include("standalone/Snow/parameters.jl")
-    end
+    "Snow parameter constructors" => @include("standalone/Snow/parameters.jl"),
 
 
     # Standalone Soil model tests
-    @safetestset "Soil Biogeochemistry module tests" begin
-        include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
-    end
-    @safetestset "Soil CO2 parameterization tests" begin
-        include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
-    end
+    "Soil Biogeochemistry module tests" => @include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl"),
+    "Soil CO2 parameterization tests" => @include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl"),
 
-    @safetestset "Soil CO2 saturation stability tests" begin
-        include("standalone/Soil/Biogeochemistry/saturation_stability_test.jl")
-    end
+    "Soil CO2 saturation stability tests" => @include("standalone/Soil/Biogeochemistry/saturation_stability_test.jl"),
 
-    @safetestset "Soil climate drivers tests" begin
-        include("standalone/Soil/climate_drivers.jl")
-    end
-    @safetestset "Soil runoff tests" begin
-        include("standalone/Soil/runoff.jl")
-    end
-    @safetestset "Soil boundary condition tests" begin
-        include("standalone/Soil/soil_bc.jl")
-    end
-    @safetestset "Soil parameterization tests" begin
-        include("standalone/Soil/soil_parameterizations.jl")
-    end
-    @safetestset "Soil 3D domain tests" begin
-        include("standalone/Soil/soil_test_3d.jl")
-        include("standalone/Soil/mask_test.jl")
-    end
-    @safetestset "Soil integration tests" begin
-        include("standalone/Soil/soiltest.jl")
-    end
+    "Soil climate drivers tests" => @include("standalone/Soil/climate_drivers.jl"),
+    "Soil runoff tests" => @include("standalone/Soil/runoff.jl"),
+    "Soil boundary condition tests" => @include("standalone/Soil/soil_bc.jl"),
+    "Soil parameterization tests" => @include("standalone/Soil/soil_parameterizations.jl"),
+    "Soil 3D domain tests" => @include("standalone/Soil/soil_test_3d.jl", "standalone/Soil/mask_test.jl"),
+    "Soil integration tests" => @include("standalone/Soil/soiltest.jl"),
 
-    @safetestset "Soil spatial parameters and parameter constructors" begin
-        include("standalone/Soil/parameters.jl")
-    end
+    "Soil spatial parameters and parameter constructors" => @include("standalone/Soil/parameters.jl"),
 
     # Standalone Surface Water model tests
-    @safetestset "Pond module tests" begin
-        include("standalone/SurfaceWater/pond_test.jl")
-    end
+    "Pond module tests" => @include("standalone/SurfaceWater/pond_test.jl"),
 
     # Standalone Vegetation model tests
-    @safetestset "Canopy module tests" begin
-        include("standalone/Vegetation/canopy_model.jl")
-    end
+    "Canopy module tests" => @include("standalone/Vegetation/canopy_model.jl"),
 
-    @safetestset "Canopy module tests" begin
-        include("standalone/Vegetation/test_soil_moisture_stress.jl")
-    end
-    @safetestset "Canopy PlantHydraulics tests" begin
-        include("standalone/Vegetation/plant_hydraulics_test.jl")
-    end
-    @safetestset "Big Leaf model tests" begin
-        include("standalone/Vegetation/test_bigleaf_parameterizations.jl")
-    end
+    "Canopy soil moisture stress tests" => @include("standalone/Vegetation/test_soil_moisture_stress.jl"),
+    "Canopy PlantHydraulics tests" => @include("standalone/Vegetation/plant_hydraulics_test.jl"),
+    "Big Leaf model tests" => @include("standalone/Vegetation/test_bigleaf_parameterizations.jl"),
 
-    @safetestset "Canopy helper function tests" begin
-        include("standalone/Vegetation/test_canopy_helpers.jl")
-    end
-    @safetestset "Two Stream model tests" begin
-        include("standalone/Vegetation/test_two_stream.jl")
-    end
-    @safetestset "Canopy integrated water and energy content" begin
-        include("standalone/Vegetation/conservation.jl")
-    end
-    @safetestset "Canopy prognostic carbon pools" begin
-        include("standalone/Vegetation/test_prognostic_carbon.jl")
-    end
-    @safetestset "Canopy spatial parameters" begin
-        include("standalone/Vegetation/spatial_parameters.jl")
-    end
-    @safetestset "Canopy spatially varying height" begin
-        include("standalone/Vegetation/test_spatially_varying_canopy_height.jl")
-    end
-    @safetestset "P model tests" begin
-        include("standalone/Vegetation/test_pmodel.jl")
-    end
-    @safetestset "Optimal LAI tests" begin
-        include("standalone/Vegetation/test_optimal_lai.jl")
-    end
-    @safetestset "PFT tests" begin
-        include("standalone/Vegetation/test_pfts.jl")
-    end
+    "Canopy helper function tests" => @include("standalone/Vegetation/test_canopy_helpers.jl"),
+    "Two Stream model tests" => @include("standalone/Vegetation/test_two_stream.jl"),
+    "Canopy integrated water and energy content" => @include("standalone/Vegetation/conservation.jl"),
+    "Canopy prognostic carbon pools" => @include("standalone/Vegetation/test_prognostic_carbon.jl"),
+    "Canopy spatial parameters" => @include("standalone/Vegetation/spatial_parameters.jl"),
+    "Canopy spatially varying height" => @include("standalone/Vegetation/test_spatially_varying_canopy_height.jl"),
+    "P model tests" => @include("standalone/Vegetation/test_pmodel.jl"),
+    "Optimal LAI tests" => @include("standalone/Vegetation/test_optimal_lai.jl"),
+    "PFT tests" => @include("standalone/Vegetation/test_pfts.jl"),
 
     # Integrated LSM tests
-    @safetestset "Integrated LSM unit tests" begin
-        include("integrated/lsms.jl")
-    end
+    "Integrated LSM unit tests" => @include("integrated/lsms.jl"),
 
-    @safetestset "Integrated soil/canopy unit tests" begin
-        include("integrated/soil_canopy_lsm.jl")
-    end
-    @safetestset "Integrated pond/soil LSM tests" begin
-        include("integrated/pond_soil_lsm.jl")
-    end
-    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-    end
-    @safetestset "Integrated soil and snow" begin
-        include("integrated/soil_snow.jl")
-    end
+    "Integrated soil/canopy unit tests" => @include("integrated/soil_canopy_lsm.jl"),
+    "Integrated pond/soil LSM tests" => @include("integrated/pond_soil_lsm.jl"),
+    "Integrated soil energy/hydrology/biogeochem LSM tests" => @include("integrated/soil_energy_hydrology_biogeochemistry.jl"),
+    "Integrated soil and snow" => @include("integrated/soil_snow.jl"),
 
     # Test compatibility with automatic differentiation
-    @safetestset "Autodiff compatibility" begin
-        include("shared_utilities/ad_compatibility.jl")
-    end
-end
+    "Autodiff compatibility" => @include("shared_utilities/ad_compatibility.jl"),
+)
 
-if TEST_GROUP in ("all", "simulations")
-    @safetestset "Full land" begin
-        include("integrated/full_land.jl")
-        include("integrated/conservation.jl")
-    end
-    @safetestset "Full land restart tests" begin
-        include("integrated/restart.jl")
-    end
-    @safetestset "Soil carbon spin-up" begin
-        include("integrated/soil_carbon_spinup.jl")
-    end
+simulation_tests = Dict(
+    "Full land" => @include("integrated/full_land.jl", "integrated/conservation.jl"),
+    "Full land restart tests" => @include("integrated/restart.jl"),
+    "Soil carbon spin-up" => @include("integrated/soil_carbon_spinup.jl"),
 
     # FluxnetSimulations extension tests
-    @safetestset "Fluxnet simulation setup unit tests" begin
-        include("integrated/fluxnet_sim.jl")
-    end
+    "Fluxnet simulation setup unit tests" => @include("integrated/fluxnet_sim.jl"),
 
-    @safetestset "Perturbed driver tests" begin
-        include("shared_utilities/perturbed_drivers.jl")
-    end
+    "Perturbed driver tests" => @include("shared_utilities/perturbed_drivers.jl"),
 
     # Diagnostics
-    @safetestset "Diagnostics" begin
-        include("diagnostics/diagnostics_tests.jl")
-    end
-    @safetestset "Diagnostics compute methods" begin
-        include("diagnostics/compute_methods.jl")
-    end
+    "Diagnostics" => @include("diagnostics/diagnostics_tests.jl"),
+    "Diagnostics compute methods" => @include("diagnostics/compute_methods.jl"),
 
-    @safetestset "ILAMB setup" begin
-        include("../experiments/ilamb/tests/test_ilamb_setup.jl")
-    end
-end
+    "ILAMB setup" => @include("../experiments/ilamb/tests/test_ilamb_setup.jl"),
+)
+#! format: on
+
+testsuite = Dict{String, Expr}()
+TEST_GROUP in ("all", "core") && merge!(testsuite, core_tests)
+TEST_GROUP in ("all", "simulations") && merge!(testsuite, simulation_tests)
+# Increase max_worker_rss so that a worker doesn't restart as often
+gpu_options =
+    get(ENV, "CLIMACOMMS_DEVICE", "CPU") == "CUDA" ?
+    (; max_worker_rss = 16 * 2^30, max_default_jobs = 3) : (;)
+# Workers skip startup files, where some clusters add the ClimaArtifacts depots
+env = ["JULIA_DEPOT_PATH" => join(DEPOT_PATH, Sys.iswindows() ? ';' : ':')]
+# Run only as many workers as fit in memory at about 4 GiB each
+runtests(
+    ClimaLand,
+    ARGS;
+    testsuite,
+    env,
+    memory_per_worker = 4 * 2^30,
+    gpu_options...,
+)
