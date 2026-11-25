@@ -247,7 +247,7 @@ function update_infiltration_water_flux!(
     # Surface runoff first
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
     @. p.soil.is_saturated =
-        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
+        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r)
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
     @. p.soil.infiltration = topmodel_surface_infiltration(
         runoff.f_max,
@@ -373,41 +373,17 @@ function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
 end
 
 """
-    soil_infiltration_capacity(model::RichardsModel, Y, p)
+    soil_infiltration_capacity(model::Union{RichardsModel,EnergyHydrology}, Y, p)
 
 Computes the soil infiltration capacity on the surface space
- for Richards model.
+ for any soil model.
 
 Currently approximates i_c = -K_sat at the surface.
 """
-function soil_infiltration_capacity(model::RichardsModel, Y, p)
+function soil_infiltration_capacity(model::Union{RichardsModel,EnergyHydrology}, Y, p)
     @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
-
-"""
-    soil_infiltration_capacity(model::EnergyHydrology, Y, p)
-
-Computes the soil infiltration capacity on the surface space
- for the full soil model.
-
-Currently approximates i_c = -K_sat*F(θ_i)*G(T) at the surface, where F and G
-are the functions which adjust the conductivity for the presence ice and taking into
-account the temperature dependence of the viscosity of water.
-"""
-function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
-    (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
-
-    @. p.soil.subsfc_scratch =
-        -K_sat *
-        ClimaLand.Soil.impedance_factor(
-            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
-            Ω,
-        ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
-    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
-end
-
 
 """
     topmodel_ss_flux(R_sb::FT, f_over::FT, z∇::FT) where {FT}
@@ -459,13 +435,17 @@ get_subsurface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_ss
 
 
 """
-    get_saturated_height(runoff_model, Y, p)
+    get_saturated_height(runoff_model, soil, Y, p)
 
 A helper function which returns the integrated height of 
 saturated soil based on the type of runoff model being used.
 """
-get_saturated_height(runoff_model::AbstractRunoffModel, Y, p) = nothing
-get_saturated_height(runoff_model::TOPMODELRunoff, Y, p) = p.soil.h∇
+get_saturated_height(runoff_model::AbstractRunoffModel, soil, Y, p) = nothing
+function get_saturated_height(runoff_model::TOPMODELRunoff, soil, Y, p)
+    @. p.soil.is_saturated = is_saturated(Y.soil.ϑ_l + Y.soil.θ_i - soil.parameters.θ_r, soil.parameters.ν - soil.parameters.θ_r)
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
+    return p.soil.h∇
+end
 
 
 """
