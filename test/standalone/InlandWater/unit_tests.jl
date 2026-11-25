@@ -9,6 +9,8 @@ using ClimaLand.Domains: Point
 using ClimaLand: prescribed_forcing_era5
 using ClimaUtilities.TimeManager: ITime
 using ClimaCore
+import ClimaComms
+ClimaComms.@import_required_backends
 @testset "SlabLake model and make_* functions test" begin
     FT = Float32
     toml_dict = LP.create_toml_dict(FT)
