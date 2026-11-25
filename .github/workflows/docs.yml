@@ -37,9 +37,9 @@ jobs:
           restore-keys: |
             ubuntu-latest-julia-1.13-
       - name: Install dependencies
-        run: julia -O0 --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.precompile()'
+        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.precompile()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
-        run: julia -O0 --color=yes --project=docs/ --procs=4 docs/make.jl
+        run: julia --color=yes --project=docs/ --procs=4 docs/make.jl
