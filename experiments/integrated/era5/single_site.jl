@@ -78,6 +78,7 @@ toml_dict = LP.create_toml_dict(FT)
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
 @show model.soil.parameters.ν
+@show model.soil.parameters.K_sat
  output_vars = [
         "shf",
         "lhf",

@@ -51,7 +51,7 @@ description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
 ["f_over_s"]
-value = 3.28
+value = 1.14
 type = "float"
 description = "Units are 1/m"
 tag = "TOPMODELRunoff"

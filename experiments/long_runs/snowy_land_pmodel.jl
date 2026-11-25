@@ -67,7 +67,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)_ratio1_rsb4x_omega"
+root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)_ratiohalf_rsb4x_omega_infc"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)

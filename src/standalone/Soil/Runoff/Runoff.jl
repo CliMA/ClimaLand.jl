@@ -410,12 +410,12 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
 
     @. p.soil.subsfc_scratch =
-        -K_sat *
-        ClimaLand.Soil.impedance_factor(
-            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
-            Ω,
-        ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
+        -K_sat #*
+        #ClimaLand.Soil.impedance_factor(
+        #    Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
+        #    Ω,
+       # ) *
+        #ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
@@ -477,7 +477,7 @@ saturated soil based on the type of runoff model being used.
 """
 get_saturated_height(runoff_model::AbstractRunoffModel, soil, Y, p) = nothing
 function get_saturated_height(runoff_model::TOPMODELRunoff, soil, Y, p)
-        @. p.soil.is_saturated = is_saturated(p.soil.θ_l + Y.soil.θ_i - soil.parameters.θ_r, soil.parameters.ν - soil.parameters.θ_r)
+        @. p.soil.is_saturated = is_saturated(Y.soil.ϑ_l + Y.soil.θ_i - soil.parameters.θ_r, soil.parameters.ν - soil.parameters.θ_r)
         column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
     return p.soil.h∇
 end
@@ -491,6 +491,7 @@ A helper function which returns the surface saturated fraction
 """
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
+    
     @. lazy(
         runoff_model.f_max * exp(-runoff_model.f_over_s * (depth - p.soil.h∇)),
     )
