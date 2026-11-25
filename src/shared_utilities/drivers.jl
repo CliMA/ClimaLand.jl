@@ -2061,6 +2061,19 @@ function prescribed_forcing_era5(
 
     earth_param_set = LP.LandParameters(toml_dict)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+
+    # With `driver_window`, the file dates are moved back so that the value read at
+    # the start of a window is the one at its middle: states by half the window,
+    # rates (hourly means stamped at the end of their hour) by half an hour more.
+    if isnothing(driver_window)
+        rate_kw = state_kw = (;)
+    else
+        half_window = Millisecond(Dates.value(Millisecond(driver_window)) ÷ 2)
+        rate_shift = half_window + Millisecond(Minute(30))
+        rate_kw = (; time_transform = date -> date - rate_shift)
+        state_kw = (; time_transform = date -> date - half_window)
+    end
+
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
     precip = TimeVaryingInput(
         [era5_ncdata_path, era5_ncdata_path],
@@ -2069,7 +2082,10 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> -data / _ρ_liq,
+            rate_kw...,
+        ),
         method = time_interpolation_method,
         compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
     )
@@ -2081,7 +2097,10 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> -data / _ρ_liq,
+            rate_kw...,
+        ),
         method = time_interpolation_method,
     )
     if max_wind_speed isa Nothing
@@ -2097,6 +2116,7 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = state_kw,
         compose_function = wind_function,
         method = time_interpolation_method,
     )
@@ -2109,6 +2129,7 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = state_kw,
         compose_function = specific_humidity,
         method = time_interpolation_method,
     )
@@ -2119,6 +2140,7 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = state_kw,
         method = time_interpolation_method,
     )
 
@@ -2129,28 +2151,10 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = state_kw,
         method = time_interpolation_method,
     )
     h_atmos = FT(10)
-
-    if !isnothing(driver_window)
-        half_window = Millisecond(Dates.value(Millisecond(driver_window)) ÷ 2)
-        at_middle =
-            input -> WindowSampleInput(input, driver_window, half_window)
-        # Rates are means over the hour before their stamp
-        at_middle_rate =
-            input -> WindowSampleInput(
-                input,
-                driver_window,
-                half_window + Millisecond(Minute(30)),
-            )
-        precip = at_middle_rate(precip)
-        snow_precip = at_middle_rate(snow_precip)
-        T_atmos = at_middle(T_atmos)
-        u_atmos = at_middle(u_atmos)
-        q_atmos = at_middle(q_atmos)
-        P_atmos = at_middle(P_atmos)
-    end
 
     atmos = PrescribedAtmosphere(
         precip,
@@ -2176,6 +2180,7 @@ function prescribed_forcing_era5(
         regridder_kwargs = (; interpolation_method),
         file_reader_kwargs = (;
             preprocess_func = (data) -> max.(data, Float32(0)),
+            rate_kw...,
         ),
         method = time_interpolation_method,
     )
@@ -2194,6 +2199,7 @@ function prescribed_forcing_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = rate_kw,
         method = time_interpolation_method,
         compose_function = compute_diffuse_fraction_broadcasted,
     )
@@ -2206,6 +2212,7 @@ function prescribed_forcing_era5(
         regridder_kwargs = (; interpolation_method),
         file_reader_kwargs = (;
             preprocess_func = (data) -> max.(data, Float32(0)),
+            rate_kw...,
         ),
         method = time_interpolation_method,
     )
@@ -2218,9 +2225,6 @@ function prescribed_forcing_era5(
             insol_params = earth_param_set.insol_params,
         )
     if !isnothing(driver_window)
-        SW_d = at_middle_rate(SW_d)
-        LW_d = at_middle_rate(LW_d)
-        frac_diff = at_middle_rate(frac_diff)
         cos_zenith_angle =
             (t, s) -> window_cos_zenith_angle(
                 t,
