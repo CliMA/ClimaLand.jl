@@ -18,9 +18,9 @@ export TOPMODELRunoff,
        SurfaceRunoff,
        AbstractRunoffModel,
        TOPMODELSubsurfaceRunoff,
-       RegressionRunoff,
        subsurface_runoff_source,
        update_infiltration_water_flux!
+using SpecialFunctions: erf # either need to add this to manually calc truncnorm or something like Distributions
 
 """
     AbstractRunoffModel
@@ -154,7 +154,6 @@ function runoff_var_domain_names(::SurfaceRunoff)
 end
 runoff_var_types(::SurfaceRunoff, FT) = (FT, FT, FT, FT)
 
-# TOPMODE
 
 """
     TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
@@ -222,7 +221,7 @@ function TOPMODELRunoff(toml_dict::CP.ParamDict;
 end
 
 """
-    update_infiltration_water_flux!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
+    update_infiltration_water_flux!(p, runoff::TOPMODELRunoff, input, Y, t, model::AbstractSoilModel)
 
 Updates the runoff model variables in place in `p.soil` for the TOPMODELRunoff
 parameterization:
@@ -431,108 +430,110 @@ function is_saturated(twc::FT, ν::FT) where {FT}
 end
 
 """
-    regression_f_sat(β_shift::NTuple{2,FT}, β_shape::NTuple{5,FT}, cutoff::FT, S_l::F)
- 
-Pointwise function that computes the saturated fraction by first calculating
-the shift and shape parameters of a tanh CDF fit and then evaluating one less the CDF
-at a given cutoff (e.g. 0.9) to estimate the saturated fraction.
+    RegressionRunoff
 
-First version of this uses only effective mean saturation as a predictor.
-
-Arguments: 
-    β_shift: Tuple of 2 floats intercept and slope for linear fit of shift
-    β_shape: Tuple of 5 floats, intercept, linear, quadratic, cubic, and quartic coefficients for quartif fit of shape
-    cutoff: Float of cutoff for what is considered saturated
-    S_l: Field of mean saturation for grid cells
-Returns f_sat ∈ [0, 1].
-
+Surface runoff using polynomial regression terms for shift
+and inverse standard deviation parameters.
 """
-function regression_f_sat(β_shift::NTuple{2, FT},
-                          β_shape::NTuple{5, FT},
-                          cutoff::FT,
-                          S_l) where {FT}
-    shift = clamp(β_shift[1] + β_shift[2] * S_l, FT(0), FT(1))
-
-    shape = β_shape[1] +
-            β_shape[2] * S_l +
-            β_shape[3] * S_l^2 +
-            β_shape[4] * S_l^3 +
-            β_shape[5] * S_l^4 >= FT(0) ?
-            β_shape[1] +
-            β_shape[2] * S_l +
-            β_shape[3] * S_l^2 +
-            β_shape[4] * S_l^3 +
-            β_shape[5] * S_l^4 : FT(0)
-
-    η = 0.5 * (1 - tanh(shape * (cutoff - shift))) # 1 - CDF
-
-    return clamp(η, FT(0), FT(1))
-end
-
-
-"""
-    RegressionRunoff{FT, F} <: AbstractRunoffModel
- 
-A surface runoff parameterization where the saturated fraction is predicted
-using a hyperbolic tangent parameterization of the CDF for effective saturation,
-and the shift and slope of the tanh function is determined using regression.
-
-Notes:
-- Will need to have some of the regressors added later as fields
-- Currently using TOPMODEL for subsurface runoff still
-
-$(DocStringExtensions.FIELDS)
-"""
-struct RegressionRunoff{FT <: AbstractFloat} <: AbstractRunoffModel
-    "Linear regression coefficients for shift (2 elements)"
-    β_shift::NTuple{2, FT}
-    "Quartic regression coefficients for shape (5 elements)"
-    β_shape::NTuple{5, FT}
-    "Fractional soil saturation to use as a cutoff for saturated"
+struct RegressionRunoff{FT <: AbstractFloat,
+                                FE <: ClimaCore.Fields.Field,
+                                FTI <: ClimaCore.Fields.Field,
+                                FTIV <: ClimaCore.Fields.Field,
+                                S <: TOPMODELSubsurfaceRunoff,
+                                TL <: Tuple,
+                                TS <: Tuple} <: AbstractRunoffModel
+    beta_loc::TL
+    beta_var::TS
     cutoff::FT
-    "The subsurface source term from TOPMODEL"
-    subsurface_source::TOPMODELSubsurfaceRunoff{FT}
+    elevation::FE
+    ti::FTI
+    ti_var::FTIV
+    subsurface_source::S
+end
+
+"""
+    PolyTerm{M, FT}
+
+Polynomial term container with M variables with float type FT.
+"""
+struct PolyTerm{M, FT <: AbstractFloat}
+    powers::NTuple{M, Int}
+    coeff::FT
+end
+function eval_term(term::PolyTerm{M, FT}, vars::NTuple{M, FT}) where {M,FT}
+    val = term.coeff
+    for j in 1:M
+        p = term.powers[j]
+        if p == 1
+            val *= vars[j]
+        elseif p == 2
+            val *= vars[j] * vars[j]
+        elseif p == 3
+            val *= vars[j] * vars[j] * vars[j]
+        elseif p == 4
+            val *= vars[j] * vars[j] * vars[j] * vars[j]
+        elseif p > 4
+            val *= vars[j]^p
+        end
+    end
+    return val
+end
+
+function evaluate_parsed_poly(terms::NTuple{N, PolyTerm{M, FT}},
+                              vars::NTuple{M, FT}) where {N,M,FT}
+
+    acc = zero(FT)
+    for i in 1:N
+        acc += eval_term(terms[i], vars)
+    end
+    return acc
 end
 
 
 """
-    RegressionRunoff{FT}(; β_shift, β_shape, cutoff) where {FT}
- 
-Constructor for RegressionRunoff. Accepts β_shift and β_shape as Vectors or NTuples of regression coefficients.
-Also takes R_sb and f_over to use for the subsurface runoff from TOPMODEL.
- 
-Coefficient ordering is from lowest to highest order (wwill need to choose ordering once we add other regressors)
+    regression_f_sat(...)
+
+Pointwise calculation of saturated fraction using pre-parsed polynomial terms
+for loc (μ) and inv_stdev (1/σ) via Truncated Normal CDF.
 """
-function RegressionRunoff{FT}(;
-                              β_shift::Union{Vector{FT}, NTuple{2, FT}},
-                              β_shape::Union{Vector{FT}, NTuple{5, FT}},
-                              cutoff::FT,
-                              R_sb::FT,
-                              f_over::FT,) where {FT}
-    β_shift_tuple = β_shift isa NTuple ? β_shift : NTuple{2, FT}(β_shift) # syntax: a < b ? "less than" : "greater than" -> turns vectors into tuples
-    β_shape_tuple = β_shape isa NTuple ? β_shape : NTuple{5, FT}(β_shape)
-    subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return RegressionRunoff{FT}(β_shift_tuple,
-                                β_shape_tuple,
-                                cutoff,
-                                subsurface_source)
+function regression_f_sat(beta_loc,
+                                   beta_var,
+                                   cutoff,
+                                   K_sat,
+                                   S_l,
+                                   ti,
+                                   ti_var,
+                                   z,
+                                   θ_r,
+                                   ν)
+    FT = eltype(K_sat)
+
+    mu = evaluate_parsed_poly(beta_loc, (K_sat, S_l, ti, ti_var, z, θ_r, ν))
+    sigma2 = evaluate_parsed_poly(beta_var, (K_sat, S_l, ti, ti_var, z, θ_r, ν))
+
+    # CDF evaluation
+    # Clamp
+    mu = max(mu, eps(FT))
+    sigma2 = max(sigma2, eps(FT))
+    inv_sigma = FT(1.0) / sqrt(sigma2)
+    one_over_sqrt2 = FT(1.0) / sqrt(FT(2))
+
+    z_0 = inv_sigma * (zero(FT) - mu)
+    z_1 = inv_sigma * (one(FT) - mu)
+    z_s = inv_sigma * (clamp(FT(cutoff), zero(FT), one(FT)) - mu)
+
+    phi_0 = FT(0.5) * (one(FT) + erf(z_0 * one_over_sqrt2))
+    phi_1 = FT(0.5) * (one(FT) + erf(z_1 * one_over_sqrt2))
+    phi_s = FT(0.5) * (one(FT) + erf(z_s * one_over_sqrt2))
+
+    denom = max(phi_1 - phi_0, eps(FT))
+    raw_f_sat = FT(1.0) - ((phi_s - phi_0) / denom)
+    f_sat = clamp(raw_f_sat, zero(FT), one(FT))
+
+    return f_sat
 end
 
 
-"""
-    update_infiltration_water_flux!(
-        p, runoff::RegressionRunoff, input, Y, t, model::AbstractSoilModel,
-    )
- 
-Updates the runoff model variables in `p.soil` for the RegressionRunoff
-parameterization.
- 
-Variables updated:
-- p.soil.f_sat
-- p.soil.is_saturated
-- p.soil.infiltration
-- p.soil.R_s
-"""
 function update_infiltration_water_flux!(p,
                                          runoff::RegressionRunoff,
                                          input,
@@ -540,28 +541,35 @@ function update_infiltration_water_flux!(p,
                                          t,
                                          model::AbstractSoilModel)
     ϑ_l = Y.soil.ϑ_l
+    θ_l = p.soil.θ_l # New vs TOPMODEL: use liquid water content capped at porosity
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
-
     (; ν, K_sat, θ_r) = model.parameters
 
     @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, ν)
 
     nz = ClimaCore.Spaces.nlevels(ClimaCore.Fields.axes(ϑ_l))
     θ_r_sfc = ClimaCore.Fields.level(θ_r, nz)
-    ϑ_l_sfc = ClimaCore.Fields.level(ϑ_l, nz)
-    ν_sfc = ClimaCore.Fields.level(model.parameters.ν, nz)
+    θ_l_sfc = ClimaCore.Fields.level(θ_l, nz)
+    θ_i_sfc = ClimaCore.Fields.level(θ_i, nz)
+    ν_sfc = ClimaCore.Fields.level(ν, nz)
+    K_sat_sfc = ClimaCore.Fields.level(K_sat, nz)
 
-    # S_l_sfc = @. (ϑ_l_sfc - θ_r_sfc) / (ν_sfc - θ_r_sfc)
+    S_l_sfc = @. (θ_l_sfc - θ_r_sfc) / max(ν_sfc - θ_i_sfc - θ_r_sfc, eps(FT))
+    # note: wasn't removing ice from porosity previously! need to check if ths works
+    beta_loc_ref = Ref(runoff.beta_loc)
+    beta_var_ref = Ref(runoff.beta_var)
 
-    # Get f_sat 
-    β_shift_ref = Ref(runoff.β_shift)
-    β_shape_ref = Ref(runoff.β_shape)
-
-    @. p.soil.f_sat = regression_f_sat(β_shift_ref,
-                                    β_shape_ref,
-                                    runoff.cutoff,
-                                    (ϑ_l_sfc - θ_r_sfc) / (ν_sfc - θ_r_sfc))
+    @. p.soil.f_sat = regression_f_sat(beta_loc_ref,
+                                                beta_var_ref,
+                                                runoff.cutoff,
+                                                K_sat_sfc,
+                                                S_l_sfc,
+                                                runoff.ti,
+                                                runoff.ti_var,
+                                                runoff.elevation,
+                                                θ_r_sfc,
+                                                ν_sfc)
 
     # Infiltration capacity
     ic = soil_infiltration_capacity(model, Y, p)
@@ -569,102 +577,63 @@ function update_infiltration_water_flux!(p,
     @. p.soil.infiltration = (FT(1) - p.soil.f_sat) * max(ic, input)
     @. p.soil.R_s = abs(input - p.soil.infiltration)
 
+    # Subsurface runoff doesn't include ice in solids
     @. p.soil.is_saturated = is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) /
                              (ν - θ_r)
-
-    # Calculate water table height based on saturated columns
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
-
     # Calculate subsurface water flux
     @. p.soil.R_ss = topmodel_ss_flux(runoff.subsurface_source.R_sb,
                                       runoff.subsurface_source.f_over,
                                       model.domain.fields.depth - p.soil.h∇)
     # Track energy loss if modeling thermal dynamics
     return update_subsurface_energy_runoff!(p, model)
-
 end
 
 
-"""
-    get_surface_runoff(runoff_model, Y, p)
-
-A helper function which returns the surface runoff variable
-based on the type of runoff model being used.
-"""
+"""get_surface_runoff(runoff_model, Y, p)"""
 get_surface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
 get_surface_runoff(runoff_model::SurfaceRunoff, Y, p) = p.soil.R_s
 get_surface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_s
 get_surface_runoff(runoff_model::RegressionRunoff, Y, p) = p.soil.R_s
 
-
-"""
-    get_subsurface_runoff(runoff_model, Y, p)
-
-A helper function which returns the subsurface runoff variable
-based on the type of runoff model being used.
-"""
+"""get_subsurface_runoff(runoff_model, Y, p)"""
 get_subsurface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
 get_subsurface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_ss
-get_subsurface_runoff(runoff_model::RegressionRunoff, Y, p) = p.soil.R_ss
+function get_subsurface_runoff(runoff_model::RegressionRunoff, Y, p)
+    return p.soil.R_ss
+end
 
-
-"""
-    get_saturated_height(runoff_model, Y, p)
-
-A helper function which returns the integrated height of 
-saturated soil based on the type of runoff model being used.
-"""
+"""get_saturated_height(runoff_model, Y, p)"""
 get_saturated_height(runoff_model::AbstractRunoffModel, Y, p) = nothing
 get_saturated_height(runoff_model::TOPMODELRunoff, Y, p) = p.soil.h∇
 get_saturated_height(runoff_model::RegressionRunoff, Y, p) = p.soil.h∇
 
-
-"""
-    get_soil_fsat(runoff_model, Y, p, depth)
-
-A helper function which returns the surface saturated fraction
-based on the type of runoff model being used.
-"""
+"""get_soil_fsat(runoff_model, Y, p, depth)"""
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
     @. lazy(runoff_model.f_max *
             exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)))
 end
 
-"""
-    get_effective_saturation(ν::FT, θ_l::FT, θ_r::FT) where {FT}
+function get_soil_fsat(runoff_model::RegressionRunoff, Y, p, depth)
+    return p.soil.f_sat
+end
 
-A helper function to calculate the effective liquid water saturation (S_l).
-"""
+"""get_effective_saturation(ν::FT, θ_l::FT, θ_r::FT) where {FT}"""
 function get_effective_saturation(ν::FT, θ_l::FT, θ_r::FT) where {FT}
     S_e = (θ_l - θ_r) / max(ν - θ_r, eps(FT))
     return clamp(S_e, FT(0), FT(1))
 end
 
-get_soil_fsat(runoff_model::RegressionRunoff, Y, p, depth) = p.soil.f_sat
-
-# Cache variable info -- same as elsewhere but with arg changes
-function runoff_vars(::RegressionRunoff) # colons make these variables Symbols
-    return (:f_sat,
-            :is_saturated,
-            :R_s,
-            :R_ss,
-            :R_ess,
-            :h∇,
-            :infiltration,
+function runoff_vars(::RegressionRunoff)
+    return (:f_sat, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :infiltration,
             :subsfc_scratch)
 end
 function runoff_var_domain_names(::RegressionRunoff)
-    return (:surface,
-            :subsurface,
-            :surface,
-            :surface,
-            :surface,
-            :surface,
-            :surface,
-            :subsurface)
+    return (:surface, :subsurface, :surface, :surface, :surface, :surface,
+            :surface, :subsurface)
 end
-runoff_var_types(::RegressionRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT)
-
-
+function runoff_var_types(::RegressionRunoff, FT)
+    return (FT, FT, FT, FT, FT, FT, FT, FT)
+end
 end
