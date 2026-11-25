@@ -8,6 +8,7 @@ using NCDatasets
 using ClimaLand.Artifacts
 using ClimaAnalysis
 using StatsBase
+include("models.jl")
 (data, columns) = readdlm("all_data.csv", ',', header = true)
 diffuse_fraction = readdlm("diffuse_fraction.txt", ',', header = false)
 
@@ -124,63 +125,25 @@ LAI = reshape(LAI, (1, N))
 SW_d = reshape(SW_d, (1, N))
 SW_u = reshape(SW_u, (1, N))
 f_diff = reshape(f_diff, (1,N))
-    
-function compute_r2(y, y_hat)
-    ss_res = sum((y .- y_hat) .^ 2)
-    ss_tot = sum((y .- mean(y)) .^ 2)
-    return 1.0 - (ss_res / ss_tot)
-end
+ 
 
-struct LandRT2
-    a_PAR_w1::Any
-    a_NIR_w1::Any
-    a_PAR_b1::Any
-    a_NIR_b1::Any
-    a_PAR_w2::Any
-    a_NIR_w2::Any
-    a_PAR_b2::Any
-    a_NIR_b2::Any
-    sum_fvh::Any
-    fh::Any
-    Kdiff::Any
-end
-Flux.@layer LandRT2
-function reflected(α_c, α_g, T)
-    gs_sum = T/(1-α_c*α_g)
-    R = α_c + T*α_g*gs_sum
-    S_abs = (1-α_g)*gs_sum
-    C_abs = (1-α_c-T)*(α_g*gs_sum+1) # How to ensure that this is positive?
-    return R
-end
 
-function (m::LandRT2)(x̂, LAI, μ, α_PAR_g, α_NIR_g, SW_d, f_diff)
-    α_PAR = sigmoid(m.a_PAR_w2 * leakyrelu.(m.a_PAR_w1 * x̂ .+ m.a_PAR_b1) .+ m.a_PAR_b2)
-    α_NIR = sigmoid(m.a_NIR_w2 * leakyrelu.(m.a_NIR_w1 * x̂ .+ m.a_NIR_b1) .+ m.a_NIR_b2)
-    sum_fvh = sigmoid(m.sum_fvh)
-    fh = sigmoid(m.fh) .* sum_fvh
-    G = @. fh* μ + (1-sum_fvh) * 1/2 + (sum_fvh - fh) * sin(acos(μ))
-    K_dir = min.(G ./ μ, 100.0f0)
-    K_diff = relu(m.Kdiff)
-    transmitted_fraction = @. exp(-K_dir * LAI) * (1 - f_diff) + f_diff * exp(- K_diff * LAI)
-    upwelling_from_land_par = @. reflected(α_PAR, α_PAR_g, transmitted_fraction)
-    upwelling_from_land_nir = @. reflected(α_NIR, α_NIR_g, transmitted_fraction)
-    return @. (upwelling_from_land_nir + upwelling_from_land_par)/2
-end
 m2 = m
-mRT = LandRT2(
+mRT = LandRT2Stream(
     randn(Float32, (m2, m)),
     randn(Float32, (m2, m)),
     randn(Float32, (m2, 1)),
     randn(Float32, (m2, 1)),
     randn(Float32, (1, m2)),
     randn(Float32, (1, m2)),
+    randn(Float32, (1, 1)),
     randn(Float32, (1, 1)),
     randn(Float32, (1, 1)),
     randn(Float32, (1, 1)),
     randn(Float32, (1, 1)),
     randn(Float32, (1, 1)),
 )
-opt = Flux.setup(Adam(FT(0.005), FT.((0.9, 0.99)), FT(1e-8)), mRT)
+opt = Flux.setup(Adam(FT(0.003), FT.((0.9, 0.99)), FT(1e-8)), mRT)
 obs = SW_u ./ SW_d
 loss(
     model,
@@ -196,10 +159,12 @@ loss(
 
 @show loss(mRT, x̂, obs)
 train_loss_values = []
-for i in 1:2000
+for i in 1:1200
     Flux.train!(loss, mRT, [(x̂, obs)], opt)
     if i % 10 == 0
-        push!(train_loss_values, loss(mRT, x̂, obs))
+        L = loss(mRT, x̂, obs)
+        push!(train_loss_values, L)
+        @show L
     end
 end
 
@@ -207,6 +172,15 @@ pred = mRT(x̂, LAI, μ, α_PAR_g, α_NIR_g, SW_d, f_diff);
 @show compute_r2(obs[:], pred[:])
 @show sqrt(loss(mRT, x̂, obs))
 @show mean(pred[:] .- obs[:])
+apar = get_α_PAR(mRT, x̂)
+anir =get_α_NIR(mRT, x̂)
+fig = Figure()
+ax = Axis(fig[1,1], xlabel = "Leaf albedo", ylabel = "Frequency")
+hist!(ax, apar[:], bins = 40, label = "PAR")
+hist!(ax, anir[:], bins = 40, label = "NIR")
+axislegend(ax; position = :rt)
+
+
 
 fig = Figure()
 ax = Axis(fig[1,1], xlabel = "Observed α", ylabel = "Predicted α")
@@ -216,7 +190,7 @@ Colorbar(fig[1, 2], hm, label = "Count")
 lines!(ax, obs[:], obs[:], color = :red, linestyle = :dash)
 xlims!(ax, (0, 0.3))
 ylims!(ax, (0, 0.3))
-save("obs_v_pred.png", fig)
+save("obs_v_pred2s.png", fig)
 fig = Figure()
 ax = Axis(fig[1,1], xlabel = "Predicted", ylabel = "Residual")
 h = fit(Histogram, (pred[:], pred[:] .- obs[:]), (0:0.01:0.3, -0.3:0.01:0.3))
@@ -225,7 +199,7 @@ Colorbar(fig[1, 2], hm, label = "Count")
 lines!(ax, pred[:], zeros(length(pred[:])), color = :red, linestyle = :dash)
 xlims!(ax, (0, 0.3))
 ylims!(ax, (-0.15, 0.15))
-save("pred_v_res.png", fig)
+save("pred_v_res2s.png", fig)
 
 function dependence_plot(y, y_name)
     fig = Figure()
